@@ -12,6 +12,11 @@ import db  # noqa: E402
 import main  # noqa: E402
 from numfmt import bucket_of, parse_number  # noqa: E402
 
+# The write limiter counts per IP, and the whole suite is one IP making a
+# hundred writes in a second. Lift it here rather than thin it out in main.py,
+# where it is the only thing between an open wiki and a script.
+main.WRITE_LIMIT = 10_000
+
 
 def test_parse():
     cases = {
@@ -161,6 +166,22 @@ def test_api_round_trip():
 
     # the index stays out of it -- translations are a post-page concern
     assert "translations" not in c.get("/api/posts", params={"value": "42"}).json()[0]
+
+    # ...but search does look inside them, or an English title on a Korean
+    # entry would be unfindable in the language the site is written in
+    c.put(f"/api/posts/{tid}/translations", json={
+        "lang": "English", "title": "Jackie Robinson, number 42", "body": "Brooklyn Dodgers",
+    })
+    assert [p["id"] for p in c.get("/api/posts", params={"q": "Dodgers"}).json()] == [tid]
+    assert len(c.get("/api/posts", params={"q": "Jackie"}).json()) == 1, "matched twice"
+
+    # and the English version is what the index shows
+    entry = next(
+        e for n in c.get("/api/numbers", params={"format": "INTEGER"}).json()
+        if n["value"] == "42" for e in n["entries"] if e["id"] == tid
+    )
+    assert entry["title"] == "Jackie Robinson, number 42"
+    assert entry["body"] == "Brooklyn Dodgers"
 
     # a stranger may edit, and doing so must not erase who wrote it
     edited = c.patch(f"/api/posts/{a['id']}",

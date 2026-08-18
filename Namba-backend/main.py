@@ -233,6 +233,18 @@ def list_numbers(
         args.append(format.upper())
     sql.append("ORDER BY p.sort_key IS NULL, p.sort_key, p.value, p.id")
 
+    # The site is written in English, so the index shows the English version
+    # when someone has added one -- 20 seeded entries are titled in Korean and
+    # were unreadable here. One flat lookup rather than a join per row; the
+    # whole table is small and the join would need de-duplicating anyway.
+    english = {
+        r["post_id"]: r
+        for r in con.execute(
+            """SELECT post_id, title, body FROM translations
+               WHERE lower(lang) IN ('english', 'en') ORDER BY id DESC"""
+        )
+    }
+
     out = []
     for r in con.execute("\n".join(sql), args):
         key = (r["value"], r["format"])
@@ -244,10 +256,11 @@ def list_numbers(
                 "bucket": bucket_of(r["sort_key"], r["format"]),
                 "entries": [],
             })
-        body = r["body"]
+        shown = english.get(r["id"]) or r
+        body = shown["body"]
         out[-1]["entries"].append({
             "id": r["id"],
-            "title": r["title"],
+            "title": shown["title"],
             "body": body[:BLURB] + "\u2026" if len(body) > BLURB else body,
             "image": bool(r["image"]),
         })
@@ -278,8 +291,16 @@ def list_posts(
         where.append("p.format = ?")
         args.append(format.upper())
     if q:
-        where.append("(p.title LIKE ? OR p.body LIKE ? OR p.value LIKE ?)")
-        args += ["%%%s%%" % q] * 3
+        # EXISTS rather than a join: a post with three translations must still
+        # come back once. Without it, giving a Korean entry an English title
+        # left it unfindable in the language the site is written in.
+        where.append(
+            """(p.title LIKE ? OR p.body LIKE ? OR p.value LIKE ?
+                OR EXISTS (SELECT 1 FROM translations t
+                           WHERE t.post_id = p.id
+                             AND (t.title LIKE ? OR t.body LIKE ?)))"""
+        )
+        args += ["%%%s%%" % q] * 5
     if where:
         sql.append("WHERE " + " AND ".join(where))
     order = {
