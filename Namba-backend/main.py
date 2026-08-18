@@ -432,14 +432,30 @@ def restore_revision(
         raise HTTPException(404, "revision not found")
     old = json.loads(row["snapshot"])
     who = body.author.strip() or "anonymous"
+    alive = con.execute("SELECT 1 FROM posts WHERE id = ?", (post_id,)).fetchone()
     with con:
-        snapshot(con, post_id, who)  # restoring is itself undoable
-        con.execute(
-            """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
-                                image=?, edited_by=?, updated_at=? WHERE id=?""",
-            (old["value"], old["format"], old["sort_key"], old["title"], old["body"],
-             old["image"], who, now(), post_id),
-        )
+        if alive:
+            snapshot(con, post_id, who)  # restoring is itself undoable
+            con.execute(
+                """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
+                                    image=?, edited_by=?, updated_at=? WHERE id=?""",
+                (old["value"], old["format"], old["sort_key"], old["title"], old["body"],
+                 old["image"], who, now(), post_id),
+            )
+        else:
+            # The post was deleted. Snapshots outliving the post is the entire
+            # point of the revisions table, so restore has to be able to put one
+            # back -- under its original id, or every revision row and inbound
+            # link would be pointing at nothing. There is nothing to snapshot
+            # first: the delete already took one.
+            con.execute(
+                """INSERT INTO posts (id, value, format, sort_key, title, body, image,
+                                      author, edited_by, likes, created_at, updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (post_id, old["value"], old["format"], old["sort_key"], old["title"],
+                 old["body"], old["image"], old["author"], who, old.get("likes", 0),
+                 old["created_at"], now()),
+            )
         _write_tags(con, post_id, old.get("tags", []))
         # a snapshot from before translations existed has none, and restoring it
         # says so -- the ones dropped are in the snapshot this restore just took

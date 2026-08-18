@@ -19,13 +19,48 @@ export default function PostPage() {
   const [form, setForm] = useState<Translation | 'new' | null>(null)
 
   const post = edited ?? loaded.data
-  // the API's own wording, but framed and with a way out -- a bare
-  // "post not found" on a blank page leaves the reader stranded
+  /* The entry is gone, but its snapshots are not -- revisions have no foreign
+     key precisely so a delete stays undoable. Show them here, or the wiki keeps
+     a recovery it never offers. */
+  async function resurrect(rev: Revision) {
+    try {
+      await api.restore(Number(id), rev.id, nickname.get() || 'anonymous')
+      location.reload() // this render came off a 404; start clean
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+
   if (loaded.err)
     return (
-      <p className="empty">
-        Couldn’t open this entry — {loaded.err}. <Link to="/">Back to the index.</Link>
-      </p>
+      <>
+        <p className="empty">
+          Couldn’t open this entry — {loaded.err}. <Link to="/">Back to the index.</Link>
+        </p>
+        {err && <p className="err">{err}</p>}
+        {revs.data?.length ? (
+          <>
+            <h4 className="section">What it used to say</h4>
+            <p className="quiet">
+              Nothing here is lost. Restoring puts the entry back at this same
+              address, so whatever linked to it still points at it.
+            </p>
+            <ol className="revs">
+              {revs.data.map((r) => (
+                <li className="rev" key={r.id}>
+                  <b>{r.snapshot.title}</b>
+                  <span>
+                    {r.snapshot.value} · {byline(r)} · {fmtDate(r.at)}
+                  </span>
+                  <button className="btn small" onClick={() => resurrect(r)}>
+                    Restore
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </>
+        ) : null}
+      </>
     )
   if (!post) return <p className="empty">Loading…</p>
 
@@ -200,7 +235,7 @@ export default function PostPage() {
             <li className="rev" key={r.id}>
               <b>{r.snapshot.title}</b>
               <span>
-                replaced by {r.author} · {fmtDate(r.at)}
+                {byline(r)} · {fmtDate(r.at)}
               </span>
               <button className="btn small" onClick={() => restore(r)}>
                 Restore
@@ -215,6 +250,12 @@ export default function PostPage() {
     </div>
   )
 }
+
+/* A delete snapshots under the author "deleted", which reads badly inside a
+   sentence that already says "replaced by". If the backend ever words it
+   differently this just falls back to the normal phrasing. */
+const byline = (r: Revision) =>
+  r.author === 'deleted' ? 'deleted' : `replaced by ${r.author}`
 
 /** Write this entry in another language, or rewrite one that is already here. */
 function TranslationForm({

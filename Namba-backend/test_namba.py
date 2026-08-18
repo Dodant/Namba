@@ -211,6 +211,17 @@ def test_api_round_trip():
     assert c.get(f"/api/posts/{slash['id']}/revisions").json()[0]["snapshot"]["title"] \
         == "11/22/63"
 
+    # ...and that snapshot can actually put it back, under the same id, or the
+    # revisions kept for it would describe a post that no longer exists
+    dead = c.get(f"/api/posts/{slash['id']}/revisions").json()[0]
+    alive = c.post(f"/api/posts/{slash['id']}/revisions/{dead['id']}/restore",
+                   json={"author": "arthur"}).json()
+    assert alive["id"] == slash["id"] and alive["value"] == "11/22/63"
+    assert alive["author"] == slash["author"], "the original writer was lost"
+    assert alive["edited_by"] == "arthur"
+    assert alive["tags"] == ["BOOK"]
+    assert c.get(f"/api/posts/{slash['id']}").status_code == 200
+
     # uploads: extension allowlist, server-generated filename
     assert c.post("/api/upload", files={"file": ("evil.svg", b"<svg/>",
                                                  "image/svg+xml")}).status_code == 400
