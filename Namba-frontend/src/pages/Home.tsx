@@ -1,4 +1,3 @@
-import { Fragment } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   api, BUCKETS, BUCKET_LABEL, FORMATS, FORMAT_LABEL, numberPath,
@@ -78,11 +77,10 @@ export default function Home() {
                         {n.value}
                       </Link>
                       <div className="ix-titles">
-                        {n.entries.map((e, i) => (
-                          <Fragment key={e.id}>
-                            {i > 0 && <span className="sep">·</span>}
-                            <Link to={`/p/${e.id}`}>{e.title}</Link>
-                          </Fragment>
+                        {n.entries.map((e) => (
+                          <Link key={e.id} to={`/p/${e.id}`}>
+                            {e.title}
+                          </Link>
                         ))}
                       </div>
                     </li>

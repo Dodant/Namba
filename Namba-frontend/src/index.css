@@ -102,7 +102,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .index { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
 .ix {
   display: flex; gap: 18px; align-items: baseline;
-  padding: 8px 0; border-bottom: 1px solid var(--line);
+  padding: 10px 0; border-bottom: 1px solid var(--line);
 }
 .ix:hover { background: var(--panel); }
 .ix-num {
@@ -113,8 +113,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* a handful of values are sentences ("1960년 4월 16일 오후 3시"); shrink those
    rather than widening the column for every "7" */
 .ix-num.long { font-size: 12.5px; line-height: 1.3; }
-.ix-titles { display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: 14.5px; }
-.ix-titles .sep { color: var(--muted); opacity: 0.55; }
+.ix-titles {
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: 3px; font-size: 14.5px;
+}
 
 @media (max-width: 560px) {
   .ix { flex-direction: column; gap: 2px; padding: 10px 0; }
