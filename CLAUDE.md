@@ -53,3 +53,14 @@ frontend-only addition fails loudly rather than silently.
 Prefer editing what exists over adding files — this is deliberately a small
 codebase (~1,700 lines). Each app has its own `CLAUDE.md` with the details that
 bite.
+
+**Commit in logical units, without being asked.** One coherent change per
+commit — the feature, then the doc note, not both in a heap at the end of a
+session. Run the checks above before each one. Pushing is a separate decision:
+there is no remote, and adding one is the user's call, not a default.
+
+Messages follow [Conventional Commits](https://www.conventionalcommits.org):
+`type(scope): subject` — imperative, lowercase after the colon, no trailing
+period. Types: `feat` `fix` `docs` `refactor` `test` `chore`. Scope is what
+changed (`backend`, `frontend`, `index`, `seed`, `api`) and is dropped when the
+change spans both apps. The body explains why, not what — the diff has the what.
