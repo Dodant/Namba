@@ -147,7 +147,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* the count is only interesting for the row you are reading, so it waits at the
    far right until then. Gated on (hover: hover): on a touch screen there is no
    hover to wait for, and a control nobody can reveal is a control nobody has */
-.ix-like { margin-left: auto; flex: none; }
+.ix-like { margin-left: auto; margin-right: 6px; flex: none; }
+/* borderless here: the row is already the thing you are pointing at, and a
+   pill outline put a second box on the page to look at. Transparent rather
+   than none, so revealing it does not shift the row by a pixel. */
+.ix-like .btn,
+.ix-like .btn:hover,
+.ix-like .btn.on { border-color: transparent; background: none; }
+.ix-like .btn { padding: 3px 4px; }
+.ix-like .btn:hover { color: var(--accent); }
 @media (hover: hover) {
   .ix-like { opacity: 0; }
   .ix-e:hover .ix-like, .ix-e:focus-within .ix-like { opacity: 1; }
