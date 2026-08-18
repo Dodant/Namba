@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, fmtDate, liked, numberPath, tagLabel, type Post } from '../api'
 
-export function Like({ post }: { post: Post }) {
+/* Takes the two fields it uses rather than a whole Post, so the number index
+   can hand it a bare entry. */
+export function Like({ post }: { post: { id: number; likes: number } }) {
   const [n, setN] = useState(post.likes)
   const [on, setOn] = useState(() => liked.has(post.id))
 

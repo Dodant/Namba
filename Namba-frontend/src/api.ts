@@ -65,7 +65,7 @@ export type NumberEntry = {
   format: Format
   sort_key: number | null
   bucket: string | null
-  entries: { id: number; title: string; body: string; image: boolean }[]
+  entries: { id: number; title: string; body: string; image: boolean; likes: number }[]
 }
 
 export type Revision = {

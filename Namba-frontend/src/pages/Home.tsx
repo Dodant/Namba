@@ -4,6 +4,7 @@ import {
   api, BUCKETS, BUCKET_LABEL, FORMATS, FORMAT_LABEL, numberPath, tagLabel,
   type Format, type NumberEntry,
 } from '../api'
+import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
 
 /* one path instead of an icon package -- it inherits currentColor and the
@@ -167,13 +168,20 @@ export default function Home() {
                       </Link>
                       <div className="ix-titles">
                         {n.entries.map((e) => (
-                          <Link className="ix-e" key={e.id} to={`/p/${e.id}`}>
-                            <span className="ix-t">{mark(e.title, rx)}</span>
-                            {e.image && PHOTO}
-                            {e.body && (
-                              <span className="ix-b"> — {mark(e.body, rx)}</span>
-                            )}
-                          </Link>
+                          // the like sits outside the link: a button inside an
+                          // anchor is invalid, and both want the same click
+                          <div className="ix-e" key={e.id}>
+                            <Link className="ix-link" to={`/p/${e.id}`}>
+                              <span className="ix-t">{mark(e.title, rx)}</span>
+                              {e.image && PHOTO}
+                              {e.body && (
+                                <span className="ix-b"> — {mark(e.body, rx)}</span>
+                              )}
+                            </Link>
+                            <span className="ix-like">
+                              <Like post={e} />
+                            </span>
+                          </div>
                         ))}
                       </div>
                     </li>

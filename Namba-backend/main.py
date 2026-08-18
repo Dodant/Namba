@@ -221,7 +221,7 @@ def list_numbers(
     be two passes to build one thing. Body is truncated and image is only a
     flag: the index should be readable without opening a post, not a copy of it.
     """
-    sql = ["""SELECT p.id, p.value, p.format, p.sort_key, p.title,
+    sql = ["""SELECT p.id, p.value, p.format, p.sort_key, p.title, p.likes,
                       substr(p.body, 1, ?) AS body, p.image IS NOT NULL AS image
                FROM posts p"""]
     args = [BLURB + 1]
@@ -263,6 +263,7 @@ def list_numbers(
             "title": shown["title"],
             "body": body[:BLURB] + "\u2026" if len(body) > BLURB else body,
             "image": bool(r["image"]),
+            "likes": r["likes"],   # a translation has no likes of its own
         })
     return out
 

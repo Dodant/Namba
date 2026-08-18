@@ -182,6 +182,7 @@ def test_api_round_trip():
     )
     assert entry["title"] == "Jackie Robinson, number 42"
     assert entry["body"] == "Brooklyn Dodgers"
+    assert entry["likes"] == 0, "the count is the post's, not the translation's"
 
     # a stranger may edit, and doing so must not erase who wrote it
     edited = c.patch(f"/api/posts/{a['id']}",
