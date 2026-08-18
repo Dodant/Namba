@@ -18,18 +18,78 @@ const PHOTO = (
   </svg>
 )
 
-/* the number is what put an entry on this row, so pick it out of the text --
-   split on the raw value, no regex: values like "11/22/63" and "9¾" would need
-   escaping, and a plain string separator needs none */
-function mark(text: string, value: string) {
-  const parts = text.split(value)
-  if (parts.length === 1) return text
-  return parts.map((part, i) => (
-    <Fragment key={i}>
-      {i > 0 && <b className="hit">{value}</b>}
-      {part}
-    </Fragment>
-  ))
+/* what a number looks like when it is spelled out. The short entries are Greek
+   and Latin roots, which is why they only ever match at the start of a word:
+   "hepta" in Heptapod is a seven, "bi" in Bible is not a two -- and the
+   two-letter roots are left out entirely because that is a fight they lose.
+   ponytail: a cardinal can still light up inside a bigger number word, so the
+   lookahead below fends off the pairs that actually collide (six/sixteen). */
+const WORDS: Record<number, string[]> = {
+  1: ['one', 'first', 'single', 'mono'],
+  2: ['two', 'second', 'twice', 'double', 'duo'],
+  3: ['three', 'third', 'tri'],
+  4: ['four', 'quad', 'tetra'],
+  5: ['five', 'fifth', 'penta', 'quint'],
+  6: ['six', 'hexa'],
+  7: ['seven', 'hepta', 'sept'],
+  8: ['eighth', 'eight', 'oct'],
+  9: ['nine', 'ninth', 'nona', 'ennea'],
+  10: ['ten', 'deca'],
+  11: ['eleven', 'hendeca'],
+  12: ['twelve', 'twelfth', 'dozen', 'dodeca'],
+  13: ['thirteen'],
+  14: ['fourteen'],
+  15: ['fifteen'],
+  16: ['sixteen'],
+  17: ['seventeen'],
+  18: ['eighteen'],
+  19: ['nineteen'],
+  20: ['twenty', 'icosa'],
+  30: ['thirty'],
+  40: ['forty'],
+  50: ['fifty'],
+  60: ['sixty', 'sexa'],
+  70: ['seventy'],
+  80: ['eighty'],
+  90: ['ninety'],
+  100: ['hundred', 'cent', 'hecto'],
+  200: ['bicentennial'],
+  1000: ['thousand', 'kilo', 'millenni'],
+  10000: ['myriad'],
+  1000000: ['million', 'mega'],
+}
+
+/* the number as written and the number as spelled, in one pass. The raw value
+   is escaped because "3.14" and "11/22/63" are regex if you let them be; only
+   INTEGER rows get words, since a TIME sort_key of 100 is 01:40, not a hundred.
+   The optional "th" swallows the regular ordinals -- sixth, tenth, hundredth --
+   so they light up whole; the irregular ones are spelled out in WORDS, and the
+   longest form goes first so "eighth" wins over "eight". */
+function marker({ value, format }: NumberEntry) {
+  const words = format === 'INTEGER' ? (WORDS[Number(value)] ?? []) : []
+  const alts = [
+    value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+    ...[...words]
+      .sort((a, b) => b.length - a.length)
+      .map((w) => `\\b${w}(?:th)?(?!teen|ty)`),
+  ]
+  return new RegExp(`(${alts.join('|')})`, 'gi')
+}
+
+/* split on a single capture group: odd slots are the matches, and they keep the
+   text's own casing, so "Hepta" stays "Hepta" */
+function mark(text: string, rx: RegExp) {
+  return text
+    .split(rx)
+    .map((part, i) =>
+      i % 2 ? (
+        <b className="hit" key={i}>
+          {part}
+        </b>
+      ) : (
+        <Fragment key={i}>{part}</Fragment>
+      ),
+    )
 }
 
 export default function Home() {
@@ -95,7 +155,9 @@ export default function Home() {
               <section className="band" key={band.label}>
                 <h2>{band.label}</h2>
                 <ol className="index">
-                  {band.items.map((n: NumberEntry) => (
+                  {band.items.map((n: NumberEntry) => {
+                    const rx = marker(n)
+                    return (
                     <li className="ix" key={`${n.format}-${n.value}`}>
                       <Link
                         className={`ix-num ${n.value.length > 10 ? 'long' : ''}`}
@@ -106,16 +168,17 @@ export default function Home() {
                       <div className="ix-titles">
                         {n.entries.map((e) => (
                           <Link className="ix-e" key={e.id} to={`/p/${e.id}`}>
-                            <span className="ix-t">{mark(e.title, n.value)}</span>
+                            <span className="ix-t">{mark(e.title, rx)}</span>
                             {e.image && PHOTO}
                             {e.body && (
-                              <span className="ix-b"> — {mark(e.body, n.value)}</span>
+                              <span className="ix-b"> — {mark(e.body, rx)}</span>
                             )}
                           </Link>
                         ))}
                       </div>
                     </li>
-                  ))}
+                    )
+                  })}
                 </ol>
               </section>
             ),
