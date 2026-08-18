@@ -85,12 +85,19 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .chip.zero { opacity: 0.45; }
 
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
-.tabs a {
+/* the language tabs on a post reuse this; only the element differs */
+.tabs a, .tabs button {
   padding: 8px 14px; font-size: 14px; color: var(--muted);
+  background: none; border: 0; cursor: pointer;
   border-bottom: 2px solid transparent; margin-bottom: -1px;
 }
-.tabs a:hover { color: var(--ink); text-decoration: none; }
-.tabs a.on { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.tabs :is(a, button):hover { color: var(--ink); text-decoration: none; }
+.tabs :is(a, button).on {
+  color: var(--ink); border-bottom-color: var(--accent); font-weight: 600;
+}
+.tabs button.quiet { margin-left: auto; color: var(--accent); }
+
+.tr-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
 /* --- number index ------------------------------------------------- */
 .band { margin: 28px 0; }

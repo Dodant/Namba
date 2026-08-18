@@ -115,6 +115,21 @@ class PostPatch(BaseModel):
         return v
 
 
+class TranslationIn(BaseModel):
+    lang: str = Field(min_length=1, max_length=40)
+    title: str = Field(min_length=1, max_length=200)
+    body: str = Field(default="", max_length=5000)
+    author: str = Field(default="anonymous", max_length=40)
+
+    @field_validator("lang", "title")
+    @classmethod
+    def not_blank(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("must not be blank")
+        return v
+
+
 class LinkIn(BaseModel):
     other_id: int
 
@@ -150,7 +165,17 @@ def fetch_one(con, post_id):
     row = con.execute("SELECT * FROM posts WHERE id = ?", (post_id,)).fetchone()
     if row is None:
         raise HTTPException(404, "post not found")
-    return shape([row], con)[0]
+    post = shape([row], con)[0]
+    # Only the single-post view pays for these; the list endpoints stay lean.
+    # snapshot() reads through here, so a translation lands in the edit history
+    # with everything else and is no more losable than the post itself.
+    post["translations"] = [
+        dict(r)
+        for r in con.execute(
+            "SELECT * FROM translations WHERE post_id = ? ORDER BY id", (post_id,)
+        )
+    ]
+    return post
 
 
 def snapshot(con, post_id, author):
@@ -304,6 +329,21 @@ def _write_tags(con, post_id, tags):
     )
 
 
+def _write_translations(con, post_id, rows):
+    """Put a snapshot's translations back, ids and all, so links to them hold."""
+    con.execute("DELETE FROM translations WHERE post_id = ?", (post_id,))
+    con.executemany(
+        """INSERT INTO translations (id, post_id, lang, title, body, author,
+                                     edited_by, created_at, updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?)""",
+        [
+            (r["id"], post_id, r["lang"], r["title"], r["body"], r["author"],
+             r.get("edited_by"), r["created_at"], r["updated_at"])
+            for r in rows
+        ],
+    )
+
+
 @app.post("/api/posts", status_code=201)
 def create_post(p: PostIn, _=Depends(rate_limit), con=Depends(get_db)):
     fmt, key = resolve_format(p.value.strip(), p.format)
@@ -380,6 +420,51 @@ def restore_revision(
              old["image"], who, now(), post_id),
         )
         _write_tags(con, post_id, old.get("tags", []))
+        # a snapshot from before translations existed has none, and restoring it
+        # says so -- the ones dropped are in the snapshot this restore just took
+        _write_translations(con, post_id, old.get("translations", []))
+    return fetch_one(con, post_id)
+
+
+@app.put("/api/posts/{post_id}/translations")
+def put_translation(
+    post_id: int, t: TranslationIn, _=Depends(rate_limit), con=Depends(get_db)
+):
+    """Add this entry in another language, or rewrite the one already there."""
+    fetch_one(con, post_id)  # 404 if the post is gone
+    who = t.author.strip() or "anonymous"
+    ts = now()
+    with con:
+        snapshot(con, post_id, who)  # a translation is content, so it is undoable
+        # UNIQUE(post_id, lang) turns a second write in the same language into an
+        # edit. author is the first writer and stays put, as it does on a post.
+        con.execute(
+            """INSERT INTO translations
+                   (post_id, lang, title, body, author, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?)
+               ON CONFLICT(post_id, lang) DO UPDATE SET
+                   title=excluded.title, body=excluded.body,
+                   edited_by=excluded.author, updated_at=excluded.updated_at""",
+            (post_id, t.lang, t.title, t.body, who, ts, ts),
+        )
+    return fetch_one(con, post_id)
+
+
+@app.delete("/api/posts/{post_id}/translations/{tr_id}")
+def delete_translation(
+    post_id: int,
+    tr_id: int,
+    author: str = Query(default="anonymous", max_length=40),
+    _=Depends(rate_limit),
+    con=Depends(get_db),
+):
+    with con:
+        snapshot(con, post_id, author.strip() or "anonymous")
+        cur = con.execute(
+            "DELETE FROM translations WHERE id = ? AND post_id = ?", (tr_id, post_id)
+        )
+    if not cur.rowcount:
+        raise HTTPException(404, "translation not found")
     return fetch_one(con, post_id)
 
 

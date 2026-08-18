@@ -127,6 +127,41 @@ def test_api_round_trip():
     c.delete(f"/api/posts/{a['id']}/links/{b['id']}")
     assert c.get(f"/api/posts/{a['id']}").json()["related"] == []
 
+    # another language sits beside the entry rather than on top of it
+    tid = b["id"]
+    tr = c.put(f"/api/posts/{tid}/translations", json={
+        "lang": "Korean", "title": "재키 로빈슨", "body": "42번", "author": "오",
+    }).json()
+    assert tr["title"] == "Jackie Robinson", "the translation replaced the entry"
+    assert [t["lang"] for t in tr["translations"]] == ["Korean"]
+    assert tr["translations"][0]["author"] == "오"
+    assert tr["translations"][0]["edited_by"] is None
+
+    # the same language again is an edit, whatever the casing, and the first
+    # translator keeps the byline
+    same = c.put(f"/api/posts/{tid}/translations", json={
+        "lang": "korean", "title": "재키 로빈슨 (야구)", "author": "vogon",
+    }).json()
+    assert len(same["translations"]) == 1, "korean and Korean became two tabs"
+    assert same["translations"][0]["title"] == "재키 로빈슨 (야구)"
+    assert same["translations"][0]["author"] == "오", "the first translator was overwritten"
+    assert same["translations"][0]["edited_by"] == "vogon"
+
+    assert c.put(f"/api/posts/{tid}/translations",
+                 json={"lang": "   ", "title": "x"}).status_code == 422
+
+    # a removed translation is recoverable, same as any other edit
+    gone = c.delete(f"/api/posts/{tid}/translations/{same['translations'][0]['id']}",
+                    params={"author": "zaphod"}).json()
+    assert gone["translations"] == []
+    last = c.get(f"/api/posts/{tid}/revisions").json()[0]
+    back = c.post(f"/api/posts/{tid}/revisions/{last['id']}/restore",
+                  json={"author": "arthur"}).json()
+    assert [t["title"] for t in back["translations"]] == ["재키 로빈슨 (야구)"]
+
+    # the index stays out of it -- translations are a post-page concern
+    assert "translations" not in c.get("/api/posts", params={"value": "42"}).json()[0]
+
     # a stranger may edit, and doing so must not erase who wrote it
     edited = c.patch(f"/api/posts/{a['id']}",
                      json={"title": "VANDALISED", "author": "vogon"}).json()

@@ -40,6 +40,19 @@ export type Post = {
   updated_at: string
   tags: Tag[]
   related?: Post[]
+  translations?: Translation[]   // single-post view only
+}
+
+/** The same entry written in another language. `lang` is a free-form label. */
+export type Translation = {
+  id: number
+  lang: string
+  title: string
+  body: string
+  author: string
+  edited_by: string | null
+  created_at: string
+  updated_at: string
 }
 
 export type NumberEntry = {
@@ -127,6 +140,15 @@ export const api = {
 
   unlink: (id: number, other_id: number) =>
     req<Post>(`/api/posts/${id}/links/${other_id}`, { method: 'DELETE' }),
+
+  /** PUT, not POST: writing a language twice is an edit, not a second copy. */
+  translate: (id: number, t: { lang: string; title: string; body: string; author: string }) =>
+    req<Post>(`/api/posts/${id}/translations`, json('PUT', t)),
+
+  untranslate: (id: number, trId: number, author: string) =>
+    req<Post>(`/api/posts/${id}/translations/${trId}?author=${encodeURIComponent(author)}`, {
+      method: 'DELETE',
+    }),
 
   revisions: (id: number | string) => req<Revision[]>(`/api/posts/${id}/revisions`),
 

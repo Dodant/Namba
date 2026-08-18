@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { api, fmtDate, nickname, numberPath, type Post, type Revision } from '../api'
+import {
+  api, fmtDate, nickname, numberPath,
+  type Post, type Revision, type Translation,
+} from '../api'
 import PostCard, { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
 
@@ -12,10 +15,29 @@ export default function PostPage() {
   const revs = useAsync(() => api.revisions(id), [id, revBump])
   const [edited, setEdited] = useState<Post | null>(null)
   const [err, setErr] = useState('')
+  const [lang, setLang] = useState('')                       // '' is the entry itself
+  const [form, setForm] = useState<Translation | 'new' | null>(null)
 
   const post = edited ?? loaded.data
   if (loaded.err) return <p className="err">{loaded.err}</p>
   if (!post) return <p className="empty">Loading…</p>
+
+  // the tab in front. Both shapes carry title and body, which is all the page
+  // reads off it -- the number, tags, image and links belong to the entry.
+  const tr = post.translations?.find((t) => t.lang === lang) ?? null
+  const shown = tr ?? post
+
+  function showLang(l: string) {
+    setLang(l)
+    setForm(null)
+  }
+
+  async function removeTr(t: Translation) {
+    if (!confirm(`Remove the ${t.lang} version? It stays in the entry's history.`)) return
+    await run(() => api.untranslate(post!.id, t.id, nickname.get() || 'anonymous'))
+    setLang('')
+    setRevBump((n) => n + 1)
+  }
 
   async function run(fn: () => Promise<Post>) {
     setErr('')
@@ -44,11 +66,32 @@ export default function PostPage() {
   return (
     <div className="detail-layout">
       <article className="detail">
+        <nav className="tabs langs">
+          {/* "Original", not "English": the wiki is English-first but a handful
+              of entries came in written in another language, and a user is free
+              to add "English" as a tab of its own */}
+          <button className={lang ? '' : 'on'} onClick={() => showLang('')}>
+            Original
+          </button>
+          {post.translations?.map((t) => (
+            <button
+              key={t.id}
+              className={t.lang === lang ? 'on' : ''}
+              onClick={() => showLang(t.lang)}
+            >
+              {t.lang}
+            </button>
+          ))}
+          <button className="quiet" onClick={() => setForm('new')}>
+            + Add a language
+          </button>
+        </nav>
+
         <div className="hero">
           <Link className="num" to={numberPath(post.value)}>
             {post.value}
           </Link>
-          <h1>{post.title}</h1>
+          <h1>{shown.title}</h1>
         </div>
 
         <div className="meta">
@@ -69,7 +112,39 @@ export default function PostPage() {
         </div>
 
         {post.image && <img className="full" src={post.image} alt={post.title} />}
-        {post.body && <div className="body">{post.body}</div>}
+
+        {form ? (
+          <TranslationForm
+            post={post}
+            editing={form === 'new' ? null : form}
+            onCancel={() => setForm(null)}
+            onSaved={(next, saved) => {
+              setEdited(next)
+              setLang(saved)
+              setForm(null)
+              setRevBump((n) => n + 1) // a translation is an edit of the entry
+            }}
+          />
+        ) : (
+          <>
+            {shown.body && <div className="body">{shown.body}</div>}
+            {tr && (
+              <p className="quiet tr-meta">
+                <span>
+                  {tr.lang} added by {tr.author}
+                  {tr.edited_by && `, last edited by ${tr.edited_by}`} ·{' '}
+                  {fmtDate(tr.updated_at)}
+                </span>
+                <button className="btn small" onClick={() => setForm(tr)}>
+                  Edit
+                </button>
+                <button className="btn small" onClick={() => removeTr(tr)}>
+                  Remove
+                </button>
+              </p>
+            )}
+          </>
+        )}
 
         {err && <p className="err">{err}</p>}
 
@@ -131,6 +206,89 @@ export default function PostPage() {
         )}
       </aside>
     </div>
+  )
+}
+
+/** Write this entry in another language, or rewrite one that is already here. */
+function TranslationForm({
+  post,
+  editing,
+  onSaved,
+  onCancel,
+}: {
+  post: Post
+  editing: Translation | null
+  onSaved: (next: Post, lang: string) => void
+  onCancel: () => void
+}) {
+  const [lang, setLang] = useState(editing?.lang ?? '')
+  const [title, setTitle] = useState(editing?.title ?? '')
+  const [body, setBody] = useState(editing?.body ?? '')
+  const [author, setAuthor] = useState(nickname.get())
+  const [err, setErr] = useState('')
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setErr('')
+    nickname.set(author)
+    try {
+      const next = await api.translate(post.id, {
+        lang,
+        title,
+        body,
+        author: author || 'anonymous',
+      })
+      onSaved(next, lang)
+    } catch (e) {
+      setErr((e as Error).message)
+    }
+  }
+
+  return (
+    <form className="form" onSubmit={submit}>
+      <div className="field">
+        <label>
+          Language<span className="hint">whatever people call it — 한국어, Japanese, Español</span>
+        </label>
+        {/* the language names the tab, so renaming it would orphan the old one;
+            rewrite the text here and add a new tab for a different language */}
+        <input
+          value={lang}
+          disabled={!!editing}
+          onChange={(e) => setLang(e.target.value)}
+          maxLength={40}
+          required
+        />
+      </div>
+      <div className="field">
+        <label>
+          Title<span className="hint">the entry's title in that language</span>
+        </label>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} required />
+      </div>
+      <div className="field">
+        <label>
+          Details<span className="hint">optional</span>
+        </label>
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} maxLength={5000} />
+      </div>
+      <div className="field">
+        <label>Your nickname</label>
+        <input
+          value={author}
+          onChange={(e) => setAuthor(e.target.value)}
+          placeholder="anonymous"
+          maxLength={40}
+        />
+      </div>
+      {err && <p className="err">{err}</p>}
+      <div className="actions">
+        <button className="btn primary">{editing ? 'Save' : 'Add this language'}</button>
+        <button type="button" className="btn" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </form>
   )
 }
 

@@ -51,6 +51,23 @@ CREATE TABLE IF NOT EXISTS revisions (
   at       TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_revisions_post ON revisions(post_id, id DESC);
+
+-- The same entry written in another language. lang is a free-form label, so
+-- NOCASE keeps "Korean" and "korean" from becoming two tabs; it only folds
+-- ASCII, which is the useful half. One row per language per post, so writing
+-- the same language twice is an edit rather than a duplicate.
+CREATE TABLE IF NOT EXISTS translations (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  lang       TEXT NOT NULL COLLATE NOCASE,
+  title      TEXT NOT NULL,
+  body       TEXT NOT NULL DEFAULT '',
+  author     TEXT NOT NULL DEFAULT 'anonymous',  -- first writer, never overwritten
+  edited_by  TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE (post_id, lang)
+);
 """
 
 
