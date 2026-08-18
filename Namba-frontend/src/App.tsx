@@ -49,7 +49,14 @@ export default function App() {
           <Route path="/p/:id" element={<PostPage />} />
           <Route path="/p/:id/edit" element={<PostForm />} />
           <Route path="/new" element={<PostForm />} />
-          <Route path="*" element={<p className="empty">Nothing here. 404.</p>} />
+          <Route
+            path="*"
+            element={
+              <p className="empty">
+                Nothing here. <Link to="/">Back to the index.</Link>
+              </p>
+            }
+          />
         </Routes>
       </div>
     </BrowserRouter>

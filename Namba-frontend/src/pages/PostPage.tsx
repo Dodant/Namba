@@ -19,7 +19,14 @@ export default function PostPage() {
   const [form, setForm] = useState<Translation | 'new' | null>(null)
 
   const post = edited ?? loaded.data
-  if (loaded.err) return <p className="err">{loaded.err}</p>
+  // the API's own wording, but framed and with a way out -- a bare
+  // "post not found" on a blank page leaves the reader stranded
+  if (loaded.err)
+    return (
+      <p className="empty">
+        Couldn’t open this entry — {loaded.err}. <Link to="/">Back to the index.</Link>
+      </p>
+    )
   if (!post) return <p className="empty">Loading…</p>
 
   // the tab in front. Both shapes carry title and body, which is all the page

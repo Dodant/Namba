@@ -59,11 +59,26 @@ export default function Browse({ mode }: { mode: Mode }) {
       ))}
 
       {!posts.loading && n === 0 && (
+        // an empty search is not an empty wiki, and saying "no entries yet" on
+        // all three reads as though the place were deserted
         <p className="empty">
-          No entries yet.{' '}
-          <Link to={mode === 'number' ? `/new?value=${encodeURIComponent(value)}` : '/new'}>
-            Add one.
-          </Link>
+          {mode === 'number' ? (
+            <>
+              Nothing filed under {value} yet.{' '}
+              <Link to={`/new?value=${encodeURIComponent(value)}`}>
+                Give it a meaning.
+              </Link>
+            </>
+          ) : mode === 'tag' ? (
+            <>
+              Nothing tagged {tag} yet. <Link to="/new">Add the first one.</Link>
+            </>
+          ) : (
+            <>
+              No matches for “{q}”. Try another word, or{' '}
+              <Link to="/new">add what it means.</Link>
+            </>
+          )}
         </p>
       )}
     </>
