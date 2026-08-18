@@ -84,7 +84,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .chip.on .n { color: #ffffffaa; }
 .chip.zero { opacity: 0.45; }
 
-.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+/* wraps rather than scrolls: the language tabs are user-supplied and there is
+   no bound on how many a post collects. A nowrap strip pushed "+ Add a
+   language" off a phone screen and made the whole page scroll sideways. */
+.tabs {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  border-bottom: 1px solid var(--line); margin-bottom: 18px;
+}
 /* the language tabs on a post reuse this; only the element differs */
 .tabs a, .tabs button {
   padding: 8px 14px; font-size: 14px; color: var(--muted);
