@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   api, BUCKETS, BUCKET_LABEL, FORMATS, FORMAT_LABEL, numberPath,
@@ -16,6 +17,20 @@ const PHOTO = (
           stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
   </svg>
 )
+
+/* the number is what put an entry on this row, so pick it out of the text --
+   split on the raw value, no regex: values like "11/22/63" and "9¾" would need
+   escaping, and a plain string separator needs none */
+function mark(text: string, value: string) {
+  const parts = text.split(value)
+  if (parts.length === 1) return text
+  return parts.map((part, i) => (
+    <Fragment key={i}>
+      {i > 0 && <b className="hit">{value}</b>}
+      {part}
+    </Fragment>
+  ))
+}
 
 export default function Home() {
   const [params, setParams] = useSearchParams()
@@ -91,9 +106,11 @@ export default function Home() {
                       <div className="ix-titles">
                         {n.entries.map((e) => (
                           <Link className="ix-e" key={e.id} to={`/p/${e.id}`}>
-                            <span className="ix-t">{e.title}</span>
+                            <span className="ix-t">{mark(e.title, n.value)}</span>
                             {e.image && PHOTO}
-                            {e.body && <span className="ix-b"> — {e.body}</span>}
+                            {e.body && (
+                              <span className="ix-b"> — {mark(e.body, n.value)}</span>
+                            )}
                           </Link>
                         ))}
                       </div>

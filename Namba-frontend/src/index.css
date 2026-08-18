@@ -122,6 +122,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .ix-e:hover { text-decoration: none; }
 .ix-e:hover .ix-t { text-decoration: underline; }
 .ix-b { color: var(--muted); }
+/* the number itself, wherever it turns up in the title or blurb */
+.hit { color: var(--accent); font-weight: 700; }
 .ix-img {
   width: 12px; height: 12px; margin-left: 5px;
   vertical-align: -1px; color: var(--muted);
