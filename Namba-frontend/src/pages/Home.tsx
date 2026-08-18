@@ -1,7 +1,7 @@
 import { Fragment } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  api, BUCKETS, BUCKET_LABEL, FORMATS, FORMAT_LABEL, numberPath,
+  api, BUCKETS, BUCKET_LABEL, FORMATS, FORMAT_LABEL, numberPath, tagLabel,
   type Format, type NumberEntry,
 } from '../api'
 import { useAsync } from '../useAsync'
@@ -131,7 +131,7 @@ export default function Home() {
 
       <div className="chips">
         <button className={`chip ${tag ? '' : 'on'}`} onClick={() => setParam('tag', '')}>
-          ALL
+          All
         </button>
         {(tags.data ?? []).map((t) => (
           <button
@@ -139,7 +139,7 @@ export default function Home() {
             className={`chip ${t.tag === tag ? 'on' : ''} ${t.count ? '' : 'zero'}`}
             onClick={() => setParam('tag', t.tag === tag ? '' : t.tag)}
           >
-            {t.tag}
+            {tagLabel(t.tag)}
             <span className="n">{t.count}</span>
           </button>
         ))}

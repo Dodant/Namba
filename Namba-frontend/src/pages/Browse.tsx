@@ -1,5 +1,5 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { api } from '../api'
+import { api, tagLabel } from '../api'
 import PostCard from '../components/PostCard'
 import { useAsync } from '../useAsync'
 
@@ -41,7 +41,7 @@ export default function Browse({ mode }: { mode: Mode }) {
           <h1>
             {mode === 'tag' ? (
               <>
-                Tagged <span className="tag">{tag}</span>
+                Tagged <span className="tag">{tagLabel(tag)}</span>
               </>
             ) : (
               <>Search: “{q}”</>
@@ -71,7 +71,7 @@ export default function Browse({ mode }: { mode: Mode }) {
             </>
           ) : mode === 'tag' ? (
             <>
-              Nothing tagged {tag} yet. <Link to="/new">Add the first one.</Link>
+              Nothing tagged {tagLabel(tag)} yet. <Link to="/new">Add the first one.</Link>
             </>
           ) : (
             <>

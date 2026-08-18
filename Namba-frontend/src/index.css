@@ -83,7 +83,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 .chip {
   padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
-  background: var(--panel); cursor: pointer; font-size: 12.5px; letter-spacing: 0.03em;
+  background: var(--panel); cursor: pointer; font-size: 12.5px;
 }
 .chip:hover { border-color: var(--accent); text-decoration: none; }
 .chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
@@ -170,7 +170,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .card img.thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); }
 
 .tag {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.05em;
+  /* no tracking: it was holding all-caps apart, and these read as words now */
+  font-family: var(--mono); font-size: 11px;
   padding: 1px 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent);
 }
 

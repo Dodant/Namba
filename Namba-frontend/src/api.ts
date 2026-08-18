@@ -55,6 +55,11 @@ export type Translation = {
   updated_at: string
 }
 
+/** How a tag is written on screen: MOVIE -> Movie, TV -> TV. Derived from the
+    enum rather than a second list of labels to keep in step with it. */
+export const tagLabel = (t: string) =>
+  t.length <= 2 ? t : t[0] + t.slice(1).toLowerCase()
+
 export type NumberEntry = {
   value: string
   format: Format

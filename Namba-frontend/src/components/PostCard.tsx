@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, fmtDate, liked, numberPath, type Post } from '../api'
+import { api, fmtDate, liked, numberPath, tagLabel, type Post } from '../api'
 
 export function Like({ post }: { post: Post }) {
   const [n, setN] = useState(post.likes)
@@ -42,7 +42,7 @@ export default function PostCard({ post, showNumber = true }: { post: Post; show
         <div className="meta">
           {post.tags.map((t) => (
             <Link key={t} className="tag" to={`/t/${t}`}>
-              {t}
+              {tagLabel(t)}
             </Link>
           ))}
           <span>by {post.author}</span>

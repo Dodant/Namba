@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { api, FORMAT_LABEL, FORMATS, nickname, TAGS, type Format, type Tag } from '../api'
+import {
+  api, FORMAT_LABEL, FORMATS, nickname, TAGS, tagLabel,
+  type Format, type Tag,
+} from '../api'
 
 export default function PostForm() {
   const { id } = useParams()
@@ -144,7 +147,7 @@ export default function PostForm() {
                 )
               }
             >
-              {t}
+              {tagLabel(t)}
             </button>
           ))}
         </div>

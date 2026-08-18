@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  api, fmtDate, nickname, numberPath,
+  api, fmtDate, nickname, numberPath, tagLabel,
   type Post, type Revision, type Translation,
 } from '../api'
 import PostCard, { Like } from '../components/PostCard'
@@ -139,7 +139,7 @@ export default function PostPage() {
         <div className="meta">
           {post.tags.map((t) => (
             <Link key={t} className="tag" to={`/t/${t}`}>
-              {t}
+              {tagLabel(t)}
             </Link>
           ))}
           <span>written by {post.author}</span>
