@@ -1,0 +1,55 @@
+# Namba
+
+An open, no-login wiki of what numbers mean. Two apps in one git repo, no
+monorepo tooling — `Namba-backend` (FastAPI + SQLite) and `Namba-frontend`
+(React + Vite). One repo on purpose: the two lists below are hand-copied across
+both apps, so keeping them in step has to be a single commit. No remote yet.
+Full walkthrough in `README.md`.
+
+## Running
+
+```sh
+cd Namba-backend  && .venv/bin/uvicorn main:app --reload   # :8000
+cd Namba-frontend && npm run dev                           # :5173, proxies /api and /uploads
+```
+
+Before claiming anything works:
+
+```sh
+cd Namba-backend  && .venv/bin/python test_namba.py   # asserts, no pytest
+cd Namba-frontend && npx tsc --noEmit && npx oxlint src && npm run build
+```
+
+## Kept in sync by hand
+
+Two lists are duplicated across the apps on purpose (no codegen, no shared
+package). **Change one, change the other:**
+
+| what | backend | frontend |
+|---|---|---|
+| the 20 category tags | `main.py` `TAGS` | `src/api.ts` `TAGS` |
+| the 4 number formats | `numfmt.py` `FORMATS` | `src/api.ts` `FORMATS` |
+
+The backend rejects an unknown tag with a 422 rather than dropping it, so a
+frontend-only addition fails loudly rather than silently.
+
+## Design decisions that are not up for quiet revision
+
+- **No accounts, ever.** No login, no ownership, no per-post permissions. Anyone
+  reads, posts, edits and deletes. Every guard in the codebase assumes this — do
+  not "fix" it by adding auth.
+- **`author` is the first writer and is never overwritten.** An edit records the
+  editor in `edited_by` instead. Without this, a stranger correcting a typo takes
+  over the byline, which on an open wiki is most edits. `test_api_round_trip`
+  asserts it.
+- **A number is a column, not a table.** `/n/42` is a query on `posts.value`.
+  Adding a `numbers` table would buy nothing.
+- **The seed reports, it does not correct.** `seed.py` prints Korean titles and
+  the `801.11` typo instead of translating or fixing them. Correcting source data
+  is the wiki's job. Do not add cleanup passes to the importer.
+
+## Working here
+
+Prefer editing what exists over adding files — this is deliberately a small
+codebase (~1,700 lines). Each app has its own `CLAUDE.md` with the details that
+bite.
