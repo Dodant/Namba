@@ -34,6 +34,12 @@ Env overrides: `NAMBA_DB`, `NAMBA_UPLOADS` (the tests use both to stay hermetic)
   for them would be two passes to build one thing. It returns `entries`, not a
   `count` — and stays lean deliberately: ids and titles only, never bodies, tags
   or dates.
+- **Translations ride inside the post snapshot.** `fetch_one` attaches them and
+  `snapshot()` reads through `fetch_one`, which is the whole reason a removed
+  translation is recoverable — and why `restore_revision` calls
+  `_write_translations`. Keep them out of `shape()`: the list endpoints must
+  stay lean. `lang` is `COLLATE NOCASE` with `UNIQUE(post_id, lang)`, so the
+  `ON CONFLICT(post_id, lang)` upsert is what makes a rewrite an edit.
 - **`post_links` always stores `a_id < b_id`** (there is a CHECK). Sort the pair
   before insert or delete; read it back with the `UNION` in `get_post`.
 - **`bucket_of` only bands INTEGER.** A TIME sort key is minutes past midnight,

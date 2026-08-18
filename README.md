@@ -78,6 +78,19 @@ Writes are rate limited to 20/minute per IP, in memory. Uploads are capped at
 5 MB, restricted to jpg/png/gif/webp, and always renamed to a server-generated
 UUID.
 
+### Other languages
+
+An entry can carry the same content in as many languages as people care to add;
+a tab strip above the title switches between them, with the entry as written
+sitting under "Original". The language is a free-form label — 한국어, Japanese,
+Español, whatever the person adding it calls it — with one row per language per
+entry, so writing the same language twice edits it instead of duplicating it.
+
+Translations follow the same rules as everything else: anyone can add, rewrite
+or remove one, the first translator keeps the byline, and the change is
+snapshotted into the entry's history first, so a removed translation is one
+Restore away.
+
 ### Tags
 
 20 of them, fixed: `MOVIE TV ANIME BOOK MUSIC GAME BRAND SPORTS SCIENCE MATH
@@ -97,6 +110,8 @@ one worker, or move it to redis.
 ## Known gaps
 
 - 20 seeded entries still have Korean titles (`아비정전`, `36계 줄행랑`). Left
-  verbatim rather than machine-translated — the wiki should fix them.
+  verbatim rather than machine-translated — the wiki should fix them, now by
+  adding an English tab beside the original.
+- Search reads the entry itself, not its translations.
 - `801.11` is in the data as written; the Wi-Fi standard is `802.11`.
 - Search is `LIKE`. Fine for thousands of rows, not for millions.
