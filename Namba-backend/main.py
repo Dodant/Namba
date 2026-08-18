@@ -24,6 +24,7 @@ TAGS = (
 UPLOAD_DIR = os.environ.get("NAMBA_UPLOADS", os.path.join(db.DIR, "uploads"))
 ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 MAX_UPLOAD = 5 * 1024 * 1024
+BLURB = 140  # body chars carried into the index list
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 db.init()
@@ -192,10 +193,13 @@ def list_numbers(
 
     A plain ordered scan grouped in Python rather than GROUP BY -- the list view
     wants the titles anyway, so aggregating and then re-querying for them would
-    be two passes to build one thing. Titles only; no bodies, tags or dates.
+    be two passes to build one thing. Body is truncated and image is only a
+    flag: the index should be readable without opening a post, not a copy of it.
     """
-    sql = ["SELECT p.id, p.value, p.format, p.sort_key, p.title FROM posts p"]
-    args = []
+    sql = ["""SELECT p.id, p.value, p.format, p.sort_key, p.title,
+                      substr(p.body, 1, ?) AS body, p.image IS NOT NULL AS image
+               FROM posts p"""]
+    args = [BLURB + 1]
     if tag:
         sql.append("JOIN post_tags t ON t.post_id = p.id AND t.tag = ?")
         args.append(tag.upper())
@@ -215,7 +219,13 @@ def list_numbers(
                 "bucket": bucket_of(r["sort_key"], r["format"]),
                 "entries": [],
             })
-        out[-1]["entries"].append({"id": r["id"], "title": r["title"]})
+        body = r["body"]
+        out[-1]["entries"].append({
+            "id": r["id"],
+            "title": r["title"],
+            "body": body[:BLURB] + "\u2026" if len(body) > BLURB else body,
+            "image": bool(r["image"]),
+        })
     return out
 
 

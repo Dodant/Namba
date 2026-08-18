@@ -92,7 +92,16 @@ def test_api_round_trip():
     # to them, in the same order the number page shows
     assert [e["title"] for e in forty_two["entries"]] == [a["title"], b["title"]]
     assert [e["id"] for e in forty_two["entries"]] == [a["id"], b["id"]]
-    assert "body" not in forty_two["entries"][0], "index should stay lean"
+    # ...and enough of each entry to read the list without opening a post
+    assert forty_two["entries"][0]["body"] == a["body"]
+    assert forty_two["entries"][0]["image"] is False
+    assert forty_two["entries"][1]["body"] == ""
+
+    # a long body is cut, not shipped whole -- the index is a list, not a mirror
+    c.post("/api/posts", json={"value": "42", "title": "long one", "body": "x" * 500})
+    nums = c.get("/api/numbers", params={"format": "INTEGER"}).json()
+    blurb = next(x for x in nums if x["value"] == "42")["entries"][2]["body"]
+    assert len(blurb) == main.BLURB + 1 and blurb.endswith("\u2026"), blurb
 
     # a number containing a slash survives the round trip as a query param
     slash = c.post("/api/posts", json={"value": "11/22/63", "title": "11/22/63",

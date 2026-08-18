@@ -5,6 +5,18 @@ import {
 } from '../api'
 import { useAsync } from '../useAsync'
 
+/* one path instead of an icon package -- it inherits currentColor and the
+   row's font size, so it stays as quiet as the text beside it */
+const PHOTO = (
+  <svg className="ix-img" viewBox="0 0 16 16" role="img" aria-label="has an image">
+    <rect x="1.4" y="3" width="13.2" height="10" rx="1.6" fill="none"
+          stroke="currentColor" strokeWidth="1.3" />
+    <circle cx="5.4" cy="6.6" r="1.2" fill="currentColor" />
+    <path d="M2.2 12.2 6 8.6l2.4 2.3 2.2-2.1 3.2 3.1" fill="none"
+          stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+  </svg>
+)
+
 export default function Home() {
   const [params, setParams] = useSearchParams()
   const format = (params.get('format') ?? 'INTEGER') as Format
@@ -78,8 +90,10 @@ export default function Home() {
                       </Link>
                       <div className="ix-titles">
                         {n.entries.map((e) => (
-                          <Link key={e.id} to={`/p/${e.id}`}>
-                            {e.title}
+                          <Link className="ix-e" key={e.id} to={`/p/${e.id}`}>
+                            <span className="ix-t">{e.title}</span>
+                            {e.image && PHOTO}
+                            {e.body && <span className="ix-b"> — {e.body}</span>}
                           </Link>
                         ))}
                       </div>

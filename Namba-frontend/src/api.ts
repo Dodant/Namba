@@ -47,7 +47,7 @@ export type NumberEntry = {
   format: Format
   sort_key: number | null
   bucket: string | null
-  entries: { id: number; title: string }[]
+  entries: { id: number; title: string; body: string; image: boolean }[]
 }
 
 export type Revision = {
