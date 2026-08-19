@@ -108,16 +108,28 @@ def test_grouping():
         assert grouped_value(odd, True) == odd, odd
 
     c = TestClient(main.app)
-    # the box strips what the poster typed, so 1,000 files with 1000 rather
-    # than becoming a MIXED string that sorts nowhere near it
+    # 1000 and 1,000 are one number at one address, whatever the box says --
+    # a separator never reaches the column, or /n/1000 and /n/1%2C000 become
+    # two pages about it
     typed = c.post("/api/posts", json={"value": "1,000", "title": "a grand",
                                        "grouped": True}).json()
     assert typed["value"] == "1000", typed["value"]
     assert typed["format"] == "INTEGER" and typed["sort_key"] == 1000.0
     assert typed["bucket"] == "1000"
-    # unchecked keeps the string verbatim, which is what it always did
-    assert c.post("/api/posts", json={"value": "1,000", "title": "verbatim"}
-                  ).json()["format"] == "MIXED"
+
+    # ...including with the box off. Typing the commas is how you ask for
+    # them, so the flag follows rather than the separator being swallowed.
+    off = c.post("/api/posts", json={"value": "1,000", "title": "typed it out"}).json()
+    assert off["value"] == "1000" and off["format"] == "INTEGER", off
+    assert off["grouped"] is True, "the typed separators were thrown away"
+    assert len(c.get("/api/posts", params={"value": "1000"}).json()) == 2, \
+        "the two spellings did not land on the same number"
+
+    # a comma that is not a thousands separator is left alone
+    for odd in ("1,2,3", "12,34", "Apollo,11"):
+        assert c.post("/api/posts", json={"value": odd, "title": odd}
+                      ).json()["value"] == odd, odd
+    c.delete(f"/api/posts/{off['id']}")
 
     def row(**params):
         nums = c.get("/api/numbers", params={"format": "INTEGER", **params}).json()

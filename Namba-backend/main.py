@@ -210,16 +210,27 @@ def snapshot(con, post_id, author):
     )
 
 
-def ungroup(value, grouped):
-    """The value as it goes into the database: never with separators in it.
+# 1,000 and 299,792,458 and 1,234.5678 -- but not 1,2,3 or 12,34, which are
+# not thousands separators and are left alone.
+_GROUPED_IN = re.compile(r"^(\d{1,3}(?:,\d{3})+)(\.\d+)?$")
 
-    Checking the box is the poster saying "this is a grouped number", which is
-    what licenses stripping the commas they may have typed -- 1,000 and 1000
-    have to be the same row. Left unchecked the string is kept verbatim, which
-    is what it has always done.
+
+def ungroup(value, grouped):
+    """(value as stored, whether to draw it grouped).
+
+    A separator never reaches the database, whatever the box says. 1000 and
+    1,000 are one number and have to answer at one address, and the moment a
+    comma is storable /n/1000 and /n/1%2C000 are two pages about it.
+
+    Typing the commas is also how you ask for them. Stripping them and leaving
+    the box off would swallow what the poster plainly meant, and the field
+    always shows the stored value, so commas only ever appear by being typed.
     """
     value = (value or "").strip()
-    return value.replace(",", "") if grouped else value
+    m = _GROUPED_IN.match(value)
+    if m:
+        return m.group(1).replace(",", "") + (m.group(2) or ""), True
+    return value, bool(grouped)
 
 
 def resolve_format(value, given):
@@ -455,7 +466,7 @@ def _write_translations(con, post_id, rows):
 
 @app.post("/api/posts", status_code=201)
 def create_post(p: PostIn, _=Depends(rate_limit), con=Depends(get_db)):
-    value = ungroup(p.value, p.grouped)
+    value, grouped = ungroup(p.value, p.grouped)
     fmt, key = resolve_format(value, p.format)
     ts = now()
     with con:
@@ -464,7 +475,7 @@ def create_post(p: PostIn, _=Depends(rate_limit), con=Depends(get_db)):
                                   lang, grouped, created_at, updated_at)
                VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (value, fmt, key, p.title.strip(), p.body, p.image,
-             p.author.strip() or "anonymous", p.lang, int(p.grouped), ts, ts),
+             p.author.strip() or "anonymous", p.lang, int(grouped), ts, ts),
         )
         _write_tags(con, cur.lastrowid, p.tags)
         post_id = cur.lastrowid
@@ -483,7 +494,9 @@ def edit_post(post_id: int, p: PostPatch, _=Depends(rate_limit), con=Depends(get
         # the box has to be settled before the value is, since it decides
         # whether separators in what was typed are stripped or kept
         grouped = p.grouped if "grouped" in sent else bool(current["grouped"])
-        value = ungroup(p.value, grouped) if p.value is not None else current["value"]
+        value = current["value"]
+        if p.value is not None:
+            value, grouped = ungroup(p.value, grouped)
         if p.format:
             fmt, key = resolve_format(value, p.format)
         elif p.value is not None:

@@ -51,9 +51,11 @@ Env overrides: `NAMBA_DB`, `NAMBA_UPLOADS` (the tests use both to stay hermetic)
 - **`posts.grouped` is how the number is written, not what it is.** `value`
   never carries separators; `grouped_value()` puts them on for display and
   leaves anything that is not a plain integer or decimal alone. `ungroup()`
-  strips commas out of what was typed *only* when the box is ticked — that tick
-  is the poster saying "this is a grouped number", and unticked the string is
-  kept verbatim as it always was. In `/api/numbers` a row is grouped only when
+  takes them back out of whatever was typed **whatever the box says** — 1000
+  and 1,000 answer at one address or they are two numbers — and returns the
+  flag alongside the value, because typing the commas is itself a way of asking
+  for them. A comma that is not a thousands separator (`1,2,3`, `Apollo,11`) is
+  left where it is. In `/api/numbers` a row is grouped only when
   every entry filed under it is: one number, one spelling, and a disagreement
   falls back to the plain form nobody had to opt into.
 - **The SPA catch-all must stay the last route in the file.** Starlette matches
