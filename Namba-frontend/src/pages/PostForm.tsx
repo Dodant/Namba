@@ -6,6 +6,29 @@ import {
   type Format, type Post, type Revision, type Tag, type Translation,
 } from '../api'
 
+/* What the number field takes, and whether separators mean anything, follow
+   the format the poster picked. Auto-detect constrains nothing: nothing has
+   been decided yet, and 11/22/63 has to stay typeable while it is the default.
+
+   Filtering as you type rather than on the way out, and never rewriting what
+   is already in the field when the format changes -- picking INTEGER by
+   mistake with 11/22/63 in there should not silently turn it into 112263. */
+const KEEP: Record<string, RegExp> = {
+  INTEGER: /[^\d,]/g,
+  DECIMAL: /[^\d.,]/g,
+}
+
+const EXAMPLES: Record<string, string> = {
+  '': '42 · 3.14 · 11/22/63 · 10:04PM',
+  INTEGER: '42 · 1000 · 299792458',
+  DECIMAL: '3.14 · 42.195',
+  MIXED: '11/22/63 · 9¾ · 80/20',
+  TIME: '10:04PM · 09:41',
+}
+
+// there is no thousand in 10:04PM or in 9¾
+const groupable = (f: string) => f !== 'MIXED' && f !== 'TIME'
+
 export default function PostForm() {
   const { id } = useParams()
   const [params] = useSearchParams()
@@ -128,18 +151,47 @@ export default function PostForm() {
       <div className="row">
         <div className="field num-field" style={{ flex: 2, minWidth: 190 }}>
           <label>
-            Number<span className="hint">42 · 3.14 · 11/22/63 · 10:04PM</span>
+            Number<span className="hint">{EXAMPLES[format]}</span>
           </label>
           <input
             className="mono"
             required
             maxLength={32}
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            inputMode={format === 'INTEGER' ? 'numeric' : format === 'DECIMAL' ? 'decimal' : undefined}
+            onChange={(e) =>
+              setValue(KEEP[format] ? e.target.value.replace(KEEP[format], '') : e.target.value)
+            }
           />
-          {/* the preview only appears when the box would change something, so
-              ticking it on 42 or on 10:04PM visibly does nothing */}
-          <label className="check">
+        </div>
+        <div className="field" style={{ minWidth: 170 }}>
+          <label>Format</label>
+          {/* a wrapper only so the caret can be a ::after that follows the
+              theme; a background-image would have baked its colour in */}
+          <div className="select">
+            <select
+              value={format}
+              onChange={(e) => {
+                const next = e.target.value as '' | Format
+                setFormat(next)
+                // the control is about to disappear, so the flag goes with it
+                if (!groupable(next)) setGrouped(false)
+              }}
+            >
+              <option value="">Auto-detect</option>
+              {FORMATS.map((f) => (
+                <option key={f} value={f}>
+                  {FORMAT_LABEL[f]}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        {groupable(format) && (
+          /* beside the field it applies to. The preview only shows when the
+             box would change something, so ticking it on 42 does nothing and
+             looks like it does nothing */
+          <label className="field check">
             <input
               type="checkbox"
               checked={grouped}
@@ -150,22 +202,7 @@ export default function PostForm() {
               <span className="hint">{showValue(value, true)}</span>
             )}
           </label>
-        </div>
-        <div className="field" style={{ minWidth: 170 }}>
-          <label>Format</label>
-          {/* a wrapper only so the caret can be a ::after that follows the
-              theme; a background-image would have baked its colour in */}
-          <div className="select">
-            <select value={format} onChange={(e) => setFormat(e.target.value as Format)}>
-              <option value="">Auto-detect</option>
-              {FORMATS.map((f) => (
-                <option key={f} value={f}>
-                  {FORMAT_LABEL[f]}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="field">

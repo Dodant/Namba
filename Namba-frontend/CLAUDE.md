@@ -64,6 +64,13 @@ internal `Link` would have to carry it or drop it.
 An entry with no translation in that language keeps its own title. Nothing
 marks the difference in a list, so a mixed-language index is expected.
 
+The Format select reshapes the Number field beside it: Integer and Decimal
+filter what can be typed and offer the separator checkbox, Mixed and Time are
+plain text with no checkbox, and Auto-detect constrains nothing because nothing
+has been decided yet. Filtering happens as you type and **never** rewrites what
+is already in the field — picking Integer by mistake with `11/22/63` in there
+must not turn it into `112263`.
+
 `showValue(value, grouped)` is display only — **never build a link from it.**
 `numberPath()` takes the raw value, and `/n/1,000` is a different page from
 `/n/1000`. Index rows and the `/n/:value` hero use the all-entries-agree rule
