@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   BrowserRouter, Link, Route, Routes, useLocation, useNavigate, useNavigationType,
   useSearchParams,
@@ -81,6 +81,25 @@ function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void })
   const [params] = useSearchParams()
   const { pathname } = useLocation()
   const langs = useAsync(() => api.languages(), [])
+  const box = useRef<HTMLInputElement>(null)
+
+  /* the pill has always drawn a "/" and nothing has ever listened for one.
+     Either the glyph goes or this does, and the glyph is the convention every
+     wiki and forge uses, so it stays and gets its key. Ignored while a field
+     has the focus -- a number value can be 11/22/63, and a slash in the
+     Details box is a slash. */
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return
+      const el = e.target as HTMLElement | null
+      if (el?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el?.tagName ?? '')) return
+      e.preventDefault() // Firefox opens its own quick-find on this key
+      box.current?.focus()
+      box.current?.select()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
   /* the toggle is a link, not state: the view survives a refresh and can be
      sent to someone. Pressing it while it is on goes back to the index. */
   const feed = pathname === '/' && params.get('view') === 'feed'
@@ -98,12 +117,17 @@ function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void })
           className="search"
           onSubmit={(e) => {
             e.preventDefault()
-            const q = new FormData(e.currentTarget).get('q') as string
-            nav(`/search?q=${encodeURIComponent(q.trim())}`)
+            const q = (new FormData(e.currentTarget).get('q') as string).trim()
+            /* an empty box is not a search for nothing: the API drops an empty
+               q and hands back the whole wiki, which arrived under the
+               heading Search: "" and read as a bug. */
+            if (!q) return
+            nav(`/search?q=${encodeURIComponent(q)}`)
           }}
         >
           <span className="slash">/</span>
           <input
+            ref={box}
             type="search"
             name="q"
             placeholder="Search numbers…"
