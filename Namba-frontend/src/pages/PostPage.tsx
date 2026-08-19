@@ -167,25 +167,27 @@ export default function PostPage() {
           </div>
         )}
 
-        <h4 className="section">Related entries</h4>
-        {post.related?.length ? (
-          post.related.map((r) => (
-            <div className="rel" key={r.id}>
-              <Link className="rel-num" to={numberPath(r.value)}>
-                {showValue(r.value, r.grouped)}
-              </Link>
-              <div className="rel-main">
-                <Link className="rel-t" to={`/p/${r.id}`}>
-                  {r.title}
+        {/* nothing at all when nothing is linked. A heading over the words
+            "Nothing linked yet." is two lines spent saying the page has no
+            more to show, which the end of the page already said. Linking is
+            done in the edit form, so this is not a control anyone is missing */}
+        {!!post.related?.length && (
+          <>
+            <h4 className="section">Related entries</h4>
+            {post.related.map((r) => (
+              <div className="rel" key={r.id}>
+                <Link className="rel-num" to={numberPath(r.value)}>
+                  {showValue(r.value, r.grouped)}
                 </Link>
-                {r.body && <div className="rel-b">{plain(r.body)}</div>}
+                <div className="rel-main">
+                  <Link className="rel-t" to={`/p/${r.id}`}>
+                    {r.title}
+                  </Link>
+                  {r.body && <div className="rel-b">{plain(r.body)}</div>}
+                </div>
               </div>
-            </div>
-          ))
-        ) : (
-          <p className="empty" style={{ padding: '12px 0' }}>
-            Nothing linked yet.
-          </p>
+            ))}
+          </>
         )}
       </article>
 
