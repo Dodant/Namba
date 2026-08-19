@@ -1,7 +1,11 @@
 import { useState } from 'react'
+import Markdown from 'react-markdown'
 import { Link, useParams } from 'react-router-dom'
+import remarkBreaks from 'remark-breaks'
+import remarkGfm from 'remark-gfm'
 import {
-  api, fmtDate, nickname, numberPath, originalLabel, tagLabel, type Revision,
+  api, fmtDate, nickname, numberPath, originalLabel, plain, tagLabel,
+  type Revision,
 } from '../api'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
@@ -151,7 +155,17 @@ export default function PostPage() {
 
         {post.image && <img className="full" src={post.image} alt={post.title} />}
 
-        {shown.body && <div className="body">{shown.body}</div>}
+        {/* No rehype-raw, deliberately: react-markdown renders to React
+            elements and escapes raw HTML unless you hand it a plugin that
+            does not. On a wiki anyone can post to, that default is the
+            security model -- adding rehype-raw would need a sanitiser and a
+            reason. remark-breaks because this is typed into a textarea, where
+            pressing Enter visibly makes a line and ought to keep making one. */}
+        {shown.body && (
+          <div className="body">
+            <Markdown remarkPlugins={[remarkGfm, remarkBreaks]}>{shown.body}</Markdown>
+          </div>
+        )}
 
         <h4 className="section">Related entries</h4>
         {post.related?.length ? (
@@ -164,7 +178,7 @@ export default function PostPage() {
                 <Link className="rel-t" to={`/p/${r.id}`}>
                   {r.title}
                 </Link>
-                {r.body && <div className="rel-b">{r.body}</div>}
+                {r.body && <div className="rel-b">{plain(r.body)}</div>}
               </div>
             </div>
           ))

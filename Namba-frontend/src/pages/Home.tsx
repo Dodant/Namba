@@ -1,8 +1,8 @@
 import { Fragment } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  api, BUCKETS, BUCKET_LABEL, fmtDate, FORMATS, FORMAT_LABEL, numberPath, tagLabel,
-  type Format, type NumberEntry, type Post,
+  api, BUCKETS, BUCKET_LABEL, fmtDate, FORMATS, FORMAT_LABEL, numberPath, plain,
+  tagLabel, type Format, type NumberEntry, type Post,
 } from '../api'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
@@ -129,7 +129,7 @@ function Feed({ lang }: { lang: string }) {
             <Link to={`/p/${p.id}`}>{p.title}</Link>
           </h3>
           <div className="fx-body">
-            {p.body && <p>{p.body}</p>}
+            {p.body && <p>{plain(p.body)}</p>}
             <div className="meta">
               {p.tags.map((t) => (
                 <Link key={t} className="tag" to={`/t/${t}`}>
@@ -252,7 +252,7 @@ function Index({ lang }: { lang: string }) {
                               <span className="ix-t">{mark(e.title, rx)}</span>
                               {e.image && PHOTO}
                               {e.body && (
-                                <span className="ix-b"> — {mark(e.body, rx)}</span>
+                                <span className="ix-b"> — {mark(plain(e.body), rx)}</span>
                               )}
                             </Link>
                             <span className="ix-like">

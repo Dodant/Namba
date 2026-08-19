@@ -175,6 +175,10 @@ export default function PostForm() {
           onChange={(e) => setBody(e.target.value)}
           placeholder="The Answer to the Ultimate Question of Life, the Universe, and Everything."
         />
+        <p className="fine">
+          Markdown works — **bold**, *italic*, [links](https://…), lists,
+          headings and tables. A single Enter is a line break.
+        </p>
       </div>
 
       {/* "Written in", not "Language" -- the Languages panel below lists the
@@ -466,7 +470,7 @@ function TranslationEditor({
       </div>
       <div className="field">
         <label>
-          Details<span className="hint">optional</span>
+          Details<span className="hint">optional — markdown works here too</span>
         </label>
         <textarea value={body} onChange={(e) => setBody(e.target.value)} maxLength={5000} />
       </div>

@@ -15,6 +15,16 @@ No Redux/Zustand/React Query, no Tailwind, no component library, no test runner.
 `useState` + `fetch` + one `index.css` covers this app. Reach for a dependency
 only when a few lines genuinely will not do.
 
+The one that earned its place is **`react-markdown`** (with `remark-gfm` and
+`remark-breaks`), for the entry body. It renders to React elements and escapes
+raw HTML, so `<script>` and `<img onerror>` in a post arrive as text and
+`javascript:` hrefs come out empty — on a wiki anyone can write to, that
+default *is* the security model. **Do not add `rehype-raw`.** It turns that off,
+and the moment it goes in this app needs a sanitiser it does not currently have
+and a reason nobody has offered. It costs about 47 kB gzipped, which is the
+trade: a `marked` + `dompurify` pair is a third of that and hands you the
+sanitiser config to get wrong.
+
 - Styling is `src/index.css` alone: CSS custom properties on `:root`, dark mode
   via `prefers-color-scheme`. Numerals use `--mono` with `tabular-nums` — that
   alignment is the whole visual identity, keep it.
@@ -37,6 +47,10 @@ only when a few lines genuinely will not do.
   statically. That is the one suppression in the codebase; do not add more.
 - `PostCard.tsx` must export only components (fast refresh). Shared helpers like
   `fmtDate` and `numberPath` live in `api.ts`.
+- Markdown renders on `/p/:id` only. Every list shows `plain(body)` — the source
+  read back as prose, so `**bold**` and `## ` are not punctuation in a preview —
+  clamped to three lines in CSS. `plain()` is a handful of regexes and is not a
+  parser; it does not need to be, because the entry itself is one click away.
 
 ## The reader's language
 

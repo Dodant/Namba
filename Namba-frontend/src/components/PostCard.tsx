@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, fmtDate, liked, numberPath, tagLabel, type Post } from '../api'
+import { api, fmtDate, liked, numberPath, plain, tagLabel, type Post } from '../api'
 
 /* Takes the two fields it uses rather than a whole Post, so the number index
    can hand it a bare entry. */
@@ -40,7 +40,7 @@ export default function PostCard({ post, showNumber = true }: { post: Post; show
         <h3>
           <Link to={`/p/${post.id}`}>{post.title}</Link>
         </h3>
-        {post.body && <p>{post.body}</p>}
+        {post.body && <p>{plain(post.body)}</p>}
         <div className="meta">
           {post.tags.map((t) => (
             <Link key={t} className="tag" to={`/t/${t}`}>

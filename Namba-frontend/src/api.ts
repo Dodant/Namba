@@ -205,6 +205,24 @@ export const liked = {
   },
 }
 
+/** Markdown source read back as prose, for the one-line previews in lists.
+    Deliberately not a parser: a preview only has to stop "**bold**" and "## "
+    showing up as punctuation, and the entry page renders the real thing a
+    click away. Underscores are only stripped when they wrap a word, so
+    snake_case survives. Collapsing whitespace matters as much as the marks --
+    a body with blank lines used to sprawl down a feed row. */
+export const plain = (md: string) =>
+  md
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/^\s{0,3}>\s?/gm, '')
+    .replace(/^\s{0,3}[-*+]\s+/gm, '')
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/(^|\s)_([^_]+)_(?=\s|$)/g, '$1$2')
+    .replace(/[*`~]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
 export const numberPath = (value: string) => `/n/${encodeURIComponent(value)}`
 
 /** How the entry's own tab reads. "Original" is all it can say until someone

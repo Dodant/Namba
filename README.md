@@ -80,6 +80,12 @@ form. Those rows deliberately have no foreign key — they outlive the post they
 describe, so a deletion is recoverable too, from the address the entry used to
 have.
 
+An entry's details are markdown — bold, italics, links, lists, headings, quotes,
+code and tables — rendered on the entry page. Lists show it read back as plain
+prose instead, clamped to three lines, since a preview with `**` in it is not a
+preview. Raw HTML in a post is escaped rather than rendered: anyone can write
+here, so nothing anyone writes becomes markup.
+
 Writes are rate limited to 20/minute per IP, in memory. Uploads are capped at
 5 MB, restricted to jpg/png/gif/webp, and always renamed to a server-generated
 UUID.
