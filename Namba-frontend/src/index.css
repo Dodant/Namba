@@ -538,7 +538,10 @@ h4.section {
 .form-side .field label { flex-wrap: wrap; }
 .form { max-width: 680px; padding-bottom: 28px; }
 .form h1 { font-size: 31px; font-weight: 400; letter-spacing: -0.015em; margin: 26px 0 8px; }
-.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+/* 28 between fields against 8 inside one: the gap has to say which label
+   belongs to which control, and at 20/6 the two readings were close enough
+   that the form read as one undifferentiated column. */
+.field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
 .field label {
   display: flex; align-items: baseline; gap: 8px;
   font-family: var(--mono); font-size: 10.5px; font-weight: 400;
