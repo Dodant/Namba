@@ -125,10 +125,20 @@ so a film of a book gets both.
 
 ## Deploying
 
-The API is a single process with a SQLite file next to it — any box with a disk
-will do. The front end is static (`npm run build` → `dist/`); point `VITE`'s
-proxy targets at the real API host and configure the host to serve `index.html`
-for unknown paths, or `/n/42` will 404 on refresh.
+One process. `npm run build` writes `Namba-frontend/dist/`, and the API serves
+it: built assets by path, `index.html` for everything else, so `/n/42` survives
+a refresh without a rewrite rule. A SQLite file sits next to it, and any box
+with a disk will do.
+
+They are served together rather than split so that `/p/42` can carry its own
+`<head>`. A share of an entry has to arrive with that entry's title, blurb and
+picture already in the markup — no crawler runs the JavaScript that would set
+them — so something has to write the `<head>` per request, and the only process
+holding the entry is this one. `NAMBA_DIST` overrides where it looks.
+
+In development nothing of that runs: `npm run dev` serves the app and proxies
+`/api` here, which is why the injection is covered by `test_share_card` rather
+than by looking at it.
 
 One caveat: the rate limiter lives in process memory, so it is per-worker. Run
 one worker, or move it to redis.

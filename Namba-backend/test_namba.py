@@ -5,6 +5,18 @@ import tempfile
 _tmp = tempfile.mkdtemp()
 os.environ["NAMBA_DB"] = os.path.join(_tmp, "test.db")
 os.environ["NAMBA_UPLOADS"] = os.path.join(_tmp, "uploads")
+# A stand-in for the built front end. The real dist/ is a build artefact and is
+# not in the repo, and what is being tested is the injection, not Vite's output.
+os.environ["NAMBA_DIST"] = os.path.join(_tmp, "dist")
+os.makedirs(os.path.join(_tmp, "dist", "assets"))
+with open(os.path.join(_tmp, "dist", "index.html"), "w") as _fh:
+    _fh.write(
+        '<!doctype html>\n<html><head><title>Namba — a wiki of numbers</title>\n'
+        '<meta name="description" content="Every number means something." />\n'
+        "</head><body><div id=\"root\"></div></body></html>"
+    )
+with open(os.path.join(_tmp, "dist", "assets", "app.js"), "w") as _fh:
+    _fh.write("console.log(1)")
 
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -43,6 +55,45 @@ def test_parse():
     for raw, want in cases.items():
         got = parse_number(raw)
         assert got == want, f"parse_number({raw!r}) = {got}, want {want}"
+
+
+def test_share_card():
+    """/p/12 has to arrive with its own <head>: no crawler runs the JS that
+    would set it, which is the whole reason the API serves the front end."""
+    c = TestClient(main.app)
+    p = c.post("/api/posts", json={
+        "value": "1729", "title": "Taxicab number",
+        "body": "## Ramanujan\n\nThe **dullest** number, until [he](https://x.test) spoke.",
+    }).json()
+
+    page = c.get(f"/p/{p['id']}").text
+    assert "<title>1729 — Taxicab number · Namba</title>" in page, page[:400]
+    assert 'property="og:title" content="1729 — Taxicab number · Namba"' in page
+    # the description is prose, not markdown source, and there is only one
+    assert 'property="og:description" content="Ramanujan The dullest number, until he spoke."' in page
+    assert page.count('name="description"') == 1
+    assert 'property="og:url" content="http://testserver/p/%d"' % p["id"] in page
+    assert 'property="twitter:card" content="summary"' in page
+    assert "og:image" not in page, "no picture, so no image card"
+
+    # an entry with a picture gets the big card, at an absolute url
+    with_img = c.patch(f"/api/posts/{p['id']}", json={"image": "/uploads/x.png"}).json()
+    page = c.get(f"/p/{with_img['id']}").text
+    assert 'property="og:image" content="http://testserver/uploads/x.png"' in page
+    assert 'property="twitter:card" content="summary_large_image"' in page
+
+    # a title with a quote in it must not break out of the attribute
+    ev = c.post("/api/posts", json={"value": "13", "title": 'the "unlucky" <one>'}).json()
+    page = c.get(f"/p/{ev['id']}").text
+    assert "<one>" not in page and "&lt;one&gt;" in page, "markup got through"
+
+    # every other route is the app as built, and the api still answers first
+    assert "<title>Namba — a wiki of numbers</title>" in c.get("/n/42").text
+    assert c.get("/assets/app.js").text == "console.log(1)"
+    assert c.get("/api/tags").status_code == 200
+    assert c.get(f"/p/{p['id']}999").text.count("og:title") == 0, "unknown id got a card"
+    # ".." off the wire must not walk out of dist
+    assert c.get("/../test.db").status_code in (200, 404) and "sqlite" not in c.get("/../test.db").text.lower()
 
 
 def test_bucket():

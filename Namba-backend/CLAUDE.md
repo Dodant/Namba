@@ -48,6 +48,19 @@ Env overrides: `NAMBA_DB`, `NAMBA_UPLOADS` (the tests use both to stay hermetic)
   translate: the single-post view has a tab strip, and switching there is the
   reader's own move. The front end defaults the setting to English, which is
   where that old policy went.
+- **The SPA catch-all must stay the last route in the file.** Starlette matches
+  in the order routes are added, so `@app.get("/{path:path}")` swallows every
+  `/api/...` declared below it. It serves built assets by path and `index.html`
+  otherwise, and `realpath`s the target first — `path` comes off the wire and
+  `..` in it must not walk out of `dist/`.
+- **`/p/{id}` gets its `<head>` written server-side.** `og_head()` replaces the
+  title and description and appends the `og:`/`twitter:` tags, because no
+  crawler runs the JavaScript that would set them client-side — that is the
+  reason the API serves the front end at all. Everything is `html.escape`d:
+  entry titles are written by strangers and land inside an attribute.
+  `og_summary()` is a simpler cousin of `plain()` in the front end's `api.ts`;
+  they are deliberately not kept in step, since one feeds a preview row and the
+  other a meta tag and nobody sees both at once.
 - **`/api/numbers` is an ordered scan grouped in Python, not a `GROUP BY`.** The
   home list needs each number's entry titles, so aggregating and then re-querying
   for them would be two passes to build one thing. It returns `entries`, not a

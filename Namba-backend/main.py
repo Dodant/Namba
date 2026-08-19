@@ -1,6 +1,8 @@
 """Namba API -- an open, no-login wiki of numbers."""
+import html
 import json
 import os
+import re
 import time
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -9,6 +11,7 @@ from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
@@ -22,6 +25,10 @@ TAGS = (
 )
 
 UPLOAD_DIR = os.environ.get("NAMBA_UPLOADS", os.path.join(db.DIR, "uploads"))
+# The built front end, served from here in production so that /p/42 can carry
+# its own <head>. Absent in development -- npm run dev serves it and proxies
+# the API, so the routes below simply never match there.
+DIST = os.environ.get("NAMBA_DIST", os.path.join(db.DIR, os.pardir, "Namba-frontend", "dist"))
 ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 MAX_UPLOAD = 5 * 1024 * 1024
 BLURB = 140  # body chars carried into the index list
@@ -627,3 +634,94 @@ async def upload(file: UploadFile = File(...), _=Depends(rate_limit)):
     with open(os.path.join(UPLOAD_DIR, name), "wb") as fh:
         fh.write(data)
     return {"url": f"/uploads/{name}"}
+
+
+# --- the built front end ------------------------------------------------
+# Declared last on purpose: Starlette matches routes in the order they are
+# added, so every /api route above wins before the catch-all below sees a
+# request. In development none of this runs -- Vite serves the app and proxies
+# /api here -- which is why the injection is covered by a test rather than by
+# looking at it.
+
+OG_STRIP = [
+    (re.compile(r"```[\s\S]*?```"), " "),        # fenced code
+    (re.compile(r"^\s{0,3}#{1,6}\s+", re.M), ""),  # headings
+    (re.compile(r"^\s{0,3}>\s?", re.M), ""),       # quotes
+    (re.compile(r"^\s{0,3}[-*+]\s+", re.M), ""),   # bullets
+    (re.compile(r"!?\[([^\]]*)\]\([^)]*\)"), r"\1"),  # links and images
+    (re.compile(r"[*`~]"), ""),
+    (re.compile(r"\s+"), " "),
+]
+OG_DESC = 200
+
+
+def og_summary(body: str) -> str:
+    """A markdown body as one line of prose, for a share card.
+
+    A second, simpler cousin of plain() in the front end's api.ts. They are not
+    kept in step and do not need to be: one feeds a preview row, the other a
+    meta tag, and nobody sees both at once. Neither is a parser.
+    """
+    for rx, sub in OG_STRIP:
+        body = rx.sub(sub, body)
+    body = body.strip()
+    return body[: OG_DESC - 1] + "…" if len(body) > OG_DESC else body
+
+
+def og_head(page: str, post: dict, base: str) -> str:
+    """Give this page the entry's own title, description and image.
+
+    Crawlers do not run the JavaScript that would set these client-side, so the
+    <head> has to arrive already written -- which is the whole reason the API
+    serves the front end at all.
+    """
+    title = f"{post['value']} — {post['title']} · Namba"
+    desc = og_summary(post["body"]) or f"What {post['value']} means, on Namba."
+    img = f"{base}{post['image'].lstrip('/')}" if post["image"] else None
+    tags = [
+        ("og:type", "article"),
+        ("og:site_name", "Namba"),
+        ("og:title", title),
+        ("og:description", desc),
+        ("og:url", f"{base}p/{post['id']}"),
+        ("twitter:card", "summary_large_image" if img else "summary"),
+    ]
+    if img:
+        tags.append(("og:image", img))
+    meta = "\n    ".join(
+        f'<meta property="{k}" content="{html.escape(v, quote=True)}" />' for k, v in tags
+    )
+    esc = html.escape(title, quote=True)
+    # replaced, not appended: two <title>s and the browser keeps the first
+    page = re.sub(r"<title>.*?</title>", f"<title>{esc}</title>", page, count=1, flags=re.S)
+    page = re.sub(
+        r'<meta name="description" content=".*?"\s*/?>',
+        f'<meta name="description" content="{html.escape(desc, quote=True)}" />',
+        page, count=1, flags=re.S,
+    )
+    return page.replace("</head>", f"  {meta}\n  </head>", 1)
+
+
+def _index(con, path: str, base: str) -> HTMLResponse:
+    with open(os.path.join(DIST, "index.html"), encoding="utf-8") as fh:
+        page = fh.read()
+    hit = re.fullmatch(r"p/(\d+)", path)
+    if hit:
+        row = con.execute("SELECT * FROM posts WHERE id = ?", (hit.group(1),)).fetchone()
+        if row:
+            page = og_head(page, dict(row), base)
+    return HTMLResponse(page)
+
+
+@app.get("/{path:path}")
+def spa(path: str, request: Request, con=Depends(get_db)):
+    if not os.path.isdir(DIST):
+        raise HTTPException(404, "front end not built; run npm run build")
+    # A built asset if it is one, index.html otherwise -- /n/42 and /p/12 are
+    # the client's routes, not files. realpath before serving: "path" comes off
+    # the wire and ".." in it must not walk out of dist.
+    if path:
+        target = os.path.realpath(os.path.join(DIST, path))
+        if target.startswith(os.path.realpath(DIST) + os.sep) and os.path.isfile(target):
+            return FileResponse(target)
+    return _index(con, path, str(request.base_url))

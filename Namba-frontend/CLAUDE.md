@@ -127,6 +127,14 @@ appears (`written by {author} … edited by {edited_by}`).
 
 ## Production
 
-`npm run build` → `dist/`. The host must serve `index.html` for unknown paths or
-`/n/42` 404s on refresh, and the proxy targets in `vite.config.ts` need to point
-at the real API host.
+`npm run build` → `dist/`, and **the API serves it** — `main.py` has a catch-all
+that returns built assets by path and `index.html` for everything else, so no
+rewrite rule is needed for `/n/42`. Build before starting the backend, or that
+route 404s with a message saying so.
+
+That is also where `/p/:id` gets its Open Graph tags. Setting them from React is
+not an option and never was: a crawler does not run the JS that would do it, so
+the `<head>` has to arrive already written. Nothing in this app should try.
+
+`vite.config.ts`'s proxy is a development convenience only — in production there
+is one origin and nothing to proxy.
