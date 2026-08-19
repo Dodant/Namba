@@ -3,7 +3,13 @@
   --panel: #fffdf7;
   --ink: #171712;
   --ink-soft: #5f5b50;    /* chips, form intro, the Feed toggle at rest */
-  --muted: #8a8474;
+  /* the three greys below are pinned by contrast against --bg, not by eye:
+     5.6, 5.1 and 4.6 to 1, so a 10px field hint clears AA the same as body
+     text does. They read as one narrow band now, which is what a light ground
+     costs -- there is no room under --ink-soft for four airy steps that are
+     all still legible. The dark palette was already tuned this way (5.7, 5.2,
+     4.6) and this is the same pass finally run on the light one. */
+  --muted: #656155;
   --line: #ded7c8;
   --accent: #1a4d3c;
   --accent-dark: #143d30; /* primary hover */
@@ -12,8 +18,8 @@
   /* the old terracotta. It now has exactly two jobs: the number match inside
      an index title, and the controls that destroy something */
   --hit: #b4472b;
-  --faint: #a09983;       /* placeholders, dropdown carets, rested meta */
-  --fainter: #b0a893;     /* field hints, like counts at rest */
+  --faint: #6e6855;       /* placeholders, dropdown carets, rested meta */
+  --fainter: #776e57;     /* field hints, like counts at rest */
   --rule: #e7e1d4;        /* separators between rows in a list */
   --rule-soft: #efeade;   /* separators inside a grouped panel */
   --row-tint: #fbf8f1;    /* the "current" row in a grouped list */
@@ -40,7 +46,8 @@
     --on-accent: #14140f;
     --hit: #e07a56;
     /* faint and fainter invert rather than carry over: on a dark ground
-       "quieter" means darker, and the light values outshouted --muted */
+       "quieter" means darker, and the light pair is pinned against a light
+       ground -- carried over here they land at 3.3 and 3.7 to 1 */
     --faint: #8d8779;
     --fainter: #857f71;
     --rule: #292820;
