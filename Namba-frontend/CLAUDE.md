@@ -40,6 +40,22 @@ sanitiser config to get wrong.
   textarea is the one exception: at 104px tall a 999px radius is a half-circle
   at each end and the text runs into it, so it takes 20px. Containers are not
   controls and keep `--radius`: panels, cards, the picker, images.
+- The focus ring sets no `border-radius` of its own. An outline already
+  follows the radius the element has, and the rule used to force 3px — which
+  squared off every capsule for as long as it held the focus.
+- Hover is a 120ms colour transition and nothing else moves. No transform, no
+  size change, so a pointer running down a list of rows leaves no trail. A
+  `prefers-reduced-motion` block cuts it.
+- 24px is the floor for anything you press. The two borderless like buttons
+  keep their 10.5px type and buy the target with padding, then hand it back
+  to the row with a matching negative margin, so the hit box grows and the
+  layout does not move. Do not "tidy" the negative margins away.
+- `overflow-wrap: break-word` is inherited from `body`, and the two
+  single-column grid overrides say `minmax(0, 1fr)`. Both are there because
+  a title is a string a stranger typed: one unbreakable word used to widen
+  the document to four times the viewport. `break-word`, not `anywhere` —
+  `anywhere` feeds min-content sizing and collapses the columns. The
+  numerals keep their own `anywhere`, which is deliberate and different.
 - Selects are real `<select>`s and stay that way. The dropdown is styled with
   `appearance: base-select` and `::picker(select)` behind an `@supports`, so
   Chrome 135+ gets the picker in the page's own palette and everything else
@@ -90,6 +106,32 @@ sanitiser config to get wrong.
   clamped to three lines in CSS. `plain()` is a handful of regexes and is not a
   parser; it does not need to be, because the entry itself is one click away.
 
+## Every control has a name
+
+A `<label>` in `.field` carries `htmlFor` and its control carries the
+matching `id` from `useId` — not one of them wrapped its control, so before
+this ten of the eleven fields on the form reached a screen reader as an
+unnamed edit box. A caption that sits over a *group* rather than a control —
+the category chips, and the Languages, Related entries and History panels —
+is a `<span className="field-label">` inside a `role="group"` with
+`aria-labelledby`, because a `<label>` there names nothing and is invalid.
+`.field-label` and `.field label` are the same type; use the one that is
+true.
+
+A label and its hint need `{' '}` between them. JSX drops the newline, and
+the accessible name comes out as "Titlewhat the number refers to". The space
+is a whitespace-only flex item, so it is not rendered and costs nothing.
+
+The hint is 10.5px/400 under a 10.5px/600 label. It was the larger of the
+two, and the pair read as one string. The separation is weight: `--muted`
+and `--fainter` are pinned by contrast and are not free to spend here.
+
+Where a control is a toggle it says so — `aria-pressed` on the likes and the
+category chips, `aria-current` on the format tabs, the language tabs and the
+Recent pill. Every `Loading…` is a `role="status"` and every error a
+`role="alert"`, which is what the three pages that blank their list on
+navigation depend on.
+
 ## The reader's language
 
 `displayLang` in `api.ts` (`localStorage`, defaults to `English`) is which
@@ -108,6 +150,11 @@ default drawn as `English · 0` — two labels for the same nothing — and the
 second is kept alive only by being selected, so choosing `Original` deletes it.
 A control that opens to say no and loses an option when used is worse than no
 control; it returns with the first translation.
+
+The language tabs on `/p/:id` follow the same rule and are absent until the
+entry has a translation. One tab is a rule drawn across the top of the page
+to say the entry is written in the language you are already reading — and on
+most of the wiki that was the first thing above the number.
 
 The form's two language fields — `Written in` and the one in the Languages
 panel — are `<select>`s over `LANGS` in `PostForm.tsx`, and typing is not an
@@ -150,6 +197,17 @@ works but `/api/numbers/{value}` would not.
 `Browse.tsx` serves three of them — `/n/:value`, `/t/:tag`, `/search` — because
 they differ only in which filter reaches `api.posts()`. Add a fourth list view by
 extending its `mode`, not by copying the file.
+
+All three heroes are one shape: a `.kicker` of metadata over an `<h1>` that is
+the subject and nothing else. On `/n/:value` the kicker is the format and the
+sort key; on the other two it is the kind of page and the count, and the count
+waits for `posts.data` because "0 entries" before the fetch lands is a result
+rather than a wait. `/t/:tag` passes its tag to `PostCard` as `except`, so a
+row does not carry a chip linking to the page it is already on — what is left
+is the tag that is news, on the entries that have two.
+
+A link inside `.empty` is the only thing to do next on that page, so it is
+drawn as a link. Do not let one inherit `--muted` off the paragraph.
 
 `/random` is a route, not a header `onClick`, so it is linkable and has
 somewhere to render its wait and its failure. It replaces rather than pushes —
