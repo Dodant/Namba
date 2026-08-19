@@ -390,6 +390,10 @@ def create_post(p: PostIn, _=Depends(rate_limit), con=Depends(get_db)):
 @app.patch("/api/posts/{post_id}")
 def edit_post(post_id: int, p: PostPatch, _=Depends(rate_limit), con=Depends(get_db)):
     current = fetch_one(con, post_id)
+    # Which fields the caller actually sent. For image, null is a value -- it
+    # is how the form removes one -- and defaulting it to None made "unchanged"
+    # and "clear this" the same request, so Remove quietly did nothing.
+    sent = p.model_dump(exclude_unset=True)
     with con:
         snapshot(con, post_id, p.author.strip() or "anonymous")
         value = p.value.strip() if p.value is not None else current["value"]
@@ -408,7 +412,7 @@ def edit_post(post_id: int, p: PostPatch, _=Depends(rate_limit), con=Depends(get
                 value, fmt, key,
                 p.title.strip() if p.title is not None else current["title"],
                 p.body if p.body is not None else current["body"],
-                p.image if p.image is not None else current["image"],
+                p.image if "image" in sent else current["image"],
                 p.author.strip() or "anonymous",
                 now(), post_id,
             ),

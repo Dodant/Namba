@@ -165,6 +165,18 @@ def test_api_round_trip():
     assert c.put(f"/api/posts/{tid}/translations",
                  json={"lang": "   ", "title": "x"}).status_code == 422
 
+    # an edit can clear the image, and an edit that never mentions it leaves
+    # it alone. PATCH treats an absent field as "unchanged", so those two have
+    # to be told apart or the form's Remove button is a no-op.
+    shot = c.post("/api/posts", json={"value": "77", "title": "with a picture",
+                                      "image": "/uploads/x.png"}).json()
+    assert shot["image"] == "/uploads/x.png"
+    c.patch(f"/api/posts/{shot['id']}", json={"image": None, "author": "ed"})
+    assert c.get(f"/api/posts/{shot['id']}").json()["image"] is None
+    c.patch(f"/api/posts/{shot['id']}", json={"image": "/uploads/y.png"})
+    c.patch(f"/api/posts/{shot['id']}", json={"title": "renamed"})
+    assert c.get(f"/api/posts/{shot['id']}").json()["image"] == "/uploads/y.png"
+
     # a removed translation is recoverable, same as any other edit
     gone = c.delete(f"/api/posts/{tid}/translations/{same['translations'][0]['id']}",
                     params={"author": "zaphod"}).json()
