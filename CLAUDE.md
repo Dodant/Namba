@@ -43,7 +43,10 @@ frontend-only addition fails loudly rather than silently.
   over the byline, which on an open wiki is most edits. `test_api_round_trip`
   asserts it.
 - **A number is a column, not a table.** `/n/42` is a query on `posts.value`.
-  Adding a `numbers` table would buy nothing.
+  Adding a `numbers` table would buy nothing. This is also why thousands
+  separators are a display flag (`posts.grouped`) and never live in `value`:
+  the moment `1,000` is storable, `/n/1000` and `/n/1%2C000` are two pages
+  about one number.
 - **A link in an entry stays a link.** No unfurling, no fetched thumbnails.
   Rendering a card means the server fetching a URL a stranger typed, and with
   no accounts there is nobody to rate-limit or ban — `http://169.254.169.254/`

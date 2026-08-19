@@ -64,6 +64,11 @@ internal `Link` would have to carry it or drop it.
 An entry with no translation in that language keeps its own title. Nothing
 marks the difference in a list, so a mixed-language index is expected.
 
+`showValue(value, grouped)` is display only — **never build a link from it.**
+`numberPath()` takes the raw value, and `/n/1,000` is a different page from
+`/n/1000`. Index rows and the `/n/:value` hero use the all-entries-agree rule
+from the API; everywhere a single post is shown, its own flag wins.
+
 ## Number values are not URL-safe
 
 `11/22/63`, `9¾`, `80/20` are all valid values. Always build number links with

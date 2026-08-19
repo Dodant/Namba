@@ -33,6 +33,9 @@ export type Post = {
   title: string
   body: string
   image: string | null
+  /** show the value with thousands separators. Display only -- `value` never
+      carries them, or 1000 and 1,000 stop being the same number. */
+  grouped: boolean
   author: string
   edited_by: string | null
   /** what this entry's own title and body are written in. Free-form, like a
@@ -68,6 +71,9 @@ export type NumberEntry = {
   format: Format
   sort_key: number | null
   bucket: string | null
+  /** true only when every entry filed here asked for separators. A row is one
+      number written one way, so a disagreement falls back to the plain form. */
+  grouped: boolean
   entries: { id: number; title: string; body: string; image: boolean; likes: number }[]
 }
 
@@ -87,6 +93,7 @@ export type PostInput = {
   author?: string
   tags?: Tag[]
   lang?: string | null
+  grouped?: boolean
 }
 
 type Params = Record<string, string | number | undefined | null>
@@ -222,6 +229,17 @@ export const plain = (md: string) =>
     .replace(/[*`~]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
+
+/* 4+ digits, because "100" has no thousand to separate. Grouped by regex
+   rather than toLocaleString: a 20-digit value is past what a Number holds. */
+const GROUPABLE = /^(\d{4,})(\.\d+)?$/
+
+/** The value as it should read on screen. Never use it to build a link --
+    numberPath() takes the raw value, and /n/1,000 is a different page. */
+export function showValue(value: string, grouped?: boolean) {
+  const m = grouped ? GROUPABLE.exec(value) : null
+  return m ? m[1].replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (m[2] ?? '') : value
+}
 
 export const numberPath = (value: string) => `/n/${encodeURIComponent(value)}`
 

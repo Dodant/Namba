@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   api, fmtDate, FORMAT_LABEL, FORMATS, nickname, numberPath, originalLabel,
-  TAGS, tagLabel,
+  showValue, TAGS, tagLabel,
   type Format, type Post, type Revision, type Tag, type Translation,
 } from '../api'
 
@@ -19,6 +19,7 @@ export default function PostForm() {
   const [tags, setTags] = useState<Tag[]>([])
   const [image, setImage] = useState<string | null>(null)
   const [lang, setLang] = useState('')
+  const [grouped, setGrouped] = useState(false)
   const [author, setAuthor] = useState(nickname.get())
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
@@ -41,6 +42,7 @@ export default function PostForm() {
     setTags(p.tags)
     setImage(p.image)
     setLang(p.lang ?? '')
+    setGrouped(p.grouped)
   }
 
   useEffect(() => {
@@ -67,6 +69,7 @@ export default function PostForm() {
       author: author.trim() || 'anonymous',
       tags,
       lang: lang.trim() || null,
+      grouped,
     }
     try {
       const saved = editing
@@ -134,6 +137,19 @@ export default function PostForm() {
             value={value}
             onChange={(e) => setValue(e.target.value)}
           />
+          {/* the preview only appears when the box would change something, so
+              ticking it on 42 or on 10:04PM visibly does nothing */}
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={grouped}
+              onChange={(e) => setGrouped(e.target.checked)}
+            />
+            Group thousands
+            {showValue(value, true) !== value && (
+              <span className="hint">{showValue(value, true)}</span>
+            )}
+          </label>
         </div>
         <div className="field" style={{ minWidth: 170 }}>
           <label>Format</label>
@@ -544,7 +560,7 @@ function LinkPanel({
       <div className="panel">
         {post.related?.map((r) => (
           <div className="panel-row" key={r.id}>
-            <span className="panel-num">{r.value}</span>
+            <span className="panel-num">{showValue(r.value, r.grouped)}</span>
             <span className="panel-title ink">{r.title}</span>
             <button type="button" className="pill" onClick={() => act(() => api.unlink(post.id, r.id))}>
               Unlink
@@ -569,7 +585,7 @@ function LinkPanel({
         </div>
         {hits?.map((h) => (
           <div className="panel-row" key={h.id}>
-            <span className="panel-num">{h.value}</span>
+            <span className="panel-num">{showValue(h.value, h.grouped)}</span>
             <span className="panel-title ink">{h.title}</span>
             <button
               type="button"

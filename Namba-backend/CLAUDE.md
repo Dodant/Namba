@@ -48,6 +48,14 @@ Env overrides: `NAMBA_DB`, `NAMBA_UPLOADS` (the tests use both to stay hermetic)
   translate: the single-post view has a tab strip, and switching there is the
   reader's own move. The front end defaults the setting to English, which is
   where that old policy went.
+- **`posts.grouped` is how the number is written, not what it is.** `value`
+  never carries separators; `grouped_value()` puts them on for display and
+  leaves anything that is not a plain integer or decimal alone. `ungroup()`
+  strips commas out of what was typed *only* when the box is ticked — that tick
+  is the poster saying "this is a grouped number", and unticked the string is
+  kept verbatim as it always was. In `/api/numbers` a row is grouped only when
+  every entry filed under it is: one number, one spelling, and a disagreement
+  falls back to the plain form nobody had to opt into.
 - **The SPA catch-all must stay the last route in the file.** Starlette matches
   in the order routes are added, so `@app.get("/{path:path}")` swallows every
   `/api/...` declared below it. It serves built assets by path and `index.html`

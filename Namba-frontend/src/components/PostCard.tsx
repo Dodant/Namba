@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, fmtDate, liked, numberPath, plain, tagLabel, type Post } from '../api'
+import {
+  api, fmtDate, liked, numberPath, plain, showValue, tagLabel, type Post,
+} from '../api'
 
 /* Takes the two fields it uses rather than a whole Post, so the number index
    can hand it a bare entry. */
@@ -33,7 +35,7 @@ export default function PostCard({ post, showNumber = true }: { post: Post; show
     <article className="card">
       {showNumber && (
         <Link className="num" to={numberPath(post.value)}>
-          {post.value}
+          {showValue(post.value, post.grouped)}
         </Link>
       )}
       <div className="main">

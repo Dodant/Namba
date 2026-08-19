@@ -2,7 +2,7 @@ import { Fragment } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   api, BUCKETS, BUCKET_LABEL, fmtDate, FORMATS, FORMAT_LABEL, numberPath, plain,
-  tagLabel, type Format, type NumberEntry, type Post,
+  showValue, tagLabel, type Format, type NumberEntry, type Post,
 } from '../api'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
@@ -68,8 +68,10 @@ const WORDS: Record<number, string[]> = {
    longest form goes first so "eighth" wins over "eight". */
 function marker({ value, format }: NumberEntry) {
   const words = format === 'INTEGER' ? (WORDS[Number(value)] ?? []) : []
+  const grouped = showValue(value, true)
   const alts = [
     value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+    ...(grouped === value ? [] : [grouped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')]),
     ...[...words]
       .sort((a, b) => b.length - a.length)
       .map((w) => `\\b${w}(?:th)?(?!teen|ty)`),
@@ -122,8 +124,11 @@ function Feed({ lang }: { lang: string }) {
 
       {posts.data?.map((p: Post) => (
         <article className="fx" key={p.id}>
-          <Link className={`fx-num ${feedSize(p.value)}`} to={numberPath(p.value)}>
-            {p.value}
+          <Link
+            className={`fx-num ${feedSize(showValue(p.value, p.grouped))}`}
+            to={numberPath(p.value)}
+          >
+            {showValue(p.value, p.grouped)}
           </Link>
           <h3>
             <Link to={`/p/${p.id}`}>{p.title}</Link>
@@ -235,13 +240,14 @@ function Index({ lang }: { lang: string }) {
                 <ol className="index">
                   {band.items.map((n: NumberEntry) => {
                     const rx = marker(n)
+                    const shown = showValue(n.value, n.grouped)
                     return (
                     <li className="ix" key={`${n.format}-${n.value}`}>
                       <Link
-                        className={`ix-num ${n.value.length > 7 ? 'long' : ''}`}
+                        className={`ix-num ${shown.length > 7 ? 'long' : ''}`}
                         to={numberPath(n.value)}
                       >
-                        {n.value}
+                        {shown}
                       </Link>
                       <div className="ix-titles">
                         {n.entries.map((e) => (

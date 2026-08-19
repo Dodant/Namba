@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS posts (
   author     TEXT NOT NULL DEFAULT 'anonymous',  -- whoever wrote it first; never overwritten
   edited_by  TEXT,                                 -- whoever touched it last, if anyone
   lang       TEXT,                                 -- what title/body are written in; free-form, like translations.lang
+  grouped    INTEGER NOT NULL DEFAULT 0,           -- show the value with thousands separators; display only, never in `value`
   likes      INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -97,4 +98,9 @@ def init():
         # its source, which is the wiki's job and not this file's.
         if "lang" not in have:
             con.execute("ALTER TABLE posts ADD COLUMN lang TEXT")
+        # 0 on every existing row: nothing gets separators it did not ask for
+        if "grouped" not in have:
+            con.execute(
+                "ALTER TABLE posts ADD COLUMN grouped INTEGER NOT NULL DEFAULT 0"
+            )
     con.close()

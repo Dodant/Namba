@@ -1,5 +1,5 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { api, FORMAT_LABEL, tagLabel, type Post } from '../api'
+import { api, FORMAT_LABEL, showValue, tagLabel, type Post } from '../api'
 import PostCard from '../components/PostCard'
 import { useAsync } from '../useAsync'
 
@@ -45,7 +45,11 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
     <>
       {mode === 'number' ? (
         <div className="hero">
-          <div className="num">{value}</div>
+          {/* same rule as the index row: this page is one number shared by
+              several entries, so separators need all of them to agree */}
+          <div className="num">
+            {showValue(value, !!posts.data?.length && posts.data.every((p) => p.grouped))}
+          </div>
           {/* stays even when empty: it is the flex spacer that keeps the add
               button on the right. At zero there is nothing to describe and no
               format to read it from, so the empty state below says the rest */}

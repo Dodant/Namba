@@ -527,6 +527,23 @@ h4.section {
   border-radius: var(--radius); background: var(--panel); font-size: 16px;
 }
 .field select { font-size: 15.5px; }
+/* sits under the number it describes rather than beside it, so the row of
+   Number and Format keeps its shape */
+/* label.check, not .check: it is a <label> inside .field, so it has to outrank
+   .field label and .num-field input or it inherits an uppercase 24px field */
+.field label.check {
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  cursor: pointer; text-transform: none; letter-spacing: 0;
+}
+.field label.check input[type="checkbox"] {
+  width: auto; margin: 0; padding: 0; border: 0; font-size: 11px;
+  accent-color: var(--accent); cursor: pointer;
+}
+/* the preview is the thing you get, so it is coloured like the numeral it
+   will become rather than like a hint */
+.field label.check .hint { color: var(--accent); }
+
 /* the one field with a hard border, because it is the entry's identity:
    every other field describes the number, this one is the number */
 .num-field input {

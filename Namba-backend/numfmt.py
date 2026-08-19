@@ -7,6 +7,23 @@ _TIME_AMPM = re.compile(r"^(\d{1,2}):(\d{2})\s*([AaPp])[Mm]$")
 _TIME_24 = re.compile(r"^(\d{1,2}):(\d{2})$")
 _INT = re.compile(r"^\d+$")
 _DEC = re.compile(r"^\d+\.\d+$")
+# 4+ digits, because "100" has no thousand to separate. The fraction is left
+# alone: 3.14159 groups nothing after the point.
+_GROUPABLE = re.compile(r"^(\d{4,})(\.\d+)?$")
+
+
+def grouped_value(value, grouped):
+    """The value as it should read on screen, given the poster's preference.
+
+    Display only. The stored value never carries separators -- "1000" and
+    "1,000" have to stay one number, or /n/1000 and /n/1%2C000 become two
+    pages and a number stops being a column. Anything that is not a plain
+    integer or decimal comes back untouched: there is no thousand in 10:04PM.
+    """
+    if not grouped:
+        return value
+    m = _GROUPABLE.match(value or "")
+    return f"{int(m.group(1)):,}{m.group(2) or ''}" if m else value
 
 
 def parse_number(s):

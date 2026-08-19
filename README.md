@@ -58,6 +58,12 @@ A number is a column on a post, not a table — `/n/42` is a query. Each carries
 | `TIME` | `10:04PM`, `09:41` | minutes past midnight |
 | `MIXED` | `11/22/63`, `80/20`, `9¾` | none — sorts by string |
 
+A number can also be written with thousands separators — a checkbox on the
+form, not a comma in the value. `1000` and `1,000` have to stay one number, so
+what is stored is always plain and the separators are put on when it is drawn.
+An index row carries several entries, so it only groups when all of them asked
+to; a single entry on its own gets what it asked for.
+
 `parse_number()` guesses, and the poster can overrule it in the form. It has to
 work that way: `11:11` is a clock, `1:29:300` is Heinrich's law, and nothing in
 the string says which.

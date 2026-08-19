@@ -22,7 +22,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 import db  # noqa: E402
 import main  # noqa: E402
-from numfmt import bucket_of, parse_number  # noqa: E402
+from numfmt import bucket_of, grouped_value, parse_number  # noqa: E402
 
 # The write limiter counts per IP, and the whole suite is one IP making a
 # hundred writes in a second. Lift it here rather than thin it out in main.py,
@@ -94,6 +94,58 @@ def test_share_card():
     assert c.get(f"/p/{p['id']}999").text.count("og:title") == 0, "unknown id got a card"
     # ".." off the wire must not walk out of dist
     assert c.get("/../test.db").status_code in (200, 404) and "sqlite" not in c.get("/../test.db").text.lower()
+
+
+def test_grouping():
+    """Separators are a way of writing the number, never part of it."""
+    assert grouped_value("1000", True) == "1,000"
+    assert grouped_value("1000", False) == "1000"
+    assert grouped_value("299792458", True) == "299,792,458"
+    assert grouped_value("100", True) == "100", "no thousand to separate"
+    assert grouped_value("1234.5678", True) == "1,234.5678", "only the whole part"
+    # nothing that is not a plain number is touched
+    for odd in ("10:04PM", "11/22/63", "9\u00be", "80/20"):
+        assert grouped_value(odd, True) == odd, odd
+
+    c = TestClient(main.app)
+    # the box strips what the poster typed, so 1,000 files with 1000 rather
+    # than becoming a MIXED string that sorts nowhere near it
+    typed = c.post("/api/posts", json={"value": "1,000", "title": "a grand",
+                                       "grouped": True}).json()
+    assert typed["value"] == "1000", typed["value"]
+    assert typed["format"] == "INTEGER" and typed["sort_key"] == 1000.0
+    assert typed["bucket"] == "1000"
+    # unchecked keeps the string verbatim, which is what it always did
+    assert c.post("/api/posts", json={"value": "1,000", "title": "verbatim"}
+                  ).json()["format"] == "MIXED"
+
+    def row(**params):
+        nums = c.get("/api/numbers", params={"format": "INTEGER", **params}).json()
+        return next(n for n in nums if n["value"] == "1000")
+
+    # one entry, and it asked for separators
+    assert row()["grouped"] is True
+
+    # a second entry that did not: the row falls back to the plain form, since
+    # that is the one nobody had to opt into
+    plain = c.post("/api/posts", json={"value": "1000", "title": "no commas"}).json()
+    assert row()["grouped"] is False
+
+    # and it comes back once the disagreement goes
+    c.delete(f"/api/posts/{plain['id']}")
+    assert row()["grouped"] is True
+
+    # the preference survives an edit that never mentions it, and a restore
+    c.patch(f"/api/posts/{typed['id']}", json={"title": "a grand, renamed"})
+    assert c.get(f"/api/posts/{typed['id']}").json()["grouped"] is True
+    c.patch(f"/api/posts/{typed['id']}", json={"grouped": False})
+    assert c.get(f"/api/posts/{typed['id']}").json()["grouped"] is False
+    rev = c.get(f"/api/posts/{typed['id']}/revisions").json()[0]
+    back = c.post(f"/api/posts/{typed['id']}/revisions/{rev['id']}/restore").json()
+    assert back["grouped"] is True
+
+    # and the share card reads the number the way the entry asks for it
+    assert "<title>1,000 — " in c.get(f"/p/{typed['id']}").text
 
 
 def test_bucket():

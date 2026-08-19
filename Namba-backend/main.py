@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 import db
-from numfmt import FORMATS, bucket_of, parse_number
+from numfmt import FORMATS, bucket_of, grouped_value, parse_number
 
 TAGS = (
     "MOVIE", "TV", "ANIME", "BOOK", "MUSIC", "GAME", "BRAND", "SPORTS",
@@ -87,6 +87,7 @@ class PostIn(BaseModel):
     author: str = Field(default="anonymous", max_length=40)
     tags: List[str] = Field(default_factory=list)
     lang: Optional[str] = Field(default=None, max_length=40)
+    grouped: bool = False
 
     @field_validator("lang")
     @classmethod
@@ -115,6 +116,7 @@ class PostPatch(BaseModel):
     author: str = Field(default="anonymous", max_length=40)
     tags: Optional[List[str]] = None
     lang: Optional[str] = Field(default=None, max_length=40)
+    grouped: Optional[bool] = None
 
     @field_validator("lang")
     @classmethod
@@ -172,6 +174,8 @@ def shape(rows, con):
     for p in posts:
         p["tags"] = []
         p["bucket"] = bucket_of(p["sort_key"], p["format"])
+        # sqlite has no bool; the wire and the client both want one
+        p["grouped"] = bool(p["grouped"])
     q = "SELECT post_id, tag FROM post_tags WHERE post_id IN (%s) ORDER BY tag" % (
         ",".join("?" * len(ids))
     )
@@ -204,6 +208,18 @@ def snapshot(con, post_id, author):
         "INSERT INTO revisions (post_id, snapshot, author, at) VALUES (?,?,?,?)",
         (post_id, json.dumps(post, ensure_ascii=False), author, now()),
     )
+
+
+def ungroup(value, grouped):
+    """The value as it goes into the database: never with separators in it.
+
+    Checking the box is the poster saying "this is a grouped number", which is
+    what licenses stripping the commas they may have typed -- 1,000 and 1000
+    have to be the same row. Left unchecked the string is kept verbatim, which
+    is what it has always done.
+    """
+    value = (value or "").strip()
+    return value.replace(",", "") if grouped else value
 
 
 def resolve_format(value, given):
@@ -279,6 +295,7 @@ def list_numbers(
     flag: the index should be readable without opening a post, not a copy of it.
     """
     sql = ["""SELECT p.id, p.value, p.format, p.sort_key, p.title, p.likes,
+                      p.grouped,
                       substr(p.body, 1, ?) AS body, p.image IS NOT NULL AS image
                FROM posts p"""]
     args = [BLURB + 1]
@@ -306,8 +323,13 @@ def list_numbers(
                 "format": r["format"],
                 "sort_key": r["sort_key"],
                 "bucket": bucket_of(r["sort_key"], r["format"]),
+                # One row, several entries, one way to write the number. If the
+                # people filing under it disagree about separators, the plain
+                # form wins -- it is the one nobody had to opt into.
+                "grouped": True,
                 "entries": [],
             })
+        out[-1]["grouped"] = out[-1]["grouped"] and bool(r["grouped"])
         shown = shown_in.get(r["id"]) or r
         body = shown["body"]
         out[-1]["entries"].append({
@@ -433,15 +455,16 @@ def _write_translations(con, post_id, rows):
 
 @app.post("/api/posts", status_code=201)
 def create_post(p: PostIn, _=Depends(rate_limit), con=Depends(get_db)):
-    fmt, key = resolve_format(p.value.strip(), p.format)
+    value = ungroup(p.value, p.grouped)
+    fmt, key = resolve_format(value, p.format)
     ts = now()
     with con:
         cur = con.execute(
             """INSERT INTO posts (value, format, sort_key, title, body, image, author,
-                                  lang, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
-            (p.value.strip(), fmt, key, p.title.strip(), p.body, p.image,
-             p.author.strip() or "anonymous", p.lang, ts, ts),
+                                  lang, grouped, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+            (value, fmt, key, p.title.strip(), p.body, p.image,
+             p.author.strip() or "anonymous", p.lang, int(p.grouped), ts, ts),
         )
         _write_tags(con, cur.lastrowid, p.tags)
         post_id = cur.lastrowid
@@ -457,7 +480,10 @@ def edit_post(post_id: int, p: PostPatch, _=Depends(rate_limit), con=Depends(get
     sent = p.model_dump(exclude_unset=True)
     with con:
         snapshot(con, post_id, p.author.strip() or "anonymous")
-        value = p.value.strip() if p.value is not None else current["value"]
+        # the box has to be settled before the value is, since it decides
+        # whether separators in what was typed are stripped or kept
+        grouped = p.grouped if "grouped" in sent else bool(current["grouped"])
+        value = ungroup(p.value, grouped) if p.value is not None else current["value"]
         if p.format:
             fmt, key = resolve_format(value, p.format)
         elif p.value is not None:
@@ -468,13 +494,15 @@ def edit_post(post_id: int, p: PostPatch, _=Depends(rate_limit), con=Depends(get
         # by a stranger must not erase who the entry came from.
         con.execute(
             """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
-                                image=?, lang=?, edited_by=?, updated_at=? WHERE id=?""",
+                                image=?, lang=?, grouped=?, edited_by=?,
+                                updated_at=? WHERE id=?""",
             (
                 value, fmt, key,
                 p.title.strip() if p.title is not None else current["title"],
                 p.body if p.body is not None else current["body"],
                 p.image if "image" in sent else current["image"],
                 p.lang if "lang" in sent else current["lang"],
+                int(grouped),
                 p.author.strip() or "anonymous",
                 now(), post_id,
             ),
@@ -509,9 +537,11 @@ def restore_revision(
             snapshot(con, post_id, who)  # restoring is itself undoable
             con.execute(
                 """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
-                                    image=?, lang=?, edited_by=?, updated_at=? WHERE id=?""",
+                                    image=?, lang=?, grouped=?, edited_by=?,
+                                    updated_at=? WHERE id=?""",
                 (old["value"], old["format"], old["sort_key"], old["title"], old["body"],
-                 old["image"], old.get("lang"), who, now(), post_id),
+                 old["image"], old.get("lang"), int(old.get("grouped") or 0),
+                 who, now(), post_id),
             )
         else:
             # The post was deleted. Snapshots outliving the post is the entire
@@ -521,10 +551,12 @@ def restore_revision(
             # first: the delete already took one.
             con.execute(
                 """INSERT INTO posts (id, value, format, sort_key, title, body, image,
-                                      lang, author, edited_by, likes, created_at, updated_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                                      lang, grouped, author, edited_by, likes,
+                                      created_at, updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (post_id, old["value"], old["format"], old["sort_key"], old["title"],
-                 old["body"], old["image"], old.get("lang"), old["author"], who,
+                 old["body"], old["image"], old.get("lang"),
+                 int(old.get("grouped") or 0), old["author"], who,
                  old.get("likes", 0), old["created_at"], now()),
             )
         _write_tags(con, post_id, old.get("tags", []))
@@ -675,8 +707,9 @@ def og_head(page: str, post: dict, base: str) -> str:
     <head> has to arrive already written -- which is the whole reason the API
     serves the front end at all.
     """
-    title = f"{post['value']} — {post['title']} · Namba"
-    desc = og_summary(post["body"]) or f"What {post['value']} means, on Namba."
+    value = grouped_value(post["value"], post["grouped"])
+    title = f"{value} — {post['title']} · Namba"
+    desc = og_summary(post["body"]) or f"What {value} means, on Namba."
     img = f"{base}{post['image'].lstrip('/')}" if post["image"] else None
     tags = [
         ("og:type", "article"),

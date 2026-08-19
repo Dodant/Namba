@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import {
-  api, fmtDate, nickname, numberPath, originalLabel, plain, tagLabel,
+  api, fmtDate, nickname, numberPath, originalLabel, plain, showValue, tagLabel,
   type Revision,
 } from '../api'
 import { Like } from '../components/PostCard'
@@ -99,7 +99,7 @@ export default function PostPage() {
 
         <div className="hero">
           <Link className="num" to={numberPath(post.value)}>
-            {post.value}
+            {showValue(post.value, post.grouped)}
           </Link>
           <h1>{shown.title}</h1>
         </div>
@@ -172,7 +172,7 @@ export default function PostPage() {
           post.related.map((r) => (
             <div className="rel" key={r.id}>
               <Link className="rel-num" to={numberPath(r.value)}>
-                {r.value}
+                {showValue(r.value, r.grouped)}
               </Link>
               <div className="rel-main">
                 <Link className="rel-t" to={`/p/${r.id}`}>
