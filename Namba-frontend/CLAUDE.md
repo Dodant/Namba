@@ -67,13 +67,18 @@ An entry with no translation in that language keeps its own title. Nothing
 marks the difference in a list, so a mixed-language index is expected.
 
 The form's two language fields — `Written in` and the one in the Languages
-panel — share one `<datalist id="langs">`, and they stay `<input>`s: naming a
-language the wiki has not seen is how every one of them got here. The options
-are `api.languages()` plus this browser's own languages as endonyms
-(`Intl.DisplayNames`), which is what someone writing in their language was
-about to type. Do not replace it with a list of world languages — that is the
-enum `list_languages` refuses to be, and it would offer "Japanese" to a wiki
-that says "日本語".
+panel — are `<select>`s over `LANGS` in `PostForm.tsx`, and typing is not an
+option. Free text gets one language written three ways ("Korean", "한국어",
+"korean"), which reads as three languages and filters as three. Unlike a tag,
+nobody is coining a language, so a list is not a claim about what people may
+mean. They are endonyms — the name a language calls itself is the one a reader
+of it recognises.
+
+`LANGS` is **not** mirrored anywhere: the backend still takes any 40-character
+string, and `/api/languages` still reports what the wiki actually says rather
+than this list. Adding a language is one line here and no migration. Taking one
+out is safe too — `langsWith()` keeps an entry's existing language on the menu
+so the form cannot drop it on the next save.
 
 The Format select reshapes the Number field beside it: Integer and Decimal
 filter what can be typed and offer the separator checkbox, Mixed and Time are

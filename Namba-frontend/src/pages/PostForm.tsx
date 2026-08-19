@@ -40,31 +40,25 @@ function toggleTag(tags: Tag[], raw: Tag, keep = false) {
   return tags.length >= TAGS_PER_POST ? tags : [...tags, t]
 }
 
-/* Suggestions, not a menu: the field stays free text. Every language on this
-   wiki got here by someone typing one it had not seen before, and a fixed list
-   of world languages would be a claim about which ones count -- it would also
-   offer "Japanese" to a wiki that says "日本語". So what is on offer is what
-   the wiki already says, plus what this browser is set to, which is what
-   someone writing in their own language was about to type anyway. */
-function endonym(tag: string) {
-  const code = tag.split('-')[0]
-  try {
-    return new Intl.DisplayNames([code], { type: 'language' }).of(code) ?? code
-  } catch {
-    return code // a locale Intl has never heard of is not worth a broken form
-  }
-}
+/* A menu, not a text box. Typed freely, one language arrives as "Korean",
+   "한국어" and "korean", which reads as three languages and filters as three
+   -- and unlike a tag, nobody is coining a language, they are naming one that
+   already exists. So it is picked here and nowhere else.
 
-function langOptions(known: string[]) {
-  const out = [...known]
-  const seen = new Set(known.map((l) => l.toLowerCase()))
-  for (const name of navigator.languages.map(endonym))
-    if (!seen.has(name.toLowerCase())) {
-      seen.add(name.toLowerCase())
-      out.push(name)
-    }
-  return out
-}
+   Endonyms, because the name a language calls itself is the one a reader of
+   it recognises: 한국어, not Korean. Not every language in the world, just
+   the ones this wiki is plausibly written in -- adding one is a line here.
+   English first because the wiki is English-first, then by rough reach. */
+const LANGS = [
+  'English', '한국어', '日本語', '中文', 'Español', 'Français', 'Deutsch',
+  'Português', 'Русский', 'Italiano', 'Nederlands', 'Polski', 'Türkçe',
+  'Tiếng Việt', 'ไทย', 'Bahasa Indonesia', 'हिन्दी', 'العربية',
+]
+
+/* An entry written before this list, or before a line was taken out of it,
+   keeps what it has: a form that loaded a language it cannot show would drop
+   it on the next save, and the entry never asked to be edited that way. */
+const langsWith = (cur: string) => (!cur || LANGS.includes(cur) ? LANGS : [cur, ...LANGS])
 
 export default function PostForm() {
   const { id } = useParams()
@@ -85,7 +79,6 @@ export default function PostForm() {
      the form cannot grow without bound as people coin more, and unioned with
      what this entry already carries so a rare tag never falls off the end. */
   const vocab = useAsync(() => api.tags(), [])
-  const langs = useAsync(() => api.languages(), [])
   const [author, setAuthor] = useState(nickname.get())
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
@@ -280,23 +273,21 @@ export default function PostForm() {
       {/* "Written in", not "Language" -- the Languages panel below lists the
           same entry written again, and two adjacent fields a plural apart
           read as the same control twice */}
-      <div className="field" style={{ maxWidth: 340 }}>
+      <div className="field" style={{ maxWidth: 220 }}>
         <label>
           Written in
           <span className="hint">optional</span>
         </label>
-        <input
-          list="langs"
-          maxLength={40}
-          value={lang}
-          onChange={(e) => setLang(e.target.value)}
-          placeholder="한국어 · English · 日本語"
-        />
-        <datalist id="langs">
-          {langOptions((langs.data ?? []).map((l) => l.lang)).map((l) => (
-            <option key={l} value={l} />
-          ))}
-        </datalist>
+        <div className="select">
+          <select value={lang} onChange={(e) => setLang(e.target.value)}>
+            <option value="">Not set</option>
+            {langsWith(lang).map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {post && (
@@ -582,17 +573,20 @@ function TranslationEditor({
     <div className="panel panel-edit">
       <div className="field">
         <label>
-          Language<span className="hint">whatever people call it — 한국어, Japanese, Español</span>
+          Language<span className="hint">the one this version is written in</span>
         </label>
-        {/* the language names the tab, so renaming it would orphan the old one;
+        {/* the language names the tab, so changing it would orphan the old one;
             rewrite the text here and add a new tab for a different language */}
-        <input
-          list="langs"
-          value={lang}
-          disabled={!!editing}
-          onChange={(e) => setLang(e.target.value)}
-          maxLength={40}
-        />
+        <div className="select">
+          <select value={lang} disabled={!!editing} onChange={(e) => setLang(e.target.value)}>
+            <option value="">Pick one…</option>
+            {langsWith(lang).map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
       <div className="field">
         <label>
