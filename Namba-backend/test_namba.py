@@ -475,6 +475,23 @@ def test_api_round_trip():
     assert tags["movie"] == 1 and "anime" not in tags, tags
 
 
+def test_likes_are_rate_limited():
+    """Every write is limited; like and unlike were the two that were not, so a
+    curl loop could farm a count and hammer the database for free. Lowered here
+    rather than exercising 20 writes, and put back for the rest of the suite."""
+    c = TestClient(main.app)
+    a = c.post("/api/posts", json={"value": "7", "title": "Lucky"}).json()
+    main._writes.clear()
+    main.WRITE_LIMIT = 2
+    try:
+        assert c.post(f"/api/posts/{a['id']}/like").status_code == 200
+        assert c.delete(f"/api/posts/{a['id']}/like").status_code == 200
+        assert c.post(f"/api/posts/{a['id']}/like").status_code == 429
+    finally:
+        main.WRITE_LIMIT = 10_000
+        main._writes.clear()
+
+
 def test_connection_crosses_threads():
     """FastAPI opens the connection on one threadpool thread and runs the
     endpoint on another. TestClient funnels everything through a single portal

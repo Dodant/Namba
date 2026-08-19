@@ -674,16 +674,17 @@ def delete_post(post_id: int, _=Depends(rate_limit), con=Depends(get_db)):
 
 
 @app.post("/api/posts/{post_id}/like")
-def like(post_id: int, con=Depends(get_db)):
-    # ponytail: the client's localStorage prevents double-counting. If someone
-    # bothers to farm likes, add an ip-hash table.
+def like(post_id: int, _=Depends(rate_limit), con=Depends(get_db)):
+    # ponytail: the client's localStorage stops a reader double-counting by
+    # accident, and the limiter above caps what a loop can do on purpose. An
+    # ip-hash table is the next step if a count still looks farmed.
     with con:
         con.execute("UPDATE posts SET likes = likes + 1 WHERE id = ?", (post_id,))
     return {"likes": fetch_one(con, post_id)["likes"]}
 
 
 @app.delete("/api/posts/{post_id}/like")
-def unlike(post_id: int, con=Depends(get_db)):
+def unlike(post_id: int, _=Depends(rate_limit), con=Depends(get_db)):
     with con:
         con.execute(
             "UPDATE posts SET likes = MAX(likes - 1, 0) WHERE id = ?", (post_id,)
