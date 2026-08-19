@@ -70,10 +70,29 @@ a { color: inherit; text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 /* ink, not accent: the ring has to stay visible against the accent buttons
-   too, and the offset puts it on the page rather than on the control */
-:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 3px; }
+   too, and the offset puts it on the page rather than on the control.
+
+   No border-radius here. It used to set 3px, which is not a property of the
+   ring -- it is the property of the control, and setting it in this rule
+   squared off every capsule the moment it took the focus. An outline already
+   follows the radius the element has, so the pills ring as pills and a bare
+   text link rings as a rectangle, which is what each of them is. */
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
 button, input, select, textarea { font: inherit; color: inherit; }
+
+/* Every hover state in here was a jump cut: the greens and the terracotta
+   arrived in one frame, which reads as a repaint rather than as a response.
+   Colour and opacity only, and nothing moves -- no transform, no size, so a
+   list of forty rows under a travelling pointer does not ripple. :where()
+   keeps the specificity at zero, so every rule below still wins outright. */
+:where(a, button, summary, input, select, textarea, .btn, .chip, .pill, .tag) {
+  transition: color 0.12s ease, background-color 0.12s ease,
+              border-color 0.12s ease, opacity 0.12s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
+}
 
 .wrap { max-width: 1160px; margin: 0 auto; padding: 0 34px 80px; }
 
