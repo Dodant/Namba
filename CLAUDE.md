@@ -44,6 +44,12 @@ frontend-only addition fails loudly rather than silently.
   asserts it.
 - **A number is a column, not a table.** `/n/42` is a query on `posts.value`.
   Adding a `numbers` table would buy nothing.
+- **A link in an entry stays a link.** No unfurling, no fetched thumbnails.
+  Rendering a card means the server fetching a URL a stranger typed, and with
+  no accounts there is nobody to rate-limit or ban — `http://169.254.169.254/`
+  in a post is an SSRF with a preview attached. Adding it needs a DNS-resolved
+  private-IP block that survives redirects, a size cap, a timeout and a cache,
+  and that guard work is larger than the feature. Decided against, not missed.
 - **The seed reports, it does not correct.** `seed.py` prints Korean titles and
   the `801.11` typo instead of translating or fixing them. Correcting source data
   is the wiki's job. Do not add cleanup passes to the importer.
