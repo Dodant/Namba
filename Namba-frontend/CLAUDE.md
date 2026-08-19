@@ -28,6 +28,13 @@ sanitiser config to get wrong.
 - Styling is `src/index.css` alone: CSS custom properties on `:root`, dark mode
   via `prefers-color-scheme`. Numerals use `--mono` with `tabular-nums` — that
   alignment is the whole visual identity, keep it.
+- `--muted`, `--faint` and `--fainter` are set by their contrast against
+  `--bg` — 5.6, 5.1 and 4.6 to 1 — not by eye, in both themes. They carry the
+  field hints, placeholders and byline rows, which is most of the instruction
+  on the page, and they were at 3.4, 2.6 and 2.2 in the light theme until it
+  was measured. They will look too dark next to a mockup that never had to be
+  read at 10px; that is the trade, and lightening one is a regression, not a
+  polish. Four legible greys under `--ink-soft` is a narrow band on purpose.
 - Every control the reader types in or presses is a capsule —
   `border-radius: 999px` — buttons, chips, selects and inputs alike. The
   textarea is the one exception: at 104px tall a 999px radius is a half-circle
@@ -64,6 +71,18 @@ sanitiser config to get wrong.
 - `useAsync.ts` carries a file-level `oxlint-disable react-hooks/exhaustive-deps`
   because the hook forwards its caller's deps array, which the rule cannot verify
   statically. That is the one suppression in the codebase; do not add more.
+- `useAsync`'s third argument, `keep`, holds the last answer on screen while
+  the next loads. Only `Index` and `Feed` pass it: their deps re-filter one
+  list. Do not pass it from a page whose deps name a *subject* — `Browse` and
+  `PostPage` would then draw the previous number's entries under this one's
+  heading. A caller that opts in must label its rows off the rows and never
+  off the deps (`shownFormat` in `Home`), because mid-load the two disagree.
+- `ScrollTop` in `App` is what puts the reader at the top of a new page, on
+  path *and* search, since every param here swaps one list for another. It is
+  not decoration: before it, the only thing resetting the scroll was the lists
+  blanking out on load, and the two changes had to land together. `POP` is
+  exempt — Back is the reader's own position, and restoring it properly would
+  mean storing an offset per history entry.
 - `PostCard.tsx` must export only components (fast refresh). Shared helpers like
   `fmtDate` and `numberPath` live in `api.ts`.
 - Markdown renders on `/p/:id` only. Every list shows `plain(body)` — the source
