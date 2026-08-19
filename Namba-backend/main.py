@@ -213,6 +213,41 @@ def resolve_format(value, given):
 
 
 # --- read ---------------------------------------------------------------
+def _in_lang(con, lang, ids=None):
+    """post_id -> that entry's title and body in `lang`, for the entries that
+    have one. A post missing from this map is shown as it was written, which is
+    the whole fallback: a reader asks for Korean and gets Korean where someone
+    wrote it and the original everywhere else.
+
+    translations.lang is COLLATE NOCASE, so "Korean" finds "korean" -- the same
+    folding that keeps them from becoming two tabs.
+    """
+    if not lang or ids == []:
+        return {}
+    sql = "SELECT post_id, title, body FROM translations WHERE lang = ?"
+    args = [lang]
+    if ids is not None:
+        sql += " AND post_id IN (%s)" % ",".join("?" * len(ids))
+        args += ids
+    return {r["post_id"]: r for r in con.execute(sql, args)}
+
+
+@app.get("/api/languages")
+def list_languages(con=Depends(get_db)):
+    """Which languages the wiki can be read in, most-translated first. Derived
+    from the translations themselves rather than a fixed list: the labels are
+    free-form, so an enum here would offer "Japanese" to a wiki that says
+    "日本語". Entries' own languages are not included -- picking one would
+    show them exactly as Original already does."""
+    return [
+        {"lang": r["lang"], "count": r["count"]}
+        for r in con.execute(
+            """SELECT lang, COUNT(*) AS count FROM translations
+               GROUP BY lang COLLATE NOCASE ORDER BY count DESC, lang"""
+        )
+    ]
+
+
 @app.get("/api/tags")
 def list_tags(con=Depends(get_db)):
     rows = con.execute(
@@ -224,7 +259,10 @@ def list_tags(con=Depends(get_db)):
 
 @app.get("/api/numbers")
 def list_numbers(
-    format: Optional[str] = None, tag: Optional[str] = None, con=Depends(get_db)
+    format: Optional[str] = None,
+    tag: Optional[str] = None,
+    lang: Optional[str] = None,
+    con=Depends(get_db),
 ):
     """The home index: one row per number, carrying the entries filed under it.
 
@@ -245,17 +283,12 @@ def list_numbers(
         args.append(format.upper())
     sql.append("ORDER BY p.sort_key IS NULL, p.sort_key, p.value, p.id")
 
-    # The site is written in English, so the index shows the English version
-    # when someone has added one -- 20 seeded entries are titled in Korean and
-    # were unreadable here. One flat lookup rather than a join per row; the
-    # whole table is small and the join would need de-duplicating anyway.
-    english = {
-        r["post_id"]: r
-        for r in con.execute(
-            """SELECT post_id, title, body FROM translations
-               WHERE lower(lang) IN ('english', 'en') ORDER BY id DESC"""
-        )
-    }
+    # Which language to read the index in is the reader's, not this endpoint's:
+    # it used to hardcode English because 20 seeded entries are titled in Korean
+    # and were unreadable to whoever wrote that. One flat lookup rather than a
+    # join per row; the whole table is small and the join would need
+    # de-duplicating anyway.
+    shown_in = _in_lang(con, lang)
 
     out = []
     for r in con.execute("\n".join(sql), args):
@@ -268,7 +301,7 @@ def list_numbers(
                 "bucket": bucket_of(r["sort_key"], r["format"]),
                 "entries": [],
             })
-        shown = english.get(r["id"]) or r
+        shown = shown_in.get(r["id"]) or r
         body = shown["body"]
         out[-1]["entries"].append({
             "id": r["id"],
@@ -286,6 +319,7 @@ def list_posts(
     tag: Optional[str] = None,
     format: Optional[str] = None,
     q: Optional[str] = None,
+    lang: Optional[str] = None,
     sort: str = "number",
     limit: int = Query(default=200, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
@@ -328,7 +362,15 @@ def list_posts(
     sql.append("ORDER BY " + order)
     sql.append("LIMIT ? OFFSET ?")
     args += [limit, offset]
-    return shape(con.execute("\n".join(sql), args).fetchall(), con)
+    posts = shape(con.execute("\n".join(sql), args).fetchall(), con)
+    # Lists read in the reader's language; the single-post view does not, because
+    # it has a tab strip and switching there is the reader's own move.
+    shown_in = _in_lang(con, lang, [p["id"] for p in posts])
+    for post in posts:
+        tr = shown_in.get(post["id"])
+        if tr:
+            post["title"], post["body"] = tr["title"], tr["body"]
+    return posts
 
 
 @app.get("/api/posts/{post_id}")

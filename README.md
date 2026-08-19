@@ -97,6 +97,15 @@ field, and then the tab reads "Original (한국어)" rather than leaving the rea
 to work it out from the title. It is optional and blank on everything written
 before the field existed; nothing guesses on an entry's behalf.
 
+A picker in the header sets which language the **lists** are read in — the
+index, the feed, a number, a tag, a search. An entry that has been written in
+that language shows that version; an entry that has not keeps its own title and
+body, so a wiki nobody has finished translating still reads as a wiki rather
+than as a page of gaps. The options come from the translations that exist, not
+a fixed list, and the setting lives in `localStorage` like the nickname. Entry
+pages ignore it: they have a tab strip, and switching there is the reader's own
+move.
+
 Translations follow the same rules as everything else: anyone can add, rewrite
 or remove one, the first translator keeps the byline, and the change is
 snapshotted into the entry's history first, so a removed translation is one

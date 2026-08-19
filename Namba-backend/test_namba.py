@@ -196,6 +196,26 @@ def test_api_round_trip():
     assert c.post(f"/api/posts/{ko['id']}/revisions/{rev['id']}/restore",
                   json={"author": "arthur"}).json()["lang"] == "한국어"
 
+    # a list reads in the language the reader asked for, and falls back to the
+    # entry as written wherever nobody has written that language yet
+    assert c.get("/api/languages").json() == [{"lang": "Korean", "count": 1}]
+    ko = c.get("/api/posts", params={"value": "42", "lang": "korean"}).json()
+    by_id = {p["id"]: p["title"] for p in ko}
+    assert by_id[tid] == "재키 로빈슨 (야구)", "the Korean translation was not used"
+    assert by_id[a["id"]] == a["title"], "an untranslated entry lost its original"
+    # an empty page still has to build valid SQL -- "post_id IN ()" is a syntax
+    # error, so the id filter has to notice it has nothing to filter on
+    assert c.get("/api/posts", params={"q": "zznothing", "lang": "Korean"}).json() == []
+
+    # no language asked for is no substitution, not a default one
+    plain = {p["id"]: p["title"] for p in c.get("/api/posts",
+                                                params={"value": "42"}).json()}
+    assert plain[tid] == "Jackie Robinson", plain[tid]
+    # and the index goes through the same lookup
+    nums = c.get("/api/numbers", params={"format": "INTEGER", "lang": "Korean"}).json()
+    titles = [e["title"] for x in nums if x["value"] == "42" for e in x["entries"]]
+    assert "재키 로빈슨 (야구)" in titles, titles
+
     # a removed translation is recoverable, same as any other edit
     gone = c.delete(f"/api/posts/{tid}/translations/{same['translations'][0]['id']}",
                     params={"author": "zaphod"}).json()
@@ -216,14 +236,25 @@ def test_api_round_trip():
     assert [p["id"] for p in c.get("/api/posts", params={"q": "Dodgers"}).json()] == [tid]
     assert len(c.get("/api/posts", params={"q": "Jackie"}).json()) == 1, "matched twice"
 
-    # and the English version is what the index shows
-    entry = next(
-        e for n in c.get("/api/numbers", params={"format": "INTEGER"}).json()
-        if n["value"] == "42" for e in n["entries"] if e["id"] == tid
-    )
+    # and the English version is what the index shows a reader who asked for
+    # English. That used to be hardcoded here; it is the reader's setting now,
+    # and the front end still defaults it to English so this is what most see.
+    def index_entry(**params):
+        return next(
+            e for n in c.get("/api/numbers", params={"format": "INTEGER", **params}).json()
+            if n["value"] == "42" for e in n["entries"] if e["id"] == tid
+        )
+
+    entry = index_entry(lang="English")
     assert entry["title"] == "Jackie Robinson, number 42"
     assert entry["body"] == "Brooklyn Dodgers"
     assert entry["likes"] == 0, "the count is the post's, not the translation's"
+
+    # asking for nothing substitutes nothing -- the endpoint carries no policy
+    # about which language a reader wants
+    assert index_entry()["title"] == "Jackie Robinson"
+    # nor does a language nobody has written this entry in
+    assert index_entry(lang="Volapük")["title"] == "Jackie Robinson"
 
     # a stranger may edit, and doing so must not erase who wrote it
     edited = c.patch(f"/api/posts/{a['id']}",

@@ -1,8 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   BrowserRouter, Link, Route, Routes, useLocation, useNavigate, useSearchParams,
 } from 'react-router-dom'
-import { api } from './api'
+import { api, displayLang } from './api'
 import Home from './pages/Home'
 import Browse from './pages/Browse'
 import PostPage from './pages/PostPage'
@@ -38,10 +38,11 @@ function Random() {
   return <p className="empty">Loading…</p>
 }
 
-function Header() {
+function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void }) {
   const nav = useNavigate()
   const [params] = useSearchParams()
   const { pathname } = useLocation()
+  const langs = useAsync(() => api.languages(), [])
   /* the toggle is a link, not state: the view survives a refresh and can be
      sent to someone. Pressing it while it is on goes back to the index. */
   const feed = pathname === '/' && params.get('view') === 'feed'
@@ -74,6 +75,29 @@ function Header() {
             defaultValue={params.get('q') ?? ''}
           />
         </form>
+        {/* the options come from the wiki, not a list in here: the labels are
+            free-form, so a fixed one would offer "Japanese" to a wiki that
+            says "日本語". The count is how much of it you will actually read
+            in that language -- everything else falls back to as-written. */}
+        <div className="select lang-pick">
+          <select
+            value={lang}
+            aria-label="Show lists in"
+            onChange={(e) => onLang(e.target.value)}
+          >
+            <option value="">Original</option>
+            {(langs.data ?? []).map((l) => (
+              <option key={l.lang} value={l.lang}>
+                {l.lang} · {l.count}
+              </option>
+            ))}
+            {/* the stored choice may be a language nobody has written yet --
+                keep it selectable rather than showing an empty box */}
+            {lang && !(langs.data ?? []).some((l) => l.lang === lang) && (
+              <option value={lang}>{lang} · 0</option>
+            )}
+          </select>
+        </div>
         <Link className={`btn ${feed ? 'on' : ''}`} to={feed ? '/' : '/?view=feed'}>
           Feed
         </Link>
@@ -89,15 +113,26 @@ function Header() {
 }
 
 export default function App() {
+  /* Held here and handed down rather than read from localStorage in each page:
+     the pages have to refetch when it changes, and only a value they render
+     with does that. Four props is less machinery than a context for one
+     string. */
+  const [lang, setLang] = useState(displayLang.get)
+
+  function pickLang(v: string) {
+    displayLang.set(v)
+    setLang(v)
+  }
+
   return (
     <BrowserRouter>
       <div className="wrap">
-        <Header />
+        <Header lang={lang} onLang={pickLang} />
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/n/:value" element={<Browse mode="number" />} />
-          <Route path="/t/:tag" element={<Browse mode="tag" />} />
-          <Route path="/search" element={<Browse mode="search" />} />
+          <Route path="/" element={<Home lang={lang} />} />
+          <Route path="/n/:value" element={<Browse mode="number" lang={lang} />} />
+          <Route path="/t/:tag" element={<Browse mode="tag" lang={lang} />} />
+          <Route path="/search" element={<Browse mode="search" lang={lang} />} />
           <Route path="/random" element={<Random />} />
           <Route path="/p/:id" element={<PostPage />} />
           <Route path="/p/:id/edit" element={<PostForm />} />

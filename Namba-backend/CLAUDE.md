@@ -40,6 +40,14 @@ Env overrides: `NAMBA_DB`, `NAMBA_UPLOADS` (the tests use both to stay hermetic)
   rule as `translations.lang` — no enum, no third list to keep in step. Every
   row written before the column has `NULL` and keeps it: backfilling the
   Korean-titled seed entries would be the importer correcting its source.
+- **Which language a list reads in is the caller's, not the endpoint's.**
+  `/api/numbers` used to hardcode English; both list endpoints now take `lang`
+  and run it through `_in_lang()`, and no `lang` substitutes nothing. A post
+  with no translation in that language keeps its own title and body — that
+  fallback is the feature, not a gap. `fetch_one` deliberately does **not**
+  translate: the single-post view has a tab strip, and switching there is the
+  reader's own move. The front end defaults the setting to English, which is
+  where that old policy went.
 - **`/api/numbers` is an ordered scan grouped in Python, not a `GROUP BY`.** The
   home list needs each number's entry titles, so aggregating and then re-querying
   for them would be two passes to build one thing. It returns `entries`, not a

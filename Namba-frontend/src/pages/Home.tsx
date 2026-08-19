@@ -96,20 +96,20 @@ function mark(text: string, rx: RegExp) {
 /* Two ways to read the same wiki: down the numbers, or along the dates. They
    share nothing but the header, so they are two components rather than one
    with a branch in the middle of its hooks. */
-export default function Home() {
+export default function Home({ lang }: { lang: string }) {
   const [params] = useSearchParams()
-  return params.get('view') === 'feed' ? <Feed /> : <Index />
+  return params.get('view') === 'feed' ? <Feed lang={lang} /> : <Index lang={lang} />
 }
 
 /* the numeral carries the row, so it is set by how much room the value needs
    rather than at one size that either shouts at "7" or breaks at "299792458" */
 const feedSize = (v: string) => (v.length > 7 ? 'long' : v.length > 4 ? 'mid' : '')
 
-function Feed() {
+function Feed({ lang }: { lang: string }) {
   /* sort=new is already on GET /api/posts (created_at DESC) -- no backend
      change, and no client-side sort over a bounded page that would only be
      right until the twenty-first entry */
-  const posts = useAsync(() => api.posts({ sort: 'new', limit: 20 }), [])
+  const posts = useAsync(() => api.posts({ sort: 'new', limit: 20, lang }), [lang])
 
   return (
     <>
@@ -159,13 +159,13 @@ function Feed() {
   )
 }
 
-function Index() {
+function Index({ lang }: { lang: string }) {
   const [params, setParams] = useSearchParams()
   const format = (params.get('format') ?? 'INTEGER') as Format
   const tag = params.get('tag') ?? ''
 
   const tags = useAsync(() => api.tags(), [])
-  const numbers = useAsync(() => api.numbers({ format, tag }), [format, tag])
+  const numbers = useAsync(() => api.numbers({ format, tag, lang }), [format, tag, lang])
 
   function setParam(key: string, value: string) {
     const next = new URLSearchParams(params)

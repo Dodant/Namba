@@ -127,7 +127,9 @@ const json = (method: string, body: unknown): RequestInit => ({
 export const api = {
   tags: () => req<{ tag: Tag; count: number }[]>('/api/tags'),
 
-  numbers: (p: { format?: string; tag?: string } = {}) =>
+  languages: () => req<{ lang: string; count: number }[]>('/api/languages'),
+
+  numbers: (p: { format?: string; tag?: string; lang?: string } = {}) =>
     req<NumberEntry[]>(`/api/numbers${qs(p)}`),
 
   posts: (p: Params = {}) => req<Post[]>(`/api/posts${qs(p)}`),
@@ -175,6 +177,16 @@ export const api = {
 export const nickname = {
   get: () => localStorage.getItem('namba.nick') ?? '',
   set: (v: string) => localStorage.setItem('namba.nick', v),
+}
+
+/** Which language the reader wants lists in. '' is "as written". Defaults to
+    English rather than '': the index used to substitute English server-side
+    because the seeded Korean titles were unreadable to an English reader, and
+    that stays true -- it is just answerable now. */
+const LANG = 'namba.lang'
+export const displayLang = {
+  get: () => localStorage.getItem(LANG) ?? 'English',
+  set: (v: string) => localStorage.setItem(LANG, v),
 }
 
 const LIKED = 'namba.liked'

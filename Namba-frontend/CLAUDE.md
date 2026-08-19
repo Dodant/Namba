@@ -38,6 +38,18 @@ only when a few lines genuinely will not do.
 - `PostCard.tsx` must export only components (fast refresh). Shared helpers like
   `fmtDate` and `numberPath` live in `api.ts`.
 
+## The reader's language
+
+`displayLang` in `api.ts` (`localStorage`, defaults to `English`) is which
+language lists render in. `App` holds it in state and hands it to `Home` and
+`Browse` as a prop, which is the point: a page only refetches when a value it
+renders with changes, and a page reading `localStorage` itself would not notice
+the header. It is not a search param — it is a standing preference, and every
+internal `Link` would have to carry it or drop it.
+
+An entry with no translation in that language keeps its own title. Nothing
+marks the difference in a list, so a mixed-language index is expected.
+
 ## Number values are not URL-safe
 
 `11/22/63`, `9¾`, `80/20` are all valid values. Always build number links with

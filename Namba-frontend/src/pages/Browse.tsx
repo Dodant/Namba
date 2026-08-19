@@ -21,7 +21,7 @@ function kicker(p: Post) {
 }
 
 /** One list of posts, three ways in: a number, a tag, or a search. */
-export default function Browse({ mode }: { mode: Mode }) {
+export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
   const { value = '', tag = '' } = useParams()
   const [params] = useSearchParams()
   const q = params.get('q') ?? ''
@@ -30,12 +30,12 @@ export default function Browse({ mode }: { mode: Mode }) {
     () =>
       api.posts(
         mode === 'number'
-          ? { value, sort: 'number' }
+          ? { value, sort: 'number', lang }
           : mode === 'tag'
-            ? { tag, sort: 'number' }
-            : { q, sort: 'number' },
+            ? { tag, sort: 'number', lang }
+            : { q, sort: 'number', lang },
       ),
-    [mode, value, tag, q],
+    [mode, value, tag, q, lang],
   )
 
   const n = posts.data?.length ?? 0
