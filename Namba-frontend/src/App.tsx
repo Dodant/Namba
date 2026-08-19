@@ -68,9 +68,6 @@ function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void })
         </span>
         <span className="logo-sub">An open wiki of numbers</span>
       </Link>
-      <div className="tagline">
-        Every number means something to someone. Add what it means to you.
-      </div>
       <div className="acts">
         <form
           className="search"

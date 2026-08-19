@@ -71,8 +71,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .wrap { max-width: 1160px; margin: 0 auto; padding: 0 34px 80px; }
 
 /* --- header ------------------------------------------------------- */
-/* flex-end, not center: the logo, the tagline and the pills are three
-   different heights and only their baselines line up */
+/* flex-end, not center: the wordmark block and the pills are different
+   heights and only their baselines line up */
 .top {
   display: flex;
   align-items: flex-end;
@@ -92,10 +92,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
   letter-spacing: -0.02em; line-height: 1;
 }
 .logo span { color: var(--accent); }
-.tagline {
-  color: var(--muted); font-size: 15.5px; line-height: 1.45;
-  flex: 1; min-width: 180px; max-width: 320px; text-wrap: balance;
-}
 /* the logo and its sub-line are one link, so neither underlines on its own */
 .logo-block { display: flex; flex-direction: column; gap: 2px; min-width: 150px; }
 .logo-block:hover { text-decoration: none; }
@@ -105,7 +101,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 /* wraps: four controls plus the search pill is wider than a phone, and the
    row was already one control away from clipping "+ Add" off the edge */
-.acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+/* margin-left, not a spacer: the tagline used to be the flex:1 between the
+   wordmark and these, and without something holding the middle they would
+   collect against the logo */
+.acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto; }
 /* 9px, the same as .btn: the input and the buttons are both mono at 12.5px,
    so equal padding is equal height. It was 7 and sat 4px short of the row. */
 .search {
