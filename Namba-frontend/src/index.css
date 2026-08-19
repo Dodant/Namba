@@ -309,6 +309,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .wrap { padding: 0 20px 80px; }
   .ix { gap: 14px; }
   .ix-num { flex: 0 0 auto; text-align: left; }
+  /* the header wraps to two rows on a phone, so it was spending 190px of an
+     844px screen before the first number -- the same masthead, less air */
+  .top { padding: 18px 0 14px; gap: 12px; }
+  .logo { font-size: 26px; }
+  .acts { gap: 6px; }
 }
 
 /* --- feed --------------------------------------------------------- */
