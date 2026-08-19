@@ -66,10 +66,14 @@ def rate_limit(request: Request):
 
 # --- models -------------------------------------------------------------
 def _clean_tags(v):
-    """Normalise, then check the shape. Upper-cased so BOOK and book cannot
-    become two tags for one idea, whitespace collapsed so "SCI  FI" and
-    "SCI FI" cannot either. Non-ASCII passes through unchanged, which is what
-    upper() does with 한국어 and is the right answer for it.
+    """Normalise, then check the shape. Lower-cased so Book and book cannot
+    become two tags for one idea, whitespace collapsed so "sci  fi" and
+    "sci fi" cannot either. Non-ASCII passes through unchanged, which is what
+    lower() does with 한국어 and is the right answer for it.
+
+    Lower rather than upper changes nothing on screen -- tagLabel() rebuilds
+    "Book" from either -- but it is the case people type, so the form can fold
+    input as it is typed without ever appearing to fight the typist.
 
     No slash: a tag is a path segment in /t/:tag, and the one in "HIP/HOP"
     would read as two. That is the same trap number values fall into, and they
@@ -77,7 +81,7 @@ def _clean_tags(v):
     """
     out = []
     for t in v:
-        t = " ".join(str(t).split()).upper()
+        t = " ".join(str(t).split()).lower()
         if not t:
             raise ValueError("a tag cannot be blank")
         if len(t) > TAG_MAX:
@@ -333,7 +337,7 @@ def list_numbers(
     args = [BLURB + 1]
     if tag:
         sql.append("JOIN post_tags t ON t.post_id = p.id AND t.tag = ?")
-        args.append(tag.upper())
+        args.append(tag.lower())
     if format:
         sql.append("WHERE p.format = ?")
         args.append(format.upper())
@@ -391,7 +395,7 @@ def list_posts(
     where = []
     if tag:
         sql.append("JOIN post_tags t ON t.post_id = p.id AND t.tag = ?")
-        args.append(tag.upper())
+        args.append(tag.lower())
     if value is not None:
         where.append("p.value = ?")
         args.append(value)
@@ -463,10 +467,22 @@ def list_revisions(post_id: int, con=Depends(get_db)):
 
 # --- write --------------------------------------------------------------
 def _write_tags(con, post_id, tags):
+    """Folds case here too, because a snapshot may predate the rule.
+
+    Restoring a revision written while tags were upper-cased must not put BOOK
+    back beside book. Normalising without validating, deliberately: a restore
+    has to work on whatever the past wrote, and refusing one because an old
+    tag breaks a rule invented since would make history unreachable.
+    """
+    clean = []
+    for t in tags:
+        t = " ".join(str(t).split()).lower()
+        if t and t not in clean:
+            clean.append(t)
     con.execute("DELETE FROM post_tags WHERE post_id = ?", (post_id,))
     con.executemany(
         "INSERT INTO post_tags (post_id, tag) VALUES (?,?)",
-        [(post_id, t) for t in tags],
+        [(post_id, t) for t in clean],
     )
 
 

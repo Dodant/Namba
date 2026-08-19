@@ -133,9 +133,14 @@ HISTORY RELIGION MEME PERSON PLACE MYTH SLANG RULE UNIT` — and anyone can coin
 another by typing it. The form suggests the tags already in use, most-used
 first, because a fixed list is a claim about what people are allowed to mean.
 
-What is checked is shape, not membership: upper-cased and whitespace-collapsed
-so `book` and `Book` are one tag, at most 24 characters, and no slash — a tag
+What is checked is shape, not membership: lower-cased and whitespace-collapsed
+so `Book` and `book` are one tag, at most 24 characters, and no slash — a tag
 is a path segment in `/t/:tag` and the one in `HIP/HOP` would read as two.
+
+Lower-case all the way through, including on screen. The form folds what you
+type as you type it, so the tag you see in the field is the tag that gets
+made, and `/t/BOOK` still resolves — the filter folds case on the way in, so
+links written before the rule changed keep working.
 
 ## Deploying
 

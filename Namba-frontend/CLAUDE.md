@@ -128,7 +128,12 @@ the entry form, an inner submit bubbles out and publishes the entry.
 a 422 from the API. Tags are **not** a list any more — do not add one back. The
 form's chips come from `api.tags()`, which reports what the wiki actually uses,
 and `toggleTag()` normalises a typed tag the same way the API will so that
-"book" turns the existing Book chip on rather than looking like a second one.
+"Book" turns the existing book chip on rather than looking like a second one.
+
+Tags are lower-case everywhere — stored, displayed, and folded in the coin
+field as you type. `tagLabel()` used to sentence-case them and is now just a
+`toLowerCase()`; it stays a function because `/t/:tag` can arrive from an old
+upper-case link and one place has to decide.
 
 ## No accounts
 

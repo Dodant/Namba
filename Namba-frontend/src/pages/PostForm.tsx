@@ -30,11 +30,11 @@ const EXAMPLES: Record<string, string> = {
 // there is no thousand in 10:04PM or in 9¾
 const groupable = (f: string) => f !== 'MIXED' && f !== 'TIME'
 
-/* Normalised the same way the API will normalise it, so a tag typed as "book"
-   turns the existing Book chip on instead of looking like a second one. The
+/* Normalised the same way the API will normalise it, so a tag typed as "Book"
+   turns the existing book chip on instead of looking like a second one. The
    API is still the one that decides -- this only keeps the form honest. */
 function toggleTag(tags: Tag[], raw: Tag, keep = false) {
-  const t = raw.trim().replace(/\s+/g, ' ').toUpperCase()
+  const t = raw.trim().replace(/\s+/g, ' ').toLowerCase()
   if (!t) return tags
   if (tags.includes(t)) return keep ? tags : tags.filter((x) => x !== t)
   return tags.length >= TAGS_PER_POST ? tags : [...tags, t]
@@ -341,7 +341,9 @@ export default function PostForm() {
             value={coined}
             maxLength={TAG_MAX}
             placeholder="or name your own"
-            onChange={(e) => setCoined(e.target.value)}
+            /* folded as it is typed, not on the way out, so the field shows
+               the tag that will actually be made */
+            onChange={(e) => setCoined(e.target.value.toLowerCase())}
             onKeyDown={(e) => {
               // Enter adds the tag rather than publishing the entry
               if (e.key !== 'Enter') return

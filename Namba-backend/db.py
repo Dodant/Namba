@@ -98,6 +98,18 @@ def init():
         # its source, which is the wiki's job and not this file's.
         if "lang" not in have:
             con.execute("ALTER TABLE posts ADD COLUMN lang TEXT")
+        # Tags were upper-cased until they became free-form; lower() is the
+        # rule now, so rows written under the old one move with it. Idempotent:
+        # after the first pass nothing matches. The delete goes first because
+        # (post_id, tag) is the primary key -- a post holding both BOOK and
+        # book cannot have the first renamed onto the second.
+        con.execute(
+            """DELETE FROM post_tags WHERE tag <> lower(tag) AND EXISTS (
+                 SELECT 1 FROM post_tags o
+                 WHERE o.post_id = post_tags.post_id AND o.tag = lower(post_tags.tag))"""
+        )
+        con.execute("UPDATE post_tags SET tag = lower(tag) WHERE tag <> lower(tag)")
+
         # 0 on every existing row: nothing gets separators it did not ask for
         if "grouped" not in have:
             con.execute(

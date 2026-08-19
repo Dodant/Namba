@@ -183,7 +183,7 @@ def test_api_round_trip():
     assert a.status_code == 201, a.text
     a = a.json()
     assert a["format"] == "INTEGER" and a["sort_key"] == 42.0
-    assert a["tags"] == ["BOOK", "MEME"], a["tags"]   # normalised + sorted
+    assert a["tags"] == ["book", "meme"], a["tags"]   # normalised + sorted
     assert a["bucket"] == "10"
     assert a["author"] == "ford" and a["edited_by"] is None
 
@@ -193,7 +193,7 @@ def test_api_round_trip():
 
     # an unfamiliar tag is coined, not rejected -- there is no list to be off
     assert c.post("/api/posts", json={"value": "1", "title": "x",
-                                      "tags": ["NOPE"]}).json()["tags"] == ["NOPE"]
+                                      "tags": ["NOPE"]}).json()["tags"] == ["nope"]
 
     # the poster may override the parser
     t = c.post("/api/posts", json={"value": "11:11", "title": "Us (Jeremiah 11:11)",
@@ -234,7 +234,7 @@ def test_api_round_trip():
         "value": "808", "title": "808 drum machine",
         "tags": ["  drum machine ", "Music", "MUSIC", "\ud55c\uad6d\uc5b4"],
     }).json()
-    assert coined["tags"] == ["DRUM MACHINE", "MUSIC", "\ud55c\uad6d\uc5b4"], coined["tags"]
+    assert coined["tags"] == ["drum machine", "music", "\ud55c\uad6d\uc5b4"], coined["tags"]
 
     # shape is checked, membership is not
     for bad in (["hip/hop"], ["   "], ["x" * 25], list("abcdef")):
@@ -244,15 +244,15 @@ def test_api_round_trip():
     # and the coined one joins the wiki's vocabulary, which is read off the
     # posts rather than a list in main.py
     vocab = {t["tag"]: t["count"] for t in c.get("/api/tags").json()}
-    assert vocab["DRUM MACHINE"] == 1, vocab
-    assert "UNIT" not in vocab, "an unused tag is not part of the vocabulary"
+    assert vocab["drum machine"] == 1, vocab
+    assert "unit" not in vocab, "an unused tag is not part of the vocabulary"
     assert list(vocab) == sorted(vocab, key=lambda t: (-vocab[t], t)), "not by count"
-    assert [p["id"] for p in c.get("/api/posts", params={"tag": "drum machine"}).json()] \
+    assert [p["id"] for p in c.get("/api/posts", params={"tag": "DRUM Machine"}).json()] \
         == [coined["id"]], "the filter is case-insensitive on the way in"
     c.delete(f"/api/posts/{coined['id']}")
 
     # tag filter
-    movies = c.get("/api/posts", params={"tag": "MOVIE"}).json()
+    movies = c.get("/api/posts", params={"tag": "MOVIE"}).json()  # any case in
     assert [p["title"] for p in movies] == ["Us (Jeremiah 11:11)"]
 
     # sort=random actually reorders. An unknown sort falls back to p.id rather
@@ -400,7 +400,7 @@ def test_api_round_trip():
     assert edited["author"] == "ford", "the original author was overwritten"
     assert edited["edited_by"] == "vogon"
     assert edited["updated_at"] >= edited["created_at"]
-    assert edited["tags"] == ["BOOK", "MEME"]        # untouched fields survive
+    assert edited["tags"] == ["book", "meme"]        # untouched fields survive
 
     # the previous version, and who replaced it, are both recoverable
     revs = c.get(f"/api/posts/{a['id']}/revisions").json()
@@ -409,7 +409,7 @@ def test_api_round_trip():
     restored = c.post(f"/api/posts/{a['id']}/revisions/{revs[0]['id']}/restore",
                       json={"author": "arthur"}).json()
     assert restored["title"] == "The Hitchhiker's Guide to the Galaxy"
-    assert restored["tags"] == ["BOOK", "MEME"]
+    assert restored["tags"] == ["book", "meme"]
     assert restored["author"] == "ford" and restored["edited_by"] == "arthur"
 
     # restoring is itself an edit, so it too can be undone
@@ -429,7 +429,7 @@ def test_api_round_trip():
     assert alive["id"] == slash["id"] and alive["value"] == "11/22/63"
     assert alive["author"] == slash["author"], "the original writer was lost"
     assert alive["edited_by"] == "arthur"
-    assert alive["tags"] == ["BOOK"]
+    assert alive["tags"] == ["book"]
     assert c.get(f"/api/posts/{slash['id']}").status_code == 200
 
     # uploads: extension allowlist, server-generated filename
@@ -442,7 +442,7 @@ def test_api_round_trip():
 
     # the vocabulary is what is in use, so an unused tag is simply not in it
     tags = {t["tag"]: t["count"] for t in c.get("/api/tags").json()}
-    assert tags["MOVIE"] == 1 and "ANIME" not in tags, tags
+    assert tags["movie"] == 1 and "anime" not in tags, tags
 
 
 def test_connection_crosses_threads():

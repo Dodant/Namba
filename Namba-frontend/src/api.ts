@@ -1,6 +1,6 @@
 /** Whatever people call it. There is no list to be off: the wiki's working
     vocabulary is the tags in use, which `api.tags()` reports most-used first.
-    The API upper-cases and collapses whitespace, so BOOK and book are one. */
+    The API lower-cases and collapses whitespace, so Book and book are one. */
 export type Tag = string
 export const TAG_MAX = 24
 export const TAGS_PER_POST = 5
@@ -61,10 +61,15 @@ export type Translation = {
   updated_at: string
 }
 
-/** How a tag is written on screen: MOVIE -> Movie, TV -> TV. Derived from the
-    tag itself rather than a second list of labels to keep in step with it. */
-export const tagLabel = (t: string) =>
-  t.length <= 2 ? t : t[0] + t.slice(1).toLowerCase()
+/** How a tag is written on screen: lower-case, as stored and as typed.
+
+    It used to sentence-case (MOVIE -> Movie) with a rule keeping short ones
+    shouting (TV -> TV), because storage was upper-case and something had to
+    turn it back into a word. Lower-case storage makes both unnecessary and
+    the second one impossible -- "tv" cannot be told from a two-letter word.
+    Still a function, and still lower-casing: /t/:tag can arrive from an old
+    upper-case link, and the label is the one place that decides. */
+export const tagLabel = (t: string) => t.toLowerCase()
 
 /** A tag can hold a space now, and 한국어 is a fine tag. Same reason
     numberPath() exists: the value goes in a path segment. */
