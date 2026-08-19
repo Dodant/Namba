@@ -434,6 +434,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   margin: 22px 0 30px;
   font-size: 18px; line-height: 1.6; max-width: 60ch; text-wrap: pretty;
 }
+.body-none { color: var(--muted); }
 .body > :first-child { margin-top: 0; }
 .body > :last-child { margin-bottom: 0; }
 .body p { margin: 0 0 1em; }

@@ -161,9 +161,20 @@ export default function PostPage() {
             security model -- adding rehype-raw would need a sanitiser and a
             reason. remark-breaks because this is typed into a textarea, where
             pressing Enter visibly makes a line and ought to keep making one. */}
-        {shown.body && (
+        {shown.body ? (
           <div className="body">
             <Markdown remarkPlugins={[remarkGfm, remarkBreaks]}>{shown.body}</Markdown>
+          </div>
+        ) : (
+          /* most entries arrive as a title and a number, so this is the common
+             page, not the edge case -- without it the article ends at the meta
+             row and reads as a page that failed to load. Worded about this
+             version, so a translated tab with no text says the same thing. */
+          <div className="body body-none">
+            <p>
+              No details on this one yet.{' '}
+              <Link to={`/p/${post.id}/edit`}>Say what it means.</Link>
+            </p>
           </div>
         )}
 
