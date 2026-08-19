@@ -28,6 +28,14 @@ sanitiser config to get wrong.
 - Styling is `src/index.css` alone: CSS custom properties on `:root`, dark mode
   via `prefers-color-scheme`. Numerals use `--mono` with `tabular-nums` — that
   alignment is the whole visual identity, keep it.
+- Selects are real `<select>`s and stay that way. The dropdown is styled with
+  `appearance: base-select` and `::picker(select)` behind an `@supports`, so
+  Chrome 135+ gets the picker in the page's own palette and everything else
+  gets the OS menu it already had. Do not replace one with a div-and-`<ul>`
+  listbox to style it in more browsers — keyboard, type-ahead, mobile and
+  screen readers all come free here and all have to be rebuilt by hand there.
+  Options set no font of their own: they inherit, so a field's picker is
+  Newsreader like the field and the header pill's is mono like the pill.
 - Two families, both from Google Fonts, linked in `index.html`: Newsreader for
   prose and IBM Plex Mono for `--mono`. It is the one external asset the app
   loads. If it is chrome or a number it is mono; if it is content prose it is
