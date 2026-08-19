@@ -146,13 +146,17 @@ same side of the page so that Edit does not move it.
 
 ## Read routes read, the edit route writes
 
-`/p/:id` has exactly one write control: the `Edit` pill in its meta row.
-Adding a language, rewriting one, unlinking a related entry, restoring a
-revision and deleting the entry all live in `/p/:id/edit` — Languages and
+`/p/:id` has exactly one control that changes the entry: the `Edit` pill in its
+meta row. Adding a language, rewriting one, unlinking a related entry, restoring
+a revision and deleting the entry all live in `/p/:id/edit` — Languages and
 Related entries as bordered panels in the form, History on a rail to the right
-of it (`.form-layout`, the same shape the read page has). Do not put any of
-them back on the read page — that is where they all were, in five different places, and the fix was
-to give them one home.
+of it (`.form-layout`, the same shape the read page has). Do not put any of them
+back on the read page — that is where they all were, in five different places,
+and the fix was to give them one home.
+
+A like is the exception and is not one of them. It writes, but it writes a
+counter beside the entry rather than the entry, so it sits in the meta row here
+and on every card and index row, the same as anywhere else.
 
 The exception is the deleted-entry recovery view in `PostPage`: when the post
 404s but its revisions survive, `Restore` belongs there, because there is no
@@ -179,8 +183,10 @@ upper-case link and one place has to decide.
 
 ## No accounts
 
-The nickname and the set of liked post ids live in `localStorage` (`nickname`,
-`liked` in `api.ts`). There is no session, no user object, and no "my posts".
+The nickname and the set of liked post ids live in `localStorage` — the keys
+are `namba.nick` and `namba.liked`, wrapped as `nickname` and `liked` in
+`api.ts`, and `namba.lang` is the third. There is no session, no user object,
+and no "my posts".
 Likes update optimistically and roll back on failure.
 
 The nickname a form submits is the *editor*, never the author — `post.author` is

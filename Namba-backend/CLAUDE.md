@@ -102,7 +102,11 @@ No auth means the input validation *is* the security model.
 
 - Uploads: extension allowlist, 5 MB cap, and the filename is always
   `uuid4().hex + ext`. Never build a path from `file.filename`.
-- Pydantic length caps on every field, and tags must be in `TAGS`.
+- Pydantic length caps on every field. Tags are checked for shape, not
+  membership — there is no `TAGS` list any more. `_clean_tags()` folds case and
+  whitespace, refuses a blank and a slash, and holds `TAG_MAX` (24) and
+  `TAGS_PER_POST` (2). Those two numbers are the row in the root `CLAUDE.md`
+  that is hand-copied into `api.ts`; the vocabulary is not.
 - Write rate limit is a per-process in-memory dict (20/min/IP). It is per-worker;
   run one worker or move it to redis. Reads are not limited.
 - Likes are a bare counter; the browser's `localStorage` prevents double-voting.

@@ -3,8 +3,8 @@
 An open, no-login wiki of what numbers mean. Two apps in one git repo, no
 monorepo tooling — `Namba-backend` (FastAPI + SQLite) and `Namba-frontend`
 (React + Vite). One repo on purpose: the two lists below are hand-copied across
-both apps, so keeping them in step has to be a single commit. No remote yet.
-Full walkthrough in `README.md`.
+both apps, so keeping them in step has to be a single commit. Full walkthrough
+in `README.md`.
 
 ## Running
 
@@ -66,13 +66,14 @@ branch and has to be agreed on; a tag never did.
 ## Working here
 
 Prefer editing what exists over adding files — this is deliberately a small
-codebase (~1,700 lines). Each app has its own `CLAUDE.md` with the details that
-bite.
+codebase (~4,400 lines, tests and CSS included). Each app has its own
+`CLAUDE.md` with the details that bite.
 
 **Commit in logical units, without being asked.** One coherent change per
 commit — the feature, then the doc note, not both in a heap at the end of a
 session. Run the checks above before each one. Pushing is a separate decision:
-there is no remote, and adding one is the user's call, not a default.
+`origin` is `github.com/MIIRAIII/Namba`, and whether a commit goes there is the
+user's call, not a default — commit freely, push when asked.
 
 Messages follow [Conventional Commits](https://www.conventionalcommits.org):
 `type(scope): subject` — imperative, lowercase after the colon, no trailing

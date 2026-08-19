@@ -26,6 +26,10 @@ npm run dev
 
 Self-check: `cd Namba-backend && .venv/bin/python test_namba.py`
 
+The endpoints are not listed anywhere in this file on purpose —
+<http://127.0.0.1:8000/docs> is FastAPI reading them off the code, so it cannot
+go stale the way a table here would.
+
 ## How it fits together
 
 `Namba-backend` — FastAPI over stdlib `sqlite3`, no ORM. Four files that matter:
@@ -103,9 +107,15 @@ UUID.
 
 An entry can carry the same content in as many languages as people care to add;
 a tab strip above the title switches between them, with the entry as written
-sitting under "Original". The language is a free-form label — 한국어, Japanese,
-Español, whatever the person adding it calls it — with one row per language per
-entry, so writing the same language twice edits it instead of duplicating it.
+sitting under "Original". There is one row per language per entry, so writing
+the same language twice edits it instead of duplicating it.
+
+The label is free-form to the API — any 40-character string — but the form does
+not let you type one. Both language fields are menus over a list of endonyms in
+`PostForm.tsx`, because free text turns one language into "Korean", "한국어" and
+"korean", which reads as three tabs and filters as three. Nobody is coining a
+language, so a fixed menu is not a claim about what people may mean, the way a
+fixed tag list would be.
 
 The entry can say what it is itself written in, in the form's "Written in"
 field, and then the tab reads "Original (한국어)" rather than leaving the reader
@@ -120,6 +130,12 @@ than as a page of gaps. The options come from the translations that exist, not
 a fixed list, and the setting lives in `localStorage` like the nickname. Entry
 pages ignore it: they have a tab strip, and switching there is the reader's own
 move.
+
+Until somebody translates something there is no picker at all. `/api/languages`
+reads off the translations, so on a fresh wiki it is empty and the menu would
+hold "Original" and the stored default drawn as "English · 0" — two labels for
+the same nothing, and picking the first drops the second for good. It appears
+with the first translation.
 
 Translations follow the same rules as everything else: anyone can add, rewrite
 or remove one, the first translator keeps the byline, and the change is
