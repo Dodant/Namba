@@ -1,8 +1,8 @@
 import { Fragment } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  api, BUCKETS, BUCKET_LABEL, FORMATS, FORMAT_LABEL, numberPath, tagLabel,
-  type Format, type NumberEntry,
+  api, BUCKETS, BUCKET_LABEL, fmtDate, FORMATS, FORMAT_LABEL, numberPath, tagLabel,
+  type Format, type NumberEntry, type Post,
 } from '../api'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
@@ -93,7 +93,67 @@ function mark(text: string, rx: RegExp) {
     )
 }
 
+/* Two ways to read the same wiki: down the numbers, or along the dates. They
+   share nothing but the header, so they are two components rather than one
+   with a branch in the middle of its hooks. */
 export default function Home() {
+  const [params] = useSearchParams()
+  return params.get('view') === 'feed' ? <Feed /> : <Index />
+}
+
+/* the numeral carries the row, so it is set by how much room the value needs
+   rather than at one size that either shouts at "7" or breaks at "299792458" */
+const feedSize = (v: string) => (v.length > 7 ? 'long' : v.length > 4 ? 'mid' : '')
+
+function Feed() {
+  /* sort=new is already on GET /api/posts (created_at DESC) -- no backend
+     change, and no client-side sort over a bounded page that would only be
+     right until the twenty-first entry */
+  const posts = useAsync(() => api.posts({ sort: 'new', limit: 20 }), [])
+
+  return (
+    <>
+      <p className="feed-intro">
+        The same wiki, newest first — what people have written this week.
+      </p>
+
+      {posts.err && <p className="err">{posts.err}</p>}
+      {posts.loading && <p className="empty">Loading…</p>}
+
+      {posts.data?.map((p: Post) => (
+        <article className="fx" key={p.id}>
+          <Link className={`fx-num ${feedSize(p.value)}`} to={numberPath(p.value)}>
+            {p.value}
+          </Link>
+          <h3>
+            <Link to={`/p/${p.id}`}>{p.title}</Link>
+          </h3>
+          <div className="fx-body">
+            {p.body && <p>{p.body}</p>}
+            <div className="meta">
+              {p.tags.map((t) => (
+                <Link key={t} className="tag" to={`/t/${t}`}>
+                  {tagLabel(t)}
+                </Link>
+              ))}
+              <span>by {p.author}</span>
+              <span>{fmtDate(p.created_at)}</span>
+              <span className="likes">♥ {p.likes}</span>
+            </div>
+          </div>
+        </article>
+      ))}
+
+      {!posts.loading && !posts.data?.length && (
+        <p className="empty">
+          Nothing written yet. <Link to="/new">Add the first one.</Link>
+        </p>
+      )}
+    </>
+  )
+}
+
+function Index() {
   const [params, setParams] = useSearchParams()
   const format = (params.get('format') ?? 'INTEGER') as Format
   const tag = params.get('tag') ?? ''

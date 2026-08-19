@@ -90,13 +90,28 @@ button, input, select, textarea { font: inherit; color: inherit; }
   color: var(--muted); font-size: 15.5px; line-height: 1.45;
   flex: 1; min-width: 180px; max-width: 320px; text-wrap: pretty;
 }
-.top form { display: flex; gap: 8px; align-items: center; }
-.top input[type="search"] {
-  width: 190px; padding: 7px 12px; border: 1px solid var(--line);
-  border-radius: 999px; background: var(--panel);
+/* the logo and its sub-line are one link, so neither underlines on its own */
+.logo-block { display: flex; flex-direction: column; gap: 2px; min-width: 150px; }
+.logo-block:hover { text-decoration: none; }
+.logo-sub {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--muted);
+}
+.acts { display: flex; gap: 8px; align-items: center; }
+.search {
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--panel);
+}
+.search .slash { font-family: var(--mono); font-size: 12px; color: var(--faint); }
+.search input {
+  width: 150px; border: 0; padding: 0; background: none;
   font-family: var(--mono); font-size: 12.5px;
 }
-.top input[type="search"]::placeholder { color: var(--muted); }
+/* the ring moves to the pill: the input has no border of its own to ring */
+.search input:focus-visible { outline: none; }
+.search:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+.search input::placeholder { color: var(--muted); }
 
 /* --- buttons ------------------------------------------------------ */
 .btn {
@@ -227,6 +242,48 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .wrap { padding: 0 20px 80px; }
   .ix { gap: 14px; }
   .ix-num { flex: 0 0 auto; text-align: left; }
+}
+
+/* --- feed --------------------------------------------------------- */
+.feed-intro {
+  font-size: 16px; line-height: 1.5; color: var(--muted);
+  max-width: 56ch; margin: 20px 0 6px; text-wrap: pretty;
+}
+/* a grid, not a flex row: the body has to start under the title and not
+   under the numeral, and on a phone it drops below both */
+.fx {
+  display: grid; grid-template-columns: 150px 1fr;
+  column-gap: 26px; row-gap: 8px; align-items: baseline;
+  padding: 22px 0; border-bottom: 1px solid var(--rule);
+}
+.fx-num {
+  text-align: right; overflow-wrap: anywhere;
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+  font-size: 38px; font-weight: 700; letter-spacing: -0.05em;
+  color: var(--accent); line-height: 0.95;
+}
+.fx-num.mid { font-size: 27px; }
+.fx-num.long { font-size: 22px; }
+.fx h3 {
+  margin: 0; min-width: 0; align-self: baseline;
+  font-size: 23px; font-weight: 500; line-height: 1.2; letter-spacing: -0.01em;
+}
+.fx h3 a:hover { color: var(--accent); text-decoration: none; }
+.fx-body { grid-column: 2 / 3; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.fx-body p {
+  margin: 0; font-size: 16px; line-height: 1.5; color: var(--muted);
+  white-space: pre-wrap; text-wrap: pretty;
+}
+.meta .likes { color: var(--fainter); font-variant-numeric: tabular-nums; }
+
+/* numeral and title stay on one line; the prose drops below both and runs
+   the full width, which is the only way 16px reads on a 390px screen */
+@media (max-width: 560px) {
+  .fx { grid-template-columns: auto 1fr; column-gap: 14px; padding: 20px 0; }
+  .fx-num { font-size: 28px; text-align: left; }
+  .fx-num.mid { font-size: 22px; }
+  .fx-num.long { font-size: 18px; }
+  .fx-body { grid-column: 1 / -1; }
 }
 
 /* --- post list ---------------------------------------------------- */

@@ -1,4 +1,6 @@
-import { BrowserRouter, Link, Route, Routes, useNavigate, useSearchParams } from 'react-router-dom'
+import {
+  BrowserRouter, Link, Route, Routes, useLocation, useNavigate, useSearchParams,
+} from 'react-router-dom'
 import Home from './pages/Home'
 import Browse from './pages/Browse'
 import PostPage from './pages/PostPage'
@@ -7,31 +9,46 @@ import PostForm from './pages/PostForm'
 function Header() {
   const nav = useNavigate()
   const [params] = useSearchParams()
+  const { pathname } = useLocation()
+  /* the toggle is a link, not state: the view survives a refresh and can be
+     sent to someone. Pressing it while it is on goes back to the index. */
+  const feed = pathname === '/' && params.get('view') === 'feed'
+
   return (
     <header className="top">
-      <Link to="/" className="logo">
-        Na<span>mb</span>a
+      <Link to="/" className="logo-block">
+        <span className="logo">
+          Na<span>mb</span>a
+        </span>
+        <span className="logo-sub">An open wiki of numbers</span>
       </Link>
       <div className="tagline">
-        Every number means something to someone. Add what it means to you — no account needed.
+        Every number means something to someone. Add what it means to you.
       </div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          const q = new FormData(e.currentTarget).get('q') as string
-          nav(`/search?q=${encodeURIComponent(q.trim())}`)
-        }}
-      >
-        <input
-          type="search"
-          name="q"
-          placeholder="Search numbers…"
-          defaultValue={params.get('q') ?? ''}
-        />
+      <div className="acts">
+        <form
+          className="search"
+          onSubmit={(e) => {
+            e.preventDefault()
+            const q = new FormData(e.currentTarget).get('q') as string
+            nav(`/search?q=${encodeURIComponent(q.trim())}`)
+          }}
+        >
+          <span className="slash">/</span>
+          <input
+            type="search"
+            name="q"
+            placeholder="Search numbers…"
+            defaultValue={params.get('q') ?? ''}
+          />
+        </form>
+        <Link className={`btn ${feed ? 'on' : ''}`} to={feed ? '/' : '/?view=feed'}>
+          Feed
+        </Link>
         <Link className="btn primary" to="/new">
           + Add
         </Link>
-      </form>
+      </div>
     </header>
   )
 }
