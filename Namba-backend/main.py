@@ -308,6 +308,10 @@ def list_posts(
         "new": "p.created_at DESC, p.id DESC",
         "top": "p.likes DESC, p.id DESC",
         "number": "p.sort_key IS NULL, p.sort_key, p.value, p.id",
+        # for "show me anything" -- pair it with limit=1. RANDOM() sorts the
+        # whole matched set, which is fine at this size and stays honest about
+        # the filters: a random MOVIE is a random row of the movies.
+        "random": "RANDOM()",
     }.get(sort, "p.id")
     sql.append("ORDER BY " + order)
     sql.append("LIMIT ? OFFSET ?")

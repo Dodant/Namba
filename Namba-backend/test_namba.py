@@ -118,6 +118,16 @@ def test_api_round_trip():
     movies = c.get("/api/posts", params={"tag": "MOVIE"}).json()
     assert [p["title"] for p in movies] == ["Us (Jeremiah 11:11)"]
 
+    # sort=random actually reorders. An unknown sort falls back to p.id rather
+    # than 422ing, so a typo on either side of the wire would leave a Random
+    # button that works and always lands on the same entry.
+    ids = sorted(p["id"] for p in c.get("/api/posts").json())
+    assert len(ids) > 4, ids
+    draws = {c.get("/api/posts", params={"sort": "random", "limit": 1}).json()[0]["id"]
+             for _ in range(40)}
+    assert len(draws) > 1, draws
+    assert draws <= set(ids), draws
+
     # likes
     assert c.post(f"/api/posts/{a['id']}/like").json()["likes"] == 1
     assert c.delete(f"/api/posts/{a['id']}/like").json()["likes"] == 0

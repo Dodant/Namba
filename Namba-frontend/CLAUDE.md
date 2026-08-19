@@ -54,6 +54,13 @@ works but `/api/numbers/{value}` would not.
 they differ only in which filter reaches `api.posts()`. Add a fourth list view by
 extending its `mode`, not by copying the file.
 
+`/random` is a route, not a header `onClick`, so it is linkable and has
+somewhere to render its wait and its failure. It replaces rather than pushes —
+pushing puts `/random` in the history, and Back from the entry rolls again.
+It rides on `sort=random` in `list_posts`, which is guarded by a test: an
+unknown `sort` falls back to `p.id` instead of 422ing, so a typo either side of
+the wire is a Random button that works and always lands on the same entry.
+
 Edit history lives in the right-hand `<aside className="side">` of `PostPage`,
 not on a route of its own; there is no `/p/:id/history`. It is a read-only
 timeline — restoring happens in the History panel of `PostForm`.
