@@ -131,16 +131,19 @@ button, input, select, textarea { font: inherit; color: inherit; }
    wordmark and these, and without something holding the middle they would
    collect against the logo */
 .acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto; }
-/* 9px, the same as .btn: the input and the buttons are both mono at 12.5px,
-   so equal padding is equal height. It was 7 and sat 4px short of the row. */
+/* 9px on the input, the same as .btn: both are mono at 12.5px, so equal
+   padding is equal height and the pill sits level with the buttons beside it.
+   The vertical padding belongs to the input, not to the pill: on the pill the
+   input was a 19px target inside a 39px control, and the 10px above and below
+   it looked like part of the box but did nothing when pressed */
 .search {
   display: flex; align-items: center; gap: 7px;
-  padding: 9px 12px; border: 1px solid var(--line); border-radius: 999px;
+  padding: 0 12px; border: 1px solid var(--line); border-radius: 999px;
   background: var(--panel);
 }
 .search .slash { font-family: var(--mono); font-size: 12px; color: var(--faint); }
 .search input {
-  width: 150px; border: 0; padding: 0; background: none;
+  width: 150px; border: 0; padding: 9px 0; background: none;
   font-family: var(--mono); font-size: 12.5px;
 }
 /* the ring moves to the pill: the input has no border of its own to ring */
@@ -280,8 +283,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .ix-like .btn,
 .ix-like .btn:hover,
 .ix-like .btn.on { border-color: transparent; background: none; }
+/* padding is the hit area and the negative margin hands it back to the row,
+   so nothing on screen moves and the target stops being 22x19 -- which is
+   under the 24px floor, on the one control in the row anyone taps */
 .ix-like .btn {
-  padding: 0; font-size: 11px; color: var(--fainter);
+  padding: 6px 8px; margin: -6px -8px; font-size: 11px; color: var(--fainter);
   font-variant-numeric: tabular-nums;
 }
 /* the heart fills terracotta once it is yours, and hovering previews that */
@@ -339,7 +345,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* the like inside a list row is meta, not a control to look at: it reads as
    the count it is, and only colours once it is yours */
 .card .meta .btn {
-  padding: 0; border-color: transparent; background: none;
+  /* same trade as .ix-like: hit area out, layout unchanged */
+  padding: 6px 8px; margin: -6px -8px; border-color: transparent; background: none;
   font-size: 10.5px; color: var(--fainter); font-variant-numeric: tabular-nums;
 }
 .card .meta .btn:hover, .card .meta .btn.on { border-color: transparent; color: var(--hit); }
@@ -507,7 +514,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 /* here the like is a pill. This page has one entry and one heart, so it can
    afford an outline the list rows could not */
 .post-like .btn {
-  padding: 2px 8px; border-color: var(--line); background: var(--panel);
+  padding: 4px 11px; border-color: var(--line); background: var(--panel);
   color: var(--hit); font-size: 10.5px;
 }
 .post-like .btn:hover { border-color: var(--hit); }
