@@ -281,11 +281,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .meta .likes { color: var(--fainter); font-variant-numeric: tabular-nums; }
 /* the like inside a list row is meta, not a control to look at: it reads as
    the count it is, and only colours once it is yours */
-.meta .btn {
+.card .meta .btn {
   padding: 0; border-color: transparent; background: none;
   font-size: 10.5px; color: var(--fainter); font-variant-numeric: tabular-nums;
 }
-.meta .btn:hover, .meta .btn.on { border-color: transparent; color: var(--hit); }
+.card .meta .btn:hover, .card .meta .btn.on { border-color: transparent; color: var(--hit); }
 
 /* numeral and title stay on one line; the prose drops below both and runs
    the full width, which is the only way 16px reads on a 390px screen */
@@ -343,8 +343,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .side { position: sticky; top: 20px; padding-top: 20px; }
 .revs { list-style: none; margin: 0; padding: 0; max-height: 60vh; overflow-y: auto; }
-.side .revs { border-left: 1px solid var(--line); }
-.side .rev { padding: 11px 0 11px 14px; position: relative; border: 0; }
+.side .revs { border-left: 1px solid var(--line); padding-left: 4px; }
+.side .rev { padding: 11px 0 11px 10px; position: relative; border: 0; }
 /* the dot sits on the rail, not in the row -- it is the timeline, not a bullet */
 .side .rev::before {
   content: ''; position: absolute; left: -4px; top: 15px;
@@ -361,7 +361,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .quiet { font-family: var(--mono); font-size: 10.5px; line-height: 1.5; color: var(--muted); }
 a.quiet { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
-.tr-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
 .hero {
   display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap;
@@ -396,22 +395,40 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 }
 .actions { display: flex; gap: 9px; flex-wrap: wrap; margin: 20px 0; }
 
+/* the meta row is the entry's whole control surface now: what it is filed
+   under, whether you liked it, and the one way to change any of it */
+.post-meta { gap: 10px; padding-bottom: 18px; border-bottom: 1px solid var(--rule); }
+/* here the like is a pill. This page has one entry and one heart, so it can
+   afford an outline the list rows could not */
+.post-like .btn {
+  padding: 2px 8px; border-color: var(--line); background: var(--panel);
+  color: var(--hit); font-size: 10.5px;
+}
+.post-like .btn:hover { border-color: var(--hit); }
+.post-meta .btn.primary { padding: 5px 13px; font-size: 11px; }
+.spacer { flex: 1; }
+
+/* related entries, read-only: numeral, title, blurb, and nothing to press */
+.rel {
+  display: flex; gap: 16px; align-items: baseline;
+  padding: 14px 0; border-bottom: 1px solid var(--rule);
+}
+.rel-num {
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+  font-size: 18px; font-weight: 600; color: var(--accent);
+  min-width: 66px; text-align: right; flex: none; overflow-wrap: anywhere;
+}
+.rel-main { flex: 1; min-width: 0; }
+.rel-t { font-size: 17px; font-weight: 500; }
+.rel-t:hover { color: var(--accent); }
+.rel-b { font-size: 14.5px; color: var(--muted); line-height: 1.45; }
+
 h4.section {
   font-family: var(--mono); font-size: 10.5px; font-weight: 600;
   letter-spacing: 0.16em; text-transform: uppercase;
   color: var(--muted); margin: 30px 0 4px;
 }
 .side .section { margin: 0 0 6px; }
-
-.linked { display: flex; align-items: center; gap: 10px; }
-.linked > .card { flex: 1; min-width: 0; }
-
-.inline-form { display: flex; gap: 8px; margin-bottom: 10px; }
-.inline-form input {
-  flex: 1; padding: 8px 12px; border: 1px solid var(--line);
-  border-radius: var(--radius); background: var(--panel); font-size: 14.5px;
-}
-.inline-form input::placeholder { color: var(--faint); }
 
 /* --- forms -------------------------------------------------------- */
 .form { max-width: 680px; padding-bottom: 28px; }
@@ -434,6 +451,84 @@ h4.section {
 .field textarea { min-height: 104px; resize: vertical; font-size: 16px; line-height: 1.55; }
 .row { display: flex; gap: 14px; flex-wrap: wrap; }
 .row > * { flex: 1; }
+.form-intro {
+  font-size: 16.5px; line-height: 1.5; color: var(--ink-soft);
+  max-width: 52ch; margin: 0 0 24px; text-wrap: pretty;
+}
+.fine {
+  font-size: 13.5px; line-height: 1.5; color: var(--faint);
+  max-width: 56ch; margin: 12px 0 0;
+}
+.file-row { display: flex; gap: 12px; align-items: center; }
+.file-row .thumb {
+  width: 80px; height: 80px; object-fit: cover;
+  border-radius: 6px; border: 1px solid var(--line);
+}
+
+/* a bordered box that owns its rows: the three things an entry has besides
+   its fields -- its other languages, its past, and what it sits beside */
+.panel {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel); overflow: hidden;
+}
+.panel-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-bottom: 1px solid var(--rule-soft);
+}
+.panel-row:last-child { border-bottom: 0; }
+.panel-row.now { background: var(--row-tint); }
+.panel-lang {
+  font-family: var(--mono); font-size: 11.5px; font-weight: 600;
+  letter-spacing: 0.06em; min-width: 74px; flex: none;
+}
+.panel-title {
+  flex: 1; min-width: 0; font-size: 15.5px; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.panel-title.ink { color: var(--ink); }
+.panel-by { font-family: var(--mono); font-size: 10.5px; color: var(--faint); flex: none; }
+.panel-num {
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+  font-size: 15px; font-weight: 600; color: var(--accent);
+  min-width: 56px; text-align: right; flex: none; overflow-wrap: anywhere;
+}
+.panel-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.panel-t {
+  font-size: 14.5px; line-height: 1.35;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.panel-t.now { font-weight: 600; color: var(--accent); }
+.panel-m { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.panel-add {
+  font-family: var(--mono); font-size: 11.5px; color: var(--accent);
+  background: none; border: 0; padding: 0; cursor: pointer;
+}
+.panel-empty { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.panel-find { gap: 8px; }
+.panel-find input {
+  flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--bg); font-size: 14.5px;
+}
+.panel-find input::placeholder { color: var(--faint); }
+.panel-find .btn { border-radius: var(--radius); font-size: 11.5px; padding: 9px 15px; }
+/* rewriting a language opens it in the panel's own box, so the row you
+   clicked is the box you are typing in */
+.panel-edit { padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+.panel-edit .field, .panel-edit .actions { margin: 0; }
+
+/* quiet enough to sit inside a row, not beside it */
+.pill {
+  font-family: var(--mono); font-size: 10.5px; padding: 3px 10px;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: var(--panel); color: var(--ink); cursor: pointer; flex: none;
+}
+.pill:hover { border-color: var(--accent); color: var(--accent); }
+
+/* terracotta, and it fills on hover: the two controls that destroy something
+   are the only ones that look like this */
+.btn.danger { border-color: #e3d3cd; background: transparent; color: var(--hit); padding: 10px 18px; }
+.btn.danger:hover { background: var(--hit); border-color: var(--hit); color: var(--bg); }
+@media (prefers-color-scheme: dark) { .btn.danger { border-color: #4a352c; } }
 
 .err {
   color: var(--hit); background: #f6e9e4; padding: 9px 12px;

@@ -1,24 +1,23 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import {
-  api, fmtDate, nickname, numberPath, tagLabel,
-  type Post, type Revision, type Translation,
-} from '../api'
-import PostCard, { Like } from '../components/PostCard'
+import { Link, useParams } from 'react-router-dom'
+import { api, fmtDate, nickname, numberPath, tagLabel, type Revision } from '../api'
+import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
 
+/* A read route reads. Every write this page used to carry inline -- adding a
+   language, rewriting one, unlinking a related entry, restoring a revision,
+   deleting the entry -- now lives at /p/:id/edit, and what is left here is one
+   Edit pill. The exception is the recovery view below: when the entry is gone
+   there is no edit form to reach, so Restore stays. */
 export default function PostPage() {
   const { id = '' } = useParams()
-  const nav = useNavigate()
-  const [revBump, setRevBump] = useState(0)
   const loaded = useAsync(() => api.post(id), [id])
-  const revs = useAsync(() => api.revisions(id), [id, revBump])
-  const [edited, setEdited] = useState<Post | null>(null)
+  const revs = useAsync(() => api.revisions(id), [id])
   const [err, setErr] = useState('')
   const [lang, setLang] = useState('')                       // '' is the entry itself
-  const [form, setForm] = useState<Translation | 'new' | null>(null)
 
-  const post = edited ?? loaded.data
+  const post = loaded.data
+
   /* The entry is gone, but its snapshots are not -- revisions have no foreign
      key precisely so a delete stays undoable. Show them here, or the wiki keeps
      a recovery it never offers. */
@@ -69,64 +68,26 @@ export default function PostPage() {
   const tr = post.translations?.find((t) => t.lang === lang) ?? null
   const shown = tr ?? post
 
-  function showLang(l: string) {
-    setLang(l)
-    setForm(null)
-  }
-
-  async function removeTr(t: Translation) {
-    if (!confirm(`Remove the ${t.lang} version? It stays in the entry's history.`)) return
-    await run(() => api.untranslate(post!.id, t.id, nickname.get() || 'anonymous'))
-    setLang('')
-    setRevBump((n) => n + 1)
-  }
-
-  async function run(fn: () => Promise<Post>) {
-    setErr('')
-    try {
-      setEdited(await fn())
-    } catch (e) {
-      setErr((e as Error).message)
-    }
-  }
-
-  async function restore(rev: Revision) {
-    await run(() => api.restore(post!.id, rev.id, nickname.get() || 'anonymous'))
-    setRevBump((n) => n + 1) // a restore is an edit, so it adds a revision of its own
-  }
-
-  async function remove() {
-    if (!confirm('Delete this entry? The previous version stays in its history.')) return
-    try {
-      await api.remove(post!.id)
-      nav(numberPath(post!.value))
-    } catch (e) {
-      setErr((e as Error).message)
-    }
-  }
-
   return (
     <div className="detail-layout">
       <article className="detail">
         <nav className="tabs langs">
           {/* "Original", not "English": the wiki is English-first but a handful
               of entries came in written in another language, and a user is free
-              to add "English" as a tab of its own */}
-          <button className={lang ? '' : 'on'} onClick={() => showLang('')}>
+              to add "English" as a tab of its own. A reader's switch and nothing
+              more -- adding a language is a write, and writes are at /edit */}
+          <button className={lang ? '' : 'on'} onClick={() => setLang('')}>
             Original
           </button>
           {post.translations?.map((t) => (
             <button
               key={t.id}
               className={t.lang === lang ? 'on' : ''}
-              onClick={() => showLang(t.lang)}
+              onClick={() => setLang(t.lang)}
             >
               {t.lang}
             </button>
           ))}
-          <button className="quiet" onClick={() => setForm('new')}>
-            + Add a language
-          </button>
         </nav>
 
         <div className="hero">
@@ -136,81 +97,38 @@ export default function PostPage() {
           <h1>{shown.title}</h1>
         </div>
 
-        <div className="meta">
+        <div className="meta post-meta">
           {post.tags.map((t) => (
             <Link key={t} className="tag" to={`/t/${t}`}>
               {tagLabel(t)}
             </Link>
           ))}
-          <span>written by {post.author}</span>
-          <span>{fmtDate(post.created_at)}</span>
-          {post.updated_at !== post.created_at && (
-            <span>
-              · last edited {fmtDate(post.updated_at)}
-              {post.edited_by && ` by ${post.edited_by}`}
-            </span>
-          )}
-          <Like post={post} />
+          <span className="post-like">
+            <Like post={post} />
+          </span>
+          <span className="spacer" />
+          <Link className="btn primary" to={`/p/${post.id}/edit`}>
+            Edit
+          </Link>
         </div>
 
         {post.image && <img className="full" src={post.image} alt={post.title} />}
 
-        {form ? (
-          <TranslationForm
-            post={post}
-            editing={form === 'new' ? null : form}
-            onCancel={() => setForm(null)}
-            onSaved={(next, saved) => {
-              setEdited(next)
-              setLang(saved)
-              setForm(null)
-              setRevBump((n) => n + 1) // a translation is an edit of the entry
-            }}
-          />
-        ) : (
-          <>
-            {shown.body && <div className="body">{shown.body}</div>}
-            {tr && (
-              <p className="quiet tr-meta">
-                <span>
-                  {tr.lang} added by {tr.author}
-                  {tr.edited_by && `, last edited by ${tr.edited_by}`} ·{' '}
-                  {fmtDate(tr.updated_at)}
-                </span>
-                <button className="btn small" onClick={() => setForm(tr)}>
-                  Edit
-                </button>
-                <button className="btn small" onClick={() => removeTr(tr)}>
-                  Remove
-                </button>
-              </p>
-            )}
-          </>
-        )}
-
-        {err && <p className="err">{err}</p>}
-
-        <div className="actions">
-          <Link className="btn primary" to={`/p/${post.id}/edit`}>
-            Edit this entry
-          </Link>
-          <button className="btn" onClick={remove}>
-            Delete
-          </button>
-        </div>
-        <p className="quiet">
-          Anyone can edit — no account needed. Every version is kept, so nothing is
-          lost if someone gets it wrong.
-        </p>
+        {shown.body && <div className="body">{shown.body}</div>}
 
         <h4 className="section">Related entries</h4>
         {post.related?.length ? (
           post.related.map((r) => (
-            <div key={r.id} className="linked">
-              <PostCard post={r} />
-              <button className="btn small" onClick={() => run(() => api.unlink(post.id, r.id))}>
-                Unlink
-              </button>
+            <div className="rel" key={r.id}>
+              <Link className="rel-num" to={numberPath(r.value)}>
+                {r.value}
+              </Link>
+              <div className="rel-main">
+                <Link className="rel-t" to={`/p/${r.id}`}>
+                  {r.title}
+                </Link>
+                {r.body && <div className="rel-b">{r.body}</div>}
+              </div>
             </div>
           ))
         ) : (
@@ -218,8 +136,6 @@ export default function PostPage() {
             Nothing linked yet.
           </p>
         )}
-
-        <LinkFinder post={post} onLinked={setEdited} />
       </article>
 
       <aside className="side">
@@ -237,9 +153,6 @@ export default function PostPage() {
               <span>
                 {byline(r)} · {fmtDate(r.at)}
               </span>
-              <button className="btn small" onClick={() => restore(r)}>
-                Restore
-              </button>
             </li>
           ))}
         </ol>
@@ -256,138 +169,3 @@ export default function PostPage() {
    differently this just falls back to the normal phrasing. */
 const byline = (r: Revision) =>
   r.author === 'deleted' ? 'deleted' : `replaced by ${r.author}`
-
-/** Write this entry in another language, or rewrite one that is already here. */
-function TranslationForm({
-  post,
-  editing,
-  onSaved,
-  onCancel,
-}: {
-  post: Post
-  editing: Translation | null
-  onSaved: (next: Post, lang: string) => void
-  onCancel: () => void
-}) {
-  const [lang, setLang] = useState(editing?.lang ?? '')
-  const [title, setTitle] = useState(editing?.title ?? '')
-  const [body, setBody] = useState(editing?.body ?? '')
-  const [author, setAuthor] = useState(nickname.get())
-  const [err, setErr] = useState('')
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    setErr('')
-    nickname.set(author)
-    try {
-      const next = await api.translate(post.id, {
-        lang,
-        title,
-        body,
-        author: author || 'anonymous',
-      })
-      onSaved(next, lang)
-    } catch (e) {
-      setErr((e as Error).message)
-    }
-  }
-
-  return (
-    <form className="form" onSubmit={submit}>
-      <div className="field">
-        <label>
-          Language<span className="hint">whatever people call it — 한국어, Japanese, Español</span>
-        </label>
-        {/* the language names the tab, so renaming it would orphan the old one;
-            rewrite the text here and add a new tab for a different language */}
-        <input
-          value={lang}
-          disabled={!!editing}
-          onChange={(e) => setLang(e.target.value)}
-          maxLength={40}
-          required
-        />
-      </div>
-      <div className="field">
-        <label>
-          Title<span className="hint">the entry's title in that language</span>
-        </label>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} required />
-      </div>
-      <div className="field">
-        <label>
-          Details<span className="hint">optional</span>
-        </label>
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} maxLength={5000} />
-      </div>
-      <div className="field">
-        <label>Your nickname</label>
-        <input
-          value={author}
-          onChange={(e) => setAuthor(e.target.value)}
-          placeholder="anonymous"
-          maxLength={40}
-        />
-      </div>
-      {err && <p className="err">{err}</p>}
-      <div className="actions">
-        <button className="btn primary">{editing ? 'Save' : 'Add this language'}</button>
-        <button type="button" className="btn" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-    </form>
-  )
-}
-
-/** Search the wiki and attach another entry to this one. */
-function LinkFinder({ post, onLinked }: { post: Post; onLinked: (p: Post) => void }) {
-  const [q, setQ] = useState('')
-  const [hits, setHits] = useState<Post[] | null>(null)
-  const [err, setErr] = useState('')
-
-  async function search(e: React.FormEvent) {
-    e.preventDefault()
-    setErr('')
-    try {
-      const found = await api.posts({ q, limit: 8 })
-      setHits(found.filter((p) => p.id !== post.id))
-    } catch (e) {
-      setErr((e as Error).message)
-    }
-  }
-
-  return (
-    <>
-      <h4 className="section">Link another entry</h4>
-      <form onSubmit={search} className="inline-form">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="e.g. Back to the Future"
-        />
-        <button className="btn">Search</button>
-      </form>
-      {err && <p className="err">{err}</p>}
-      {hits?.map((h) => (
-        <div key={h.id} className="card">
-          <span className="num">{h.value}</span>
-          <div className="main">
-            <h3>{h.title}</h3>
-          </div>
-          <button
-            className="btn small"
-            onClick={async () => {
-              onLinked(await api.link(post.id, h.id))
-              const rest = hits.filter((x) => x.id !== h.id)
-              setHits(rest.length ? rest : null) // not "no matches" -- none left
-            }}
-          >
-            Link
-          </button>
-        </div>
-      ))}
-      {hits?.length === 0 && <p className="empty">No matches.</p>}
-    </>
-  )
-}
