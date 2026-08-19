@@ -62,13 +62,16 @@ export default function PostCard({
         </h3>
         {post.body && <p>{plain(post.body)}</p>}
         <div className="meta">
-          {post.tags.map((t) => (
-            <Link key={t} className="tag" to={tagPath(t)}>
-              {tagLabel(t)}
-            </Link>
-          ))}
-          <span>by {post.author}</span>
-          <span>{fmtDate(post.created_at)}</span>
+          {post.tags
+            .filter((t) => t !== except)
+            .map((t) => (
+              <Link key={t} className="tag" to={tagPath(t)}>
+                {tagLabel(t)}
+              </Link>
+            ))}
+          <span>
+            by {post.author} · {fmtDate(post.created_at)}
+          </span>
           {post.updated_at !== post.created_at && (
             <span>
               · edited {fmtDate(post.updated_at)}

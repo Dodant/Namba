@@ -149,8 +149,9 @@ function Feed({ lang }: { lang: string }) {
                   {tagLabel(t)}
                 </Link>
               ))}
-              <span>by {p.author}</span>
-              <span>{fmtDate(p.created_at)}</span>
+              <span>
+                by {p.author} · {fmtDate(p.created_at)}
+              </span>
               {p.updated_at !== p.created_at && (
                 <span>
                   · edited {fmtDate(p.updated_at)}

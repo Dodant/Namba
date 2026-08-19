@@ -77,24 +77,36 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
         </div>
       ) : (
         <div className="hero">
-          <h1>
-            {mode === 'tag' ? (
-              <>
-                Tagged <span className="tag">{tagLabel(tag)}</span>
-              </>
-            ) : (
-              <>Search: “{q}”</>
-            )}
-          </h1>
-          <span style={{ color: 'var(--muted)' }}>{count}</span>
+          <div className="hero-said">
+            {/* the count waits for the answer: before it arrives the list is
+                empty and "0 entries" is a result, not a wait */}
+            <span className="kicker">
+              {mode === 'tag' ? 'Category' : 'Search'}
+              {posts.data ? ` · ${count}` : ''}
+            </span>
+            <h1>{mode === 'tag' ? tagLabel(tag) : `“${q}”`}</h1>
+          </div>
         </div>
       )}
 
-      {posts.err && <p className="err">{posts.err}</p>}
-      {posts.loading && <p className="empty">Loading…</p>}
+      {posts.err && (
+        <p className="err" role="alert">
+          {posts.err}
+        </p>
+      )}
+      {posts.loading && (
+        <p className="empty" role="status">
+          Loading…
+        </p>
+      )}
 
       {posts.data?.map((p) => (
-        <PostCard key={p.id} post={p} showNumber={mode !== 'number'} />
+        <PostCard
+          key={p.id}
+          post={p}
+          showNumber={mode !== 'number'}
+          except={mode === 'tag' ? tagLabel(tag) : undefined}
+        />
       ))}
 
       {!posts.loading && n === 0 && (

@@ -87,24 +87,36 @@ export default function PostPage() {
   return (
     <div className="detail-layout">
       <article className="detail">
-        <nav className="tabs langs">
-          {/* "Original", not "English": the wiki is English-first but a handful
-              of entries came in written in another language, and a user is free
-              to add "English" as a tab of its own. A reader's switch and nothing
-              more -- adding a language is a write, and writes are at /edit */}
-          <button className={lang ? '' : 'on'} onClick={() => setLang('')}>
-            {originalLabel(post.lang)}
-          </button>
-          {post.translations?.map((t) => (
+        {/* "Original", not "English": the wiki is English-first but a handful
+            of entries came in written in another language, and a user is free
+            to add "English" as a tab of its own. A reader's switch and nothing
+            more -- adding a language is a write, and writes are at /edit.
+
+            Absent until there is a second one, the same rule the header's
+            language picker follows: one tab is a rule drawn across the top of
+            the page to say the entry is written in the language you are
+            already reading. It returns with the first translation. */}
+        {!!post.translations?.length && (
+          <nav className="tabs langs" aria-label="Language">
             <button
-              key={t.id}
-              className={t.lang === lang ? 'on' : ''}
-              onClick={() => setLang(t.lang)}
+              className={lang ? '' : 'on'}
+              aria-current={lang ? undefined : 'true'}
+              onClick={() => setLang('')}
             >
-              {t.lang}
+              {originalLabel(post.lang)}
             </button>
-          ))}
-        </nav>
+            {post.translations.map((t) => (
+              <button
+                key={t.id}
+                className={t.lang === lang ? 'on' : ''}
+                aria-current={t.lang === lang ? 'true' : undefined}
+                onClick={() => setLang(t.lang)}
+              >
+                {t.lang}
+              </button>
+            ))}
+          </nav>
+        )}
 
         <div className="hero">
           <Link className="num" to={numberPath(post.value)}>
