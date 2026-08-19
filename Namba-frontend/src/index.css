@@ -58,11 +58,22 @@
 
 * { box-sizing: border-box; }
 
+/* Every numeral on the page already carried overflow-wrap, because a value
+   is a string a stranger typed. So is a title, and so is a body: one
+   136-character word in an entry title pushed the whole document sideways --
+   the header rule, the band rules and all -- and there is nothing stopping
+   anyone posting a URL as a title. Inherited from here rather than listed
+   per surface, since it is true of every one of them.
+
+   break-word, not anywhere: anywhere feeds into min-content sizing and would
+   let the flex and grid columns collapse around a long word. break-word only
+   acts when the word would otherwise overflow, which is the case at hand. */
 body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
   line-height: 1.55;
+  overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -416,7 +427,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* one column, and the rail stops being a rail: it is the last thing on the
    page rather than the thing beside it */
 @media (max-width: 820px) {
-  .detail-layout { grid-template-columns: 1fr; gap: 4px; }
+  /* minmax(0, 1fr), not 1fr: the two-column rule above already says minmax
+     and this one dropped it, so the column's floor went back to being its
+     min-content -- one unbreakable word in an entry title, and the whole
+     page scrolled sideways by a thousand pixels. break-word cannot help a
+     column that is sized to fit the word whole. */
+  .detail-layout { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .side { border-top: 1px solid var(--line); padding-top: 6px; }
 }
 .revs { list-style: none; margin: 0; padding: 0; max-height: 60vh; overflow-y: auto; }
@@ -577,7 +593,8 @@ h4.section {
    last thing on the page. .side's own breakpoint is 820, so this repeats what
    it does rather than leaving a gap between the two widths. */
 @media (max-width: 1130px) {
-  .form-layout { grid-template-columns: 1fr; }
+  /* same slip as .detail-layout's, same fix */
+  .form-layout { grid-template-columns: minmax(0, 1fr); }
   .form-side { position: static; border-top: 1px solid var(--line); padding-top: 6px; }
 }
 /* a field label is a row of two; 340px is not enough for that one, so the
@@ -830,5 +847,11 @@ h4.section {
   border-radius: var(--radius); margin: 14px 0; font-size: 14.5px;
 }
 @media (prefers-color-scheme: dark) { .err { background: #33241d; } }
+/* The link in one of these is the only thing on the page to do next --
+   "Add the first one.", "Give it a meaning.", "Back to the index." -- and it
+   inherited --muted off the paragraph with no underline, so it looked like
+   the rest of the sentence until a pointer happened to cross it. Same
+   treatment .body a and a.quiet already get. */
 .empty { color: var(--muted); padding: 36px 0; text-align: center; }
+.empty a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
