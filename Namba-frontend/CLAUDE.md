@@ -42,8 +42,10 @@ sanitiser config to get wrong.
   category filter is the same thing closed by default — the browser owns the
   collapse, so there is no open state to hold anywhere. A closed filter still
   shows the tag that is on, or it would hide why the list is short. `Feed` is
-  `sort=new` off `/api/posts`, which the backend already had — do not add a
-  `sort=recent` beside it.
+  `sort=recent` off `/api/posts` — `updated_at DESC`, so a rewrite brings an old
+  entry back up. It is labelled `Recent` in the header and the component is
+  still `Feed`: the label names the order, `?view=feed` names the shape. One
+  sort, not two — do not add a `sort=new` beside it.
 - `useAsync.ts` carries a file-level `oxlint-disable react-hooks/exhaustive-deps`
   because the hook forwards its caller's deps array, which the rule cannot verify
   statically. That is the one suppression in the codebase; do not add more.

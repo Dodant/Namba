@@ -108,15 +108,15 @@ export default function Home({ lang }: { lang: string }) {
 const feedSize = (v: string) => (v.length > 7 ? 'long' : v.length > 4 ? 'mid' : '')
 
 function Feed({ lang }: { lang: string }) {
-  /* sort=new is already on GET /api/posts (created_at DESC) -- no backend
-     change, and no client-side sort over a bounded page that would only be
-     right until the twenty-first entry */
-  const posts = useAsync(() => api.posts({ sort: 'new', limit: 20, lang }), [lang])
+  /* sort=recent is updated_at DESC, so an entry someone rewrote this morning
+     comes back to the top. Sorted by the API, not here: a client-side sort
+     over a bounded page is only right until the twenty-first entry. */
+  const posts = useAsync(() => api.posts({ sort: 'recent', limit: 20, lang }), [lang])
 
   return (
     <>
       <p className="feed-intro">
-        The same wiki, newest first — what people have written this week.
+        The same wiki, last touched first — written and rewritten.
       </p>
 
       {posts.err && <p className="err">{posts.err}</p>}

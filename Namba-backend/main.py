@@ -418,7 +418,12 @@ def list_posts(
     if where:
         sql.append("WHERE " + " AND ".join(where))
     order = {
-        "new": "p.created_at DESC, p.id DESC",
+        # last touched, not first written. On a wiki most of what happens is
+        # someone rewriting an entry that has been there for a year, and
+        # created_at makes all of it invisible. updated_at starts equal to
+        # created_at and a restore sets it too, so this is one column, not a
+        # MAX() -- and the card already says "edited" when the two differ.
+        "recent": "p.updated_at DESC, p.id DESC",
         "top": "p.likes DESC, p.id DESC",
         "number": "p.sort_key IS NULL, p.sort_key, p.value, p.id",
         # for "show me anything" -- pair it with limit=1. RANDOM() sorts the

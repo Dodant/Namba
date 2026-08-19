@@ -111,8 +111,11 @@ function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void })
             )}
           </select>
         </div>
+        {/* "Recent", not "Feed": the label is a promise about the order, and
+            this one is last-touched. The view is still the feed -- ?view=feed
+            names the shape, a card list rather than the index. */}
         <Link className={`btn ${feed ? 'on' : ''}`} to={feed ? '/' : '/?view=feed'}>
-          Feed
+          Recent
         </Link>
         <Link className="btn" to="/random">
           {DIE}

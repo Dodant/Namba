@@ -57,6 +57,29 @@ def test_parse():
         assert got == want, f"parse_number({raw!r}) = {got}, want {want}"
 
 
+def test_recent_sort():
+    """The feed is last touched, not first written -- an edit to an old entry
+    has to come back to the top, or most of what happens on a wiki never shows.
+    The clock is stubbed because now() is second-resolution and the whole test
+    fits inside one tick, which would leave the order to the id tiebreak."""
+    c = TestClient(main.app)
+    real = main.now
+    ticks = iter(f"2999-01-01T00:00:0{i}+00:00" for i in range(9))
+    main.now = lambda: next(ticks)
+    try:
+        first = c.post("/api/posts", json={"value": "9001", "title": "written first"}).json()
+        second = c.post("/api/posts", json={"value": "9002", "title": "written second"}).json()
+        top = lambda: [p["id"] for p in
+                       c.get("/api/posts", params={"sort": "recent", "limit": 2}).json()]
+        assert top() == [second["id"], first["id"]], top()
+        c.patch(f"/api/posts/{first['id']}", json={"title": "and then edited"})
+        assert top() == [first["id"], second["id"]], "an edit did not lift it"
+    finally:
+        main.now = real
+    for p in (first, second):
+        c.delete(f"/api/posts/{p['id']}")
+
+
 def test_share_card():
     """/p/12 has to arrive with its own <head>: no crawler runs the JS that
     would set it, which is the whole reason the API serves the front end."""

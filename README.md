@@ -40,7 +40,8 @@ Self-check: `cd Namba-backend && .venv/bin/python test_namba.py`
 `Namba-frontend` — React + Vite, no state library and no UI kit. `src/api.ts` is
 the whole client; `Browse.tsx` serves the number, tag and search pages because
 they differ only by which filter they pass. The home page has two views off a
-`?view=` param — the number index, and a feed of what was written most recently.
+`?view=` param — the number index, and a feed of what was last written or
+rewritten.
 
 Every read page reads. The one control that changes an entry is the `Edit` pill
 on `/p/:id`; everything that writes — languages, history, links, delete — is in
