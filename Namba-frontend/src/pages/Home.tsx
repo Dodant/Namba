@@ -111,7 +111,7 @@ function Feed({ lang }: { lang: string }) {
   /* sort=recent is updated_at DESC, so an entry someone rewrote this morning
      comes back to the top. Sorted by the API, not here: a client-side sort
      over a bounded page is only right until the twenty-first entry. */
-  const posts = useAsync(() => api.posts({ sort: 'recent', limit: 20, lang }), [lang])
+  const posts = useAsync(() => api.posts({ sort: 'recent', limit: 20, lang }), [lang], true)
 
   return (
     <>
@@ -120,7 +120,7 @@ function Feed({ lang }: { lang: string }) {
       </p>
 
       {posts.err && <p className="err">{posts.err}</p>}
-      {posts.loading && <p className="empty">Loading…</p>}
+      {posts.loading && !posts.data && <p className="empty">Loading…</p>}
 
       {posts.data?.map((p: Post) => (
         <article className="fx" key={p.id}>
@@ -170,7 +170,7 @@ function Index({ lang }: { lang: string }) {
   const tag = params.get('tag') ?? ''
 
   const tags = useAsync(() => api.tags(), [])
-  const numbers = useAsync(() => api.numbers({ format, tag, lang }), [format, tag, lang])
+  const numbers = useAsync(() => api.numbers({ format, tag, lang }), [format, tag, lang], true)
 
   function setParam(key: string, value: string) {
     const next = new URLSearchParams(params)
@@ -179,13 +179,17 @@ function Index({ lang }: { lang: string }) {
     setParams(next)
   }
 
+  /* off the rows, not off the URL: while the next format loads, the rows on
+     screen are still the last one's, and "Decimal" over a list of integers is
+     a worse answer than a heading that lags a frame behind the tab. */
+  const shownFormat = numbers.data?.[0]?.format ?? format
   const bands =
-    format === 'INTEGER'
+    shownFormat === 'INTEGER'
       ? BUCKETS.map((b) => ({
           label: BUCKET_LABEL[b],
           items: (numbers.data ?? []).filter((n) => n.bucket === b),
         }))
-      : [{ label: FORMAT_LABEL[format], items: numbers.data ?? [] }]
+      : [{ label: FORMAT_LABEL[shownFormat], items: numbers.data ?? [] }]
 
   return (
     <>
@@ -234,62 +238,63 @@ function Index({ lang }: { lang: string }) {
       </details>
 
       {numbers.err && <p className="err">{numbers.err}</p>}
-      {numbers.loading && <p className="empty">Loading…</p>}
+      {/* only the first load says so: a reload keeps the list it has, and a
+          line that replaced it would be the collapse all over again */}
+      {numbers.loading && !numbers.data && <p className="empty">Loading…</p>}
 
-      {!numbers.loading &&
-        bands.map(
-          (band) =>
-            band.items.length > 0 && (
-              /* <details>, not a button and a piece of state: the browser
-                 already knows how to open and close a disclosure, and it
-                 gets the keyboard and the screen reader right for free.
-                 Open by default -- the index is the page, and five closed
-                 headings is a table of contents, not a wiki. */
-              <details className="band" key={band.label} open>
-                <summary className="band-head">
-                  <h2>{band.label}</h2>
-                  <span className="rule" />
-                  <span className="n">
-                    {band.items.length} {band.items.length === 1 ? 'number' : 'numbers'}
-                  </span>
-                </summary>
-                <ol className="index">
-                  {band.items.map((n: NumberEntry) => {
-                    const rx = marker(n)
-                    const shown = showValue(n.value, n.grouped)
-                    return (
-                    <li className="ix" key={`${n.format}-${n.value}`}>
-                      <Link
-                        className={`ix-num ${shown.length > 7 ? 'long' : ''}`}
-                        to={numberPath(n.value)}
-                      >
-                        {shown}
-                      </Link>
-                      <div className="ix-titles">
-                        {n.entries.map((e) => (
-                          // the like sits outside the link: a button inside an
-                          // anchor is invalid, and both want the same click
-                          <div className="ix-e" key={e.id}>
-                            <Link className="ix-link" to={`/p/${e.id}`}>
-                              <span className="ix-t">{mark(e.title, rx)}</span>
-                              {e.image && PHOTO}
-                              {e.body && (
-                                <span className="ix-b"> — {mark(plain(e.body), rx)}</span>
-                              )}
-                            </Link>
-                            <span className="ix-like">
-                              <Like post={e} />
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </li>
-                    )
-                  })}
-                </ol>
-              </details>
-            ),
-        )}
+      {bands.map(
+        (band) =>
+          band.items.length > 0 && (
+            /* <details>, not a button and a piece of state: the browser
+               already knows how to open and close a disclosure, and it
+               gets the keyboard and the screen reader right for free.
+               Open by default -- the index is the page, and five closed
+               headings is a table of contents, not a wiki. */
+            <details className="band" key={band.label} open>
+              <summary className="band-head">
+                <h2>{band.label}</h2>
+                <span className="rule" />
+                <span className="n">
+                  {band.items.length} {band.items.length === 1 ? 'number' : 'numbers'}
+                </span>
+              </summary>
+              <ol className="index">
+                {band.items.map((n: NumberEntry) => {
+                  const rx = marker(n)
+                  const shown = showValue(n.value, n.grouped)
+                  return (
+                  <li className="ix" key={`${n.format}-${n.value}`}>
+                    <Link
+                      className={`ix-num ${shown.length > 7 ? 'long' : ''}`}
+                      to={numberPath(n.value)}
+                    >
+                      {shown}
+                    </Link>
+                    <div className="ix-titles">
+                      {n.entries.map((e) => (
+                        // the like sits outside the link: a button inside an
+                        // anchor is invalid, and both want the same click
+                        <div className="ix-e" key={e.id}>
+                          <Link className="ix-link" to={`/p/${e.id}`}>
+                            <span className="ix-t">{mark(e.title, rx)}</span>
+                            {e.image && PHOTO}
+                            {e.body && (
+                              <span className="ix-b"> — {mark(plain(e.body), rx)}</span>
+                            )}
+                          </Link>
+                          <span className="ix-like">
+                            <Like post={e} />
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </li>
+                  )
+                })}
+              </ol>
+            </details>
+          ),
+      )}
 
       {!numbers.loading && !numbers.data?.length && (
         <p className="empty">

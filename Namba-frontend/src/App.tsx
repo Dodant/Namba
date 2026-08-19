@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
-  BrowserRouter, Link, Route, Routes, useLocation, useNavigate, useSearchParams,
+  BrowserRouter, Link, Route, Routes, useLocation, useNavigate, useNavigationType,
+  useSearchParams,
 } from 'react-router-dom'
 import { api, displayLang } from './api'
 import Home from './pages/Home'
@@ -50,6 +51,30 @@ const DIE = (
     <circle cx="10.9" cy="10.9" r="0.95" fill="currentColor" />
   </svg>
 )
+
+/* Nothing puts the reader at the top of a new page on its own: the router
+   leaves the scroll where it was, and until the lists stopped emptying on
+   every load it was reset by accident -- the page collapsed to a "Loading…"
+   line, and there was nowhere to be scrolled to. Now that they hold their
+   content, this has to say so.
+
+   Search too, not just the path: every param here swaps one list for another
+   (a format, a tag, a query, the feed), and none of them is a position in the
+   list you are already reading.
+
+   POP is left alone. That is Back, where the reader had a place on the page
+   and it is not ours to throw away -- the browser restores what it can, which
+   on a list that reloads from empty is often nothing. Putting that right
+   means remembering an offset per history entry, which is a good deal more
+   machinery than this. */
+function ScrollTop() {
+  const { pathname, search } = useLocation()
+  const how = useNavigationType()
+  useEffect(() => {
+    if (how !== 'POP') window.scrollTo(0, 0)
+  }, [pathname, search, how])
+  return null
+}
 
 function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void }) {
   const nav = useNavigate()
@@ -148,6 +173,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <div className="wrap">
+        <ScrollTop />
         <Header lang={lang} onLang={pickLang} />
         <Routes>
           <Route path="/" element={<Home lang={lang} />} />
