@@ -138,6 +138,12 @@ function Feed() {
               ))}
               <span>by {p.author}</span>
               <span>{fmtDate(p.created_at)}</span>
+              {p.updated_at !== p.created_at && (
+                <span>
+                  · edited {fmtDate(p.updated_at)}
+                  {p.edited_by && ` by ${p.edited_by}`}
+                </span>
+              )}
               <span className="likes">♥ {p.likes}</span>
             </div>
           </div>

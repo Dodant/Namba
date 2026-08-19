@@ -133,6 +133,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .btn:disabled { opacity: 0.5; cursor: default; }
 .btn.small { padding: 3px 10px; font-size: 10.5px; }
+/* transparent fill on an ink border, inverting on hover -- the one control
+   on a read page that wants weight without spending the accent on it */
+.btn.outline { border-color: var(--ink); background: transparent; color: var(--ink); padding: 9px 15px; }
+.btn.outline:hover { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 
 /* --- filter rows -------------------------------------------------- */
 .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 22px; }
@@ -275,6 +279,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
   white-space: pre-wrap; text-wrap: pretty;
 }
 .meta .likes { color: var(--fainter); font-variant-numeric: tabular-nums; }
+/* the like inside a list row is meta, not a control to look at: it reads as
+   the count it is, and only colours once it is yours */
+.meta .btn {
+  padding: 0; border-color: transparent; background: none;
+  font-size: 10.5px; color: var(--fainter); font-variant-numeric: tabular-nums;
+}
+.meta .btn:hover, .meta .btn.on { border-color: transparent; color: var(--hit); }
 
 /* numeral and title stay on one line; the prose drops below both and runs
    the full width, which is the only way 16px reads on a 390px screen */
@@ -362,6 +373,11 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   color: var(--accent); line-height: 0.82; overflow-wrap: anywhere;
 }
 .hero h1 { margin: 0; font-size: 27px; font-weight: 400; line-height: 1.15; }
+.hero-said { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 200px; }
+.hero-said .kicker {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--muted);
+}
 
 /* the entry's own hero is the same shape one size down, and sits on air
    rather than on a rule -- the meta row below it draws the line instead */

@@ -1,9 +1,24 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { api, tagLabel } from '../api'
+import { api, FORMAT_LABEL, tagLabel, type Post } from '../api'
 import PostCard from '../components/PostCard'
 import { useAsync } from '../useAsync'
 
 type Mode = 'number' | 'tag' | 'search'
+
+/* the hero counts people, not records, so it spells the number out -- a
+   second numeral beside a 104px one is a fight nobody wins. Past twelve it
+   goes back to digits, which is roughly where the words stop being shorter */
+const COUNTS = [
+  'No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six',
+  'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve',
+]
+
+/* MIXED has no sort key -- "9¾" sorts by its string -- so it gets the format
+   and nothing else rather than "sorts at null" */
+function kicker(p: Post) {
+  const label = FORMAT_LABEL[p.format]
+  return p.sort_key === null ? label : `${label} · sorts at ${p.sort_key}`
+}
 
 /** One list of posts, three ways in: a number, a tag, or a search. */
 export default function Browse({ mode }: { mode: Mode }) {
@@ -31,8 +46,21 @@ export default function Browse({ mode }: { mode: Mode }) {
       {mode === 'number' ? (
         <div className="hero">
           <div className="num">{value}</div>
-          <h1>{count}</h1>
-          <Link className="btn" to={`/new?value=${encodeURIComponent(value)}`}>
+          {/* stays even when empty: it is the flex spacer that keeps the add
+              button on the right. At zero there is nothing to describe and no
+              format to read it from, so the empty state below says the rest */}
+          <div className="hero-said">
+            {posts.data?.length ? (
+              <>
+                <span className="kicker">{kicker(posts.data[0])}</span>
+                <h1>
+                  {COUNTS[n] ?? n} {n === 1 ? 'person has' : 'people have'} written
+                  about this number.
+                </h1>
+              </>
+            ) : null}
+          </div>
+          <Link className="btn outline" to={`/new?value=${encodeURIComponent(value)}`}>
             + Add another meaning
           </Link>
         </div>
