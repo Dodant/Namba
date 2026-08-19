@@ -66,6 +66,15 @@ internal `Link` would have to carry it or drop it.
 An entry with no translation in that language keeps its own title. Nothing
 marks the difference in a list, so a mixed-language index is expected.
 
+The form's two language fields — `Written in` and the one in the Languages
+panel — share one `<datalist id="langs">`, and they stay `<input>`s: naming a
+language the wiki has not seen is how every one of them got here. The options
+are `api.languages()` plus this browser's own languages as endonyms
+(`Intl.DisplayNames`), which is what someone writing in their language was
+about to type. Do not replace it with a list of world languages — that is the
+enum `list_languages` refuses to be, and it would offer "Japanese" to a wiki
+that says "日本語".
+
 The Format select reshapes the Number field beside it: Integer and Decimal
 filter what can be typed and offer the separator checkbox, Mixed and Time are
 plain text with no checkbox, and Auto-detect constrains nothing because nothing

@@ -40,6 +40,32 @@ function toggleTag(tags: Tag[], raw: Tag, keep = false) {
   return tags.length >= TAGS_PER_POST ? tags : [...tags, t]
 }
 
+/* Suggestions, not a menu: the field stays free text. Every language on this
+   wiki got here by someone typing one it had not seen before, and a fixed list
+   of world languages would be a claim about which ones count -- it would also
+   offer "Japanese" to a wiki that says "日本語". So what is on offer is what
+   the wiki already says, plus what this browser is set to, which is what
+   someone writing in their own language was about to type anyway. */
+function endonym(tag: string) {
+  const code = tag.split('-')[0]
+  try {
+    return new Intl.DisplayNames([code], { type: 'language' }).of(code) ?? code
+  } catch {
+    return code // a locale Intl has never heard of is not worth a broken form
+  }
+}
+
+function langOptions(known: string[]) {
+  const out = [...known]
+  const seen = new Set(known.map((l) => l.toLowerCase()))
+  for (const name of navigator.languages.map(endonym))
+    if (!seen.has(name.toLowerCase())) {
+      seen.add(name.toLowerCase())
+      out.push(name)
+    }
+  return out
+}
+
 export default function PostForm() {
   const { id } = useParams()
   const [params] = useSearchParams()
@@ -59,6 +85,7 @@ export default function PostForm() {
      the form cannot grow without bound as people coin more, and unioned with
      what this entry already carries so a rare tag never falls off the end. */
   const vocab = useAsync(() => api.tags(), [])
+  const langs = useAsync(() => api.languages(), [])
   const [author, setAuthor] = useState(nickname.get())
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
@@ -259,11 +286,17 @@ export default function PostForm() {
           <span className="hint">optional</span>
         </label>
         <input
+          list="langs"
           maxLength={40}
           value={lang}
           onChange={(e) => setLang(e.target.value)}
           placeholder="한국어 · English · 日本語"
         />
+        <datalist id="langs">
+          {langOptions((langs.data ?? []).map((l) => l.lang)).map((l) => (
+            <option key={l} value={l} />
+          ))}
+        </datalist>
       </div>
 
       {post && (
@@ -554,6 +587,7 @@ function TranslationEditor({
         {/* the language names the tab, so renaming it would orphan the old one;
             rewrite the text here and add a new tab for a different language */}
         <input
+          list="langs"
           value={lang}
           disabled={!!editing}
           onChange={(e) => setLang(e.target.value)}
