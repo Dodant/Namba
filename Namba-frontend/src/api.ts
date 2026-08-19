@@ -1,9 +1,9 @@
-export const TAGS = [
-  'MOVIE', 'TV', 'ANIME', 'BOOK', 'MUSIC', 'GAME', 'BRAND', 'SPORTS',
-  'SCIENCE', 'MATH', 'TECH', 'HISTORY', 'RELIGION', 'MEME',
-  'PERSON', 'PLACE', 'MYTH', 'SLANG', 'RULE', 'UNIT',
-] as const
-export type Tag = (typeof TAGS)[number]
+/** Whatever people call it. There is no list to be off: the wiki's working
+    vocabulary is the tags in use, which `api.tags()` reports most-used first.
+    The API upper-cases and collapses whitespace, so BOOK and book are one. */
+export type Tag = string
+export const TAG_MAX = 24
+export const TAGS_PER_POST = 5
 
 export const FORMATS = ['INTEGER', 'DECIMAL', 'MIXED', 'TIME'] as const
 export type Format = (typeof FORMATS)[number]
@@ -62,9 +62,13 @@ export type Translation = {
 }
 
 /** How a tag is written on screen: MOVIE -> Movie, TV -> TV. Derived from the
-    enum rather than a second list of labels to keep in step with it. */
+    tag itself rather than a second list of labels to keep in step with it. */
 export const tagLabel = (t: string) =>
   t.length <= 2 ? t : t[0] + t.slice(1).toLowerCase()
+
+/** A tag can hold a space now, and 한국어 is a fine tag. Same reason
+    numberPath() exists: the value goes in a path segment. */
+export const tagPath = (tag: string) => `/t/${encodeURIComponent(tag)}`
 
 export type NumberEntry = {
   value: string

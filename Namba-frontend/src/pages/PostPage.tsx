@@ -5,7 +5,7 @@ import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import {
   api, fmtDate, nickname, numberPath, originalLabel, plain, showValue, tagLabel,
-  type Revision,
+  tagPath, type Revision,
 } from '../api'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
@@ -106,7 +106,7 @@ export default function PostPage() {
 
         <div className="meta post-meta">
           {post.tags.map((t) => (
-            <Link key={t} className="tag" to={`/t/${t}`}>
+            <Link key={t} className="tag" to={tagPath(t)}>
               {tagLabel(t)}
             </Link>
           ))}

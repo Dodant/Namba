@@ -127,9 +127,15 @@ Restore away.
 
 ### Tags
 
-20 of them, fixed: `MOVIE TV ANIME BOOK MUSIC GAME BRAND SPORTS SCIENCE MATH
-TECH HISTORY RELIGION MEME PERSON PLACE MYTH SLANG RULE UNIT`. Up to 5 per post,
-so a film of a book gets both.
+Free-form, up to 5 per post, so a film of a book gets both. The seed arrives
+with twenty — `MOVIE TV ANIME BOOK MUSIC GAME BRAND SPORTS SCIENCE MATH TECH
+HISTORY RELIGION MEME PERSON PLACE MYTH SLANG RULE UNIT` — and anyone can coin
+another by typing it. The form suggests the tags already in use, most-used
+first, because a fixed list is a claim about what people are allowed to mean.
+
+What is checked is shape, not membership: upper-cased and whitespace-collapsed
+so `book` and `Book` are one tag, at most 24 characters, and no slash — a tag
+is a path segment in `/t/:tag` and the one in `HIP/HOP` would read as two.
 
 ## Deploying
 

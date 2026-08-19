@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  api, fmtDate, liked, numberPath, plain, showValue, tagLabel, type Post,
+  api, fmtDate, liked, numberPath, plain, showValue, tagLabel, tagPath, type Post,
 } from '../api'
 
 /* Takes the two fields it uses rather than a whole Post, so the number index
@@ -45,7 +45,7 @@ export default function PostCard({ post, showNumber = true }: { post: Post; show
         {post.body && <p>{plain(post.body)}</p>}
         <div className="meta">
           {post.tags.map((t) => (
-            <Link key={t} className="tag" to={`/t/${t}`}>
+            <Link key={t} className="tag" to={tagPath(t)}>
               {tagLabel(t)}
             </Link>
           ))}

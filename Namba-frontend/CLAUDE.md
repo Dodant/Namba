@@ -124,8 +124,11 @@ the entry form, an inner submit bubbles out and publishes the entry.
 
 ## Mirrors the backend
 
-`TAGS` and `FORMATS` in `api.ts` are hand-copies of `main.py` and `numfmt.py`.
-Changing them here alone gets a 422 from the API.
+`FORMATS` in `api.ts` is a hand-copy of `numfmt.py`. Changing it here alone gets
+a 422 from the API. Tags are **not** a list any more — do not add one back. The
+form's chips come from `api.tags()`, which reports what the wiki actually uses,
+and `toggleTag()` normalises a typed tag the same way the API will so that
+"book" turns the existing Book chip on rather than looking like a second one.
 
 ## No accounts
 

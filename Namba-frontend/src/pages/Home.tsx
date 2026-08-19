@@ -2,7 +2,7 @@ import { Fragment } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   api, BUCKETS, BUCKET_LABEL, fmtDate, FORMATS, FORMAT_LABEL, numberPath, plain,
-  showValue, tagLabel, type Format, type NumberEntry, type Post,
+  showValue, tagLabel, tagPath, type Format, type NumberEntry, type Post,
 } from '../api'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
@@ -137,7 +137,7 @@ function Feed({ lang }: { lang: string }) {
             {p.body && <p>{plain(p.body)}</p>}
             <div className="meta">
               {p.tags.map((t) => (
-                <Link key={t} className="tag" to={`/t/${t}`}>
+                <Link key={t} className="tag" to={tagPath(t)}>
                   {tagLabel(t)}
                 </Link>
               ))}
@@ -208,7 +208,7 @@ function Index({ lang }: { lang: string }) {
         {(tags.data ?? []).map((t) => (
           <button
             key={t.tag}
-            className={`chip ${t.tag === tag ? 'on' : ''} ${t.count ? '' : 'zero'}`}
+            className={`chip ${t.tag === tag ? 'on' : ''}`}
             onClick={() => setParam('tag', t.tag === tag ? '' : t.tag)}
           >
             {tagLabel(t.tag)}

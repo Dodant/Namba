@@ -22,16 +22,20 @@ cd Namba-frontend && npx tsc --noEmit && npx oxlint src && npm run build
 
 ## Kept in sync by hand
 
-Two lists are duplicated across the apps on purpose (no codegen, no shared
+One list is duplicated across the apps on purpose (no codegen, no shared
 package). **Change one, change the other:**
 
 | what | backend | frontend |
 |---|---|---|
-| the 20 category tags | `main.py` `TAGS` | `src/api.ts` `TAGS` |
 | the 4 number formats | `numfmt.py` `FORMATS` | `src/api.ts` `FORMATS` |
 
-The backend rejects an unknown tag with a 422 rather than dropping it, so a
+The backend rejects an unknown format with a 422 rather than dropping it, so a
 frontend-only addition fails loudly rather than silently.
+
+There used to be a second row here for the 20 category tags. Tags are
+free-form now: the backend checks a tag's shape, never its membership, and
+`/api/tags` reports the vocabulary actually in use. A format is a parser
+branch and has to be agreed on; a tag never did.
 
 ## Design decisions that are not up for quiet revision
 

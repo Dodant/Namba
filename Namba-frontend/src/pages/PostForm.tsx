@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   api, fmtDate, FORMAT_LABEL, FORMATS, nickname, numberPath, originalLabel,
-  showValue, TAGS, tagLabel,
+  showValue, TAG_MAX, tagLabel, TAGS_PER_POST,
   type Format, type Post, type Revision, type Tag, type Translation,
 } from '../api'
+import { useAsync } from '../useAsync'
 
 /* What the number field takes, and whether separators mean anything, follow
    the format the poster picked. Auto-detect constrains nothing: nothing has
@@ -29,6 +30,16 @@ const EXAMPLES: Record<string, string> = {
 // there is no thousand in 10:04PM or in 9¾
 const groupable = (f: string) => f !== 'MIXED' && f !== 'TIME'
 
+/* Normalised the same way the API will normalise it, so a tag typed as "book"
+   turns the existing Book chip on instead of looking like a second one. The
+   API is still the one that decides -- this only keeps the form honest. */
+function toggleTag(tags: Tag[], raw: Tag, keep = false) {
+  const t = raw.trim().replace(/\s+/g, ' ').toUpperCase()
+  if (!t) return tags
+  if (tags.includes(t)) return keep ? tags : tags.filter((x) => x !== t)
+  return tags.length >= TAGS_PER_POST ? tags : [...tags, t]
+}
+
 export default function PostForm() {
   const { id } = useParams()
   const [params] = useSearchParams()
@@ -43,6 +54,11 @@ export default function PostForm() {
   const [image, setImage] = useState<string | null>(null)
   const [lang, setLang] = useState('')
   const [grouped, setGrouped] = useState(false)
+  const [coined, setCoined] = useState('')
+  /* the chips are the wiki's working vocabulary, not a list in here. Capped so
+     the form cannot grow without bound as people coin more, and unioned with
+     what this entry already carries so a rare tag never falls off the end. */
+  const vocab = useAsync(() => api.tags(), [])
   const [author, setAuthor] = useState(nickname.get())
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
@@ -301,23 +317,50 @@ export default function PostForm() {
 
       <div className="field">
         <label>
-          Categories<span className="hint">up to 5 — a film of a book gets both</span>
+          Categories
+          <span className="hint">
+            up to {TAGS_PER_POST} — a film of a book gets both
+          </span>
         </label>
         <div className="chips">
-          {TAGS.map((t) => (
-            <button
-              type="button"
-              key={t}
-              className={`chip ${tags.includes(t) ? 'on' : ''}`}
-              onClick={() =>
-                setTags(
-                  tags.includes(t) ? tags.filter((x) => x !== t) : [...tags, t].slice(0, 5),
-                )
-              }
-            >
-              {tagLabel(t)}
-            </button>
-          ))}
+          {[...new Set([...(vocab.data ?? []).slice(0, 24).map((v) => v.tag), ...tags])].map(
+            (t: Tag) => (
+              <button
+                type="button"
+                key={t}
+                className={`chip ${tags.includes(t) ? 'on' : ''}`}
+                onClick={() => setTags(toggleTag(tags, t))}
+              >
+                {tagLabel(t)}
+              </button>
+            ),
+          )}
+        </div>
+        <div className="coin">
+          <input
+            value={coined}
+            maxLength={TAG_MAX}
+            placeholder="or name your own"
+            onChange={(e) => setCoined(e.target.value)}
+            onKeyDown={(e) => {
+              // Enter adds the tag rather than publishing the entry
+              if (e.key !== 'Enter') return
+              e.preventDefault()
+              setTags(toggleTag(tags, coined, true))
+              setCoined('')
+            }}
+          />
+          <button
+            type="button"
+            className="btn"
+            disabled={!coined.trim() || tags.length >= TAGS_PER_POST}
+            onClick={() => {
+              setTags(toggleTag(tags, coined, true))
+              setCoined('')
+            }}
+          >
+            Add
+          </button>
         </div>
       </div>
 

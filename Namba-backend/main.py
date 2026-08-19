@@ -18,11 +18,11 @@ from pydantic import BaseModel, Field, field_validator
 import db
 from numfmt import FORMATS, bucket_of, grouped_value, parse_number
 
-TAGS = (
-    "MOVIE", "TV", "ANIME", "BOOK", "MUSIC", "GAME", "BRAND", "SPORTS",
-    "SCIENCE", "MATH", "TECH", "HISTORY", "RELIGION", "MEME",
-    "PERSON", "PLACE", "MYTH", "SLANG", "RULE", "UNIT",
-)
+# A tag is whatever people call it, like a translation's language label. What
+# is checked is its shape, not its membership of a list -- the wiki's working
+# vocabulary is the set of tags actually in use, which /api/tags reports.
+TAG_MAX = 24
+TAGS_PER_POST = 5
 
 UPLOAD_DIR = os.environ.get("NAMBA_UPLOADS", os.path.join(db.DIR, "uploads"))
 # The built front end, served from here in production so that /p/42 can carry
@@ -66,15 +66,28 @@ def rate_limit(request: Request):
 
 # --- models -------------------------------------------------------------
 def _clean_tags(v):
+    """Normalise, then check the shape. Upper-cased so BOOK and book cannot
+    become two tags for one idea, whitespace collapsed so "SCI  FI" and
+    "SCI FI" cannot either. Non-ASCII passes through unchanged, which is what
+    upper() does with 한국어 and is the right answer for it.
+
+    No slash: a tag is a path segment in /t/:tag, and the one in "HIP/HOP"
+    would read as two. That is the same trap number values fall into, and they
+    only get away with it because the API takes them as a query param.
+    """
     out = []
     for t in v:
-        t = t.strip().upper()
-        if t not in TAGS:
-            raise ValueError(f"unknown tag {t!r}; allowed: {', '.join(TAGS)}")
+        t = " ".join(str(t).split()).upper()
+        if not t:
+            raise ValueError("a tag cannot be blank")
+        if len(t) > TAG_MAX:
+            raise ValueError(f"a tag is at most {TAG_MAX} characters: {t!r}")
+        if "/" in t:
+            raise ValueError(f"a tag cannot contain a slash: {t!r}")
         if t not in out:
             out.append(t)
-    if len(out) > 5:
-        raise ValueError("at most 5 tags")
+    if len(out) > TAGS_PER_POST:
+        raise ValueError(f"at most {TAGS_PER_POST} tags")
     return out
 
 
@@ -284,11 +297,19 @@ def list_languages(con=Depends(get_db)):
 
 @app.get("/api/tags")
 def list_tags(con=Depends(get_db)):
-    rows = con.execute(
-        "SELECT tag, COUNT(*) AS count FROM post_tags GROUP BY tag ORDER BY count DESC"
-    ).fetchall()
-    counts = {r["tag"]: r["count"] for r in rows}
-    return [{"tag": t, "count": counts.get(t, 0)} for t in TAGS]
+    """The wiki's working vocabulary: the tags in use, most-used first.
+
+    Read off the posts rather than a list in this file. Anyone can coin a tag,
+    so a fixed list would be a claim about what people are allowed to mean --
+    and it was the only thing forcing two apps to agree on a literal.
+    """
+    return [
+        {"tag": r["tag"], "count": r["count"]}
+        for r in con.execute(
+            """SELECT tag, COUNT(*) AS count FROM post_tags
+               GROUP BY tag ORDER BY count DESC, tag"""
+        )
+    ]
 
 
 @app.get("/api/numbers")

@@ -191,9 +191,9 @@ def test_api_round_trip():
         "value": "42", "title": "Jackie Robinson", "tags": ["SPORTS", "PERSON"],
     }).json()
 
-    # a bad tag is rejected, not silently dropped
+    # an unfamiliar tag is coined, not rejected -- there is no list to be off
     assert c.post("/api/posts", json={"value": "1", "title": "x",
-                                      "tags": ["NOPE"]}).status_code == 422
+                                      "tags": ["NOPE"]}).json()["tags"] == ["NOPE"]
 
     # the poster may override the parser
     t = c.post("/api/posts", json={"value": "11:11", "title": "Us (Jeremiah 11:11)",
@@ -228,6 +228,28 @@ def test_api_round_trip():
                                        "tags": ["BOOK"]}).json()
     assert slash["format"] == "MIXED"
     assert len(c.get("/api/posts", params={"value": "11/22/63"}).json()) == 1
+
+    # a tag is whatever people call it, normalised so one idea is one tag
+    coined = c.post("/api/posts", json={
+        "value": "808", "title": "808 drum machine",
+        "tags": ["  drum machine ", "Music", "MUSIC", "\ud55c\uad6d\uc5b4"],
+    }).json()
+    assert coined["tags"] == ["DRUM MACHINE", "MUSIC", "\ud55c\uad6d\uc5b4"], coined["tags"]
+
+    # shape is checked, membership is not
+    for bad in (["hip/hop"], ["   "], ["x" * 25], list("abcdef")):
+        assert c.post("/api/posts", json={"value": "1", "title": "x", "tags": bad}
+                      ).status_code == 422, bad
+
+    # and the coined one joins the wiki's vocabulary, which is read off the
+    # posts rather than a list in main.py
+    vocab = {t["tag"]: t["count"] for t in c.get("/api/tags").json()}
+    assert vocab["DRUM MACHINE"] == 1, vocab
+    assert "UNIT" not in vocab, "an unused tag is not part of the vocabulary"
+    assert list(vocab) == sorted(vocab, key=lambda t: (-vocab[t], t)), "not by count"
+    assert [p["id"] for p in c.get("/api/posts", params={"tag": "drum machine"}).json()] \
+        == [coined["id"]], "the filter is case-insensitive on the way in"
+    c.delete(f"/api/posts/{coined['id']}")
 
     # tag filter
     movies = c.get("/api/posts", params={"tag": "MOVIE"}).json()
@@ -418,8 +440,9 @@ def test_api_round_trip():
     assert up.status_code == 200 and up.json()["url"].startswith("/uploads/")
     assert ".." not in up.json()["url"]
 
+    # the vocabulary is what is in use, so an unused tag is simply not in it
     tags = {t["tag"]: t["count"] for t in c.get("/api/tags").json()}
-    assert len(tags) == 20 and tags["MOVIE"] == 1 and tags["ANIME"] == 0
+    assert tags["MOVIE"] == 1 and "ANIME" not in tags, tags
 
 
 def test_connection_crosses_threads():
