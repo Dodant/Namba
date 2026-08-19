@@ -154,14 +154,20 @@ export default function Home() {
           (band) =>
             band.items.length > 0 && (
               <section className="band" key={band.label}>
-                <h2>{band.label}</h2>
+                <div className="band-head">
+                  <h2>{band.label}</h2>
+                  <span className="rule" />
+                  <span className="n">
+                    {band.items.length} {band.items.length === 1 ? 'number' : 'numbers'}
+                  </span>
+                </div>
                 <ol className="index">
                   {band.items.map((n: NumberEntry) => {
                     const rx = marker(n)
                     return (
                     <li className="ix" key={`${n.format}-${n.value}`}>
                       <Link
-                        className={`ix-num ${n.value.length > 10 ? 'long' : ''}`}
+                        className={`ix-num ${n.value.length > 7 ? 'long' : ''}`}
                         to={numberPath(n.value)}
                       >
                         {n.value}
