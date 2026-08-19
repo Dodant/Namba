@@ -88,26 +88,33 @@ function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void })
         {/* the options come from the wiki, not a list in here: the labels are
             free-form, so a fixed one would offer "Japanese" to a wiki that
             says "日本語". The count is how much of it you will actually read
-            in that language -- everything else falls back to as-written. */}
-        <div className="select lang-pick">
-          <select
-            value={lang}
-            aria-label="Show lists in"
-            onChange={(e) => onLang(e.target.value)}
-          >
-            <option value="">Original</option>
-            {(langs.data ?? []).map((l) => (
-              <option key={l.lang} value={l.lang}>
-                {l.lang} · {l.count}
-              </option>
-            ))}
-            {/* the stored choice may be a language nobody has written yet --
-                keep it selectable rather than showing an empty box */}
-            {lang && !(langs.data ?? []).some((l) => l.lang === lang) && (
-              <option value={lang}>{lang} · 0</option>
-            )}
-          </select>
-        </div>
+            in that language -- everything else falls back to as-written.
+            Absent until something is translated, rather than a menu of one:
+            with nothing written in another language the only entries are
+            Original and the stored default reading "English · 0", they do
+            the same nothing, and picking Original drops the other one for
+            good. It comes back with the first translation. */}
+        {!!langs.data?.length && (
+          <div className="select lang-pick">
+            <select
+              value={lang}
+              aria-label="Show lists in"
+              onChange={(e) => onLang(e.target.value)}
+            >
+              <option value="">Original</option>
+              {(langs.data ?? []).map((l) => (
+                <option key={l.lang} value={l.lang}>
+                  {l.lang} · {l.count}
+                </option>
+              ))}
+              {/* the stored choice may be a language nobody has written yet --
+                  keep it selectable rather than showing an empty box */}
+              {lang && !(langs.data ?? []).some((l) => l.lang === lang) && (
+                <option value={lang}>{lang} · 0</option>
+              )}
+            </select>
+          </div>
+        )}
         {/* "Recent", not "Feed": the label is a promise about the order, and
             this one is last-touched. The view is still the feed -- ?view=feed
             names the shape, a card list rather than the index. */}

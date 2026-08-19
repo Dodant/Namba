@@ -83,6 +83,13 @@ internal `Link` would have to carry it or drop it.
 An entry with no translation in that language keeps its own title. Nothing
 marks the difference in a list, so a mixed-language index is expected.
 
+The header picker is not rendered at all while `/api/languages` is empty. On a
+wiki nobody has translated yet its only entries are `Original` and the stored
+default drawn as `English · 0` — two labels for the same nothing — and the
+second is kept alive only by being selected, so choosing `Original` deletes it.
+A control that opens to say no and loses an option when used is worse than no
+control; it returns with the first translation.
+
 The form's two language fields — `Written in` and the one in the Languages
 panel — are `<select>`s over `LANGS` in `PostForm.tsx`, and typing is not an
 option. Free text gets one language written three ways ("Korean", "한국어",
