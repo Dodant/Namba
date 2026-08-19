@@ -66,7 +66,7 @@ function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void })
         <span className="logo">
           Na<span>mb</span>a
         </span>
-        <span className="logo-sub">An open wiki of numbers</span>
+        <span className="logo-sub">An open wiki about numbers</span>
       </Link>
       <div className="acts">
         <form
