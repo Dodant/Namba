@@ -124,6 +124,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   color: var(--ink-soft);
 }
 .btn:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+/* .btn is already a flex row with a gap, so the die only needs a size */
+.die { width: 14px; height: 14px; }
 .btn.primary {
   background: var(--accent); border-color: var(--accent);
   color: var(--on-accent); font-weight: 600;

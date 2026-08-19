@@ -38,6 +38,19 @@ function Random() {
   return <p className="empty">Loading…</p>
 }
 
+/* one path rather than 🎲, which arrives in colour and in whichever font the
+   OS keeps its emoji in -- neither of which is this page. Inherits
+   currentColor, so it greens on hover with the label beside it. */
+const DIE = (
+  <svg className="die" viewBox="0 0 16 16" aria-hidden="true">
+    <rect x="1.7" y="1.7" width="12.6" height="12.6" rx="3" fill="none"
+          stroke="currentColor" strokeWidth="1.3" />
+    <circle cx="5.1" cy="5.1" r="0.95" fill="currentColor" />
+    <circle cx="8" cy="8" r="0.95" fill="currentColor" />
+    <circle cx="10.9" cy="10.9" r="0.95" fill="currentColor" />
+  </svg>
+)
+
 function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void }) {
   const nav = useNavigate()
   const [params] = useSearchParams()
@@ -102,6 +115,7 @@ function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void })
           Feed
         </Link>
         <Link className="btn" to="/random">
+          {DIE}
           Random
         </Link>
         <Link className="btn primary" to="/new">
