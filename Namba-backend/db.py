@@ -86,6 +86,13 @@ def connect():
 
 def init():
     con = connect()
+    # WAL rather than the default rollback journal, which lets a writer lock
+    # every reader out: /p/42 carries its own <head>, so *every* page load reads
+    # this file, and one person saving an entry must not stall everyone reading
+    # one. Set here rather than in connect() because the mode lives in the file
+    # header -- it survives the process, so every later connection inherits it.
+    # A writer still waits for a writer; the 5s default busy_timeout covers that.
+    con.execute("PRAGMA journal_mode = WAL")
     with con:
         con.executescript(SCHEMA)
         # CREATE TABLE IF NOT EXISTS skips existing databases, so new columns

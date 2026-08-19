@@ -1,4 +1,4 @@
-namba.db
+namba.db*
 uploads/
 .venv/
 __pycache__/
