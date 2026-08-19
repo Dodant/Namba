@@ -1,8 +1,10 @@
 # Namba-backend
 
-FastAPI over stdlib `sqlite3`. Five files: `main.py` (every route + models),
+FastAPI over stdlib `sqlite3`. Six files: `main.py` (every route + models),
 `db.py` (schema), `numfmt.py` (number parsing), `seed.py` + `seed_tags.py`
-(the markdown importer).
+(the markdown importer) and `gc_uploads.py` (the uploads collector, run from
+cron -- never from a route, since there is nobody to stop a stranger triggering
+it).
 
 ```sh
 .venv/bin/python test_namba.py        # run before saying anything passes
@@ -30,6 +32,13 @@ Env overrides: `NAMBA_DB`, `NAMBA_UPLOADS` (the tests use both to stay hermetic)
   outlive the post. Every edit, restore and delete snapshots first. Adding
   `REFERENCES posts(id) ON DELETE CASCADE` would silently make deletes
   unrecoverable.
+- **Do not delete the picture when the entry goes.** `restore_revision` hands
+  back the image path the entry had, so a file no live entry shows may be the one
+  a restore needs -- an `os.remove` in `delete_post` or on an image swap turns a
+  recoverable delete into a broken picture. Orphans are collected out of band by
+  `gc_uploads.py`, which counts bodies and snapshots as references and leaves
+  anything younger than a day alone, because a picture is uploaded before the
+  entry is saved and an unsaved form looks exactly like rubbish.
 - **`edit_post` must not touch `author`.** It writes `edited_by` and
   `updated_at`; `author` stays whoever created the entry. `restore_revision` does
   the same, crediting whoever pressed Restore. New columns need the guarded
@@ -106,8 +115,10 @@ edit the DDL and reseed.
 
 No auth means the input validation *is* the security model.
 
-- Uploads: extension allowlist, 5 MB cap, and the filename is always
-  `uuid4().hex + ext`. Never build a path from `file.filename`.
+- Uploads: extension allowlist, 5 MB per file, `UPLOAD_TOTAL_MAX` for the
+  directory, and the filename is always `uuid4().hex + ext`. Never build a path
+  from `file.filename`. The total matters because 20 writes a minute times 5 MB
+  fills the disk the database is on.
 - Pydantic length caps on every field. Tags are checked for shape, not
   membership — there is no `TAGS` list any more. `_clean_tags()` folds case and
   whitespace, refuses a blank and a slash, and holds `TAG_MAX` (24) and

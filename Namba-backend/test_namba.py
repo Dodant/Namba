@@ -470,6 +470,15 @@ def test_api_round_trip():
     assert up.status_code == 200 and up.json()["url"].startswith("/uploads/")
     assert ".." not in up.json()["url"]
 
+    # and a ceiling on the directory as a whole: the per-file cap alone still
+    # lets one IP push 100 MB a minute onto the disk holding the database
+    was, main.UPLOAD_TOTAL_MAX = main.UPLOAD_TOTAL_MAX, main.uploads_bytes()
+    try:
+        full = c.post("/api/upload", files={"file": ("one.png", b"\x89PNG", "image/png")})
+        assert full.status_code == 507, full.status_code
+    finally:
+        main.UPLOAD_TOTAL_MAX = was
+
     # the vocabulary is what is in use, so an unused tag is simply not in it
     tags = {t["tag"]: t["count"] for t in c.get("/api/tags").json()}
     assert tags["movie"] == 1 and "anime" not in tags, tags
@@ -490,6 +499,44 @@ def test_likes_are_rate_limited():
     finally:
         main.WRITE_LIMIT = 10_000
         main._writes.clear()
+
+
+def test_upload_gc_keeps_what_history_points_at():
+    """A picture is not orphaned just because no live entry shows it: a revision
+    snapshot holds the path a restore hands back, a body can carry one in
+    markdown, and a fresh upload may be sitting in a form nobody has saved yet.
+    Only the last of the five below is really rubbish.
+    """
+    import time
+
+    import gc_uploads
+
+    c = TestClient(main.app)
+
+    def put(name, days_old=0):
+        path = os.path.join(main.UPLOAD_DIR, name)
+        with open(path, "wb") as fh:
+            fh.write(b"x" * 32)
+        aged = time.time() - days_old * 86400
+        os.utime(path, (aged, aged))
+        return path
+
+    shown, replaced, in_body, fresh, rubbish = (
+        put("shown.png", 9), put("replaced.png", 9), put("inbody.png", 9),
+        put("fresh.png"), put("rubbish.png", 9))
+
+    p = c.post("/api/posts", json={"value": "8", "title": "with a picture",
+                                   "image": "/uploads/replaced.png"}).json()
+    c.patch(f"/api/posts/{p['id']}", json={"image": "/uploads/shown.png"})
+    c.post("/api/posts", json={"value": "9", "title": "in the prose",
+                               "body": "look at it: ![](/uploads/inbody.png)"})
+
+    gc_uploads.sweep(delete=True)
+    assert os.path.exists(shown), "the live entry's picture"
+    assert os.path.exists(replaced), "a revision still hands this path back"
+    assert os.path.exists(in_body), "referenced from a body, not from the column"
+    assert os.path.exists(fresh), "may be in a form nobody has saved yet"
+    assert not os.path.exists(rubbish), "nothing points at it and it is not new"
 
 
 def test_connection_crosses_threads():

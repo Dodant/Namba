@@ -66,7 +66,7 @@ branch and has to be agreed on; a tag never did.
 ## Working here
 
 Prefer editing what exists over adding files — this is deliberately a small
-codebase (~4,400 lines, tests and CSS included). Each app has its own
+codebase (~4,600 lines, tests and CSS included). Each app has its own
 `CLAUDE.md` with the details that bite.
 
 **Commit in logical units, without being asked.** One coherent change per

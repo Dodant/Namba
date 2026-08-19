@@ -33,6 +33,11 @@ UPLOAD_DIR = os.environ.get("NAMBA_UPLOADS", os.path.join(db.DIR, "uploads"))
 DIST = os.environ.get("NAMBA_DIST", os.path.join(db.DIR, os.pardir, "Namba-frontend", "dist"))
 ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 MAX_UPLOAD = 5 * 1024 * 1024
+# What the uploads directory as a whole may reach. The per-file cap and the write
+# limiter still leave one IP 100 MB a minute, and this disk holds the database
+# too -- filling it takes the wiki down, not just the pictures. Raise it on a box
+# with room; gc_uploads.py is what keeps it from being reached by accident.
+UPLOAD_TOTAL_MAX = int(os.environ.get("NAMBA_UPLOAD_TOTAL_MB", 1024)) * 1024 * 1024
 BLURB = 140  # body chars carried into the index list
 # Revisions shipped by /api/posts/{id}/revisions, newest first. Every edit adds
 # one and nothing prunes them, so an entry that has been fought over carries
@@ -47,6 +52,16 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+
+def uploads_bytes():
+    """What the uploads directory currently holds.
+
+    ponytail: stats every file, on every upload. At 20 writes a minute and a few
+    thousand pictures that is noise; keep a running total in a table if it ever
+    is not.
+    """
+    return sum(f.stat().st_size for f in os.scandir(UPLOAD_DIR) if f.is_file())
 
 
 def now():
@@ -734,6 +749,11 @@ async def upload(file: UploadFile = File(...), _=Depends(rate_limit)):
     data = await file.read(MAX_UPLOAD + 1)
     if len(data) > MAX_UPLOAD:
         raise HTTPException(413, "max 5 MB")
+    # 507, not 413: the file is fine, the wiki is full. Say so, or the poster
+    # spends the afternoon shrinking a photo that was never the problem.
+    if uploads_bytes() + len(data) > UPLOAD_TOTAL_MAX:
+        raise HTTPException(507, "the wiki is out of room for pictures -- nothing "
+                                 "to do with your file. Tell whoever runs it.")
     name = uuid4().hex + ext  # server-generated name: no user-controlled path
     with open(os.path.join(UPLOAD_DIR, name), "wb") as fh:
         fh.write(data)

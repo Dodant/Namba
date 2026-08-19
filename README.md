@@ -32,7 +32,7 @@ go stale the way a table here would.
 
 ## How it fits together
 
-`Namba-backend` — FastAPI over stdlib `sqlite3`, no ORM. Four files that matter:
+`Namba-backend` — FastAPI over stdlib `sqlite3`, no ORM. Five files that matter:
 
 | file | what it holds |
 |---|---|
@@ -40,6 +40,7 @@ go stale the way a table here would.
 | `db.py` | connection + schema |
 | `numfmt.py` | `parse_number()` — a display string to a format and a sort key |
 | `seed.py` + `seed_tags.py` | the markdown importer and its hand-written tags |
+| `gc_uploads.py` | the cron job that deletes pictures nothing points at |
 
 `Namba-frontend` — React + Vite, no state library and no UI kit. `src/api.ts` is
 the whole client; `Browse.tsx` serves the number, tag and search pages because
@@ -102,8 +103,11 @@ here, so nothing anyone writes becomes markup.
 
 Writes are rate limited to 20/minute per IP, in memory — likes included, since
 they are writes too. Uploads are capped at
-5 MB, restricted to jpg/png/gif/webp, and always renamed to a server-generated
-UUID.
+5 MB each and 1 GB in total, restricted to jpg/png/gif/webp, and always renamed
+to a server-generated UUID. A picture is uploaded the moment it is picked, before
+the entry is saved, so a closed form leaves one behind; `gc_uploads.py` collects
+those, and treats a name in a body or in a revision snapshot as a reference,
+since a restore hands an old path back.
 
 ### Other languages
 
@@ -182,7 +186,14 @@ In development nothing of that runs: `npm run dev` serves the app and proxies
 than by looking at it.
 
 One caveat: the rate limiter lives in process memory, so it is per-worker. Run
-one worker, or move it to redis.
+one worker, or move it to redis. It counts per IP, so a reverse proxy needs
+`FORWARDED_ALLOW_IPS` set, or every request arrives from the proxy and the whole
+site shares one allowance.
+
+Two things want a cron entry: `python gc_uploads.py --delete` daily, or abandoned
+uploads accumulate until the 1 GB ceiling stops the wiki taking pictures, and a
+copy of the database somewhere else — anyone can delete any entry, and a restore
+needs the id of a page nothing links to any more.
 
 ## Known gaps
 
