@@ -39,7 +39,12 @@ Self-check: `cd Namba-backend && .venv/bin/python test_namba.py`
 
 `Namba-frontend` — React + Vite, no state library and no UI kit. `src/api.ts` is
 the whole client; `Browse.tsx` serves the number, tag and search pages because
-they differ only by which filter they pass.
+they differ only by which filter they pass. The home page has two views off a
+`?view=` param — the number index, and a feed of what was written most recently.
+
+Every read page reads. The one control that changes an entry is the `Edit` pill
+on `/p/:id`; everything that writes — languages, history, links, delete — is in
+the form behind it.
 
 ### Numbers
 
@@ -69,10 +74,11 @@ Two things keep that from being destructive. First, `author` records whoever
 wrote an entry and is **never** overwritten; an editor is recorded separately in
 `edited_by`, so a stranger's correction reads "written by seed, last edited by
 arthur" rather than quietly stealing the byline. Second, every edit, restore and
-delete snapshots the previous state into `revisions` first. That history sits in
-the right-hand column of each entry, one click from restoring. Those rows
-deliberately have no foreign key — they outlive the post they describe, so a
-deletion is recoverable too.
+delete snapshots the previous state into `revisions` first. That history reads
+down the right-hand column of each entry and is restorable from the entry's edit
+form. Those rows deliberately have no foreign key — they outlive the post they
+describe, so a deletion is recoverable too, from the address the entry used to
+have.
 
 Writes are rate limited to 20/minute per IP, in memory. Uploads are capped at
 5 MB, restricted to jpg/png/gif/webp, and always renamed to a server-generated

@@ -18,11 +18,18 @@ only when a few lines genuinely will not do.
 - Styling is `src/index.css` alone: CSS custom properties on `:root`, dark mode
   via `prefers-color-scheme`. Numerals use `--mono` with `tabular-nums` — that
   alignment is the whole visual identity, keep it.
-- `Home` is a list, not a grid: one row per number, the value right-aligned in a
-  fixed 108px column so the numerals line up down the page, and its entry titles
-  linking straight to their posts. It reads like the source `Memorable
-  Numbers.md` on purpose. Values longer than 10 characters get `.long` and shrink
-  rather than widening the column for every "7".
+- Two families, both from Google Fonts, linked in `index.html`: Newsreader for
+  prose and IBM Plex Mono for `--mono`. It is the one external asset the app
+  loads. If it is chrome or a number it is mono; if it is content prose it is
+  Newsreader.
+- `Home` has two views off one `?view=` param, `Index` (default) and `Feed`, and
+  they are two components rather than one with a branch through its hooks —
+  otherwise it fetches both. `Index` is a list, not a grid: one row per number,
+  the value right-aligned in a fixed 104px column so the numerals line up down
+  the page. It reads like the source `Memorable Numbers.md` on purpose. Values
+  longer than 7 characters get `.long` and shrink rather than widening the
+  column for every "7". `Feed` is `sort=new` off `/api/posts`, which the backend
+  already had — do not add a `sort=recent` beside it.
 - `useAsync.ts` carries a file-level `oxlint-disable react-hooks/exhaustive-deps`
   because the hook forwards its caller's deps array, which the rule cannot verify
   statically. That is the one suppression in the codebase; do not add more.
@@ -46,9 +53,27 @@ they differ only in which filter reaches `api.posts()`. Add a fourth list view b
 extending its `mode`, not by copying the file.
 
 Edit history lives in the right-hand `<aside className="side">` of `PostPage`,
-not on a route of its own; there is no `/p/:id/history`. Restoring from there
-creates a new revision, so bump `revBump` to refetch the list — the post itself
-comes back from the endpoint and is set directly, which avoids a loading flash.
+not on a route of its own; there is no `/p/:id/history`. It is a read-only
+timeline — restoring happens in the History panel of `PostForm`.
+
+## Read routes read, the edit route writes
+
+`/p/:id` has exactly one write control: the `Edit` pill in its meta row.
+Adding a language, rewriting one, unlinking a related entry, restoring a
+revision and deleting the entry all live in `/p/:id/edit`, as three bordered
+panels between Details and Categories. Do not put any of them back on the read
+page — that is where they all were, in five different places, and the fix was
+to give them one home.
+
+The exception is the deleted-entry recovery view in `PostPage`: when the post
+404s but its revisions survive, `Restore` belongs there, because there is no
+edit form to reach.
+
+`PostForm` keeps two rules straight. A restore replaces the entry, so `fill()`
+resets the fields to it. Linking or translating only changes what is around the
+entry, so those `setPost()` and leave a half-typed title alone. `LinkPanel` and
+`TranslationEditor` are deliberately **not** `<form>` elements — nested inside
+the entry form, an inner submit bubbles out and publishes the entry.
 
 ## Mirrors the backend
 
