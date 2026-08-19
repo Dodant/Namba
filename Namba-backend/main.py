@@ -22,7 +22,9 @@ from numfmt import FORMATS, bucket_of, grouped_value, parse_number
 # is checked is its shape, not its membership of a list -- the wiki's working
 # vocabulary is the set of tags actually in use, which /api/tags reports.
 TAG_MAX = 24
-TAGS_PER_POST = 5
+# Two. A film of a book gets both, and that is already the widest an entry
+# honestly is -- five was room to file one number under half the wiki.
+TAGS_PER_POST = 2
 
 UPLOAD_DIR = os.environ.get("NAMBA_UPLOADS", os.path.join(db.DIR, "uploads"))
 # The built front end, served from here in production so that /p/42 can carry

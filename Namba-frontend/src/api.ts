@@ -2,8 +2,10 @@
     vocabulary is the tags in use, which `api.tags()` reports most-used first.
     The API lower-cases and collapses whitespace, so Book and book are one. */
 export type Tag = string
+/* Both mirror main.py by hand. Drift shows up as a 422 rather than as a
+   quietly different rule, which is the same bargain FORMATS makes. */
 export const TAG_MAX = 24
-export const TAGS_PER_POST = 5
+export const TAGS_PER_POST = 2
 
 export const FORMATS = ['INTEGER', 'DECIMAL', 'MIXED', 'TIME'] as const
 export type Format = (typeof FORMATS)[number]

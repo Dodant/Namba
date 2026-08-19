@@ -201,21 +201,37 @@ function Index({ lang }: { lang: string }) {
         ))}
       </nav>
 
-      <div className="chips">
-        <button className={`chip ${tag ? '' : 'on'}`} onClick={() => setParam('tag', '')}>
-          All
-        </button>
-        {(tags.data ?? []).map((t) => (
-          <button
-            key={t.tag}
-            className={`chip ${t.tag === tag ? 'on' : ''}`}
-            onClick={() => setParam('tag', t.tag === tag ? '' : t.tag)}
-          >
-            {tagLabel(t.tag)}
-            <span className="n">{t.count}</span>
+      {/* Wears .band so it folds and reads like the bands under it. Closed by
+          default -- twenty chips is a wall in front of the thing people came
+          for, and the summary carries the filter so a folded panel never
+          hides which one is on. */}
+      <details className="band chips-fold">
+        <summary className="band-head">
+          <h2>Categories</h2>
+          {/* outside the h2: heading type is uppercase here, and a tag that
+              reads BOOK beside a chip reading book is the same word twice */}
+          {tag && <span className="active">{tagLabel(tag)}</span>}
+          <span className="rule" />
+          <span className="n">
+            {tags.data?.length ?? 0} {tags.data?.length === 1 ? 'tag' : 'tags'}
+          </span>
+        </summary>
+        <div className="chips">
+          <button className={`chip ${tag ? '' : 'on'}`} onClick={() => setParam('tag', '')}>
+            All
           </button>
-        ))}
-      </div>
+          {(tags.data ?? []).map((t) => (
+            <button
+              key={t.tag}
+              className={`chip ${t.tag === tag ? 'on' : ''}`}
+              onClick={() => setParam('tag', t.tag === tag ? '' : t.tag)}
+            >
+              {tagLabel(t.tag)}
+              <span className="n">{t.count}</span>
+            </button>
+          ))}
+        </div>
+      </details>
 
       {numbers.err && <p className="err">{numbers.err}</p>}
       {numbers.loading && <p className="empty">Loading…</p>}

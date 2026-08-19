@@ -229,12 +229,19 @@ def test_api_round_trip():
     assert slash["format"] == "MIXED"
     assert len(c.get("/api/posts", params={"value": "11/22/63"}).json()) == 1
 
-    # a tag is whatever people call it, normalised so one idea is one tag
+    # a tag is whatever people call it, normalised so one idea is one tag --
+    # Music and MUSIC collapse, which is what keeps this inside the cap of two
     coined = c.post("/api/posts", json={
         "value": "808", "title": "808 drum machine",
-        "tags": ["  drum machine ", "Music", "MUSIC", "\ud55c\uad6d\uc5b4"],
+        "tags": ["  Drum  Machine ", "Music", "MUSIC"],
     }).json()
-    assert coined["tags"] == ["drum machine", "music", "\ud55c\uad6d\uc5b4"], coined["tags"]
+    assert coined["tags"] == ["drum machine", "music"], coined["tags"]
+
+    # two is the cap, and it is the widest an entry honestly is
+    assert c.post("/api/posts", json={"value": "1", "title": "x",
+                                      "tags": ["a", "b", "c"]}).status_code == 422
+    assert c.post("/api/posts", json={"value": "1", "title": "x",
+                                      "tags": ["a", "b"]}).status_code == 201
 
     # shape is checked, membership is not
     for bad in (["hip/hop"], ["   "], ["x" * 25], list("abcdef")):

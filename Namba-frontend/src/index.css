@@ -171,6 +171,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
   color: var(--ink); border-bottom-color: var(--accent); font-weight: 600;
 }
 
+.chips-fold { margin: 0 0 26px; }
+.chips-fold .active {
+  font-family: var(--mono); font-size: 10.5px; color: var(--accent);
+  letter-spacing: 0.02em;
+}
+.chips-fold .chips { margin: 12px 0 0; }
+
 /* --- number index ------------------------------------------------- */
 .band { margin: 0 0 34px; }
 /* the rule runs from the label to the count, so a band reads as one line

@@ -127,7 +127,8 @@ Restore away.
 
 ### Tags
 
-Free-form, up to 5 per post, so a film of a book gets both. The seed arrives
+Free-form, two per post — a film of a book gets both, and that is about as
+wide as an entry honestly is. The seed arrives
 with twenty — `MOVIE TV ANIME BOOK MUSIC GAME BRAND SPORTS SCIENCE MATH TECH
 HISTORY RELIGION MEME PERSON PLACE MYTH SLANG RULE UNIT` — and anyone can coin
 another by typing it. The form suggests the tags already in use, most-used

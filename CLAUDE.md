@@ -28,9 +28,11 @@ package). **Change one, change the other:**
 | what | backend | frontend |
 |---|---|---|
 | the 4 number formats | `numfmt.py` `FORMATS` | `src/api.ts` `FORMATS` |
+| the two tag limits | `main.py` `TAG_MAX`, `TAGS_PER_POST` | `src/api.ts`, same names |
 
-The backend rejects an unknown format with a 422 rather than dropping it, so a
-frontend-only addition fails loudly rather than silently.
+The backend rejects an unknown format with a 422 rather than dropping it, and
+a tag past either limit the same way, so a frontend-only change fails loudly
+rather than silently.
 
 There used to be a second row here for the 20 category tags. Tags are
 free-form now: the backend checks a tag's shape, never its membership, and
