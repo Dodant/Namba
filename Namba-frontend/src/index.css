@@ -575,22 +575,31 @@ h4.section {
   .form-layout { grid-template-columns: 1fr; }
   .form-side { position: static; border-top: 1px solid var(--line); padding-top: 6px; }
 }
-/* a field label is a row of two; 290px is not enough for that one */
-.form-side .field label { flex-wrap: wrap; }
+/* a field label is a row of two; 340px is not enough for that one, so the
+   hint takes a line of its own rather than starting on the label's and
+   breaking wherever it runs out */
+.form-side .field :is(label, .field-label) { flex-wrap: wrap; }
+.form-side .field .hint { flex-basis: 100%; }
 .form { max-width: 680px; padding-bottom: 28px; }
 .form h1 { font-size: 31px; font-weight: 400; letter-spacing: -0.015em; margin: 26px 0 8px; }
 /* 28 between fields against 8 inside one: the gap has to say which label
    belongs to which control, and at 20/6 the two readings were close enough
    that the form read as one undifferentiated column. */
 .field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
-.field label {
+/* .field-label is the same thing over a group rather than over a control --
+   the chips, the three panels. A <label> there names nothing, which is both
+   invalid and a screen reader announcing a caption with no field under it.
+   600 against the hint's 400: the two were 10.5 and 11 of the same face a
+   word apart, so "NUMBER 42 . 1000" read as one string and the label lost.
+   The weight is the separation, not the colour -- these greys are pinned. */
+.field label, .field .field-label {
   display: flex; align-items: baseline; gap: 8px;
-  font-family: var(--mono); font-size: 10.5px; font-weight: 400;
+  font-family: var(--mono); font-size: 10.5px; font-weight: 600;
   letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
 }
 .field .hint {
-  font-family: var(--mono); font-size: 11px; color: var(--fainter);
-  text-transform: none; letter-spacing: 0;
+  font-family: var(--mono); font-size: 10.5px; font-weight: 400;
+  color: var(--fainter); text-transform: none; letter-spacing: 0;
 }
 /* the same capsule the buttons and the chips wear: a page whose controls are
    pills and whose fields are rounded boxes is wearing two shapes. Roomier
@@ -626,6 +635,16 @@ h4.section {
 /* the preview is what you will get, so it is coloured like the numeral it
    becomes rather than like a hint */
 .field.check .hint { color: var(--accent); }
+
+/* the widths of the two fields in the top row, and of the two controls that
+   would look absurd stretched to 680. They were inline styles in PostForm --
+   the only styling in the app that did not live in this file. */
+/* two classes, not one: .row > * sets flex: 1 further down at the same
+   specificity, and the later rule wins a tie */
+.field.num-field { flex: 2; min-width: 190px; }
+.field.fmt-field { min-width: 170px; }
+.field .select.narrow { max-width: 220px; }
+.nick-field input { max-width: 340px; }
 
 /* the one field with a hard border, because it is the entry's identity:
    every other field describes the number, this one is the number */
