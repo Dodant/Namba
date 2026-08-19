@@ -19,6 +19,12 @@ Env overrides: `NAMBA_DB`, `NAMBA_UPLOADS` (the tests use both to stay hermetic)
   it produces 500s only under concurrent requests — a single curl passes, and so
   does `TestClient`, which funnels everything through one portal thread.
   `test_connection_crosses_threads` is the guard; it spawns a real thread.
+- **`PRAGMA journal_mode = WAL` in `db.init()` is not a tuning knob.** Every page
+  load reads this file, because `/p/42` carries its own `<head>`; under the
+  default rollback journal one save takes an exclusive lock and every reader
+  waits it out, then gets a 500 when the 5s busy timeout expires. The mode lives
+  in the file header, so it is set once and inherited — which also means the
+  database will not live on a filesystem without shared-memory locks (NFS, SMB).
 - **`revisions` has no foreign key on purpose.** It is the only thing between
   vandalism and permanent loss on a wiki nobody logs into, so the rows must
   outlive the post. Every edit, restore and delete snapshots first. Adding
@@ -109,8 +115,11 @@ No auth means the input validation *is* the security model.
   that is hand-copied into `api.ts`; the vocabulary is not.
 - Write rate limit is a per-process in-memory dict (20/min/IP). It is per-worker;
   run one worker or move it to redis. Reads are not limited.
-- Likes are a bare counter; the browser's `localStorage` prevents double-voting.
-  Deliberately naive.
+- Likes are a bare counter, and rate limited like every other write. The
+  browser's `localStorage` stops an accidental second vote; the limiter is what
+  stops a script. Deliberately naive beyond that.
+- `/api/posts/{id}/revisions` returns the newest `REVISIONS_SHOWN` (50), not the
+  table. A snapshot is the whole entry and the edit form opens with this list.
 
 ## Tests
 

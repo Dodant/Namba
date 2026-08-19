@@ -89,7 +89,8 @@ wrote an entry and is **never** overwritten; an editor is recorded separately in
 arthur" rather than quietly stealing the byline. Second, every edit, restore and
 delete snapshots the previous state into `revisions` first. That history reads
 down the right-hand column of each entry and is restorable from the entry's edit
-form. Those rows deliberately have no foreign key — they outlive the post they
+form; the fifty newest are shown, since a snapshot is the whole entry and an
+entry that has been fought over carries hundreds. Those rows deliberately have no foreign key — they outlive the post they
 describe, so a deletion is recoverable too, from the address the entry used to
 have.
 
@@ -99,7 +100,8 @@ prose instead, clamped to three lines, since a preview with `**` in it is not a
 preview. Raw HTML in a post is escaped rather than rendered: anyone can write
 here, so nothing anyone writes becomes markup.
 
-Writes are rate limited to 20/minute per IP, in memory. Uploads are capped at
+Writes are rate limited to 20/minute per IP, in memory — likes included, since
+they are writes too. Uploads are capped at
 5 MB, restricted to jpg/png/gif/webp, and always renamed to a server-generated
 UUID.
 
@@ -164,8 +166,10 @@ links written before the rule changed keep working.
 
 One process. `npm run build` writes `Namba-frontend/dist/`, and the API serves
 it: built assets by path, `index.html` for everything else, so `/n/42` survives
-a refresh without a rewrite rule. A SQLite file sits next to it, and any box
-with a disk will do.
+a refresh without a rewrite rule. A SQLite file sits next to it, in WAL mode so
+that saving an entry does not lock out everyone reading one, and any box with a
+real disk will do — a filesystem without shared-memory locks (NFS, SMB) will
+not.
 
 They are served together rather than split so that `/p/42` can carry its own
 `<head>`. A share of an entry has to arrive with that entry's title, blurb and
