@@ -28,6 +28,11 @@ sanitiser config to get wrong.
 - Styling is `src/index.css` alone: CSS custom properties on `:root`, dark mode
   via `prefers-color-scheme`. Numerals use `--mono` with `tabular-nums` — that
   alignment is the whole visual identity, keep it.
+- Every control the reader types in or presses is a capsule —
+  `border-radius: 999px` — buttons, chips, selects and inputs alike. The
+  textarea is the one exception: at 104px tall a 999px radius is a half-circle
+  at each end and the text runs into it, so it takes 20px. Containers are not
+  controls and keep `--radius`: panels, cards, the picker, images.
 - Selects are real `<select>`s and stay that way. The dropdown is styled with
   `appearance: base-select` and `::picker(select)` behind an `@supports`, so
   Chrome 135+ gets the picker in the page's own palette and everything else
