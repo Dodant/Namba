@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS posts (
   image      TEXT,
   author     TEXT NOT NULL DEFAULT 'anonymous',  -- whoever wrote it first; never overwritten
   edited_by  TEXT,                                 -- whoever touched it last, if anyone
+  lang       TEXT,                                 -- what title/body are written in; free-form, like translations.lang
   likes      INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -91,4 +92,9 @@ def init():
         have = {r["name"] for r in con.execute("PRAGMA table_info(posts)")}
         if "edited_by" not in have:
             con.execute("ALTER TABLE posts ADD COLUMN edited_by TEXT")
+        # NULL on every existing row, and it stays that way. Guessing that the
+        # Korean-titled seed entries are Korean would be the importer correcting
+        # its source, which is the wiki's job and not this file's.
+        if "lang" not in have:
+            con.execute("ALTER TABLE posts ADD COLUMN lang TEXT")
     con.close()

@@ -35,6 +35,9 @@ export type Post = {
   image: string | null
   author: string
   edited_by: string | null
+  /** what this entry's own title and body are written in. Free-form, like a
+      translation's label, and null on everything written before it existed. */
+  lang: string | null
   likes: number
   created_at: string
   updated_at: string
@@ -83,6 +86,7 @@ export type PostInput = {
   image?: string | null
   author?: string
   tags?: Tag[]
+  lang?: string | null
 }
 
 type Params = Record<string, string | number | undefined | null>
@@ -190,6 +194,12 @@ export const liked = {
 }
 
 export const numberPath = (value: string) => `/n/${encodeURIComponent(value)}`
+
+/** How the entry's own tab reads. "Original" is all it can say until someone
+    records what the entry was written in, which is null on every entry older
+    than the column. Shared so the tab and the edit form cannot drift. */
+export const originalLabel = (lang: string | null | undefined) =>
+  lang ? `Original (${lang})` : 'Original'
 
 export function fmtDate(s: string) {
   const d = new Date(s)

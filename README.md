@@ -92,6 +92,11 @@ sitting under "Original". The language is a free-form label — 한국어, Japan
 Español, whatever the person adding it calls it — with one row per language per
 entry, so writing the same language twice edits it instead of duplicating it.
 
+The entry can say what it is itself written in, in the form's "Written in"
+field, and then the tab reads "Original (한국어)" rather than leaving the reader
+to work it out from the title. It is optional and blank on everything written
+before the field existed; nothing guesses on an entry's behalf.
+
 Translations follow the same rules as everything else: anyone can add, rewrite
 or remove one, the first translator keeps the byline, and the change is
 snapshotted into the entry's history first, so a removed translation is one

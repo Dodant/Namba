@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
-  api, fmtDate, FORMAT_LABEL, FORMATS, nickname, numberPath, TAGS, tagLabel,
+  api, fmtDate, FORMAT_LABEL, FORMATS, nickname, numberPath, originalLabel,
+  TAGS, tagLabel,
   type Format, type Post, type Revision, type Tag, type Translation,
 } from '../api'
 
@@ -17,6 +18,7 @@ export default function PostForm() {
   const [body, setBody] = useState('')
   const [tags, setTags] = useState<Tag[]>([])
   const [image, setImage] = useState<string | null>(null)
+  const [lang, setLang] = useState('')
   const [author, setAuthor] = useState(nickname.get())
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
@@ -38,6 +40,7 @@ export default function PostForm() {
     setBody(p.body)
     setTags(p.tags)
     setImage(p.image)
+    setLang(p.lang ?? '')
   }
 
   useEffect(() => {
@@ -63,6 +66,7 @@ export default function PostForm() {
       image,
       author: author.trim() || 'anonymous',
       tags,
+      lang: lang.trim() || null,
     }
     try {
       const saved = editing
@@ -170,6 +174,22 @@ export default function PostForm() {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="The Answer to the Ultimate Question of Life, the Universe, and Everything."
+        />
+      </div>
+
+      {/* "Written in", not "Language" -- the Languages panel below lists the
+          same entry written again, and two adjacent fields a plural apart
+          read as the same control twice */}
+      <div className="field" style={{ maxWidth: 340 }}>
+        <label>
+          Written in
+          <span className="hint">optional</span>
+        </label>
+        <input
+          maxLength={40}
+          value={lang}
+          onChange={(e) => setLang(e.target.value)}
+          placeholder="한국어 · English · 日本語"
         />
       </div>
 
@@ -348,7 +368,7 @@ function Languages({
           {/* the entry's own language has no Rewrite: the fields above are its
               editor, and a second one here would be two homes again */}
           <div className="panel-row now">
-            <span className="panel-lang">Original</span>
+            <span className="panel-lang">{originalLabel(post.lang)}</span>
             <span className="panel-title">{post.title}</span>
             <span className="panel-by">{post.author}</span>
           </div>

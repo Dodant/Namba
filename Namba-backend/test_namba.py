@@ -177,6 +177,25 @@ def test_api_round_trip():
     c.patch(f"/api/posts/{shot['id']}", json={"title": "renamed"})
     assert c.get(f"/api/posts/{shot['id']}").json()["image"] == "/uploads/y.png"
 
+    # an entry records the language it is itself written in, free-form like a
+    # translation label. Blank is NULL, not "", so there is one kind of empty.
+    ko = c.post("/api/posts", json={"value": "88", "title": "피아노",
+                                    "lang": " 한국어 ", "author": "seed"}).json()
+    assert ko["lang"] == "한국어"
+    assert c.post("/api/posts", json={"value": "89", "title": "x",
+                                      "lang": "  "}).json()["lang"] is None
+
+    # an edit that does not mention it leaves it; null clears it
+    c.patch(f"/api/posts/{ko['id']}", json={"title": "피아노 건반", "author": "ed"})
+    assert c.get(f"/api/posts/{ko['id']}").json()["lang"] == "한국어"
+    c.patch(f"/api/posts/{ko['id']}", json={"lang": None, "author": "ed"})
+    assert c.get(f"/api/posts/{ko['id']}").json()["lang"] is None
+
+    # and it rides in the snapshot, so a restore puts it back
+    rev = c.get(f"/api/posts/{ko['id']}/revisions").json()[0]
+    assert c.post(f"/api/posts/{ko['id']}/revisions/{rev['id']}/restore",
+                  json={"author": "arthur"}).json()["lang"] == "한국어"
+
     # a removed translation is recoverable, same as any other edit
     gone = c.delete(f"/api/posts/{tid}/translations/{same['translations'][0]['id']}",
                     params={"author": "zaphod"}).json()

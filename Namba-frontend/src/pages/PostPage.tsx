@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, fmtDate, nickname, numberPath, tagLabel, type Revision } from '../api'
+import {
+  api, fmtDate, nickname, numberPath, originalLabel, tagLabel, type Revision,
+} from '../api'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
 
@@ -78,7 +80,7 @@ export default function PostPage() {
               to add "English" as a tab of its own. A reader's switch and nothing
               more -- adding a language is a write, and writes are at /edit */}
           <button className={lang ? '' : 'on'} onClick={() => setLang('')}>
-            Original
+            {originalLabel(post.lang)}
           </button>
           {post.translations?.map((t) => (
             <button
@@ -137,7 +139,9 @@ export default function PostPage() {
             <span>
               {tr
                 ? `${tr.lang} added by ${tr.author}${tr.edited_by ? `, last edited by ${tr.edited_by}` : ''} · ${fmtDate(tr.updated_at)}`
-                : 'As first entered.'}
+                : post.lang
+                  ? `Written in ${post.lang}, as first entered`
+                  : 'As first entered'}
             </span>
             <span className="last">
               Anyone can edit — every version is kept, so nothing is lost.

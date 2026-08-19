@@ -79,6 +79,12 @@ class PostIn(BaseModel):
     image: Optional[str] = Field(default=None, max_length=300)
     author: str = Field(default="anonymous", max_length=40)
     tags: List[str] = Field(default_factory=list)
+    lang: Optional[str] = Field(default=None, max_length=40)
+
+    @field_validator("lang")
+    @classmethod
+    def blank_lang(cls, v):
+        return (v.strip() or None) if v is not None else None
 
     @field_validator("tags")
     @classmethod
@@ -101,6 +107,12 @@ class PostPatch(BaseModel):
     image: Optional[str] = Field(default=None, max_length=300)
     author: str = Field(default="anonymous", max_length=40)
     tags: Optional[List[str]] = None
+    lang: Optional[str] = Field(default=None, max_length=40)
+
+    @field_validator("lang")
+    @classmethod
+    def blank_lang(cls, v):
+        return (v.strip() or None) if v is not None else None
 
     @field_validator("tags")
     @classmethod
@@ -377,10 +389,10 @@ def create_post(p: PostIn, _=Depends(rate_limit), con=Depends(get_db)):
     with con:
         cur = con.execute(
             """INSERT INTO posts (value, format, sort_key, title, body, image, author,
-                                  created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
+                                  lang, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?)""",
             (p.value.strip(), fmt, key, p.title.strip(), p.body, p.image,
-             p.author.strip() or "anonymous", ts, ts),
+             p.author.strip() or "anonymous", p.lang, ts, ts),
         )
         _write_tags(con, cur.lastrowid, p.tags)
         post_id = cur.lastrowid
@@ -407,12 +419,13 @@ def edit_post(post_id: int, p: PostPatch, _=Depends(rate_limit), con=Depends(get
         # by a stranger must not erase who the entry came from.
         con.execute(
             """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
-                                image=?, edited_by=?, updated_at=? WHERE id=?""",
+                                image=?, lang=?, edited_by=?, updated_at=? WHERE id=?""",
             (
                 value, fmt, key,
                 p.title.strip() if p.title is not None else current["title"],
                 p.body if p.body is not None else current["body"],
                 p.image if "image" in sent else current["image"],
+                p.lang if "lang" in sent else current["lang"],
                 p.author.strip() or "anonymous",
                 now(), post_id,
             ),
@@ -447,9 +460,9 @@ def restore_revision(
             snapshot(con, post_id, who)  # restoring is itself undoable
             con.execute(
                 """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
-                                    image=?, edited_by=?, updated_at=? WHERE id=?""",
+                                    image=?, lang=?, edited_by=?, updated_at=? WHERE id=?""",
                 (old["value"], old["format"], old["sort_key"], old["title"], old["body"],
-                 old["image"], who, now(), post_id),
+                 old["image"], old.get("lang"), who, now(), post_id),
             )
         else:
             # The post was deleted. Snapshots outliving the post is the entire
@@ -459,11 +472,11 @@ def restore_revision(
             # first: the delete already took one.
             con.execute(
                 """INSERT INTO posts (id, value, format, sort_key, title, body, image,
-                                      author, edited_by, likes, created_at, updated_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                                      lang, author, edited_by, likes, created_at, updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (post_id, old["value"], old["format"], old["sort_key"], old["title"],
-                 old["body"], old["image"], old["author"], who, old.get("likes", 0),
-                 old["created_at"], now()),
+                 old["body"], old["image"], old.get("lang"), old["author"], who,
+                 old.get("likes", 0), old["created_at"], now()),
             )
         _write_tags(con, post_id, old.get("tags", []))
         # a snapshot from before translations existed has none, and restoring it

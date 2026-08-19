@@ -29,6 +29,17 @@ Env overrides: `NAMBA_DB`, `NAMBA_UPLOADS` (the tests use both to stay hermetic)
   the same, crediting whoever pressed Restore. New columns need the guarded
   `ALTER TABLE` in `db.init()` too — `CREATE TABLE IF NOT EXISTS` skips existing
   databases.
+- **In `PostPatch`, an absent field and an explicit `null` are different.**
+  `edit_post` reads `model_dump(exclude_unset=True)` to tell them apart, because
+  every field defaults to `None` and treating that as "unchanged" made
+  `{"image": null}` — the form's Remove button — a no-op. Nullable columns
+  (`image`, `lang`) test `in sent`; `title` and `value` keep `is not None`,
+  since neither may be nulled. A new nullable column belongs on the same side.
+- **`posts.lang` is free-form and usually `NULL`.** It records what an entry's
+  own title and body are written in, with the same "whatever people call it"
+  rule as `translations.lang` — no enum, no third list to keep in step. Every
+  row written before the column has `NULL` and keeps it: backfilling the
+  Korean-titled seed entries would be the importer correcting its source.
 - **`/api/numbers` is an ordered scan grouped in Python, not a `GROUP BY`.** The
   home list needs each number's entry titles, so aggregating and then re-querying
   for them would be two passes to build one thing. It returns `entries`, not a
