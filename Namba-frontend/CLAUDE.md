@@ -132,15 +132,17 @@ the wire is a Random button that works and always lands on the same entry.
 
 Edit history lives in the right-hand `<aside className="side">` of `PostPage`,
 not on a route of its own; there is no `/p/:id/history`. It is a read-only
-timeline — restoring happens in the History panel of `PostForm`.
+timeline — restoring happens in the History rail of `PostForm`, which is the
+same side of the page so that Edit does not move it.
 
 ## Read routes read, the edit route writes
 
 `/p/:id` has exactly one write control: the `Edit` pill in its meta row.
 Adding a language, rewriting one, unlinking a related entry, restoring a
-revision and deleting the entry all live in `/p/:id/edit`, as three bordered
-panels between Details and Categories. Do not put any of them back on the read
-page — that is where they all were, in five different places, and the fix was
+revision and deleting the entry all live in `/p/:id/edit` — Languages and
+Related entries as bordered panels in the form, History on a rail to the right
+of it (`.form-layout`, the same shape the read page has). Do not put any of
+them back on the read page — that is where they all were, in five different places, and the fix was
 to give them one home.
 
 The exception is the deleted-entry recovery view in `PostPage`: when the post

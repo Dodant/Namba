@@ -518,6 +518,22 @@ h4.section {
 .side .section { margin: 0 0 6px; }
 
 /* --- forms -------------------------------------------------------- */
+/* the same shape the read page has: the thing you are working on, and the
+   history of it on a rail beside. 680 + 290 + the gap fits inside .wrap, so
+   the two columns sit together rather than at opposite edges of the page. */
+.form-layout {
+  display: grid; grid-template-columns: minmax(0, 680px) 290px;
+  gap: 0 40px; align-items: start;
+}
+/* below this the two would not both fit, and the rail goes back to being the
+   last thing on the page. .side's own breakpoint is 820, so this repeats what
+   it does rather than leaving a gap between the two widths. */
+@media (max-width: 1080px) {
+  .form-layout { grid-template-columns: 1fr; }
+  .form-side { position: static; border-top: 1px solid var(--line); padding-top: 6px; }
+}
+/* a field label is a row of two; 290px is not enough for that one */
+.form-side .field label { flex-wrap: wrap; }
 .form { max-width: 680px; padding-bottom: 28px; }
 .form h1 { font-size: 31px; font-weight: 400; letter-spacing: -0.015em; margin: 26px 0 8px; }
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }

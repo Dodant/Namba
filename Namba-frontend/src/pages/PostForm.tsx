@@ -176,124 +176,242 @@ export default function PostForm() {
   }
 
   return (
-    <form className="form" onSubmit={submit}>
-      <h1>{editing ? 'Edit entry' : 'Add a number'}</h1>
-      <p className="form-intro">
-        {editing
-          ? `Anyone can edit anything here${owner ? `, including entries written by ${owner}` : ''}. The version you replace is kept in the history, and ${owner || 'the original author'} stays credited.`
-          : 'One entry per meaning. If 42 already exists, this joins it rather than replacing it.'}
-      </p>
+    /* History is a reference while you work, not a step in the work: down the
+       middle of the form it sat between two things you were filling in. Beside
+       it is where the read page already keeps it. */
+    <div className="form-layout">
+      <form className="form" onSubmit={submit}>
+        <h1>{editing ? 'Edit entry' : 'Add a number'}</h1>
+        <p className="form-intro">
+          {editing
+            ? `Anyone can edit anything here${owner ? `, including entries written by ${owner}` : ''}. The version you replace is kept in the history, and ${owner || 'the original author'} stays credited.`
+            : 'One entry per meaning. If 42 already exists, this joins it rather than replacing it.'}
+        </p>
 
-      <div className="row">
-        <div className="field num-field" style={{ flex: 2, minWidth: 190 }}>
+        <div className="row">
+          <div className="field num-field" style={{ flex: 2, minWidth: 190 }}>
+            <label>
+              Number<span className="hint">{EXAMPLES[format]}</span>
+            </label>
+            <input
+              className="mono"
+              required
+              maxLength={32}
+              value={value}
+              inputMode={format === 'INTEGER' ? 'numeric' : format === 'DECIMAL' ? 'decimal' : undefined}
+              onChange={(e) =>
+                setValue(KEEP[format] ? e.target.value.replace(KEEP[format], '') : e.target.value)
+              }
+            />
+          </div>
+          <div className="field" style={{ minWidth: 170 }}>
+            <label>Format</label>
+            {/* a wrapper only so the caret can be a ::after that follows the
+                theme; a background-image would have baked its colour in */}
+            <div className="select">
+              <select
+                value={format}
+                onChange={(e) => {
+                  const next = e.target.value as '' | Format
+                  setFormat(next)
+                  // the control is about to disappear, so the flag goes with it
+                  if (!groupable(next)) setGrouped(false)
+                }}
+              >
+                <option value="">Auto-detect</option>
+                {FORMATS.map((f) => (
+                  <option key={f} value={f}>
+                    {FORMAT_LABEL[f]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {groupable(format) && (
+            /* beside the field it applies to. The preview only shows when the
+               box would change something, so ticking it on 42 does nothing and
+               looks like it does nothing */
+            <label className="field check">
+              <input
+                type="checkbox"
+                checked={grouped}
+                onChange={(e) => setGrouped(e.target.checked)}
+              />
+              Group thousands
+              {showValue(value, true) !== value && (
+                <span className="hint">{showValue(value, true)}</span>
+              )}
+            </label>
+          )}
+        </div>
+
+        <div className="field">
           <label>
-            Number<span className="hint">{EXAMPLES[format]}</span>
+            Title<span className="hint">what the number refers to</span>
           </label>
           <input
-            className="mono"
             required
-            maxLength={32}
-            value={value}
-            inputMode={format === 'INTEGER' ? 'numeric' : format === 'DECIMAL' ? 'decimal' : undefined}
-            onChange={(e) =>
-              setValue(KEEP[format] ? e.target.value.replace(KEEP[format], '') : e.target.value)
-            }
+            maxLength={200}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="The Hitchhiker's Guide to the Galaxy"
           />
         </div>
-        <div className="field" style={{ minWidth: 170 }}>
-          <label>Format</label>
-          {/* a wrapper only so the caret can be a ::after that follows the
-              theme; a background-image would have baked its colour in */}
+
+        <div className="field">
+          <label>
+            Details<span className="hint">optional — why this number, what it means</span>
+          </label>
+          <textarea
+            maxLength={5000}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="The Answer to the Ultimate Question of Life, the Universe, and Everything."
+          />
+          <p className="fine">
+            Markdown works — **bold**, *italic*, [links](https://…), lists,
+            headings and tables. A single Enter is a line break.
+          </p>
+        </div>
+
+        {/* "Written in", not "Language" -- the Languages panel below lists the
+            same entry written again, and two adjacent fields a plural apart
+            read as the same control twice */}
+        <div className="field" style={{ maxWidth: 220 }}>
+          <label>
+            Written in
+            <span className="hint">optional</span>
+          </label>
           <div className="select">
-            <select
-              value={format}
-              onChange={(e) => {
-                const next = e.target.value as '' | Format
-                setFormat(next)
-                // the control is about to disappear, so the flag goes with it
-                if (!groupable(next)) setGrouped(false)
-              }}
-            >
-              <option value="">Auto-detect</option>
-              {FORMATS.map((f) => (
-                <option key={f} value={f}>
-                  {FORMAT_LABEL[f]}
+            <select value={lang} onChange={(e) => setLang(e.target.value)}>
+              <option value="">Not set</option>
+              {langsWith(lang).map((l) => (
+                <option key={l} value={l}>
+                  {l}
                 </option>
               ))}
             </select>
           </div>
         </div>
-        {groupable(format) && (
-          /* beside the field it applies to. The preview only shows when the
-             box would change something, so ticking it on 42 does nothing and
-             looks like it does nothing */
-          <label className="field check">
-            <input
-              type="checkbox"
-              checked={grouped}
-              onChange={(e) => setGrouped(e.target.checked)}
-            />
-            Group thousands
-            {showValue(value, true) !== value && (
-              <span className="hint">{showValue(value, true)}</span>
-            )}
-          </label>
+
+        {post && (
+          <>
+            <Languages post={post} onSaved={setPost} onError={setErr} bumpRevs={() => setRevBump((n) => n + 1)} />
+
+            <LinkPanel post={post} onLinked={setPost} onError={setErr} />
+          </>
         )}
-      </div>
 
-      <div className="field">
-        <label>
-          Title<span className="hint">what the number refers to</span>
-        </label>
-        <input
-          required
-          maxLength={200}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="The Hitchhiker's Guide to the Galaxy"
-        />
-      </div>
-
-      <div className="field">
-        <label>
-          Details<span className="hint">optional — why this number, what it means</span>
-        </label>
-        <textarea
-          maxLength={5000}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="The Answer to the Ultimate Question of Life, the Universe, and Everything."
-        />
-        <p className="fine">
-          Markdown works — **bold**, *italic*, [links](https://…), lists,
-          headings and tables. A single Enter is a line break.
-        </p>
-      </div>
-
-      {/* "Written in", not "Language" -- the Languages panel below lists the
-          same entry written again, and two adjacent fields a plural apart
-          read as the same control twice */}
-      <div className="field" style={{ maxWidth: 220 }}>
-        <label>
-          Written in
-          <span className="hint">optional</span>
-        </label>
-        <div className="select">
-          <select value={lang} onChange={(e) => setLang(e.target.value)}>
-            <option value="">Not set</option>
-            {langsWith(lang).map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
-            ))}
-          </select>
+        <div className="field">
+          <label>
+            Categories
+            <span className="hint">
+              up to {TAGS_PER_POST} — a film of a book gets both
+            </span>
+          </label>
+          <div className="chips">
+            {[...new Set([...(vocab.data ?? []).slice(0, 24).map((v) => v.tag), ...tags])].map(
+              (t: Tag) => (
+                <button
+                  type="button"
+                  key={t}
+                  className={`chip ${tags.includes(t) ? 'on' : ''}`}
+                  onClick={() => setTags(toggleTag(tags, t))}
+                >
+                  {tagLabel(t)}
+                </button>
+              ),
+            )}
+          </div>
+          <div className="coin">
+            <input
+              value={coined}
+              maxLength={TAG_MAX}
+              placeholder="or name your own"
+              /* folded as it is typed, not on the way out, so the field shows
+                 the tag that will actually be made */
+              onChange={(e) => setCoined(e.target.value.toLowerCase())}
+              onKeyDown={(e) => {
+                // Enter adds the tag rather than publishing the entry
+                if (e.key !== 'Enter') return
+                e.preventDefault()
+                setTags(toggleTag(tags, coined, true))
+                setCoined('')
+              }}
+            />
+            <button
+              type="button"
+              className="btn"
+              disabled={!coined.trim() || tags.length >= TAGS_PER_POST}
+              onClick={() => {
+                setTags(toggleTag(tags, coined, true))
+                setCoined('')
+              }}
+            >
+              Add
+            </button>
+          </div>
         </div>
-      </div>
+
+        <div className="field">
+          <label>
+            Image<span className="hint">optional — jpg, png, gif or webp, up to 5 MB</span>
+          </label>
+          {image ? (
+            <div className="file-row">
+              <img className="thumb" src={image} alt="" />
+              <button type="button" className="pill" onClick={() => setImage(null)}>
+                Remove
+              </button>
+            </div>
+          ) : (
+            <input className="file" type="file" accept="image/*" onChange={pickImage} />
+          )}
+        </div>
+
+        <div className="field" style={{ maxWidth: 340 }}>
+          <label>
+            Your nickname
+            <span className="hint">
+              {editing ? 'recorded as the editor, not the author' : 'no account, no password'}
+            </span>
+          </label>
+          <input
+            maxLength={40}
+            value={author}
+            onChange={(e) => setAuthor(e.target.value)}
+            placeholder="anonymous"
+          />
+        </div>
+
+        {err && <p className="err">{err}</p>}
+
+        <div className="actions">
+          <button className="btn primary" disabled={busy}>
+            {editing ? 'Save changes' : 'Publish'}
+          </button>
+          <button type="button" className="btn" onClick={() => nav(-1)}>
+            Cancel
+          </button>
+          {editing && (
+            <>
+              <span className="spacer" />
+              <button type="button" className="btn danger" onClick={remove}>
+                Delete this entry
+              </button>
+            </>
+          )}
+        </div>
+        {editing && (
+          <p className="fine">
+            Deleting keeps the entry in its history — it can be restored to the same
+            address.
+          </p>
+        )}
+      </form>
 
       {post && (
-        <>
-          <Languages post={post} onSaved={setPost} onError={setErr} bumpRevs={() => setRevBump((n) => n + 1)} />
-
+        <aside className="side form-side">
           <div className="field">
             <label>
               History
@@ -317,6 +435,8 @@ export default function PostForm() {
                       {byline(r)} · {fmtDate(r.at)}
                     </span>
                   </div>
+                  {/* type=button and outside the form both, so a restore can
+                      never be mistaken for a submit */}
                   <button
                     type="button"
                     className="pill"
@@ -331,121 +451,14 @@ export default function PostForm() {
                   </button>
                 </div>
               ))}
-              {!revs.length && <div className="panel-row panel-empty">No edits yet — as first written.</div>}
+              {!revs.length && (
+                <div className="panel-row panel-empty">No edits yet — as first written.</div>
+              )}
             </div>
           </div>
-
-          <LinkPanel post={post} onLinked={setPost} onError={setErr} />
-        </>
+        </aside>
       )}
-
-      <div className="field">
-        <label>
-          Categories
-          <span className="hint">
-            up to {TAGS_PER_POST} — a film of a book gets both
-          </span>
-        </label>
-        <div className="chips">
-          {[...new Set([...(vocab.data ?? []).slice(0, 24).map((v) => v.tag), ...tags])].map(
-            (t: Tag) => (
-              <button
-                type="button"
-                key={t}
-                className={`chip ${tags.includes(t) ? 'on' : ''}`}
-                onClick={() => setTags(toggleTag(tags, t))}
-              >
-                {tagLabel(t)}
-              </button>
-            ),
-          )}
-        </div>
-        <div className="coin">
-          <input
-            value={coined}
-            maxLength={TAG_MAX}
-            placeholder="or name your own"
-            /* folded as it is typed, not on the way out, so the field shows
-               the tag that will actually be made */
-            onChange={(e) => setCoined(e.target.value.toLowerCase())}
-            onKeyDown={(e) => {
-              // Enter adds the tag rather than publishing the entry
-              if (e.key !== 'Enter') return
-              e.preventDefault()
-              setTags(toggleTag(tags, coined, true))
-              setCoined('')
-            }}
-          />
-          <button
-            type="button"
-            className="btn"
-            disabled={!coined.trim() || tags.length >= TAGS_PER_POST}
-            onClick={() => {
-              setTags(toggleTag(tags, coined, true))
-              setCoined('')
-            }}
-          >
-            Add
-          </button>
-        </div>
-      </div>
-
-      <div className="field">
-        <label>
-          Image<span className="hint">optional — jpg, png, gif or webp, up to 5 MB</span>
-        </label>
-        {image ? (
-          <div className="file-row">
-            <img className="thumb" src={image} alt="" />
-            <button type="button" className="pill" onClick={() => setImage(null)}>
-              Remove
-            </button>
-          </div>
-        ) : (
-          <input className="file" type="file" accept="image/*" onChange={pickImage} />
-        )}
-      </div>
-
-      <div className="field" style={{ maxWidth: 340 }}>
-        <label>
-          Your nickname
-          <span className="hint">
-            {editing ? 'recorded as the editor, not the author' : 'no account, no password'}
-          </span>
-        </label>
-        <input
-          maxLength={40}
-          value={author}
-          onChange={(e) => setAuthor(e.target.value)}
-          placeholder="anonymous"
-        />
-      </div>
-
-      {err && <p className="err">{err}</p>}
-
-      <div className="actions">
-        <button className="btn primary" disabled={busy}>
-          {editing ? 'Save changes' : 'Publish'}
-        </button>
-        <button type="button" className="btn" onClick={() => nav(-1)}>
-          Cancel
-        </button>
-        {editing && (
-          <>
-            <span className="spacer" />
-            <button type="button" className="btn danger" onClick={remove}>
-              Delete this entry
-            </button>
-          </>
-        )}
-      </div>
-      {editing && (
-        <p className="fine">
-          Deleting keeps the entry in its history — it can be restored to the same
-          address.
-        </p>
-      )}
-    </form>
+    </div>
   )
 }
 
