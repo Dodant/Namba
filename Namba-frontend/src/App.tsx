@@ -26,17 +26,21 @@ function Random() {
 
   if (got.err)
     return (
-      <p className="empty">
+      <p className="empty" role="alert">
         Couldn’t pick one — {got.err}. <Link to="/">Back to the index.</Link>
       </p>
     )
   if (!got.loading && !hit)
     return (
-      <p className="empty">
+      <p className="empty" role="status">
         Nothing to pick from yet. <Link to="/new">Add the first one.</Link>
       </p>
     )
-  return <p className="empty">Loading…</p>
+  return (
+    <p className="empty" role="status">
+      Loading…
+    </p>
+  )
 }
 
 /* one path rather than 🎲, which arrives in colour and in whichever font the
@@ -130,6 +134,7 @@ function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void })
             ref={box}
             type="search"
             name="q"
+            aria-label="Search numbers"
             placeholder="Search numbers…"
             defaultValue={params.get('q') ?? ''}
           />
@@ -167,7 +172,11 @@ function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void })
         {/* "Recent", not "Feed": the label is a promise about the order, and
             this one is last-touched. The view is still the feed -- ?view=feed
             names the shape, a card list rather than the index. */}
-        <Link className={`btn ${feed ? 'on' : ''}`} to={feed ? '/' : '/?view=feed'}>
+        <Link
+          className={`btn ${feed ? 'on' : ''}`}
+          aria-current={feed ? 'page' : undefined}
+          to={feed ? '/' : '/?view=feed'}
+        >
           Recent
         </Link>
         <Link className="btn" to="/random">
@@ -199,24 +208,26 @@ export default function App() {
       <div className="wrap">
         <ScrollTop />
         <Header lang={lang} onLang={pickLang} />
-        <Routes>
-          <Route path="/" element={<Home lang={lang} />} />
-          <Route path="/n/:value" element={<Browse mode="number" lang={lang} />} />
-          <Route path="/t/:tag" element={<Browse mode="tag" lang={lang} />} />
-          <Route path="/search" element={<Browse mode="search" lang={lang} />} />
-          <Route path="/random" element={<Random />} />
-          <Route path="/p/:id" element={<PostPage />} />
-          <Route path="/p/:id/edit" element={<PostForm />} />
-          <Route path="/new" element={<PostForm />} />
-          <Route
-            path="*"
-            element={
-              <p className="empty">
-                Nothing here. <Link to="/">Back to the index.</Link>
-              </p>
-            }
-          />
-        </Routes>
+        <main>
+          <Routes>
+            <Route path="/" element={<Home lang={lang} />} />
+            <Route path="/n/:value" element={<Browse mode="number" lang={lang} />} />
+            <Route path="/t/:tag" element={<Browse mode="tag" lang={lang} />} />
+            <Route path="/search" element={<Browse mode="search" lang={lang} />} />
+            <Route path="/random" element={<Random />} />
+            <Route path="/p/:id" element={<PostPage />} />
+            <Route path="/p/:id/edit" element={<PostForm />} />
+            <Route path="/new" element={<PostForm />} />
+            <Route
+              path="*"
+              element={
+                <p className="empty">
+                  Nothing here. <Link to="/">Back to the index.</Link>
+                </p>
+              }
+            />
+          </Routes>
+        </main>
       </div>
     </BrowserRouter>
   )

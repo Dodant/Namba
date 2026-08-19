@@ -23,14 +23,32 @@ export function Like({ post }: { post: { id: number; likes: number } }) {
     }
   }
 
+  const says = `${on ? 'Unlike' : 'Like'} — ${n} ${n === 1 ? 'like' : 'likes'}`
+
   return (
-    <button className={`btn small ${on ? 'on' : ''}`} onClick={toggle} title="Like">
+    <button
+      className={`btn small ${on ? 'on' : ''}`}
+      onClick={toggle}
+      aria-pressed={on}
+      aria-label={says}
+      title={says}
+    >
       ♥ {n}
     </button>
   )
 }
 
-export default function PostCard({ post, showNumber = true }: { post: Post; showNumber?: boolean }) {
+export default function PostCard({
+  post,
+  showNumber = true,
+  except,
+}: {
+  post: Post
+  showNumber?: boolean
+  /** the tag this list is already filtered by, so a row does not carry a
+      chip linking to the page it is on. */
+  except?: string
+}) {
   return (
     <article className="card">
       {showNumber && (

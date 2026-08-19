@@ -40,10 +40,14 @@ export default function PostPage() {
   if (loaded.err)
     return (
       <>
-        <p className="empty">
+        <p className="empty" role="alert">
           Couldn’t open this entry — {loaded.err}. <Link to="/">Back to the index.</Link>
         </p>
-        {err && <p className="err">{err}</p>}
+        {err && (
+          <p className="err" role="alert">
+            {err}
+          </p>
+        )}
         {revs.data?.length ? (
           <>
             <h4 className="section">What it used to say</h4>
@@ -68,7 +72,12 @@ export default function PostPage() {
         ) : null}
       </>
     )
-  if (!post) return <p className="empty">Loading…</p>
+  if (!post)
+    return (
+      <p className="empty" role="status">
+        Loading…
+      </p>
+    )
 
   // the tab in front. Both shapes carry title and body, which is all the page
   // reads off it -- the number, tags, image and links belong to the entry.

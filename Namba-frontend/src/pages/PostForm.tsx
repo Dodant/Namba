@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   api, fmtDate, FORMAT_LABEL, FORMATS, nickname, numberPath, originalLabel,
@@ -60,8 +60,15 @@ const LANGS = [
    it on the next save, and the entry never asked to be edited that way. */
 const langsWith = (cur: string) => (!cur || LANGS.includes(cur) ? LANGS : [cur, ...LANGS])
 
+/* Every label in here named nothing: none wrapped its control and none
+   carried an htmlFor, so ten of the eleven fields on this page reached a
+   screen reader as an unnamed edit box with a caption floating above it.
+   useId rather than fixed strings because a form is not guaranteed to be the
+   only one on the page -- the translation editor below is a second set. */
 export default function PostForm() {
   const { id } = useParams()
+  const uid = useId()
+  const fid = (name: string) => `${uid}-${name}`
   const [params] = useSearchParams()
   const nav = useNavigate()
   const editing = Boolean(id)
@@ -82,6 +89,9 @@ export default function PostForm() {
   const [author, setAuthor] = useState(nickname.get())
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  /* a 5 MB upload over a slow line is several seconds in which the field
+     looked exactly as it did before the file was picked */
+  const [uploading, setUploading] = useState(false)
   /* the whole entry, not just the fields: the three panels below edit its
      translations, its revisions and its links, none of which are form values */
   const [post, setPost] = useState<Post | null>(null)
@@ -145,10 +155,13 @@ export default function PostForm() {
     const file = e.target.files?.[0]
     if (!file) return
     setErr('')
+    setUploading(true)
     try {
       setImage((await api.upload(file)).url)
     } catch (e) {
       setErr((e as Error).message)
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -189,11 +202,13 @@ export default function PostForm() {
         </p>
 
         <div className="row">
-          <div className="field num-field" style={{ flex: 2, minWidth: 190 }}>
-            <label>
-              Number<span className="hint">{EXAMPLES[format]}</span>
+          <div className="field num-field">
+            <label htmlFor={fid('value')}>
+              Number{' '}
+              <span className="hint">{EXAMPLES[format]}</span>
             </label>
             <input
+              id={fid('value')}
               className="mono"
               required
               maxLength={32}
@@ -204,12 +219,13 @@ export default function PostForm() {
               }
             />
           </div>
-          <div className="field" style={{ minWidth: 170 }}>
-            <label>Format</label>
+          <div className="field fmt-field">
+            <label htmlFor={fid('format')}>Format</label>
             {/* a wrapper only so the caret can be a ::after that follows the
                 theme; a background-image would have baked its colour in */}
             <div className="select">
               <select
+                id={fid('format')}
                 value={format}
                 onChange={(e) => {
                   const next = e.target.value as '' | Format
@@ -246,10 +262,12 @@ export default function PostForm() {
         </div>
 
         <div className="field">
-          <label>
-            Title<span className="hint">what the number refers to</span>
+          <label htmlFor={fid('title')}>
+            Title{' '}
+            <span className="hint">what the number refers to</span>
           </label>
           <input
+            id={fid('title')}
             required
             maxLength={200}
             value={title}
@@ -259,10 +277,12 @@ export default function PostForm() {
         </div>
 
         <div className="field">
-          <label>
-            Details<span className="hint">optional — why this number, what it means</span>
+          <label htmlFor={fid('body')}>
+            Details{' '}
+            <span className="hint">optional — why this number, what it means</span>
           </label>
           <textarea
+            id={fid('body')}
             maxLength={5000}
             value={body}
             onChange={(e) => setBody(e.target.value)}
@@ -280,12 +300,12 @@ export default function PostForm() {
         {/* the width caps the control, not the field: on the field it caps the
             label too, and a two-word hint comes apart across two lines */}
         <div className="field">
-          <label>
-            Written in
+          <label htmlFor={fid('lang')}>
+            Written in{' '}
             <span className="hint">optional</span>
           </label>
-          <div className="select" style={{ maxWidth: 220 }}>
-            <select value={lang} onChange={(e) => setLang(e.target.value)}>
+          <div className="select narrow">
+            <select id={fid('lang')} value={lang} onChange={(e) => setLang(e.target.value)}>
               <option value="">Not set</option>
               {langsWith(lang).map((l) => (
                 <option key={l} value={l}>
@@ -304,13 +324,15 @@ export default function PostForm() {
           </>
         )}
 
-        <div className="field">
-          <label>
-            Categories
+        {/* a caption over a row of chips and a text box, not a label for one
+            control -- so a group with a name, and the box names itself */}
+        <div className="field" role="group" aria-labelledby={fid('cats')}>
+          <span className="field-label" id={fid('cats')}>
+            Categories{' '}
             <span className="hint">
               up to {TAGS_PER_POST} — a film of a book gets both
             </span>
-          </label>
+          </span>
           <div className="chips">
             {[...new Set([...(vocab.data ?? []).slice(0, 24).map((v) => v.tag), ...tags])].map(
               (t: Tag) => (
@@ -318,6 +340,7 @@ export default function PostForm() {
                   type="button"
                   key={t}
                   className={`chip ${tags.includes(t) ? 'on' : ''}`}
+                  aria-pressed={tags.includes(t)}
                   onClick={() => setTags(toggleTag(tags, t))}
                 >
                   {tagLabel(t)}
@@ -329,6 +352,7 @@ export default function PostForm() {
             <input
               value={coined}
               maxLength={TAG_MAX}
+              aria-label="Name a new category"
               placeholder="or name your own"
               /* folded as it is typed, not on the way out, so the field shows
                  the tag that will actually be made */
@@ -356,8 +380,9 @@ export default function PostForm() {
         </div>
 
         <div className="field">
-          <label>
-            Image<span className="hint">optional — jpg, png, gif or webp, up to 5 MB</span>
+          <label htmlFor={fid('image')}>
+            Image{' '}
+            <span className="hint">optional — jpg, png, gif or webp, up to 5 MB</span>
           </label>
           {image ? (
             <div className="file-row">
@@ -367,19 +392,33 @@ export default function PostForm() {
               </button>
             </div>
           ) : (
-            <input className="file" type="file" accept="image/*" onChange={pickImage} />
+            <>
+              <input
+                id={fid('image')}
+                className="file"
+                type="file"
+                accept="image/*"
+                disabled={uploading}
+                onChange={pickImage}
+              />
+              {uploading && (
+                <p className="fine" role="status">
+                  Uploading…
+                </p>
+              )}
+            </>
           )}
         </div>
 
-        <div className="field">
-          <label>
-            Your nickname
+        <div className="field nick-field">
+          <label htmlFor={fid('author')}>
+            Your nickname{' '}
             <span className="hint">
               {editing ? 'recorded as the editor, not the author' : 'no account, no password'}
             </span>
           </label>
           <input
-            style={{ maxWidth: 340 }}
+            id={fid('author')}
             maxLength={40}
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
@@ -387,11 +426,23 @@ export default function PostForm() {
           />
         </div>
 
-        {err && <p className="err">{err}</p>}
+        {err && (
+          <p className="err" role="alert">
+            {err}
+          </p>
+        )}
 
         <div className="actions">
+          {/* the button went grey and kept its old label, which on a slow save
+              is a form that looks broken rather than busy */}
           <button className="btn primary" disabled={busy}>
-            {editing ? 'Save changes' : 'Publish'}
+            {busy
+              ? editing
+                ? 'Saving…'
+                : 'Publishing…'
+              : editing
+                ? 'Save changes'
+                : 'Publish'}
           </button>
           <button type="button" className="btn" onClick={() => nav(-1)}>
             Cancel
@@ -415,11 +466,11 @@ export default function PostForm() {
 
       {post && (
         <aside className="side form-side">
-          <div className="field">
-            <label>
-              History
+          <div className="field" role="group" aria-labelledby={fid('hist')}>
+            <span className="field-label" id={fid('hist')}>
+              History{' '}
               <span className="hint">put an earlier version back at this same address</span>
-            </label>
+            </span>
             <div className="panel">
               <div className="panel-row now">
                 <div className="panel-main">
@@ -486,13 +537,14 @@ function Languages({
   bumpRevs: () => void
 }) {
   const [open, setOpen] = useState<Translation | 'new' | null>(null)
+  const gid = useId()
 
   return (
-    <div className="field">
-      <label>
-        Languages
+    <div className="field" role="group" aria-labelledby={gid}>
+      <span className="field-label" id={gid}>
+        Languages{' '}
         <span className="hint">the same entry, written again — 한국어, Japanese, Español</span>
-      </label>
+      </span>
       {open ? (
         <TranslationEditor
           post={post}
@@ -555,6 +607,8 @@ function TranslationEditor({
   const [title, setTitle] = useState(editing?.title ?? '')
   const [body, setBody] = useState(editing?.body ?? '')
   const [author, setAuthor] = useState(nickname.get())
+  const uid = useId()
+  const fid = (name: string) => `${uid}-${name}`
 
   async function save() {
     if (!lang.trim() || !title.trim()) return onError('A language and a title are required.')
@@ -588,13 +642,19 @@ function TranslationEditor({
   return (
     <div className="panel panel-edit">
       <div className="field">
-        <label>
-          Language<span className="hint">the one this version is written in</span>
+        <label htmlFor={fid('lang')}>
+          Language{' '}
+          <span className="hint">the one this version is written in</span>
         </label>
         {/* the language names the tab, so changing it would orphan the old one;
             rewrite the text here and add a new tab for a different language */}
         <div className="select">
-          <select value={lang} disabled={!!editing} onChange={(e) => setLang(e.target.value)}>
+          <select
+            id={fid('lang')}
+            value={lang}
+            disabled={!!editing}
+            onChange={(e) => setLang(e.target.value)}
+          >
             <option value="">Pick one…</option>
             {langsWith(lang).map((l) => (
               <option key={l} value={l}>
@@ -605,20 +665,33 @@ function TranslationEditor({
         </div>
       </div>
       <div className="field">
-        <label>
-          Title<span className="hint">the entry's title in that language</span>
+        <label htmlFor={fid('title')}>
+          Title{' '}
+          <span className="hint">the entry's title in that language</span>
         </label>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
-      </div>
-      <div className="field">
-        <label>
-          Details<span className="hint">optional — markdown works here too</span>
-        </label>
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} maxLength={5000} />
-      </div>
-      <div className="field">
-        <label>Your nickname</label>
         <input
+          id={fid('title')}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          maxLength={200}
+        />
+      </div>
+      <div className="field">
+        <label htmlFor={fid('body')}>
+          Details{' '}
+          <span className="hint">optional — markdown works here too</span>
+        </label>
+        <textarea
+          id={fid('body')}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          maxLength={5000}
+        />
+      </div>
+      <div className="field">
+        <label htmlFor={fid('author')}>Your nickname</label>
+        <input
+          id={fid('author')}
           value={author}
           onChange={(e) => setAuthor(e.target.value)}
           placeholder="anonymous"
@@ -658,14 +731,22 @@ function LinkPanel({
 }) {
   const [q, setQ] = useState('')
   const [hits, setHits] = useState<Post[] | null>(null)
+  const [finding, setFinding] = useState(false)
+  const gid = useId()
 
   async function search() {
+    /* the same rule the header pill keeps: an empty box is not a search for
+       nothing. api.posts drops an empty q and hands back the whole wiki */
+    if (!q.trim() || finding) return
     onError('')
+    setFinding(true)
     try {
       const found = await api.posts({ q, limit: 8 })
       setHits(found.filter((p) => p.id !== post.id))
     } catch (e) {
       onError((e as Error).message)
+    } finally {
+      setFinding(false)
     }
   }
 
@@ -679,10 +760,11 @@ function LinkPanel({
   }
 
   return (
-    <div className="field">
-      <label>
-        Related entries<span className="hint">other numbers this one belongs beside</span>
-      </label>
+    <div className="field" role="group" aria-labelledby={gid}>
+      <span className="field-label" id={gid}>
+        Related entries{' '}
+        <span className="hint">other numbers this one belongs beside</span>
+      </span>
       <div className="panel">
         {post.related?.map((r) => (
           <div className="panel-row" key={r.id}>
@@ -696,6 +778,7 @@ function LinkPanel({
         <div className="panel-row panel-find">
           <input
             value={q}
+            aria-label="Search the wiki for an entry to link"
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -705,8 +788,13 @@ function LinkPanel({
             }}
             placeholder="Search the wiki — e.g. Back to the Future"
           />
-          <button type="button" className="btn" onClick={search}>
-            Search
+          <button
+            type="button"
+            className="btn"
+            disabled={!q.trim() || finding}
+            onClick={search}
+          >
+            {finding ? 'Searching…' : 'Search'}
           </button>
         </div>
         {hits?.map((h) => (

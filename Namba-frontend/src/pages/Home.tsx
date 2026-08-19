@@ -119,8 +119,16 @@ function Feed({ lang }: { lang: string }) {
         The same wiki, last touched first — written and rewritten.
       </p>
 
-      {posts.err && <p className="err">{posts.err}</p>}
-      {posts.loading && !posts.data && <p className="empty">Loading…</p>}
+      {posts.err && (
+        <p className="err" role="alert">
+          {posts.err}
+        </p>
+      )}
+      {posts.loading && !posts.data && (
+        <p className="empty" role="status">
+          Loading…
+        </p>
+      )}
 
       {posts.data?.map((p: Post) => (
         <article className="fx" key={p.id}>
@@ -193,11 +201,12 @@ function Index({ lang }: { lang: string }) {
 
   return (
     <>
-      <nav className="tabs">
+      <nav className="tabs" aria-label="Number format">
         {FORMATS.map((f) => (
           <Link
             key={f}
             className={f === format ? 'on' : ''}
+            aria-current={f === format ? 'page' : undefined}
             to={`/?${new URLSearchParams({ format: f, ...(tag ? { tag } : {}) })}`}
           >
             {FORMAT_LABEL[f]}
@@ -221,13 +230,18 @@ function Index({ lang }: { lang: string }) {
           </span>
         </summary>
         <div className="chips">
-          <button className={`chip ${tag ? '' : 'on'}`} onClick={() => setParam('tag', '')}>
+          <button
+            className={`chip ${tag ? '' : 'on'}`}
+            aria-pressed={!tag}
+            onClick={() => setParam('tag', '')}
+          >
             All
           </button>
           {(tags.data ?? []).map((t) => (
             <button
               key={t.tag}
               className={`chip ${t.tag === tag ? 'on' : ''}`}
+              aria-pressed={t.tag === tag}
               onClick={() => setParam('tag', t.tag === tag ? '' : t.tag)}
             >
               {tagLabel(t.tag)}
@@ -237,10 +251,18 @@ function Index({ lang }: { lang: string }) {
         </div>
       </details>
 
-      {numbers.err && <p className="err">{numbers.err}</p>}
+      {numbers.err && (
+        <p className="err" role="alert">
+          {numbers.err}
+        </p>
+      )}
       {/* only the first load says so: a reload keeps the list it has, and a
           line that replaced it would be the collapse all over again */}
-      {numbers.loading && !numbers.data && <p className="empty">Loading…</p>}
+      {numbers.loading && !numbers.data && (
+        <p className="empty" role="status">
+          Loading…
+        </p>
+      )}
 
       {bands.map(
         (band) =>
