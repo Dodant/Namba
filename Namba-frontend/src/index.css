@@ -81,9 +81,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
   flex-wrap: wrap;
   border-bottom: 1px solid var(--ink);
 }
+/* The wordmark is the one place the page speaks in its own voice, so it
+   takes the prose face and leaves mono to the chrome and the numerals --
+   a serif masthead over a mono strapline, which is where that pairing comes
+   from. It was mono 700 at -0.055em, and negative tracking on a monospace
+   fights the face: the glyphs are drawn for a fixed advance, so closing it
+   up ran the letters together, "mb" worst of all. */
 .logo {
-  font-family: var(--mono); font-size: 26px; font-weight: 700;
-  letter-spacing: -0.055em; line-height: 1;
+  font-family: Newsreader, Georgia, serif; font-size: 30px; font-weight: 600;
+  letter-spacing: -0.02em; line-height: 1;
 }
 .logo span { color: var(--accent); }
 .tagline {

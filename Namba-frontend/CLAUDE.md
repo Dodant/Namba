@@ -44,7 +44,9 @@ sanitiser config to get wrong.
 - Two families, both from Google Fonts, linked in `index.html`: Newsreader for
   prose and IBM Plex Mono for `--mono`. It is the one external asset the app
   loads. If it is chrome or a number it is mono; if it is content prose it is
-  Newsreader.
+  Newsreader. The wordmark is Newsreader too — a masthead speaks in the page's
+  own voice — over a mono strapline, which is where that pairing comes from.
+  It is not a third face and must not become one.
 - `Home` has two views off one `?view=` param, `Index` (default) and `Feed`, and
   they are two components rather than one with a branch through its hooks —
   otherwise it fetches both. `Index` is a list, not a grid: one row per number,
