@@ -277,12 +277,14 @@ export default function PostForm() {
         {/* "Written in", not "Language" -- the Languages panel below lists the
             same entry written again, and two adjacent fields a plural apart
             read as the same control twice */}
-        <div className="field" style={{ maxWidth: 220 }}>
+        {/* the width caps the control, not the field: on the field it caps the
+            label too, and a two-word hint comes apart across two lines */}
+        <div className="field">
           <label>
             Written in
             <span className="hint">optional</span>
           </label>
-          <div className="select">
+          <div className="select" style={{ maxWidth: 220 }}>
             <select value={lang} onChange={(e) => setLang(e.target.value)}>
               <option value="">Not set</option>
               {langsWith(lang).map((l) => (
@@ -369,7 +371,7 @@ export default function PostForm() {
           )}
         </div>
 
-        <div className="field" style={{ maxWidth: 340 }}>
+        <div className="field">
           <label>
             Your nickname
             <span className="hint">
@@ -377,6 +379,7 @@ export default function PostForm() {
             </span>
           </label>
           <input
+            style={{ maxWidth: 340 }}
             maxLength={40}
             value={author}
             onChange={(e) => setAuthor(e.target.value)}

@@ -88,7 +88,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .logo span { color: var(--accent); }
 .tagline {
   color: var(--muted); font-size: 15.5px; line-height: 1.45;
-  flex: 1; min-width: 180px; max-width: 320px; text-wrap: pretty;
+  flex: 1; min-width: 180px; max-width: 320px; text-wrap: balance;
 }
 /* the logo and its sub-line are one link, so neither underlines on its own */
 .logo-block { display: flex; flex-direction: column; gap: 2px; min-width: 150px; }
@@ -519,16 +519,18 @@ h4.section {
 
 /* --- forms -------------------------------------------------------- */
 /* the same shape the read page has: the thing you are working on, and the
-   history of it on a rail beside. 680 + 290 + the gap fits inside .wrap, so
-   the two columns sit together rather than at opposite edges of the page. */
+   history of it on a rail beside. 680 + 340 + the gap fits inside .wrap, so
+   the two columns sit together rather than at opposite edges of the page.
+   340 rather than the read page's 250: these rows carry a Restore button as
+   well as the byline, and narrower left "Aug 19," and "2026" on two lines. */
 .form-layout {
-  display: grid; grid-template-columns: minmax(0, 680px) 290px;
+  display: grid; grid-template-columns: minmax(0, 680px) 340px;
   gap: 0 40px; align-items: start;
 }
 /* below this the two would not both fit, and the rail goes back to being the
    last thing on the page. .side's own breakpoint is 820, so this repeats what
    it does rather than leaving a gap between the two widths. */
-@media (max-width: 1080px) {
+@media (max-width: 1130px) {
   .form-layout { grid-template-columns: 1fr; }
   .form-side { position: static; border-top: 1px solid var(--line); padding-top: 6px; }
 }
@@ -665,13 +667,21 @@ h4.section {
 }
 .row { display: flex; gap: 14px; flex-wrap: wrap; }
 .row > * { flex: 1; }
+/* The form is the measure. These carried 52ch and 56ch of their own inside a
+   680px column, so a paragraph stopped short of the field above it and then
+   broke at a width nothing on the page explained -- which is what made the
+   break look like a mistake rather than a line ending.
+
+   balance, not pretty: pretty guards the last line, and at two or three lines
+   the bad break is the first one. balance evens them all, so "and" stops
+   hanging off the end of line one. */
 .form-intro {
   font-size: 16.5px; line-height: 1.5; color: var(--ink-soft);
-  max-width: 52ch; margin: 0 0 24px; text-wrap: pretty;
+  margin: 0 0 24px; text-wrap: balance;
 }
 .fine {
   font-size: 13.5px; line-height: 1.5; color: var(--faint);
-  max-width: 56ch; margin: 12px 0 0;
+  margin: 12px 0 0; text-wrap: balance;
 }
 .file-row { display: flex; gap: 12px; align-items: center; }
 .file-row .thumb {
