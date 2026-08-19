@@ -174,7 +174,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .band { margin: 0 0 34px; }
 /* the rule runs from the label to the count, so a band reads as one line
    across the page rather than as a heading floating above a list */
-.band-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 2px; }
+.band-head {
+  display: flex; align-items: baseline; gap: 12px; margin-bottom: 2px;
+  cursor: pointer; list-style: none;
+}
+.band-head::-webkit-details-marker { display: none; }
+/* a flex summary drops the native marker, so the caret is ours -- the same
+   glyph the format select uses, for the same reason */
+.band-head::before {
+  content: '▾'; flex: none; display: inline-block;
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+}
+/* rotated rather than swapped for '>': two glyphs have two sets of vertical
+   metrics, and the caret hopped a pixel every time a band was toggled */
+.band:not([open]) .band-head::before { transform: rotate(-90deg); }
+.band-head:hover h2, .band-head:hover::before { color: var(--ink); }
 .band-head .rule { flex: 1; height: 1px; background: var(--line); }
 .band-head .n {
   font-family: var(--mono); font-size: 10.5px; color: var(--fainter);

@@ -219,14 +219,19 @@ function Index() {
         bands.map(
           (band) =>
             band.items.length > 0 && (
-              <section className="band" key={band.label}>
-                <div className="band-head">
+              /* <details>, not a button and a piece of state: the browser
+                 already knows how to open and close a disclosure, and it
+                 gets the keyboard and the screen reader right for free.
+                 Open by default -- the index is the page, and five closed
+                 headings is a table of contents, not a wiki. */
+              <details className="band" key={band.label} open>
+                <summary className="band-head">
                   <h2>{band.label}</h2>
                   <span className="rule" />
                   <span className="n">
                     {band.items.length} {band.items.length === 1 ? 'number' : 'numbers'}
                   </span>
-                </div>
+                </summary>
                 <ol className="index">
                   {band.items.map((n: NumberEntry) => {
                     const rx = marker(n)
@@ -260,7 +265,7 @@ function Index() {
                     )
                   })}
                 </ol>
-              </section>
+              </details>
             ),
         )}
 

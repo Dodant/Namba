@@ -28,8 +28,10 @@ only when a few lines genuinely will not do.
   the value right-aligned in a fixed 104px column so the numerals line up down
   the page. It reads like the source `Memorable Numbers.md` on purpose. Values
   longer than 7 characters get `.long` and shrink rather than widening the
-  column for every "7". `Feed` is `sort=new` off `/api/posts`, which the backend
-  already had — do not add a `sort=recent` beside it.
+  column for every "7". Each band is a `<details>` open by default — the
+  browser owns the collapse, so there is no open-band state to hold. `Feed` is
+  `sort=new` off `/api/posts`, which the backend already had — do not add a
+  `sort=recent` beside it.
 - `useAsync.ts` carries a file-level `oxlint-disable react-hooks/exhaustive-deps`
   because the hook forwards its caller's deps array, which the rule cannot verify
   statically. That is the one suppression in the codebase; do not add more.
