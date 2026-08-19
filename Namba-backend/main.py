@@ -34,6 +34,10 @@ DIST = os.environ.get("NAMBA_DIST", os.path.join(db.DIR, os.pardir, "Namba-front
 ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 MAX_UPLOAD = 5 * 1024 * 1024
 BLURB = 140  # body chars carried into the index list
+# Revisions shipped by /api/posts/{id}/revisions, newest first. Every edit adds
+# one and nothing prunes them, so an entry that has been fought over carries
+# hundreds -- and the edit form asks for the list every time it opens.
+REVISIONS_SHOWN = 50
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 db.init()
@@ -461,9 +465,19 @@ def get_post(post_id: int, con=Depends(get_db)):
 
 @app.get("/api/posts/{post_id}/revisions")
 def list_revisions(post_id: int, con=Depends(get_db)):
+    """The newest REVISIONS_SHOWN versions of an entry, each one whole.
+
+    Capped because a snapshot is the entry in full, body and translations and
+    all, and this list is what the edit form opens with: a few hundred edits
+    turned opening the form into a several-megabyte download. Only the response
+    is capped -- the rows stay in the table, since they are the only thing
+    standing between vandalism and permanent loss, and reverting vandalism means
+    reaching for a recent one.
+    """
     rows = con.execute(
-        "SELECT id, author, at, snapshot FROM revisions WHERE post_id = ? ORDER BY id DESC",
-        (post_id,),
+        """SELECT id, author, at, snapshot FROM revisions WHERE post_id = ?
+           ORDER BY id DESC LIMIT ?""",
+        (post_id, REVISIONS_SHOWN),
     ).fetchall()
     return [
         {"id": r["id"], "author": r["author"], "at": r["at"],
