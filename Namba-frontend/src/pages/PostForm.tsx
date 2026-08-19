@@ -133,14 +133,18 @@ export default function PostForm() {
         </div>
         <div className="field" style={{ minWidth: 170 }}>
           <label>Format</label>
-          <select value={format} onChange={(e) => setFormat(e.target.value as Format)}>
-            <option value="">Auto-detect</option>
-            {FORMATS.map((f) => (
-              <option key={f} value={f}>
-                {FORMAT_LABEL[f]}
-              </option>
-            ))}
-          </select>
+          {/* a wrapper only so the caret can be a ::after that follows the
+              theme; a background-image would have baked its colour in */}
+          <div className="select">
+            <select value={format} onChange={(e) => setFormat(e.target.value as Format)}>
+              <option value="">Auto-detect</option>
+              {FORMATS.map((f) => (
+                <option key={f} value={f}>
+                  {FORMAT_LABEL[f]}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
