@@ -50,9 +50,9 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
           <div className="num">
             {showValue(value, !!posts.data?.length && posts.data.every((p) => p.grouped))}
           </div>
-          {/* stays even when empty: it is the flex spacer that keeps the add
-              button on the right. At zero there is nothing to describe and no
-              format to read it from, so the empty state below says the rest */}
+          {/* stays even when empty: it is the flex spacer that holds the
+              middle. At zero there is nothing to describe and no format to
+              read it from, so the empty state below says the rest */}
           <div className="hero-said">
             {posts.data?.length ? (
               <>
@@ -64,9 +64,16 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
               </>
             ) : null}
           </div>
-          <Link className="btn outline" to={`/new?value=${encodeURIComponent(value)}`}>
-            + Add another meaning
-          </Link>
+          {/* "another" needs a first one. With none, this said Add another
+              meaning above an empty page that already said Give it a meaning
+              -- the same invitation twice, and the wrong word on the louder
+              of the two. The empty state keeps it; the pill comes back with
+              the entry it is offering to sit beside. */}
+          {n > 0 && (
+            <Link className="btn outline" to={`/new?value=${encodeURIComponent(value)}`}>
+              + Add another meaning
+            </Link>
+          )}
         </div>
       ) : (
         <div className="hero">
