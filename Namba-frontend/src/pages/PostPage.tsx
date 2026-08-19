@@ -15,6 +15,7 @@ export default function PostPage() {
   const revs = useAsync(() => api.revisions(id), [id])
   const [err, setErr] = useState('')
   const [lang, setLang] = useState('')                       // '' is the entry itself
+  const [credits, setCredits] = useState(false)              // closed on mount, not persisted
 
   const post = loaded.data
 
@@ -107,10 +108,42 @@ export default function PostPage() {
             <Like post={post} />
           </span>
           <span className="spacer" />
+          <button
+            type="button"
+            className="credits-btn"
+            aria-expanded={credits}
+            onClick={() => setCredits((v) => !v)}
+          >
+            {credits ? 'Hide credits' : 'Credits & history'}
+          </button>
           <Link className="btn primary" to={`/p/${post.id}/edit`}>
             Edit
           </Link>
         </div>
+
+        {/* who wrote it, who changed it, and who wrote the tab in front. All
+            of it used to sit in the meta row and under the actions, where it
+            was the first thing on the page and the last thing anyone read */}
+        {credits && (
+          <div className="credits">
+            <span>
+              Written by {post.author} · {fmtDate(post.created_at)}
+            </span>
+            {post.edited_by && (
+              <span>
+                Last edited by {post.edited_by} · {fmtDate(post.updated_at)}
+              </span>
+            )}
+            <span>
+              {tr
+                ? `${tr.lang} added by ${tr.author}${tr.edited_by ? `, last edited by ${tr.edited_by}` : ''} · ${fmtDate(tr.updated_at)}`
+                : 'As first entered.'}
+            </span>
+            <span className="last">
+              Anyone can edit — every version is kept, so nothing is lost.
+            </span>
+          </div>
+        )}
 
         {post.image && <img className="full" src={post.image} alt={post.title} />}
 
