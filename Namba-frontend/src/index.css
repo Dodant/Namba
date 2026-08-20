@@ -689,6 +689,12 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
    height straight back with a negative block margin, and the summary that
    margin pulls up is the second section's own top edge. */
 .side > details + details { margin-top: 25px; }
+/* A count beside the heading, the same as a band's. It needs no font of its
+   own: .ix-fold is already mono 10.5 in --fainter with tabular figures and the
+   span inherits all of it -- only the nowrap has to be said, for the reason it
+   is said on .band-head .n, that a count broken over two lines is one figure
+   and then another. */
+.ix-fold .n { white-space: nowrap; }
 .side > details > summary .section { margin-bottom: 5px; }
 /* one column, and the rail stops being a rail: it is the last thing on the
    page rather than the thing beside it */
