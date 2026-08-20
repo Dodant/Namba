@@ -197,7 +197,8 @@ What actually changes shape, rather than size:
 - **A `.panel-row`** puts its title on a line of its own below 560, whole,
   rather than an ellipsis at twelve characters.
 - **`.spacer`** becomes a line break below 560 (`flex: 1 0 100%`), so Delete is
-  never beside Save and Edit is never beside the tags under a thumb.
+  never beside Save, and the credits toggle and Edit take a line of their own
+  rather than sitting beside the tags under a thumb.
 - **The rails** stop being rails and become the end of the page — and the
   Edit history stops being a 60dvh scroll port inside a scrolling page. That
   cap lives on `.side .revs`, not `.revs`: the same list is the recovery view
@@ -385,12 +386,16 @@ the page is the scroller again.
 
 ## Read routes read, the edit route writes
 
-`/p/:id` has exactly one control that changes the entry: the `Edit` pill at the
-foot of the article, in an `.actions` row under Related entries. It used to sit
-in the meta row beside the tags, where the page offered to change the entry
-before anyone had read it; last is where a reader knows whether it needs
-changing. Adding a language, rewriting one, unlinking a related entry, restoring
-a revision and deleting the entry all live in `/p/:id/edit` — Languages and
+`/p/:id` has exactly one control that changes the entry: `Edit`, at the far end
+of the meta row, paired with the credits toggle by a `/` and wearing the same
+`.meta-btn` as it. It has been a pill beside the tags and a pill at the foot of
+the article; what was wrong with the first was the pill, not the place — a
+filled capsule at the top of the page offers to change an entry nobody has read
+yet. Quiet, at the end of the row, it is a control you find when you look for
+one, which is what an edit link on a wiki is.
+
+Adding a language, rewriting one, unlinking a related entry, restoring a
+revision and deleting the entry all live in `/p/:id/edit` — Languages and
 Related entries as bordered panels in the form, History on a rail to the right
 of it (`.form-layout`, the same shape the read page has). Do not put any of them
 back on the read page — that is where they all were, in five different places,

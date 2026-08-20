@@ -157,7 +157,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
    a slow press. It is a WebKit property and Firefox will still do that; the
    selection, which is the thing that spoils a copy, is standard. */
 :is(.logo-block, .search .slash, .btn, .chip, .pill, .tag, .kicker,
-    .band-head, .ix-fold, .tabs a, .tabs button, .panel-add, .credits-btn,
+    .band-head, .ix-fold, .tabs a, .tabs button, .panel-add, .meta-btn,
     .quiet, h4.section, .field label, .field .field-label, .field.check,
     .form h1, .form-intro, .fine, .feed-intro, .empty, .panel-empty,
     .body-none) {
@@ -896,17 +896,16 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .form > .actions { margin: 26px 0 0; }
 .form > .actions .btn { padding: 10px 18px; }
 
-/* what the entry is filed under and whether you liked it, with the credits
-   toggle pushed to the far end. Edit used to sit here too and is at the foot
-   of the article now -- see .post-actions */
+/* what the entry is filed under and whether you liked it at one end, and what
+   you can do about it -- the credits toggle and Edit -- at the other */
 .post-meta { gap: 10px; padding-bottom: 18px; border-bottom: 1px solid var(--rule); }
-/* borderless, and the same box as .credits-btn it shares the row with: the
-   two ends of .post-meta are one pair of controls and used to be drawn as
-   two different kinds of thing -- an outlined capsule here, a bare label
-   there. The heart still takes terracotta once it is yours, which is the
-   state worth a colour; the outline was not saying that.
+/* borderless, the same box as the .meta-btn pair across the row: the two ends
+   of .post-meta used to be drawn as two different kinds of thing, an outlined
+   capsule here and a bare label there. The heart still takes terracotta once
+   it is yours, which is the state worth a colour; the outline was not saying
+   that.
 
-   Transparent border rather than none, so the height matches the toggle and
+   Transparent border rather than none, so the height matches the labels and
    the row does not move when .btn.on would have drawn one. */
 .post-like .btn {
   padding: 3px 9px; border-color: transparent; background: none;
@@ -915,22 +914,32 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .post-like .btn:hover, .post-like .btn.on {
   border-color: transparent; background: none; color: var(--hit);
 }
-/* Borderless in both states. It used to draw one once it was open -- a label
-   when closed, a thing holding a panel when open -- but the panel underneath
-   already says that, and the outline said it a second time in the one row on
-   the page where a bordered capsule means "press me": the tags and the like
-   sit at the other end of it. What changes on press is the word, which is
-   what the button is for.
+/* Borderless in both states. The toggle used to draw one once it was open --
+   a label when closed, a thing holding a panel when open -- but the panel
+   underneath already says that, and the outline said it a second time in the
+   one row on the page where a bordered capsule means "press me": the tags and
+   the like sit at the other end of it. What changes on press is the word,
+   which is what the button is for.
+
+   Edit wears the same rule rather than a copy of it, which is the point -- a
+   pair either matches or it is two controls that look like one. Being a link
+   it has one thing to put back that a <button> never had: a:hover underlines,
+   and half of a pair underlining is not the pair.
 
    The transparent border stays. It is 2px of the box's height, so dropping it
    shrinks the target a fingertip is already only just getting, and it keeps
-   this label the height of the like pill it shares a baseline with. */
-.credits-btn {
+   these the height of the like beside them. */
+.meta-btn {
   font-family: var(--mono); font-size: 10.5px; padding: 3px 9px;
   border: 1px solid transparent; border-radius: 999px;
   background: none; color: var(--faint); cursor: pointer;
+  white-space: nowrap;
 }
-.credits-btn:hover { color: var(--ink); }
+.meta-btn:hover { color: var(--ink); text-decoration: none; }
+/* the slash divides and says nothing else, so it is the faintest thing in the
+   row; the negative margin takes back half the row's gap either side of it,
+   which is what keeps the pair reading as a pair and not as three items */
+.meta-sep { color: var(--fainter); margin: 0 -4px; }
 .credits {
   display: flex; flex-direction: column; gap: 3px;
   font-family: var(--mono); font-size: 11px; line-height: 1.5;
@@ -1301,7 +1310,7 @@ h4.section {
   .btn.small { padding: 8px 14px; }
   .pill { padding: 9px 14px; }
   .post-like .btn { padding: 9px 12px; }
-  .credits-btn { padding: 9px 12px; }
+  .meta-btn { padding: 9px 12px; }
   .tag { padding: 6px 9px; }
   .panel-add { padding: 8px 0; }
   /* the summary is already the width of the row; this is its height */

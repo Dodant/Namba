@@ -27,7 +27,7 @@ const MD: Components = {
 /* A read route reads. Every write this page used to carry inline -- adding a
    language, rewriting one, unlinking a related entry, restoring a revision,
    deleting the entry -- now lives at /p/:id/edit, and what is left here is one
-   Edit pill, at the foot of the article. The exception is the recovery view
+   Edit link, at the end of the meta row. The exception is the recovery view
    below: when the entry is gone there is no edit form to reach, so Restore
    stays. */
 export default function PostPage() {
@@ -153,14 +153,23 @@ export default function PostPage() {
             <Like post={post} />
           </span>
           <span className="spacer" />
+          {/* the row's two controls, at the far end and drawn as one pair:
+              what the page can tell you about itself, and the one thing you
+              can do to the entry. Edit is quiet here on purpose -- a pill at
+              the top of a page offers to change an entry nobody has read yet.
+              The slash separates and says nothing, so it is aria-hidden. */}
           <button
             type="button"
-            className="credits-btn"
+            className="meta-btn"
             aria-expanded={credits}
             onClick={() => setCredits((v) => !v)}
           >
             {credits ? 'Hide Credits' : 'Show Credits'}
           </button>
+          <span className="meta-sep" aria-hidden="true">/</span>
+          <Link className="meta-btn" to={`/p/${post.id}/edit`}>
+            Edit
+          </Link>
         </div>
 
         {/* who wrote it, who changed it, and who wrote the tab in front. All
@@ -238,17 +247,6 @@ export default function PostPage() {
             ))}
           </>
         )}
-
-        {/* The one write on a read page, at the end of the read. In the meta
-            row it was a pill beside the tags, offered before the entry had
-            been read and competing with the number for the top of the page;
-            here it is what you reach after the body and whatever is linked
-            under it, which is when a reader knows whether it needs changing. */}
-        <div className="actions">
-          <Link className="btn primary" to={`/p/${post.id}/edit`}>
-            Edit
-          </Link>
-        </div>
       </article>
 
       <aside className="side">
