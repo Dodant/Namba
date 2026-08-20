@@ -18,6 +18,18 @@ export const REPORT_REASONS = [
   'INCORRECT', 'SPAM', 'AD', 'ABUSE', 'COPYRIGHT', 'SOURCE', 'VANDALISM', 'OTHER',
 ] as const
 export const POST_STATUSES = ['ACTIVE', 'HIDDEN', 'DELETED'] as const
+export const BLOCK_TYPES = ['ip', 'client'] as const
+/** What the panel offers, in hours, with null for permanent. The API takes any
+    number of hours -- these five are a decision about what an operator should be
+    nudged towards, not a limit on what the column holds. */
+export const BLOCK_HOURS: (number | null)[] = [1, 24, 24 * 7, 24 * 30, null]
+export const BLOCK_HOURS_LABEL: Record<string, string> = {
+  '1': 'An hour',
+  '24': 'A day',
+  '168': 'A week',
+  '720': 'A month',
+  null: 'Permanent',
+}
 export const REQUEST_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const
 export const REPORT_STATUSES = ['OPEN', 'RESOLVED', 'IGNORED'] as const
 

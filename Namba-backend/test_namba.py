@@ -753,13 +753,37 @@ def test_admin_content_and_dashboard():
     assert len(top["ip_hash"]) == 64 and top["creates"] + top["edits"] >= 1
     assert top["first_at"] <= top["last_at"] and "duplicates" in ab
 
-    # the same words under three numbers is what an advert looks like here
+    # the same paragraph under three numbers is what an advert looks like here
+    advert = "Buy cheap watches online at example.test, free shipping worldwide"
     for v in ("70001", "70002", "70003"):
-        c.post("/api/posts", json={"value": v, "title": "Buy Cheap Watches Online"})
+        c.post("/api/posts", json={"value": v, "title": f"watches {v}",
+                                   "body": advert})
     dupes = ops.get("/api/admin/abuse", params={"least": 1}).json()["duplicates"]
-    assert any(d["entries"] == 3 and d["title"].lower() == "buy cheap watches online"
-               for d in dupes), dupes
-    for v in ("70001", "70002", "70003"):
+    ad = next(d for d in dupes if d["said"].startswith("Buy cheap watches"))
+    assert ad["entries"] == 3 and ad["titles"] == 3, ad
+
+    # ...and a shared *title* is not evidence at all. Keying this on the title
+    # was the first version and it put five entries called "Time" at the top of
+    # the real wiki, which is the wiki working. Nobody writes the same forty
+    # words about two different numbers by coincidence; plenty of people write
+    # the same short title.
+    for v in ("70011", "70012", "70013"):
+        c.post("/api/posts", json={"value": v, "title": "Innocently Shared Title",
+                                   "body": f"a different thing about {v} entirely"})
+    said = [d["said"] for d in
+            ops.get("/api/admin/abuse", params={"least": 1}).json()["duplicates"]]
+    assert not any("different thing" in x for x in said), said
+
+    # ...and neither is a shared *absence* of one. Five entries with no body all
+    # share the empty string, which scored as maximum repetition in the second
+    # version of this query.
+    for v in ("70021", "70022", "70023"):
+        c.post("/api/posts", json={"value": v, "title": "Bare"})
+    said = ops.get("/api/admin/abuse", params={"least": 1}).json()["duplicates"]
+    assert all(len(d["said"].strip()) > 20 for d in said), said
+
+    for v in ("70001", "70002", "70003", "70011", "70012", "70013",
+              "70021", "70022", "70023"):
         for x in c.get("/api/posts", params={"value": v}).json():
             admin.set_status(x["id"], "HIDDEN")
     admin.set_status(pid, "HIDDEN")

@@ -9,6 +9,9 @@ import Content from './pages/Content'
 import Entry from './pages/Entry'
 import Requests from './pages/Requests'
 import Reports from './pages/Reports'
+import Abuse from './pages/Abuse'
+import Blocks from './pages/Blocks'
+import Log from './pages/Log'
 
 /** Every page in the panel, in the order the rail lists them.
 
@@ -22,9 +25,13 @@ type Item = { to: string; label: string; group: string; tally?: keyof Stats }
 const NAV: Item[] = [
   { to: '/', label: 'Dashboard', group: '' },
   { to: '/content', label: 'All content', group: 'Content' },
+  { to: '/changes', label: 'Recent changes', group: 'Content' },
   { to: '/requests', label: 'Delete requests', group: 'Moderation',
     tally: 'requests_pending' },
   { to: '/reports', label: 'Reports', group: 'Moderation', tally: 'reports_open' },
+  { to: '/abuse', label: 'Spam & abuse', group: 'Moderation' },
+  { to: '/blocks', label: 'Blocked clients', group: 'Security', tally: 'blocked' },
+  { to: '/audit', label: 'Audit log', group: 'Security' },
 ]
 
 /** The rail.
@@ -131,6 +138,14 @@ export default function AdminApp() {
             <Route path="/content/:id" element={<Entry />} />
             <Route path="/requests" element={<Requests onChange={refresh} />} />
             <Route path="/reports" element={<Reports onChange={refresh} />} />
+            {/* The brief's nav has "Revision History" under Content. A
+                wiki-wide list of revisions is what recent changes *is* -- a
+                revision history belongs to one entry, and that one is on the
+                entry's page. */}
+            <Route path="/changes" element={<Log kind="anon" />} />
+            <Route path="/abuse" element={<Abuse />} />
+            <Route path="/blocks" element={<Blocks />} />
+            <Route path="/audit" element={<Log kind="admin" />} />
             {/* Anything else is a stale bookmark from a version of the panel
                 that had more pages, or a typed path. Home, rather than a
                 dead end: there is nowhere else to be in here. */}

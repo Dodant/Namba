@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { showValue } from '../../api'
-import { ACTION_LABEL, adm, meta, type Event, type Stats } from '../api'
-import { Badge, Empty, Hash, Table, When } from '../ui'
+import { adm, type Event, type Stats } from '../api'
+import { LogTable } from '../log'
+import { Empty } from '../ui'
 
 /* Eleven counters is too many to read, so they are grouped: what the wiki *is*,
    what happened to it today, and what is waiting for somebody. The third group
@@ -34,24 +35,6 @@ const GROUPS: { head: string; cells: { key: keyof Stats; label: string; loud?: b
     ],
   },
 ]
-
-/** What one row of the log says in a sentence.
-
-    The log is deliberately verbs and ids rather than sentences, so somewhere has
-    to turn it back into English -- and it is here rather than in the API because
-    the API's job is to answer what happened, not to phrase it. An action with no
-    label shows its own name: readable enough, and better than the panel needing
-    a change before it can describe a new one. */
-function line(e: Event) {
-  const said = ACTION_LABEL[e.action] ?? e.action.toLowerCase().replace(/_/g, ' ')
-  const bits = meta(e)
-  const extra = e.action === 'DELETE_REQUEST' || e.action === 'REPORT'
-    ? String(bits.reason ?? '')
-    : e.action === 'TRANSLATE'
-      ? String(bits.lang ?? '')
-      : ''
-  return extra ? `${said} · ${extra}` : said
-}
 
 /** The landing page.
 
@@ -109,45 +92,8 @@ export default function Dashboard(
         )}
         {!feed ? (
           !err && <Empty>Loading…</Empty>
-        ) : feed.length ? (
-          <Table cols={['When', 'Who', 'Did', 'To', 'From']}>
-            {feed.map((e) => (
-              <tr key={e.id}>
-                <td className="tight">
-                  <When at={e.at} />
-                </td>
-                <td className="tight">
-                  {/* An operator's decision carries their address; a visitor's
-                      write carries the nickname they typed, which is not an
-                      identity and is not checked. Saying "anonymous" rather
-                      than leaving it blank keeps the column honest. */}
-                  {e.by ? <b>{e.by}</b> : <span>{e.actor || 'anonymous'}</span>}
-                </td>
-                <td>{line(e)}</td>
-                <td className="wide">
-                  {e.target_type === 'post' && e.target_id ? (
-                    e.title ? (
-                      <a href={`/p/${e.target_id}`}>
-                        <span className="num">{e.value}</span> {e.title}
-                      </a>
-                    ) : (
-                      /* the entry is gone -- purged from a shell, since
-                         nothing else removes a row. The event outlives it,
-                         which is the point of the table having no keys. */
-                      <span className="hash">entry {e.target_id}, gone</span>
-                    )
-                  ) : (
-                    <span className="hash">—</span>
-                  )}
-                </td>
-                <td className="tight">
-                  {e.admin_id ? <Badge>ADMIN</Badge> : <Hash value={e.ip_hash} />}
-                </td>
-              </tr>
-            ))}
-          </Table>
         ) : (
-          <Empty>Nothing has happened yet.</Empty>
+          <LogTable rows={feed} />
         )}
       </section>
     </div>

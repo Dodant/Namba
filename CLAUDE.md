@@ -29,7 +29,7 @@ package). **Change one, change the other:**
 |---|---|---|
 | the 4 number formats | `numfmt.py` `FORMATS` | `src/api.ts` `FORMATS` |
 | the two tag limits | `main.py` `TAG_MAX`, `TAGS_PER_POST` | `src/api.ts`, same names |
-| the moderation vocabularies | `db.py` `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`, `REQUEST_STATUSES`, `REPORT_STATUSES` | `src/api.ts`, same names |
+| the moderation vocabularies | `db.py` `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`, `REQUEST_STATUSES`, `REPORT_STATUSES`, `BLOCK_TYPES`, `BLOCK_HOURS` | `src/api.ts`, same names |
 
 The backend rejects an unknown format with a 422 rather than dropping it, a tag
 past either limit the same way, and an invented delete-request or report reason

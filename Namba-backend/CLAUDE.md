@@ -193,6 +193,16 @@ it is unset, `secret.key` beside the database is generated and used instead).
   admin" check existed for one commit, could never fire, and was deleted — a
   guard that reads as protection and is unreachable is worse than none. Locking
   the door stays possible from a shell, which is the right place for it.
+- **The duplicate finder is keyed on the body, and that took three tries.**
+  Grouping by title put "Time" at the top of the real wiki — five people writing
+  about five different numbers called Time, which is the wiki working. Counting
+  distinct bodies beside the title did not save it either: all five have no body,
+  so they shared the empty string and scored as maximum repetition. A shared
+  title is simply not evidence here and a shared paragraph is, so the title
+  version is gone rather than patched again, and `length(trim(body)) > 20` keeps
+  the empty ones out. Title-only spam is caught by the client counts, which is
+  the tool that fits it: one visitor, twelve creates, ten minutes.
+  `test_admin_content_and_dashboard` holds all three cases.
 - **`events` is append-only, and that is the feature.** Nothing in this codebase
   issues an `UPDATE` or a `DELETE` against it. An audit log an operator can tidy
   up after themselves in is not an audit log, so do not add a route that edits

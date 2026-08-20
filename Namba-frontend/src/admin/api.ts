@@ -165,6 +165,62 @@ export type ReportGroup = {
   lead_id: number
 }
 
+/** One client's writes over a window. Grouped by IP hash and not by cookie: a
+    cookie is cleared in a click, and the question is "this address", not "this
+    browser session". `a_client` is one of the cookie hashes seen behind it, so a
+    block can be aimed at whichever is the tighter fit. */
+export type AbuseRow = {
+  ip_hash: string
+  writes: number
+  browsers: number
+  targets: number
+  creates: number
+  edits: number
+  comments: number
+  requests: number
+  reports: number
+  uploads: number
+  first_at: string
+  last_at: string
+  a_client: string | null
+  blocked: number
+}
+
+/** The same words filed under three or more numbers, which is what an advert
+    looks like on a wiki about numbers. The one pattern of the four the brief
+    names that a query answers outright; the rest need scoring, and the shape
+    for it is `clients` above -- one row per client per window. */
+export type Duplicate = {
+  /** The first 90 characters of the paragraph they all share. */
+  said: string
+  entries: number
+  /** How many different titles it was filed under. It is usually the same as
+      `entries`, and a spammer varying the title is what makes that so. */
+  titles: number
+  ids: string
+}
+
+export type Abuse = {
+  since: string
+  minutes: number
+  clients: AbuseRow[]
+  duplicates: Duplicate[]
+}
+
+export type Block = {
+  id: number
+  type: string
+  target_hash: string
+  reason: string
+  created_at: string
+  created_by: number
+  expires_at: string | null
+  lifted_at: string | null
+  lifted_by: number | null
+  by: string | null
+  live: number
+}
+
 export const adm = {
   login: (email: string, password: string) =>
     req<Who>('/api/admin/login', json('POST', { email, password })),
@@ -223,6 +279,19 @@ export const adm = {
   decideReports: (postId: number, decision: 'RESOLVE' | 'IGNORE', note: string) =>
     req<{ post_id: number; status: string; closed: number }>(
       `/api/admin/reports/${postId}/decide`, json('POST', { decision, note })),
+
+  abuse: (p: Params = {}) => req<Abuse>(`/api/admin/abuse${qs(p)}`),
+
+  blocks: (p: Params = {}) => req<Page<Block>>(`/api/admin/blocks${qs(p)}`),
+
+  /** `hours: null` is permanent, and has to be sent as such: a block nobody
+      chose the length of should not be the forever one. */
+  addBlock: (b: { type: string; target_hash: string; reason: string; hours: number | null }) =>
+    req<{ id: number; expires_at: string | null }>('/api/admin/blocks', json('POST', b)),
+
+  liftBlock: (id: number) =>
+    req<{ id: number; lifted: boolean }>(`/api/admin/blocks/${id}/lift`,
+                                         { method: 'POST' }),
 }
 
 /** What `meta` holds, already parsed. It is a JSON blob per action rather than

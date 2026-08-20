@@ -461,3 +461,16 @@ tbody tr.lit:hover { background: var(--accent-soft); }
 }
 .quoted b { font-family: var(--mono); }
 td .badge + .badge { margin-left: 4px; }
+
+/* --- abuse, blocks ----------------------------------------------------- */
+/* A row that no longer applies -- lifted, expired, already blocked. Quieter
+   rather than gone: the list is a record and a record with holes in it is worse
+   than a long one. */
+tbody tr.dim td { opacity: 0.55; }
+tbody tr.dim:hover td { opacity: 1; }
+.bar .self { align-self: center; }
+.idlink {
+  font-family: var(--mono); font-size: 11.5px; margin-right: 6px;
+}
+/* the abuse table is twelve columns of counts, so an empty cell says nothing
+   rather than saying zero twelve times */
