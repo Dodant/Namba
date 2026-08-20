@@ -223,7 +223,20 @@ function Index({ lang }: { lang: string }) {
             aria-current={f === format ? 'page' : undefined}
             to={`/?${new URLSearchParams({ format: f, ...(tag ? { tag } : {}) })}`}
           >
-            {FORMAT_LABEL[f]}
+            {/* Four tabs want 299px and a 320px screen has 288, so Time went
+                to a line of its own -- and being the tab you are on, it took
+                the underline and the focus ring with it. Integer is the only
+                one of the four with a tail worth dropping, and dropping it is
+                30 of the 11 pixels needed. Sliced off the label rather than
+                written out, so the two cannot say different words. */}
+            {f === 'INTEGER' ? (
+              <>
+                {FORMAT_LABEL[f].slice(0, 3)}
+                <span className="tab-tail">{FORMAT_LABEL[f].slice(3)}</span>
+              </>
+            ) : (
+              FORMAT_LABEL[f]
+            )}
           </Link>
         ))}
       </nav>

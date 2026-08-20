@@ -385,6 +385,16 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
   .band-head h2 { white-space: nowrap; }
 }
 
+/* "Integer" becomes "Int" on a phone. Four full labels are 299px and the
+   narrowest screen anyone brings is 288, so Time wrapped to a line of its
+   own -- a tab strip that is two rows tall has stopped being a strip. It
+   goes at 560 rather than at the ~330 where the wrap actually starts,
+   because a fifth breakpoint for one word is a worse trade than a phone
+   reading Int with room to spare. */
+@media (max-width: 560px) {
+  .tabs .tab-tail { display: none; }
+}
+
 .index { list-style: none; margin: 0; padding: 0; }
 .ix {
   display: flex; gap: 22px; align-items: baseline;
