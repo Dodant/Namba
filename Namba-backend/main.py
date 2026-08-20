@@ -43,6 +43,13 @@ BLURB = 140  # body chars carried into the index list
 # one and nothing prunes them, so an entry that has been fought over carries
 # hundreds -- and the edit form asks for the list every time it opens.
 REVISIONS_SHOWN = 50
+# A comment is a remark, not an entry -- the title beside it takes 200
+# characters and the body 5000. Hand-copied as a maxLength in the front end,
+# where drift shows up as a 422 rather than as a quietly different rule.
+COMMENT_MAX = 300
+# Comments shipped by /api/posts/{id}/comments, newest first. The same bargain
+# REVISIONS_SHOWN makes: the rows all stay, the response is capped.
+COMMENTS_SHOWN = 200
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 db.init()
@@ -181,6 +188,28 @@ class TranslationIn(BaseModel):
     author: str = Field(default="anonymous", max_length=40)
 
     @field_validator("lang", "title")
+    @classmethod
+    def not_blank(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("must not be blank")
+        return v
+
+
+class CommentIn(BaseModel):
+    """Something said beside an entry.
+
+    No edit and no delete in this first version. With no accounts a Remove
+    button belongs to nobody, so it would be one stranger's button over
+    everyone's words -- and unlike an entry a comment has no revision to fall
+    back to, which makes the button the loss rather than the guard against it.
+    The length cap and the write limiter are the whole moderation story.
+    """
+
+    body: str = Field(min_length=1, max_length=COMMENT_MAX)
+    author: str = Field(default="anonymous", max_length=40)
+
+    @field_validator("body")
     @classmethod
     def not_blank(cls, v):
         v = v.strip()
@@ -501,6 +530,24 @@ def list_revisions(post_id: int, con=Depends(get_db)):
     ]
 
 
+@app.get("/api/posts/{post_id}/comments")
+def list_comments(post_id: int, con=Depends(get_db)):
+    """What has been said beside this entry, newest first.
+
+    Its own endpoint rather than a key on the post, because fetch_one is what
+    snapshot() reads through -- anything attached there lands in every revision
+    taken from then on, and a comment is not part of the entry.
+    """
+    return [
+        dict(r)
+        for r in con.execute(
+            """SELECT id, author, body, created_at FROM comments
+               WHERE post_id = ? ORDER BY id DESC LIMIT ?""",
+            (post_id, COMMENTS_SHOWN),
+        )
+    ]
+
+
 # --- write --------------------------------------------------------------
 def _write_tags(con, post_id, tags):
     """Folds case here too, because a snapshot may predate the rule.
@@ -719,6 +766,24 @@ def unlike(post_id: int, _=Depends(rate_limit), con=Depends(get_db)):
             "UPDATE posts SET likes = MAX(likes - 1, 0) WHERE id = ?", (post_id,)
         )
     return {"likes": fetch_one(con, post_id)["likes"]}
+
+
+@app.post("/api/posts/{post_id}/comments", status_code=201)
+def add_comment(post_id: int, c: CommentIn, _=Depends(rate_limit), con=Depends(get_db)):
+    """The other write that lands beside an entry rather than in it.
+
+    So no snapshot(), and updated_at is left alone: a remark is not a rewrite
+    and must not carry the entry back up the Recent feed. Hands back the list
+    rather than the one row, the way linking and translating hand back the post
+    -- the caller has the new state without a second request.
+    """
+    fetch_one(con, post_id)  # 404 if the entry is gone
+    with con:
+        con.execute(
+            "INSERT INTO comments (post_id, author, body, created_at) VALUES (?,?,?,?)",
+            (post_id, c.author.strip() or "anonymous", c.body, now()),
+        )
+    return list_comments(post_id, con)
 
 
 @app.post("/api/posts/{post_id}/links", status_code=201)

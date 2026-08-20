@@ -32,6 +32,14 @@ Env overrides: `NAMBA_DB`, `NAMBA_UPLOADS` (the tests use both to stay hermetic)
   outlive the post. Every edit, restore and delete snapshots first. Adding
   `REFERENCES posts(id) ON DELETE CASCADE` would silently make deletes
   unrecoverable.
+- **`comments` is the same decision inverted, on purpose.** It *does* have the
+  foreign key and it *does* cascade, because talk beside an entry has nothing to
+  recover: when the entry goes the talk goes, and a restore brings back the entry
+  alone (`test_comments` asserts both). It is also never snapshotted, which is
+  why it is its own endpoint rather than a key on `fetch_one` — anything attached
+  there rides into every revision taken afterwards. `add_comment` leaves
+  `updated_at` alone for the same reason: a remark is not a rewrite and must not
+  carry the entry back up the Recent feed.
 - **Do not delete the picture when the entry goes.** `restore_revision` hands
   back the image path the entry had, so a file no live entry shows may be the one
   a restore needs -- an `os.remove` in `delete_post` or on an image swap turns a
@@ -124,6 +132,12 @@ No auth means the input validation *is* the security model.
   whitespace, refuses a blank and a slash, and holds `TAG_MAX` (24) and
   `TAGS_PER_POST` (2). Those two numbers are the row in the root `CLAUDE.md`
   that is hand-copied into `api.ts`; the vocabulary is not.
+- Comments: `COMMENT_MAX` (300) on the body, 40 on the nickname, blank refused,
+  and the write limiter above. That is the whole moderation story — there is no
+  edit and no delete, deliberately: with no accounts a Remove button belongs to
+  nobody, so it is one stranger's button over everyone's words, and a comment has
+  no revision to fall back to. If spam ever needs answering, the next step is a
+  delete plus something to undo it, not a delete on its own.
 - Write rate limit is a per-process in-memory dict (20/min/IP). It is per-worker;
   run one worker or move it to redis. Reads are not limited.
 - Likes are a bare counter, and rate limited like every other write. The

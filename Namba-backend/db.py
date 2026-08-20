@@ -70,6 +70,22 @@ CREATE TABLE IF NOT EXISTS translations (
   updated_at TEXT NOT NULL,
   UNIQUE (post_id, lang)
 );
+
+-- Talk beside an entry rather than about the entry. The opposite call to
+-- revisions above, for the opposite reason: a snapshot is what stands between
+-- vandalism and permanent loss, so it has to outlive the post it describes,
+-- while a comment is a remark on one and has nothing to recover. So this table
+-- does have the foreign key, it does cascade, and it is never snapshotted --
+-- deleting an entry takes the talk with it, and a restore brings back the
+-- entry alone.
+CREATE TABLE IF NOT EXISTS comments (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  author     TEXT NOT NULL DEFAULT 'anonymous',
+  body       TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id, id DESC);
 """
 
 

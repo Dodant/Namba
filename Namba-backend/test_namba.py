@@ -501,6 +501,58 @@ def test_likes_are_rate_limited():
         main._writes.clear()
 
 
+def test_comments():
+    """A comment lands beside an entry and not in it: it takes no snapshot, so
+    it is not an edit, and it is nowhere on the entry itself -- if it were on
+    fetch_one it would ride into every revision taken afterwards. What it does
+    share with the entry is the ending: the foreign key here cascades, which is
+    the opposite of what the one on revisions deliberately does not do.
+    """
+    c = TestClient(main.app)
+    p = c.post("/api/posts", json={"value": "451", "title": "Fahrenheit 451"}).json()
+    pid = p["id"]
+
+    first = c.post(f"/api/posts/{pid}/comments",
+                   json={"body": "Paper burns at 451F, or so the title says.",
+                         "author": "montag"})
+    assert first.status_code == 201, first.text
+    assert [x["author"] for x in first.json()] == ["montag"]
+
+    # newest first, and the answer is the whole list, so the client needs no
+    # second request to draw what it just wrote
+    said = c.post(f"/api/posts/{pid}/comments", json={"body": "233C, really."}).json()
+    assert [x["body"] for x in said] == [
+        "233C, really.", "Paper burns at 451F, or so the title says."
+    ]
+    assert said[0]["author"] == "anonymous"   # nobody said who they were
+
+    # the shape is checked the way a tag's is: blank is not a remark, and the
+    # cap is the cap. COMMENT_MAX is read off main so the two cannot drift here.
+    assert c.post(f"/api/posts/{pid}/comments", json={"body": "   "}).status_code == 422
+    assert c.post(f"/api/posts/{pid}/comments",
+                  json={"body": "x" * (main.COMMENT_MAX + 1)}).status_code == 422
+    assert c.post(f"/api/posts/{pid}/comments",
+                  json={"body": "x" * main.COMMENT_MAX}).status_code == 201
+    assert c.post("/api/posts/999999/comments", json={"body": "hi"}).status_code == 404
+
+    # said beside the entry, so: not on the entry, and not an edit to it
+    assert "comments" not in c.get(f"/api/posts/{pid}").json()
+    assert c.get(f"/api/posts/{pid}/revisions").json() == []
+
+    # ...and not in the snapshot the next edit takes either
+    c.patch(f"/api/posts/{pid}", json={"title": "Fahrenheit 451 (1953)",
+                                       "author": "clarisse"})
+    assert "comments" not in c.get(f"/api/posts/{pid}/revisions").json()[0]["snapshot"]
+
+    # the talk ends with the entry, and a restore brings back the entry alone
+    assert c.delete(f"/api/posts/{pid}").status_code == 204
+    assert c.get(f"/api/posts/{pid}/comments").json() == []
+    rev = c.get(f"/api/posts/{pid}/revisions").json()[0]
+    assert c.post(f"/api/posts/{pid}/revisions/{rev['id']}/restore",
+                  json={"author": "beatty"}).status_code == 200
+    assert c.get(f"/api/posts/{pid}/comments").json() == []
+
+
 def test_upload_gc_keeps_what_history_points_at():
     """A picture is not orphaned just because no live entry shows it: a revision
     snapshot holds the path a restore hands back, a body can carry one in
