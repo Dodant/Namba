@@ -252,12 +252,15 @@ export default function PostPage() {
       </article>
 
       <aside className="side">
-        {/* Both sections in the rail fold, and neither remembers -- open on
-            arrival, closed for as long as the reader wants it closed. A
-            <summary> rather than a button and a piece of state, the same as the
-            index's bands; the heading stays a heading inside it, which is what
-            keeps it in the outline and announced as one. */}
-        <details open>
+        {/* Both sections in the rail fold and neither remembers, but they do
+            not arrive the same way: comments are the page continuing and open
+            on arrival, the edit history is a record you go looking for and
+            starts shut. Its summary carries the count, so shut still answers
+            the question most readers have of it. A <summary> rather than a
+            button and a piece of state, the same as the index's bands; the
+            heading stays a heading inside it, which is what keeps it in the
+            outline and announced as one. */}
+        <details>
           <summary className="ix-fold">
             <h4 className="section">Edit history</h4>{' '}
             {/* Only when there is something to count, and only once it has

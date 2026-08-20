@@ -346,10 +346,12 @@ timeline — restoring happens in the History rail of `PostForm`, which is the
 same side of the page so that Edit does not move it.
 
 Comments are under it, in the same rail: how the entry got here, then what
-people make of it. **Both sections are a `<details>`, open on arrival**, so a
-reader who wants the form and not the history can fold the history away — and
-neither remembers, the same as the credits toggle: press it and it is closed for
-as long as you want it closed. The `<summary>` wears `.ix-fold`, which is where
+people make of it. **Both sections are a `<details>`; comments arrive open and
+the edit history arrives shut**, because one is the page continuing and the
+other is a record you go looking for — the history's summary carries the edit
+count, so shut is still an answer. Neither remembers which way you left it, the
+same as the credits toggle: press it and it is closed for as long as you want it
+closed. The `<summary>` wears `.ix-fold`, which is where
 its caret, its hidden marker and its 24px hit box come from; the `<h4>` stays a
 heading *inside* it, so it is still in the outline and still announced as one.
 Nesting a fold in a fold is deliberate: the section, then the rest of the
