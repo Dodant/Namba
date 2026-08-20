@@ -209,6 +209,27 @@ CREATE TABLE IF NOT EXISTS reports (
 );
 CREATE INDEX IF NOT EXISTS idx_reports_post   ON reports(post_id, id DESC);
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, id DESC);
+
+-- Who may not write. Two kinds because neither is enough alone: a block on an
+-- address catches a browser with its cookies cleared, and a block on a cookie
+-- catches the same person on a new address. Neither is proof of who anybody is,
+-- which is why expires_at exists and why a permanent one has to be typed.
+--
+-- Lifting sets lifted_at rather than deleting the row: "we blocked this and
+-- then let it back in" is a thing an operator needs to be able to read, and a
+-- DELETE says only "we never did".
+CREATE TABLE IF NOT EXISTS blocks (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  type        TEXT NOT NULL,             -- ip | client
+  target_hash TEXT NOT NULL,
+  reason      TEXT NOT NULL DEFAULT '',
+  created_at  TEXT NOT NULL,
+  created_by  INTEGER NOT NULL,          -- admins.id
+  expires_at  TEXT,                      -- NULL is permanent
+  lifted_at   TEXT,
+  lifted_by   INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_blocks_target ON blocks(target_hash);
 """
 
 # What the TEXT columns above may hold. Here rather than beside the routes
@@ -226,6 +247,11 @@ REPORT_REASONS = ("INCORRECT", "SPAM", "AD", "ABUSE", "COPYRIGHT", "SOURCE",
                   "VANDALISM", "OTHER")
 REQUEST_STATUSES = ("PENDING", "APPROVED", "REJECTED")
 REPORT_STATUSES = ("OPEN", "RESOLVED", "IGNORED")
+BLOCK_TYPES = ("ip", "client")
+# What the panel offers. Hours, because the API takes hours and None is
+# permanent -- these five are a choice about what an operator should be nudged
+# towards, not a limit on what the column can hold.
+BLOCK_HOURS = (1, 24, 24 * 7, 24 * 30, None)
 
 
 def get_db():

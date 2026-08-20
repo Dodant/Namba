@@ -10,6 +10,9 @@ may import main** -- the shared pieces live in `db.py`, `events.py` and
 Three routes are open, because they are how you stop being anonymous: login,
 logout and me. Every other route in this file depends on `auth.require_admin`.
 """
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
@@ -229,3 +232,87 @@ def decide_reports(
     if not cur.rowcount:
         raise HTTPException(404, "no open reports on that entry")
     return {"post_id": post_id, "status": state, "closed": cur.rowcount}
+
+
+# --- blocked clients ----------------------------------------------------
+class BlockIn(BaseModel):
+    type: str = Field(max_length=10)
+    target_hash: str = Field(min_length=16, max_length=64)
+    reason: str = Field(default="", max_length=200)
+    # None is permanent, and has to be sent as such rather than being the
+    # default: a block nobody chose the length of should not be the forever one.
+    hours: Optional[int] = Field(default=24, ge=1, le=24 * 365 * 10)
+
+
+@router.get("/blocks")
+def list_blocks(
+    live: bool = True,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    _=Depends(auth.require_admin),
+    con=Depends(db.get_db),
+):
+    """Lifted and expired ones are still here and still readable, which is the
+    point of `lifted_at` -- "we blocked this and let it back in" is something an
+    operator needs to be able to look up."""
+    sql = """SELECT b.*, a.email AS by,
+                    (b.lifted_at IS NULL
+                     AND (b.expires_at IS NULL OR b.expires_at > ?)) AS live
+             FROM blocks b LEFT JOIN admins a ON a.id = b.created_by
+             WHERE (? = 0 OR (b.lifted_at IS NULL
+                    AND (b.expires_at IS NULL OR b.expires_at > ?)))
+             ORDER BY b.id DESC"""
+    return _page(con, sql, (db.now(), int(live), db.now()), limit, offset)
+
+
+@router.post("/blocks", status_code=201)
+def add_block(
+    body: BlockIn,
+    request: Request,
+    who=Depends(auth.require_admin),
+    con=Depends(db.get_db),
+):
+    """The hash comes from the abuse view or from a report's detail -- there is
+    nowhere else to get one, which is deliberate: an operator blocks something
+    they have just been looking at the record of."""
+    if body.type not in db.BLOCK_TYPES:
+        raise HTTPException(422, f"type must be one of {db.BLOCK_TYPES}")
+    ends = None
+    if body.hours is not None:
+        ends = (datetime.now(timezone.utc)
+                + timedelta(hours=body.hours)).isoformat(timespec="seconds")
+    with con:
+        cur = con.execute(
+            """INSERT INTO blocks (type, target_hash, reason, created_at, created_by,
+                                   expires_at) VALUES (?,?,?,?,?,?)""",
+            (body.type, body.target_hash, body.reason.strip(), db.now(), who["id"],
+             ends),
+        )
+        events.record(con, "CLIENT_BLOCK", client=events.client_of(request),
+                      admin_id=who["id"], target_type="block",
+                      target_id=cur.lastrowid, kind=body.type,
+                      target=body.target_hash[:8], hours=body.hours,
+                      reason=body.reason.strip())
+    return {"id": cur.lastrowid, "expires_at": ends}
+
+
+@router.post("/blocks/{block_id}/lift")
+def lift_block(
+    block_id: int,
+    request: Request,
+    who=Depends(auth.require_admin),
+    con=Depends(db.get_db),
+):
+    with con:
+        cur = con.execute(
+            """UPDATE blocks SET lifted_at = ?, lifted_by = ?
+               WHERE id = ? AND lifted_at IS NULL""",
+            (db.now(), who["id"], block_id),
+        )
+        if cur.rowcount:
+            events.record(con, "CLIENT_UNBLOCK", client=events.client_of(request),
+                          admin_id=who["id"], target_type="block",
+                          target_id=block_id)
+    if not cur.rowcount:
+        raise HTTPException(404, "no live block with that id")
+    return {"id": block_id, "lifted": True}

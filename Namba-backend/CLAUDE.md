@@ -147,6 +147,19 @@ it is unset, `secret.key` beside the database is generated and used instead).
 - **`decide_reports` does nothing to the entry, on purpose.** Hiding it, editing
   it and blocking whoever wrote it are separate routes with separate audit rows.
   Folding them in would be one button that does four things and logs one.
+- **A block stops writing and nothing else.** `guard` checks `blocks` before it
+  checks the window, both hashes in one query. Reads never reach it: barring
+  somebody from reading an open wiki achieves nothing, since the wiki is open.
+  The operator's own routes do not depend on `guard`, so an operator who blocks
+  their own address can still work — and `test_blocking` asserts every read
+  still answers 200 while every write is 403.
+- **Two kinds of block, because neither is enough.** An address catches a
+  browser with its cookies cleared; a cookie catches the same person on a new
+  address. Neither is proof of who anybody is, which is why `expires_at` exists
+  and why permanent has to be asked for explicitly (`hours: None`, not the
+  default). Lifting sets `lifted_at` rather than deleting the row — "we blocked
+  this and then let it back in" is something an operator needs to be able to
+  read, and a `DELETE` says only "we never did".
 - **`events` is append-only, and that is the feature.** Nothing in this codebase
   issues an `UPDATE` or a `DELETE` against it. An audit log an operator can tidy
   up after themselves in is not an audit log, so do not add a route that edits

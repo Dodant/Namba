@@ -92,7 +92,23 @@ _writes = defaultdict(list)
 WRITE_LIMIT, WINDOW = 20, 60
 
 
-def guard(request: Request):
+def blocked(con, who):
+    """The live block against this client, or None.
+
+    Both hashes in one query, and reads never reach here -- blocking somebody
+    from reading an open wiki achieves nothing, since the wiki is open. The
+    operator's own routes do not depend on `guard` either, so an operator who
+    blocks their own address can still work.
+    """
+    return con.execute(
+        """SELECT type, reason, expires_at FROM blocks
+           WHERE lifted_at IS NULL AND (expires_at IS NULL OR expires_at > ?)
+             AND target_hash IN (?, ?) LIMIT 1""",
+        (now(), who["ip_hash"], who["client_hash"] or ""),
+    ).fetchone()
+
+
+def guard(request: Request, con=Depends(get_db)):
     """Every write in the file depends on this: who is asking, and may they.
 
     It hands the caller's three hashes back, so a route that wants to record
@@ -105,6 +121,15 @@ def guard(request: Request):
     view, and reading this wiki is meant to cost nothing at all.
     """
     who = events.client_of(request)
+    # The harder no goes first. One query per write, which at twenty a minute is
+    # noise; a cached set with a TTL is the next step and is not needed yet.
+    hit = blocked(con, who)
+    if hit:
+        until = f" until {hit['expires_at']}" if hit["expires_at"] else ""
+        raise HTTPException(
+            403, f"This browser cannot write to the wiki{until}."
+                 + (f" Reason given: {hit['reason']}." if hit["reason"] else "")
+                 + " Reading is unaffected.")
     cutoff = time.monotonic() - WINDOW
     hits = [t for t in _writes[who["ip_hash"]] if t > cutoff]
     if len(hits) >= WRITE_LIMIT:
@@ -1015,7 +1040,8 @@ def remove_link(post_id: int, other_id: int, who=Depends(guard), con=Depends(get
 
 
 @app.post("/api/upload")
-async def upload(file: UploadFile = File(...), who=Depends(guard)):
+async def upload(file: UploadFile = File(...), who=Depends(guard),
+                 con=Depends(get_db)):
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_EXT:
         raise HTTPException(400, f"allowed types: {', '.join(sorted(ALLOWED_EXT))}")
@@ -1033,12 +1059,8 @@ async def upload(file: UploadFile = File(...), who=Depends(guard)):
     # Recorded even though there is no entry to attach it to yet: an upload is
     # the write that costs disk, and at 5 MB a file it is the one worth seeing
     # in the abuse view before the ceiling is what tells you.
-    con = db.connect()
-    try:
-        with con:
-            events.record(con, "UPLOAD", client=who, bytes=len(data), name=name)
-    finally:
-        con.close()
+    with con:
+        events.record(con, "UPLOAD", client=who, bytes=len(data), name=name)
     return {"url": f"/uploads/{name}"}
 
 

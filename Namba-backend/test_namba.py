@@ -587,6 +587,97 @@ def test_admin_accounts():
     admin.set_active(email, False)
 
 
+def test_blocking():
+    """A block is on a browser, not a person, and it stops writing only. There
+    is nothing to gain from stopping somebody reading an open wiki."""
+    c = TestClient(main.app)
+    p = c.post("/api/posts", json={"value": "666", "title": "the vandal was here"}).json()
+    pid = p["id"]
+    vandal = _visitor(pid)
+    vandal.post(f"/api/posts/{pid}/comments", json={"body": "and again"})
+    ops = _operator(TestClient(main.app))
+
+    # the hashes come from the record of something they did, which is the only
+    # place an operator can get one -- a block follows from having read the log
+    ip = _events(action="COMMENT")[-1]
+    assert ip["client_hash"], "the visitor never got a cookie"
+
+    assert ops.post("/api/admin/blocks",
+                    json={"type": "carrier-pigeon", "target_hash": ip["ip_hash"]}
+                    ).status_code == 422
+    made = ops.post("/api/admin/blocks",
+                    json={"type": "ip", "target_hash": ip["ip_hash"],
+                          "reason": "twelve entries in a minute", "hours": 24})
+    assert made.status_code == 201, made.text
+    bid = made.json()["id"]
+    assert made.json()["expires_at"], "a 24 hour block has to end"
+
+    # writing is refused, and told why
+    stopped = vandal.post("/api/posts", json={"value": "667", "title": "again"})
+    assert stopped.status_code == 403, stopped.text
+    assert "twelve entries" in stopped.json()["detail"]
+    assert "Reading is unaffected" in stopped.json()["detail"]
+    for call in (lambda: vandal.patch(f"/api/posts/{pid}", json={"title": "x"}),
+                 lambda: vandal.post(f"/api/posts/{pid}/comments", json={"body": "hi"}),
+                 lambda: vandal.post(f"/api/posts/{pid}/like"),
+                 lambda: vandal.post(f"/api/posts/{pid}/report", json={"reason": "SPAM"}),
+                 lambda: vandal.post("/api/upload", files={
+                     "file": ("x.png", b"\x89PNG", "image/png")})):
+        assert call().status_code == 403, "a write got through the block"
+
+    # ...and reading is untouched, all of it
+    assert vandal.get(f"/api/posts/{pid}").status_code == 200
+    assert vandal.get("/api/numbers").status_code == 200
+    assert vandal.get(f"/p/{pid}").status_code == 200
+
+    # the operator's own routes do not go through guard, so blocking your own
+    # address does not lock you out of the panel
+    assert ops.get("/api/admin/blocks").json()["total"] >= 1
+
+    # lifting is an edit, not a delete: "we blocked this and let it back in" is
+    # a thing to be able to read
+    assert ops.post("/api/admin/blocks/999999/lift").status_code == 404
+    assert ops.post(f"/api/admin/blocks/{bid}/lift").json()["lifted"] is True
+    assert ops.post(f"/api/admin/blocks/{bid}/lift").status_code == 404, "lifted twice"
+    assert vandal.post(f"/api/posts/{pid}/like").status_code == 200
+    lifted = next(b for b in ops.get("/api/admin/blocks",
+                                     params={"live": "false"}).json()["rows"]
+                  if b["id"] == bid)
+    assert lifted["lifted_at"] and lifted["live"] == 0
+    assert lifted["by"] == "mod@namba.test", "the block does not say who made it"
+
+    # an expired block does not bite either
+    con = db.connect()
+    with con:
+        con.execute("""INSERT INTO blocks (type, target_hash, reason, created_at,
+                           created_by, expires_at) VALUES (?,?,?,?,?,?)""",
+                    ("ip", ip["ip_hash"], "yesterday", db.now(), 1,
+                     "2020-01-01T00:00:00+00:00"))
+    con.close()
+    assert vandal.post(f"/api/posts/{pid}/like").status_code == 200, "expired and still biting"
+
+    # a block on the cookie catches the same person on another address, and
+    # leaves everybody else alone
+    ops.post("/api/admin/blocks", json={"type": "client", "hours": 1,
+                                        "target_hash": ip["client_hash"]})
+    assert vandal.post(f"/api/posts/{pid}/like").status_code == 403
+    assert _visitor(pid).post(f"/api/posts/{pid}/like").status_code == 200, \
+        "a cookie block caught somebody else"
+
+    # both halves are audited
+    assert _events(action="CLIENT_BLOCK")[-1]["admin_id"]
+    assert _events(action="CLIENT_UNBLOCK")[-1]["admin_id"]
+    # and the hash is not spelled out in full in the log line
+    assert len(json.loads(_events(action="CLIENT_BLOCK")[-1]["meta"])["target"]) == 8
+
+    con = db.connect()
+    with con:
+        con.execute("UPDATE blocks SET lifted_at = ? WHERE lifted_at IS NULL",
+                    (db.now(),))
+    con.close()
+    admin.set_status(pid, "HIDDEN")
+
+
 def test_bucket():
     for key, want in [
         (9, "1"), (9.99, "1"), (10, "10"), (99, "10"), (100, "100"),
