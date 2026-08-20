@@ -142,6 +142,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
    wordmark and these, and without something holding the middle they would
    collect against the logo */
 .acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto; }
+/* the three that act. On a wide row this is a flex row inside a flex row at
+   the same gap and changes nothing; on a phone it is what keeps them one
+   group when the row above them wraps */
+.acts-main { display: flex; gap: 8px; align-items: center; }
 /* 9px on the input, the same as .btn: both are mono at 12.5px, so equal
    padding is equal height and the pill sits level with the buttons beside it.
    The vertical padding belongs to the input, not to the pill: on the pill the
@@ -325,6 +329,25 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .top { padding: 18px 0 14px; gap: 12px; }
   .logo { font-size: 26px; }
   .acts { gap: 6px; }
+
+  /* Left to wrap on their natural widths the five controls came out as
+     [search][Recent] over [Random][+ Add] -- two ragged rows, split at
+     whatever width the search box happened to be, with a different pair on
+     each. Give the search the row and the three pills the row under it:
+     the box gets the width it always wanted on a phone, and the actions
+     read as the one group they are.
+
+     width, not just the wrap: .acts is a flex item of .top and sizes to its
+     content, so flex-basis: 100% inside it would resolve against a row only
+     as wide as the controls already were. */
+  .acts { width: 100%; margin-left: 0; }
+  /* basis auto, not 100%: the language picker -- when the wiki has one --
+     belongs beside the search rather than among the actions, and at 100%
+     the search took the row alone and pushed the picker down onto theirs.
+     The group below carries the 100% instead, so it always breaks. */
+  .search { flex: 1 1 auto; }
+  .search input { flex: 1; width: auto; min-width: 0; }
+  .acts-main { flex: 1 0 100%; gap: 6px; }
 }
 
 /* --- feed --------------------------------------------------------- */

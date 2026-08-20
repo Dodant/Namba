@@ -169,23 +169,31 @@ function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void })
             </select>
           </div>
         )}
-        {/* "Recent", not "Feed": the label is a promise about the order, and
-            this one is last-touched. The view is still the feed -- ?view=feed
-            names the shape, a card list rather than the index. */}
-        <Link
-          className={`btn ${feed ? 'on' : ''}`}
-          aria-current={feed ? 'page' : undefined}
-          to={feed ? '/' : '/?view=feed'}
-        >
-          Recent
-        </Link>
-        <Link className="btn" to="/random">
-          {DIE}
-          Random
-        </Link>
-        <Link className="btn primary" to="/new">
-          + Add
-        </Link>
+        {/* The three that act, in a group of their own so the phone layout is
+            the same whether or not the language picker is there: the search
+            takes a row, these take the row under it. Left to wrap on their
+            own widths, the picker's arrival pushed "+ Add" onto a third row
+            by itself. On a wide screen the wrapper is a flex row inside a
+            flex row with the same gap, so it draws exactly as before. */}
+        <div className="acts-main">
+          {/* "Recent", not "Feed": the label is a promise about the order,
+              and this one is last-touched. The view is still the feed --
+              ?view=feed names the shape, a card list rather than the index. */}
+          <Link
+            className={`btn ${feed ? 'on' : ''}`}
+            aria-current={feed ? 'page' : undefined}
+            to={feed ? '/' : '/?view=feed'}
+          >
+            Recent
+          </Link>
+          <Link className="btn" to="/random">
+            {DIE}
+            Random
+          </Link>
+          <Link className="btn primary" to="/new">
+            + Add
+          </Link>
+        </div>
       </div>
     </header>
   )
