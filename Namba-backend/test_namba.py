@@ -2,6 +2,7 @@
 import json
 import os
 import tempfile
+from datetime import datetime, timedelta, timezone
 
 _tmp = tempfile.mkdtemp()
 os.environ["NAMBA_DB"] = os.path.join(_tmp, "test.db")
@@ -148,14 +149,21 @@ def _visitor(pid):
     return c
 
 
-def _operator(c, email="mod@namba.test"):
+def _operator(c, email="mod@namba.test", role="ADMIN"):
     """Sign in as an operator, creating one the only way there is to. Returns the
-    client, which now carries the session cookie."""
+    client, which now carries the session cookie.
+
+    The role is forced rather than passed to add_admin: only the *first* account
+    is promoted automatically, and which test runs first is alphabetical."""
     try:
         admin.add_admin(email, "a long enough password")
     except ValueError:
         admin.set_active(email, True)
         admin.set_password(email, "a long enough password")
+    con = db.connect()
+    with con:
+        con.execute("UPDATE admins SET role = ? WHERE email = ?", (role, email))
+    con.close()
     auth._attempts.clear()
     got = c.post("/api/admin/login", json={"email": email,
                                            "password": "a long enough password"})
@@ -585,6 +593,240 @@ def test_admin_accounts():
         "allow_credentials would hand the admin session to any origin"
 
     admin.set_active(email, False)
+
+
+def test_admin_content_and_dashboard():
+    """The operator's own reads: the one list in the codebase that shows hidden
+    entries, the diff, and the counters over the top of them."""
+    c = TestClient(main.app)
+    ops = _operator(TestClient(main.app))
+
+    # every one of them is behind the login
+    cold = TestClient(main.app)
+    for path in ("/api/admin/stats", "/api/admin/activity", "/api/admin/posts",
+                 "/api/admin/posts/1", "/api/admin/posts/1/revisions",
+                 "/api/admin/posts/1/diff?a=live", "/api/admin/abuse",
+                 "/api/admin/admins"):
+        assert cold.get(path).status_code == 401, path
+
+    p = c.post("/api/posts", json={
+        "value": "1969", "title": "Moon landing", "body": "One small step.\nTwo.",
+        "tags": ["space"], "author": "armstrong"}).json()
+    pid = p["id"]
+    # the clock is stubbed a minute on, because "edited today" is
+    # updated_at <> created_at and now() has second resolution: a create and an
+    # edit inside one tick are indistinguishable, which is right in the column
+    # and useless in a test
+    later = (datetime.now(timezone.utc) + timedelta(minutes=1)
+             ).isoformat(timespec="seconds")
+    real, main.now = main.now, lambda: later
+    try:
+        c.patch(f"/api/posts/{pid}", json={
+            "title": "Moon landings", "body": "One small step.\nTwo.\nAnd a third.",
+            "value": "1970", "grouped": True, "tags": ["space", "history"],
+            "author": "vandal"})
+    finally:
+        main.now = real
+    assert ops.get("/api/admin/stats").json()["edited_today"] >= 1, \
+        "an edit a minute after the create did not count as one"
+
+    # the content table shows hidden entries, which is the point of it
+    admin.set_status(pid, "HIDDEN")
+    rows = ops.get("/api/admin/posts", params={"q": "Moon"}).json()
+    mine = next(r for r in rows["rows"] if r["id"] == pid)
+    assert mine["status"] == "HIDDEN" and mine["author"] == "armstrong"
+    assert mine["edited_by"] == "vandal"
+    assert mine["open_reports"] == 0 and mine["pending_requests"] == 0
+    assert not any(r["id"] == pid for r in ops.get(
+        "/api/admin/posts", params={"status": "ACTIVE"}).json()["rows"])
+    assert ops.get("/api/admin/posts", params={"status": "NONSENSE"}
+                   ).status_code == 422
+
+    # ...and so does the detail read, which is the only caller of hidden=True
+    assert c.get(f"/api/posts/{pid}").status_code == 404
+    full = ops.get(f"/api/admin/posts/{pid}").json()
+    assert full["title"] == "Moon landings" and full["revision_count"] == 1
+    assert full["reports"] == [] and full["requests"] == []
+    admin.set_status(pid, "ACTIVE")
+
+    # FLAGGED is a count and not a column: it moves when the reports do
+    _visitor(pid).post(f"/api/posts/{pid}/report", json={"reason": "VANDALISM"})
+    flagged = ops.get("/api/admin/posts", params={"flagged": "true"}).json()["rows"]
+    assert pid in [r["id"] for r in flagged]
+    assert next(r for r in flagged if r["id"] == pid)["open_reports"] == 1
+    assert next(r for r in flagged if r["id"] == pid)["status"] == "ACTIVE", \
+        "a report changed the entry's stored status"
+    ops.post(f"/api/admin/reports/{pid}/decide", json={"decision": "IGNORE"})
+    assert pid not in [r["id"] for r in ops.get(
+        "/api/admin/posts", params={"flagged": "true"}).json()["rows"]], \
+        "the badge outlived the report, which is why it is not a column"
+
+    # every revision, numbered in reading order, with the action beside it and
+    # without the snapshots
+    revs = ops.get(f"/api/admin/posts/{pid}/revisions").json()
+    assert [r["number"] for r in revs] == [1] and revs[0]["action"] == "EDIT"
+    assert revs[0]["title"] == "Moon landing", "the snapshot's title, not today's"
+    assert len(revs[0]["ip_hash"]) == 64
+    assert "snapshot" not in revs[0], "fifty whole entries would come down the wire"
+
+    # the diff answers fields and body apart, which is the readable way round
+    d = ops.get(f"/api/admin/posts/{pid}/diff",
+                params={"a": revs[0]["id"], "b": "live"}).json()
+    changed = {f["name"]: (f["before"], f["after"]) for f in d["fields"]}
+    assert changed["value"] == ("1969", "1970"), changed
+    assert changed["title"] == ("Moon landing", "Moon landings")
+    assert changed["grouped"] == (False, True)
+    assert "body" not in changed, "a body change belongs in the body diff"
+    assert {"sign": "+", "text": "And a third."} in d["body"]
+    assert d["tags"] == {"before": ["space"], "after": ["history", "space"]}
+    assert ops.get(f"/api/admin/posts/{pid}/diff",
+                   params={"a": "banana"}).status_code == 422
+    assert ops.get(f"/api/admin/posts/{pid}/diff",
+                   params={"a": "999999"}).status_code == 404
+
+    # status is a route with an audit row, and the same route is the undo
+    assert ops.post(f"/api/admin/posts/{pid}/status",
+                    json={"status": "SHRUG"}).status_code == 422
+    assert ops.post(f"/api/admin/posts/{pid}/status",
+                    json={"status": "ACTIVE"}).status_code == 409, "already active"
+    hid = ops.post(f"/api/admin/posts/{pid}/status",
+                   json={"status": "HIDDEN", "note": "reverting a rewrite"})
+    assert hid.json() == {"id": pid, "status": "HIDDEN", "was": "ACTIVE"}
+    assert c.get(f"/api/posts/{pid}").status_code == 404
+    assert _events(action="CONTENT_HIDE")[-1]["admin_id"]
+
+    # an operator can revert a hidden entry, which the public route cannot reach
+    assert c.post(f"/api/posts/{pid}/revisions/{revs[0]['id']}/restore"
+                  ).status_code == 404
+    # ...and reverting a *hidden* one has to work, or the operator is asked to
+    # put the vandalism back on the wiki before they can undo it. snapshot()
+    # reads through fetch_one, so hidden has to travel all the way down.
+    reverted = ops.post(f"/api/admin/posts/{pid}/revisions/{revs[0]['id']}/restore",
+                        json={"note": "the 1969 version was right"})
+    assert reverted.status_code == 200, reverted.text
+    back = reverted.json()
+    assert back["value"] == "1969" and back["title"] == "Moon landing"
+    assert back["author"] == "armstrong", "a revert took the byline"
+    assert back["edited_by"] == "operator mod@namba.test"
+    assert back["status"] == "HIDDEN", "a revert also un-hid it, which is two things"
+    assert back["tags"] == ["space"]
+
+    # ...and reverting added a revision rather than overwriting one
+    after = ops.get(f"/api/admin/posts/{pid}/revisions").json()
+    assert [r["number"] for r in after] == [2, 1]
+    assert after[0]["title"] == "Moon landings", "the state it replaced"
+    assert after[0]["action"] == "CONTENT_REVERT" and after[0]["by"] == "mod@namba.test"
+
+    ops.post(f"/api/admin/posts/{pid}/status", json={"status": "ACTIVE"})
+
+    # the counters, and the two that must not double-count each other
+    st = ops.get("/api/admin/stats").json()
+    assert st["entries"] >= 1 and st["numbers"] >= 1
+    assert st["numbers"] <= st["entries"], "more numbers than entries filed under them"
+    assert st["created_today"] >= 1
+    # ...and the two do not double-count: a create is not an edit
+    fresh = c.post("/api/posts", json={"value": "70009", "title": "brand new"}).json()
+    st2 = ops.get("/api/admin/stats").json()
+    assert st2["created_today"] == st["created_today"] + 1
+    assert st2["edited_today"] == st["edited_today"], "a create counted as an edit"
+    admin.set_status(fresh["id"], "HIDDEN")
+    assert st["edits_24h"] >= 1 and st["writes_1h"] >= 1
+    assert set(st) == {"numbers", "entries", "hidden", "created_today",
+                       "edited_today", "requests_pending", "reports_open",
+                       "edits_24h", "writes_1h", "blocked", "comments"}, st
+
+    # activity and the audit log are the same rows read two ways
+    both = ops.get("/api/admin/activity").json()
+    mine_only = ops.get("/api/admin/activity", params={"kind": "admin"}).json()
+    anon = ops.get("/api/admin/activity", params={"kind": "anon"}).json()
+    assert both["total"] == mine_only["total"] + anon["total"]
+    assert all(r["admin_id"] and r["by"] for r in mine_only["rows"])
+    assert all(r["admin_id"] is None for r in anon["rows"])
+    assert ops.get("/api/admin/activity", params={"kind": "sideways"}
+                   ).status_code == 422
+    assert any(r["title"] for r in both["rows"] if r["target_type"] == "post")
+
+    # the abuse view counts; it does not pretend to detect
+    ab = ops.get("/api/admin/abuse", params={"minutes": 60, "least": 1}).json()
+    assert ab["clients"] and ab["clients"][0]["writes"] >= 1
+    top = ab["clients"][0]
+    assert len(top["ip_hash"]) == 64 and top["creates"] + top["edits"] >= 1
+    assert top["first_at"] <= top["last_at"] and "duplicates" in ab
+
+    # the same words under three numbers is what an advert looks like here
+    for v in ("70001", "70002", "70003"):
+        c.post("/api/posts", json={"value": v, "title": "Buy Cheap Watches Online"})
+    dupes = ops.get("/api/admin/abuse", params={"least": 1}).json()["duplicates"]
+    assert any(d["entries"] == 3 and d["title"].lower() == "buy cheap watches online"
+               for d in dupes), dupes
+    for v in ("70001", "70002", "70003"):
+        for x in c.get("/api/posts", params={"value": v}).json():
+            admin.set_status(x["id"], "HIDDEN")
+    admin.set_status(pid, "HIDDEN")
+
+
+def test_admin_accounts_from_the_panel():
+    """A super admin can make the next operator, and cannot lock the door from
+    the inside."""
+    plain_email, super_email = "plain@namba.test", "chief@namba.test"
+    ops = _operator(TestClient(main.app), super_email, "SUPER_ADMIN")
+    assert ops.get("/api/admin/me").json()["role"] == "SUPER_ADMIN"
+
+    assert ops.post("/api/admin/admins",
+                    json={"email": "nope", "password": "z" * 12}).status_code == 422
+    assert ops.post("/api/admin/admins",
+                    json={"email": plain_email, "password": "short"}
+                    ).status_code == 422, "a twelve character floor, checked"
+    made = ops.post("/api/admin/admins",
+                    json={"email": plain_email, "password": "a fine long password"})
+    assert made.status_code == 201, made.text
+    plain_id = made.json()["id"]
+    assert ops.post("/api/admin/admins",
+                    json={"email": plain_email, "password": "a fine long password"}
+                    ).status_code == 409
+
+    # ...and the account works, without being able to change the list
+    lesser = TestClient(main.app)
+    auth._attempts.clear()
+    assert lesser.post("/api/admin/login",
+                       json={"email": plain_email, "password": "a fine long password"}
+                       ).json()["role"] == "ADMIN"
+    assert lesser.get("/api/admin/admins").status_code == 200, \
+        "who else can act here is not a secret from the people who can act here"
+    assert lesser.post("/api/admin/admins",
+                       json={"email": "third@namba.test", "password": "z" * 12}
+                       ).status_code == 403
+    assert lesser.post(f"/api/admin/admins/{plain_id}/active",
+                       json={"active": False}).status_code == 403
+
+    # the one door that must not close from inside. It is also the only check
+    # needed: require_super means whoever is asking is a live super admin, so
+    # revoking anybody else always leaves at least them -- there is no reachable
+    # way to take the last one out from in here, and a check for it would read
+    # as protection and never fire.
+    me = ops.get("/api/admin/me").json()["id"]
+    second = ops.post("/api/admin/admins",
+                      json={"email": "deputy@namba.test", "password": "z" * 14,
+                            "role": "SUPER_ADMIN"}).json()
+    assert ops.post(f"/api/admin/admins/{me}/active",
+                    json={"active": False}).status_code == 409, \
+        "revoked itself while another super admin was there to catch it"
+    assert ops.post(f"/api/admin/admins/{second['id']}/active",
+                    json={"active": False}).status_code == 200
+    assert ops.post(f"/api/admin/admins/{me}/active",
+                    json={"active": False}).status_code == 409, \
+        "revoked itself as the last one standing"
+    assert ops.get("/api/admin/me").status_code == 200, "and is still signed in"
+
+    # revoking somebody else kills their live session on the next request
+    assert lesser.get("/api/admin/me").status_code == 200
+    assert ops.post(f"/api/admin/admins/{plain_id}/active",
+                    json={"active": False}).json()["active"] is False
+    assert lesser.get("/api/admin/me").status_code == 401
+    assert ops.post("/api/admin/admins/999999/active",
+                    json={"active": True}).status_code == 404
+    assert _events(action="ADMIN_DEACTIVATE")[-1]["admin_id"] == me
+    admin.set_active(super_email, False)
 
 
 def test_blocking():

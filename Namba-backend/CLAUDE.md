@@ -163,6 +163,36 @@ it is unset, `secret.key` beside the database is generated and used instead).
   default). Lifting sets `lifted_at` rather than deleting the row — "we blocked
   this and then let it back in" is something an operator needs to be able to
   read, and a `DELETE` says only "we never did".
+- **`FLAGGED` is a count, not a column.** `/api/admin/posts` returns
+  `open_reports` and `pending_requests` per row and the panel draws the badge
+  from them. A stored `FLAGGED` status would go stale the moment a report was
+  resolved, and `reports` is already the truth — the test resolves one and
+  checks the badge goes with it.
+- **`/api/admin/posts` is the only list that does not carry `store.LIVE`, and
+  `one_post` is the only read that passes `hidden=True`.** That is what the back
+  office is for. If a third caller ever wants `hidden=True`, look hard at it
+  first.
+- **`hidden` travels all the way down into `snapshot()`.** It reads through
+  `fetch_one`, so without it an operator reverting vandalism gets a 404 in the
+  middle of their own restore — an entry worth reverting is usually one they took
+  down first. This was a real bug caught by `test_admin_content_and_dashboard`,
+  not a hypothetical.
+- **The admin revisions list does not ship snapshots.** It reads them to pull a
+  title out as a label and drops them: fifty whole entries is megabytes, and
+  `/diff` fetches the two actually being looked at. `revision_number` is the
+  position in that list rather than a column — it only means anything in the
+  order it is read in.
+- **The diff answers fields and body separately.** A changed sort key inside a
+  unified text diff is unreadable, and "the number was quietly changed" — the
+  thing an operator is usually hunting — is a field, not a line. `difflib`
+  because it is stdlib; a diff library on the front end would be a dependency
+  for what this already does.
+- **`set_admin_active` refuses only self-revocation, and that is deliberate.**
+  `require_super` means whoever is asking is a live super admin, so revoking
+  anybody *else* always leaves at least them. A separate "not the last super
+  admin" check existed for one commit, could never fire, and was deleted — a
+  guard that reads as protection and is unreachable is worse than none. Locking
+  the door stays possible from a shell, which is the right place for it.
 - **`events` is append-only, and that is the feature.** Nothing in this codebase
   issues an `UPDATE` or a `DELETE` against it. An audit log an operator can tidy
   up after themselves in is not an audit log, so do not add a route that edits

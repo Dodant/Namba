@@ -84,13 +84,17 @@ def fetch_one(con, post_id, hidden=False):
     return post
 
 
-def snapshot(con, post_id, author):
+def snapshot(con, post_id, author, hidden=False):
     """Store the current state of a post so an edit can be undone.
 
     Returns the new revision's id, which is what an event row carries so that
     "who did this" and "what it was before" are one join apart.
+
+    `hidden` passes straight through to fetch_one, and it has to: an operator
+    reverting vandalism has usually taken the entry down first, and reading it
+    back through the public view 404s in the middle of their own restore.
     """
-    post = fetch_one(con, post_id)
+    post = fetch_one(con, post_id, hidden=hidden)
     cur = con.execute(
         "INSERT INTO revisions (post_id, snapshot, author, at) VALUES (?,?,?,?)",
         (post_id, json.dumps(post, ensure_ascii=False), author, now()),
