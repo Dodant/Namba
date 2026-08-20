@@ -1,0 +1,315 @@
+/* The back office. A separate document from the wiki, so none of index.css
+   reaches here -- which is the point: over there every control is a 999px
+   capsule and the type is a serif meant for reading, and neither belongs on a
+   table of hashes.
+
+   What it keeps is the identity: the same green, the same terracotta for
+   anything that destroys something, IBM Plex Mono on every numeral. What it
+   changes is the register. System sans for the chrome, 13px, 32px rows, hairline
+   rules, no shadows and no radius over 6px. Density is the feature -- an
+   operator is here to see forty rows at once and decide about three of them. */
+
+:root {
+  --bg: #fbfbfa;
+  --panel: #ffffff;
+  --sink: #f4f4f2;        /* table heads, the sidebar, a rested chip */
+  --ink: #17171a;
+  --ink-soft: #52525b;
+  --muted: #6f6f78;       /* 4.9:1 on --bg; the smallest type here is 11px */
+  --line: #e2e2df;
+  --rule: #ededea;        /* between rows, quieter than a border */
+  --accent: #1a4d3c;
+  --accent-dark: #143d30;
+  --accent-soft: #e8efeb;
+  --on-accent: #ffffff;
+  --hit: #b4472b;         /* destroys something, or warns that it did */
+  --hit-soft: #fbeee9;
+  --warn: #8a5a00;        /* pending, open, waiting -- not danger, not fine */
+  --warn-soft: #fdf3e0;
+  --ok: #1a4d3c;
+  --ok-soft: #e8efeb;
+  --radius: 6px;
+  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+          Arial, sans-serif;
+  --rail: 208px;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101012;
+    --panel: #17171a;
+    --sink: #1d1d21;
+    --ink: #ececee;
+    --ink-soft: #a8a8b0;
+    /* inverted rather than carried over: on a dark ground quieter means
+       darker, and the light value lands at 3.1:1 here */
+    --muted: #8e8e98;
+    --line: #2a2a2f;
+    --rule: #232327;
+    --accent: #6aa98e;
+    --accent-dark: #7fbca1;
+    --accent-soft: #1b2a24;
+    --on-accent: #101012;
+    --hit: #e07a56;
+    --hit-soft: #2a1a14;
+    --warn: #d9a441;
+    --warn-soft: #2a2113;
+    --ok: #6aa98e;
+    --ok-soft: #1b2a24;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 13px/1.5 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Every numeral, hash, id and timestamp. tabular-nums so a column of counts
+   lines up on its digits -- the same call the wiki makes, and the reason a
+   table of numbers can be scanned rather than read. */
+.mono, .num, td .n, th .n, .hash, .when, code {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- the frame --------------------------------------------------------- */
+.shell { display: flex; min-height: 100%; }
+
+.rail {
+  width: var(--rail); flex: 0 0 var(--rail);
+  background: var(--sink);
+  border-right: 1px solid var(--line);
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100dvh;
+}
+.rail-top { padding: 15px 16px 13px; border-bottom: 1px solid var(--line); }
+.rail-logo {
+  display: block; font-family: var(--mono); font-size: 15px; font-weight: 700;
+  letter-spacing: -0.02em; color: var(--ink);
+}
+.rail-logo span { color: var(--accent); }
+.rail-sub {
+  display: block; margin-top: 2px; font-size: 10.5px; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted);
+}
+
+.nav { flex: 1; overflow-y: auto; padding: 10px 8px 16px; }
+.nav-group {
+  padding: 12px 8px 5px; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+.nav a {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 9px; margin-bottom: 1px; border-radius: var(--radius);
+  color: var(--ink-soft); font-size: 12.5px;
+}
+.nav a:hover { background: rgba(0, 0, 0, 0.04); text-decoration: none; }
+@media (prefers-color-scheme: dark) { .nav a:hover { background: rgba(255, 255, 255, 0.05); } }
+.nav a.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+/* the count of what is waiting, beside the page you would go to about it --
+   the dashboard says the same numbers, but this is where you act on them */
+.nav .tally {
+  margin-left: auto; min-width: 17px; padding: 1px 5px; border-radius: 999px;
+  background: var(--warn-soft); color: var(--warn);
+  font-family: var(--mono); font-size: 10.5px; font-weight: 600; text-align: center;
+}
+
+.rail-foot {
+  border-top: 1px solid var(--line); padding: 10px 12px;
+  font-size: 11.5px; color: var(--muted);
+}
+.rail-foot b { display: block; color: var(--ink-soft); font-weight: 600; word-break: break-all; }
+.rail-foot .role {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em;
+}
+
+.main { flex: 1; min-width: 0; }
+.page { padding: 22px 26px 60px; max-width: 1400px; }
+.page > h1 {
+  margin: 0 0 3px; font-size: 19px; font-weight: 600; letter-spacing: -0.01em;
+}
+.page > .lede { margin: 0 0 20px; color: var(--muted); font-size: 12.5px; max-width: 74ch; }
+
+/* --- controls ---------------------------------------------------------- */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel); color: var(--ink-soft);
+  font-size: 12.5px; font-weight: 500; cursor: pointer;
+  transition: background 110ms, color 110ms, border-color 110ms;
+}
+.btn:hover { border-color: var(--ink-soft); color: var(--ink); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn:disabled:hover { border-color: var(--line); color: var(--ink-soft); }
+.btn.primary {
+  background: var(--accent); border-color: var(--accent); color: var(--on-accent);
+}
+.btn.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+.btn.danger { color: var(--hit); border-color: var(--line); }
+.btn.danger:hover { background: var(--hit); border-color: var(--hit); color: var(--on-accent); }
+.btn.small { padding: 3px 8px; font-size: 11.5px; }
+.btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+  text-transform: uppercase; color: var(--muted);
+}
+.field input, .field select, .field textarea {
+  padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel); width: 100%;
+}
+.field textarea { min-height: 62px; resize: vertical; }
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--accent); outline: none;
+}
+
+/* --- tables ------------------------------------------------------------ */
+/* The scroll port is the wrapper and not the table: a <table> cannot be its
+   own scroll box without giving up being a table box, which costs a screen
+   reader its rows and columns. Wide columns of hashes need it. */
+.tbl-wrap {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel); overflow-x: auto;
+}
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--sink); border-bottom: 1px solid var(--line);
+  padding: 7px 11px; text-align: left; white-space: nowrap;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted);
+}
+tbody td {
+  padding: 7px 11px; border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: var(--sink); }
+td.tight, th.tight { white-space: nowrap; }
+td.right, th.right { text-align: right; }
+td.acts { white-space: nowrap; text-align: right; }
+td.acts .btn + .btn { margin-left: 5px; }
+/* a title can be any length a stranger types, and one long one must not push
+   the columns after it off the table */
+td.wide { max-width: 30ch; }
+td.wide a, td.wide span { display: block; overflow: hidden; text-overflow: ellipsis;
+                          white-space: nowrap; }
+
+.sortable { cursor: pointer; user-select: none; }
+.sortable:hover { color: var(--ink); }
+
+/* --- badges ------------------------------------------------------------ */
+.badge {
+  display: inline-block; padding: 1px 7px; border-radius: 999px;
+  font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+  letter-spacing: 0.03em; white-space: nowrap;
+  background: var(--sink); color: var(--ink-soft);
+}
+.badge.ok { background: var(--ok-soft); color: var(--ok); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); }
+.badge.bad { background: var(--hit-soft); color: var(--hit); }
+
+/* First four hex characters and a title with the rest. It is a hash of an
+   address and not an address, but forty more characters of it on screen buy
+   nothing an operator can read -- what they do is compare two rows, and four
+   is enough to do that by eye. */
+.hash { font-size: 11.5px; color: var(--muted); cursor: help; }
+.when { font-size: 11.5px; color: var(--muted); white-space: nowrap; cursor: help; }
+
+/* --- small parts ------------------------------------------------------- */
+.empty {
+  padding: 26px 14px; text-align: center; color: var(--muted); font-size: 12.5px;
+}
+.err {
+  margin: 0 0 14px; padding: 8px 11px; border-radius: var(--radius);
+  background: var(--hit-soft); color: var(--hit); font-size: 12.5px;
+}
+.bar {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end;
+  margin-bottom: 14px;
+}
+.bar .field { flex: 0 0 auto; }
+.bar .grow { flex: 1 1 220px; min-width: 0; }
+.bar .push { margin-left: auto; }
+
+/* --- the login screen -------------------------------------------------- */
+.gate {
+  min-height: 100dvh; display: grid; place-items: center; padding: 24px;
+}
+.gate form {
+  width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 13px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 26px 24px;
+}
+.gate h1 {
+  margin: 0; font-family: var(--mono); font-size: 17px; font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.gate h1 span { color: var(--accent); }
+.gate .lede { margin: -6px 0 4px; color: var(--muted); font-size: 12px; }
+
+/* --- tablet ------------------------------------------------------------ */
+/* Desktop first, and the rail is what gives. Below 900 it lies down across the
+   top and scrolls sideways: a table needs the width more than the navigation
+   does, and a drawer would put the operator one tap further from every page. */
+@media (max-width: 900px) {
+  .shell { flex-direction: column; }
+  .rail {
+    width: auto; flex: none; height: auto; position: static;
+    border-right: 0; border-bottom: 1px solid var(--line);
+  }
+  .rail-top { border-bottom: 0; padding-bottom: 8px; }
+  .nav {
+    display: flex; gap: 4px; overflow-x: auto; padding: 0 10px 10px;
+    scrollbar-width: none;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav-group { display: none; }   /* a heading in a scrolling strip is a gap
+                                     with a word in it */
+  .nav a { white-space: nowrap; }
+  .rail-foot { display: flex; gap: 8px; align-items: baseline; }
+  .rail-foot b { display: inline; }
+  .page { padding: 16px 14px 48px; }
+}
+
+/* --- the dashboard ----------------------------------------------------- */
+.stat-group { margin-bottom: 24px; }
+.stat-group h2 {
+  margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--muted);
+}
+/* auto-fit rather than a column count: the row is four cells on a desktop and
+   two on a tablet with nothing to declare, and a group of three does not leave
+   a hole where the fourth would be. */
+.stats {
+  display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+}
+.stat {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel); padding: 11px 13px;
+  display: flex; flex-direction: column; gap: 1px;
+}
+.stat b {
+  font-size: 22px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15;
+}
+.stat span { font-size: 11.5px; color: var(--muted); }
+/* only when it is not zero: a queue with nothing in it should not be the
+   loudest thing on the page, and an operator learns to ignore a colour that is
+   always on */
+.stat.loud { border-color: var(--warn); background: var(--warn-soft); }
+.stat.loud b { color: var(--warn); }

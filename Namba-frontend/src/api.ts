@@ -153,9 +153,12 @@ export type PostInput = {
   grouped?: boolean
 }
 
-type Params = Record<string, string | number | undefined | null>
+export type Params = Record<string, string | number | undefined | null>
 
-function qs(params: Params) {
+/* Exported for the back office's client, which is a separate bundle and needs
+   the same three primitives rather than its own copy: one place that knows how
+   FastAPI reports an error is the whole point of them. */
+export function qs(params: Params) {
   const p = new URLSearchParams()
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== null && v !== '') p.set(k, String(v))
@@ -164,7 +167,7 @@ function qs(params: Params) {
   return s ? `?${s}` : ''
 }
 
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
+export async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init)
   if (!res.ok) {
     let detail = res.statusText
@@ -182,7 +185,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   return res.status === 204 ? (null as T) : res.json()
 }
 
-const json = (method: string, body: unknown): RequestInit => ({
+export const json = (method: string, body: unknown): RequestInit => ({
   method,
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify(body),

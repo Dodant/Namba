@@ -1,8 +1,39 @@
 # Namba-frontend
 
-React 19 + Vite + TypeScript. `src/api.ts` is the entire client; four pages and
-two components. Dev server proxies `/api` and `/uploads` to `127.0.0.1:8000`
+React 19 + Vite + TypeScript. **Two documents**: the wiki (`index.html` →
+`src/`) and the back office (`admin.html` → `src/admin/`). The wiki is
+`src/api.ts` plus four pages and two components; the back office is its own
+shell, its own stylesheet and a page per thing an operator does. Dev server
+proxies `/api`, `/uploads`, `/docs` and `/openapi.json` to `127.0.0.1:8000`
 (`vite.config.ts`) — no CORS config needed locally.
+
+## Two documents, and why
+
+`/admin` is a second Vite entry, not a route in the wiki's bundle. The reason
+that decides it is `index.css`: 1300 lines of global rules in which every
+control is a `border-radius: 999px` capsule and the type is a serif meant for
+reading, none of which belongs on a table of hashes. A separate document cannot
+inherit it, and the build proves it — `main-*.css` is 26 kB and `admin-*.css` is
+8, with nothing shared. The wiki's JS did not grow either.
+
+`admin.css` keeps the identity and changes the register: same green, same
+terracotta for anything destructive, IBM Plex Mono on every numeral (a back
+office is mostly numerals) — but system sans for the chrome, 13px, 32px rows,
+hairline rules, no radius over 6px. **Do not import `index.css` into the admin
+app or `admin.css` into the wiki.** They define the same custom property names
+with different values on purpose, and one document loading both would be neither.
+
+Three things are shared and they are the right three: `req`, `qs` and `json`
+from `src/api.ts`, so one place knows how FastAPI reports an error. Plus
+`fmtDate` and `showValue`, because "2 days ago" and `1,234` should read the same
+on both sides of the product. `src/admin/api.ts` adds the operator's shapes and
+nothing else.
+
+Getting there in development needs a rewrite, because `/admin` is a router path
+and `admin.html` is a file: a small `configureServer` middleware in
+`vite.config.ts` points `/admin*` at it. In production `main.py`'s catch-all
+does the same thing. The `basename="/admin"` has to be identical in both, or
+every link in the panel is wrong in one of them.
 
 ```sh
 npm run dev

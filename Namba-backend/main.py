@@ -1031,6 +1031,16 @@ def _index(con, path: str, base: str) -> HTMLResponse:
 def spa(path: str, request: Request, con=Depends(get_db)):
     if not os.path.isdir(DIST):
         raise HTTPException(404, "front end not built; run npm run build")
+    # The back office is its own document with its own bundle, so /admin and
+    # everything under it get admin.html rather than the wiki's index.html.
+    # Before the asset lookup, which would never match these anyway: the built
+    # assets live under /assets/. No og:head written and no namba_cid set --
+    # nothing here is shareable and an operator is not a visitor being counted.
+    if path == "admin" or path.startswith("admin/"):
+        page = os.path.join(DIST, "admin.html")
+        if not os.path.isfile(page):
+            raise HTTPException(404, "back office not built; run npm run build")
+        return FileResponse(page)
     # A built asset if it is one, index.html otherwise -- /n/42 and /p/12 are
     # the client's routes, not files. realpath before serving: "path" comes off
     # the wire and ".." in it must not walk out of dist.

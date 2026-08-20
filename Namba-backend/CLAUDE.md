@@ -228,6 +228,11 @@ it is unset, `secret.key` beside the database is generated and used instead).
   this way a page load sets it once. In development Vite serves the document, so
   there is no cookie and the abuse view has the IP hash alone — which is also
   what it falls back to for anyone who clears theirs.
+- **The catch-all serves two documents.** `/admin` and everything under it get
+  `dist/admin.html`; everything else gets `dist/index.html`. The admin branch
+  comes first and before the asset lookup, and it writes no `og:` head and sets
+  no `namba_cid` — nothing in there is shareable and an operator is not a visitor
+  being counted.
 - **The SPA catch-all must stay the last route in the file.** Starlette matches
   in the order routes are added, so `@app.get("/{path:path}")` swallows every
   `/api/...` declared below it. It serves built assets by path and `index.html`

@@ -1,8 +1,40 @@
+import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+/* The back office is a second document, not a route in the wiki's bundle. Two
+   reasons, and the first is the one that matters: index.css is 1300 lines of
+   global rules in which every control is a 999px capsule, and none of that
+   belongs on a dense table. A separate document cannot inherit it. The second
+   is that the reading pages should not carry a table UI nobody but an operator
+   ever opens.
+
+   In production the API serves dist/admin.html for /admin*; in development
+   Vite has to be told, because /admin is a router path and admin.html is the
+   file. Rewriting here rather than asking the router to live at /admin.html:
+   the basename has to be the same in both, or every link in the panel is wrong
+   in one of them. */
+const adminRoute = {
+  name: 'namba-admin-route',
+  configureServer(server: { middlewares: { use: (fn: unknown) => void } }) {
+    server.middlewares.use((req: { url?: string }, _res: unknown, next: () => void) => {
+      const path = (req.url ?? '').split('?')[0]
+      if (path === '/admin' || path.startsWith('/admin/')) req.url = '/admin.html'
+      next()
+    })
+  },
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), adminRoute],
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        admin: resolve(__dirname, 'admin.html'),
+      },
+    },
+  },
   server: {
     proxy: {
       '/api': 'http://127.0.0.1:8000',

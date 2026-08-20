@@ -1,0 +1,155 @@
+import { useEffect, useState } from 'react'
+import { showValue } from '../../api'
+import { ACTION_LABEL, adm, meta, type Event, type Stats } from '../api'
+import { Badge, Empty, Hash, Table, When } from '../ui'
+
+/* Eleven counters is too many to read, so they are grouped: what the wiki *is*,
+   what happened to it today, and what is waiting for somebody. The third group
+   is the only one an operator has to act on, so it comes first. */
+const GROUPS: { head: string; cells: { key: keyof Stats; label: string; loud?: boolean }[] }[] = [
+  {
+    head: 'Waiting for you',
+    cells: [
+      { key: 'requests_pending', label: 'Delete requests', loud: true },
+      { key: 'reports_open', label: 'Open reports', loud: true },
+      { key: 'blocked', label: 'Blocked clients' },
+      { key: 'hidden', label: 'Off the wiki' },
+    ],
+  },
+  {
+    head: 'Today',
+    cells: [
+      { key: 'created_today', label: 'Entries written' },
+      { key: 'edited_today', label: 'Entries rewritten' },
+      { key: 'edits_24h', label: 'Edits, 24 hours' },
+      { key: 'writes_1h', label: 'Writes, last hour' },
+    ],
+  },
+  {
+    head: 'The wiki',
+    cells: [
+      { key: 'numbers', label: 'Numbers' },
+      { key: 'entries', label: 'Entries' },
+      { key: 'comments', label: 'Comments' },
+    ],
+  },
+]
+
+/** What one row of the log says in a sentence.
+
+    The log is deliberately verbs and ids rather than sentences, so somewhere has
+    to turn it back into English -- and it is here rather than in the API because
+    the API's job is to answer what happened, not to phrase it. An action with no
+    label shows its own name: readable enough, and better than the panel needing
+    a change before it can describe a new one. */
+function line(e: Event) {
+  const said = ACTION_LABEL[e.action] ?? e.action.toLowerCase().replace(/_/g, ' ')
+  const bits = meta(e)
+  const extra = e.action === 'DELETE_REQUEST' || e.action === 'REPORT'
+    ? String(bits.reason ?? '')
+    : e.action === 'TRANSLATE'
+      ? String(bits.lang ?? '')
+      : ''
+  return extra ? `${said} · ${extra}` : said
+}
+
+/** The landing page.
+
+    `stats` comes down as a prop rather than being fetched here: the rail shows
+    the same waiting-counts, and two requests for one set of numbers would let
+    them disagree on screen. */
+export default function Dashboard(
+  { stats, onChange }: { stats: Stats | null; onChange: () => void },
+) {
+  const [feed, setFeed] = useState<Event[] | null>(null)
+  const [err, setErr] = useState('')
+
+  useEffect(() => {
+    /* Refreshed on arrival, not on a timer. A dashboard that moves under an
+       operator's cursor while they are reading a row is worse than one they
+       reload -- and there is exactly one operator, who knows when they did
+       something. */
+    onChange()
+    adm.activity({ limit: 25 }).then(
+      (p) => setFeed(p.rows),
+      (e: Error) => setErr(e.message),
+    )
+  }, [onChange])
+
+  return (
+    <div className="page">
+      <h1>Dashboard</h1>
+      <p className="lede">
+        Where the wiki is, and what it has been doing. Everything here is a link
+        to the page you would act on.
+      </p>
+
+      {GROUPS.map((g) => (
+        <section className="stat-group" key={g.head}>
+          <h2>{g.head}</h2>
+          <div className="stats">
+            {g.cells.map((c) => (
+              <div className={`stat ${c.loud && stats?.[c.key] ? 'loud' : ''}`} key={c.key}>
+                {/* the dash is not a zero: before the answer lands, "0 open
+                    reports" is a result where a wait belongs */}
+                <b className="num">{stats ? showValue(String(stats[c.key]), true) : '—'}</b>
+                <span>{c.label}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+
+      <section className="stat-group">
+        <h2>Lately</h2>
+        {err && (
+          <p className="err" role="alert">
+            {err}
+          </p>
+        )}
+        {!feed ? (
+          !err && <Empty>Loading…</Empty>
+        ) : feed.length ? (
+          <Table cols={['When', 'Who', 'Did', 'To', 'From']}>
+            {feed.map((e) => (
+              <tr key={e.id}>
+                <td className="tight">
+                  <When at={e.at} />
+                </td>
+                <td className="tight">
+                  {/* An operator's decision carries their address; a visitor's
+                      write carries the nickname they typed, which is not an
+                      identity and is not checked. Saying "anonymous" rather
+                      than leaving it blank keeps the column honest. */}
+                  {e.by ? <b>{e.by}</b> : <span>{e.actor || 'anonymous'}</span>}
+                </td>
+                <td>{line(e)}</td>
+                <td className="wide">
+                  {e.target_type === 'post' && e.target_id ? (
+                    e.title ? (
+                      <a href={`/p/${e.target_id}`}>
+                        <span className="num">{e.value}</span> {e.title}
+                      </a>
+                    ) : (
+                      /* the entry is gone -- purged from a shell, since
+                         nothing else removes a row. The event outlives it,
+                         which is the point of the table having no keys. */
+                      <span className="hash">entry {e.target_id}, gone</span>
+                    )
+                  ) : (
+                    <span className="hash">—</span>
+                  )}
+                </td>
+                <td className="tight">
+                  {e.admin_id ? <Badge>ADMIN</Badge> : <Hash value={e.ip_hash} />}
+                </td>
+              </tr>
+            ))}
+          </Table>
+        ) : (
+          <Empty>Nothing has happened yet.</Empty>
+        )}
+      </section>
+    </div>
+  )
+}
