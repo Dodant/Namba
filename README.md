@@ -40,9 +40,11 @@ go stale the way a table here would.
 | `db.py` | connection + schema |
 | `numfmt.py` | `parse_number()` — a display string to a format and a sort key |
 | `seed.py` + `seed_tags.py` | the markdown importer and its hand-written tags |
+| `admin_api.py` | the back office's routes, under `/api/admin` |
+| `auth.py` | operator passwords and sessions — the only login here |
 | `events.py` | who a request is from, as hashes, and the log of what they did |
 | `gc_uploads.py` | the cron job that deletes pictures nothing points at |
-| `admin.py` | the operator's commands — `status`, `hide`, `show`, `purge` |
+| `admin.py` | the operator's commands — accounts, `hide`, `show`, `purge` |
 
 `Namba-frontend` — React + Vite, no state library and no UI kit. `src/api.ts` is
 the whole client; `Browse.tsx` serves the number, tag and search pages because

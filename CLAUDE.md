@@ -41,9 +41,21 @@ branch and has to be agreed on; a tag never did.
 
 ## Design decisions that are not up for quiet revision
 
-- **No accounts, ever.** No login, no ownership, no per-post permissions. Anyone
-  reads, posts and edits. Every guard in the codebase assumes this — do not
-  "fix" it by adding auth.
+- **No *reader* accounts, ever.** No signup, no ownership, no per-post
+  permissions, no "my posts". Anyone reads, posts and edits with no login and no
+  identity beyond a nickname they type, and every guard in the public API assumes
+  it — do not "fix" the open half by adding auth to it.
+
+  There is exactly one exception and it is scoped on purpose: `admins`, the
+  operators. This line used to say "no accounts, ever", and it was revised
+  deliberately rather than quietly, because an operator's decision has to carry
+  a name and be undoable, and neither is possible for nobody. What that buys is
+  the back office — a dashboard, moderation, delete requests, reports, blocks and
+  an audit log — and what it must never buy is a reader account. There is no
+  signup route to find. The first operator can only come from a shell
+  (`admin.py add`), and every one after that from a super admin inside the
+  panel. If a feature needs a reader to log in, the answer is that the feature
+  is wrong for this wiki.
 - **Nothing removes an entry.** `posts.status` is `ACTIVE` / `HIDDEN` /
   `DELETED`, and a hidden entry drops out of all nine public reads and comes
   back whole. There is no `DELETE /api/posts/{id}` — the path answers 405 — and

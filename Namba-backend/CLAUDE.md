@@ -1,16 +1,27 @@
 # Namba-backend
 
-FastAPI over stdlib `sqlite3`. Eight files: `main.py` (every route + models),
-`db.py` (schema), `events.py` (who a request is from, and the log of what they
-did), `numfmt.py` (number parsing), `seed.py` + `seed_tags.py` (the markdown
-importer), `gc_uploads.py` (the uploads collector) and `admin.py` (the
-operator's commands). The last two run from cron and from a shell, never from a
-route -- there is nobody to stop a stranger triggering one.
+FastAPI over stdlib `sqlite3`. Ten files:
+
+| | |
+|---|---|
+| `main.py` | the wiki's routes and models |
+| `admin_api.py` | the back office's routes, under `/api/admin` |
+| `db.py` | schema, `connect()`, `get_db()`, `now()` |
+| `events.py` | who a request is from, as hashes, and the log of what they did |
+| `auth.py` | operator passwords, sessions and the `require_admin` dependency |
+| `numfmt.py` | number parsing |
+| `seed.py` + `seed_tags.py` | the markdown importer |
+| `gc_uploads.py` | the uploads collector |
+| `admin.py` | the operator's shell commands |
+
+The last two run from cron and from a shell, never from a route — there is
+nobody to stop a stranger triggering one.
 
 ```sh
-.venv/bin/python test_namba.py        # run before saying anything passes
-.venv/bin/python seed.py --reset      # wipe + reload from ../Memorable Numbers.md
-.venv/bin/python admin.py hide 42     # take an entry off the public wiki
+.venv/bin/python test_namba.py           # run before saying anything passes
+.venv/bin/python seed.py --reset         # wipe + reload from ../Memorable Numbers.md
+.venv/bin/python admin.py add you@x.test # the first operator; there is no signup
+.venv/bin/python admin.py hide 42        # take an entry off the public wiki
 .venv/bin/uvicorn main:app --reload
 ```
 
@@ -92,6 +103,35 @@ it is unset, `secret.key` beside the database is generated and used instead).
   left where it is. In `/api/numbers` a row is grouped only when
   every entry filed under it is: one number, one spelling, and a disagreement
   falls back to the plain form nobody had to opt into.
+- **`admin_api.py` must not import `main`.** `main.py` imports it and includes
+  the router, so the arrow only points one way. Everything both need lives
+  below them — `db.py` (`get_db`, `now`, the schema), `events.py`, `auth.py`.
+  That is also why `get_db` is in `db.py` rather than beside the routes that use
+  it. The router is included where the app is built, well above the catch-all,
+  because Starlette matches in the order routes are added.
+- **The operator's login is deliberately the smallest correct one.** stdlib
+  `hashlib.scrypt` and not bcrypt or passlib; an opaque token and not a JWT,
+  because logout and revoking an account have to bite on the next request; only
+  the token's sha256 in `admin_sessions`, so a leaked database is a list of dead
+  tokens. `verify()` reads the cost parameters back out of the stored hash, so
+  raising `N` later leaves every existing password working. `login` runs scrypt
+  against `auth.DUMMY` when the email is unknown and answers "wrong email or
+  password" either way — the response time and the message are both free
+  directories otherwise. Five attempts a minute, against the write limiter's
+  twenty.
+- **`SameSite=Strict` is standing in for a CSRF token, and `allow_credentials`
+  must stay off.** The admin app is same-origin with the API, so no legitimate
+  request is cross-site and the browser will not attach the session cookie to
+  one; the JSON content type on every write is the second layer, since it costs
+  a preflight. `CORSMiddleware` is wide open on purpose — an open wiki's API
+  should be readable from anywhere — and that is only safe while credentials are
+  off. Turning them on undoes both layers at once. `test_admin_accounts` asserts
+  it stays off.
+- **An account is revoked, never deleted.** Every audit row in `events` points
+  at an `admins.id`, and an operator who leaves must not take their record with
+  them. `active = 0` is in the session join, so it takes effect on the next
+  request; `admin.py` also drops the live sessions, and the test checks the join
+  separately so the tidy-up cannot hide it.
 - **`events` is append-only, and that is the feature.** Nothing in this codebase
   issues an `UPDATE` or a `DELETE` against it. An audit log an operator can tidy
   up after themselves in is not an audit log, so do not add a route that edits
@@ -167,7 +207,8 @@ edit the DDL and reseed.
 
 ## Trust boundaries — do not thin these out
 
-No auth means the input validation *is* the security model.
+No auth on the public half means the input validation *is* the security model
+there. The operator's half has a login, and the notes above are the whole of it.
 
 - Nothing the API offers removes a row. `posts.status` is the whole of
   moderation and `LIVE` is the condition nine public reads carry; the list of

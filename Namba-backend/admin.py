@@ -1,9 +1,15 @@
-"""Operator commands.  python admin.py <command> <id> [--yes]
+"""Operator commands.  python admin.py <command> [args]
 
-    status <id>          what the wiki is showing for this entry
-    hide <id>            take it off the public wiki
-    show <id>            put it back
-    purge <id> --yes     the one hard delete there is -- see below
+    status <id>              what the wiki is showing for this entry
+    hide <id>                take it off the public wiki
+    show <id>                put it back
+    purge <id> --yes         the one hard delete there is -- see below
+
+    admins                   who can sign in to the back office
+    add <email> [--super]    create an operator; prompts for the password
+    passwd <email>           change one
+    deactivate <email>       revoke the account and kill its live sessions
+    activate <email>
 
 Hiding is what moderation means here. The row stays, every public read skips it,
 and `show` brings the entry back whole: its history, its translations, the talk
@@ -19,17 +25,28 @@ the data one click away. A purge takes the entry, its snapshots and its picture
 together, and the ON DELETE CASCADE on post_tags, post_links, translations and
 comments is what earns its keep here.
 
-This file also holds the operator accounts once they exist; the commands above
-need no login because the shell already is one.
+The account commands are here for the same reason and not as a convenience:
+**there is no signup route.** The back office has a login and nothing that
+creates a login, so the first operator can only come from a shell, and every one
+after that from here or from another operator inside the panel. A password is
+never taken from argv -- it would sit in the shell history -- so these prompt.
+
+The first account created is a SUPER_ADMIN whatever the flags say. Otherwise
+nobody could ever make the second one from inside the panel.
 """
+import getpass
 import os
+import sqlite3
 import sys
 
+import auth
 import db
+import events
 import gc_uploads
 from main import UPLOAD_DIR
 
 STATUSES = ("ACTIVE", "HIDDEN", "DELETED")
+PASSWORD_MIN = 12
 
 
 def status_of(post_id):
@@ -92,30 +109,136 @@ def purge(post_id):
     return None
 
 
+def admins():
+    """Everyone who can sign in, with the last time they did."""
+    con = db.connect()
+    try:
+        return [dict(r) for r in con.execute(
+            """SELECT id, email, role, active, created_at, last_login_at
+               FROM admins ORDER BY id""")]
+    finally:
+        con.close()
+
+
+def add_admin(email, password, role="ADMIN"):
+    """Create an operator. The first one is a SUPER_ADMIN regardless: with no
+    signup route and no super admin, nobody could ever create the second."""
+    email = email.strip()
+    if "@" not in email:
+        raise ValueError("that does not look like an email address")
+    if len(password) < PASSWORD_MIN:
+        raise ValueError(f"at least {PASSWORD_MIN} characters")
+    con = db.connect()
+    try:
+        first = not con.execute("SELECT 1 FROM admins LIMIT 1").fetchone()
+        with con:
+            cur = con.execute(
+                """INSERT INTO admins (email, password_hash, role, created_at)
+                   VALUES (?,?,?,?)""",
+                (email, auth.hash_password(password),
+                 "SUPER_ADMIN" if first or role == "SUPER_ADMIN" else "ADMIN",
+                 db.now()),
+            )
+            events.record(con, "ADMIN_CREATE", target_type="admin",
+                          target_id=cur.lastrowid, email=email, by="shell")
+    except sqlite3.IntegrityError:
+        raise ValueError(f"{email} already has an account") from None
+    finally:
+        con.close()
+    return cur.lastrowid, first
+
+
+def set_password(email, password):
+    if len(password) < PASSWORD_MIN:
+        raise ValueError(f"at least {PASSWORD_MIN} characters")
+    con = db.connect()
+    try:
+        with con:
+            cur = con.execute("UPDATE admins SET password_hash = ? WHERE email = ?",
+                              (auth.hash_password(password), email.strip()))
+            if cur.rowcount:
+                # Every live session goes with it. A password change that leaves
+                # the old cookie working is not a password change.
+                con.execute(
+                    """DELETE FROM admin_sessions WHERE admin_id IN
+                         (SELECT id FROM admins WHERE email = ?)""", (email.strip(),))
+                events.record(con, "ADMIN_PASSWORD", target_type="admin", by="shell")
+    finally:
+        con.close()
+    if not cur.rowcount:
+        raise LookupError(f"no account for {email}")
+
+
+def set_active(email, active):
+    """Revoke or restore an account. Never a DELETE: every audit row points at
+    an id here, and an operator who leaves must not take their record along."""
+    con = db.connect()
+    try:
+        with con:
+            cur = con.execute("UPDATE admins SET active = ? WHERE email = ?",
+                              (int(active), email.strip()))
+            if cur.rowcount and not active:
+                con.execute(
+                    """DELETE FROM admin_sessions WHERE admin_id IN
+                         (SELECT id FROM admins WHERE email = ?)""", (email.strip(),))
+            if cur.rowcount:
+                events.record(con, "ADMIN_ACTIVE" if active else "ADMIN_DEACTIVATE",
+                              target_type="admin", email=email.strip(), by="shell")
+    finally:
+        con.close()
+    if not cur.rowcount:
+        raise LookupError(f"no account for {email}")
+
+
+def _ask_password():
+    """Twice, and never from argv -- a password on a command line is a password
+    in the shell history."""
+    first = getpass.getpass("password: ")
+    if first != getpass.getpass("again: "):
+        raise SystemExit("they did not match")
+    return first
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
-    if len(args) < 2 or not args[1].isdigit():
-        raise SystemExit(__doc__)
-    cmd, pid = args[0], int(args[1])
+    cmd = args[0] if args else ""
+    rest = args[1:]
     try:
-        if cmd == "status":
-            state, title = status_of(pid)
-            print(f"{pid} {state} -- {title}")
-        elif cmd in ("hide", "show"):
-            state = set_status(pid, "HIDDEN" if cmd == "hide" else "ACTIVE")
-            print(f"{pid} is now {state}")
-        elif cmd == "purge":
-            # --yes for the same reason gc_uploads.py wants --delete: this is
-            # the one command in the repo a typo cannot be taken back from.
-            if "--yes" not in args:
+        if cmd == "admins":
+            for a in admins():
+                mark = "" if a["active"] else "  (revoked)"
+                seen = a["last_login_at"] or "never signed in"
+                print(f"{a['id']:>3}  {a['role']:<12} {a['email']:<32} {seen}{mark}")
+        elif cmd == "add" and rest:
+            _, first = add_admin(rest[0], _ask_password(),
+                                   "SUPER_ADMIN" if "--super" in rest else "ADMIN")
+            print(f"created {rest[0]}" + (" as the first, so SUPER_ADMIN" if first else ""))
+        elif cmd == "passwd" and rest:
+            set_password(rest[0], _ask_password())
+            print(f"changed, and every live session for {rest[0]} is gone")
+        elif cmd in ("deactivate", "activate") and rest:
+            set_active(rest[0], cmd == "activate")
+            print(f"{rest[0]} is now {'active' if cmd == 'activate' else 'revoked'}")
+        elif cmd in ("status", "hide", "show", "purge") and rest and rest[0].isdigit():
+            pid = int(rest[0])
+            if cmd == "status":
                 state, title = status_of(pid)
-                raise SystemExit(
-                    f"{pid} {state} -- {title}\nthis is permanent: the entry, its "
-                    f"history and its picture.\npass --yes to go ahead."
-                )
-            gone = purge(pid)
-            print(f"purged {pid}" + (f", removed {gone}" if gone else ""))
+                print(f"{pid} {state} -- {title}")
+            elif cmd in ("hide", "show"):
+                state = set_status(pid, "HIDDEN" if cmd == "hide" else "ACTIVE")
+                print(f"{pid} is now {state}")
+            else:
+                # --yes for the reason gc_uploads.py wants --delete: this is the
+                # one command in the repo a typo cannot be taken back from.
+                if "--yes" not in rest:
+                    state, title = status_of(pid)
+                    raise SystemExit(
+                        f"{pid} {state} -- {title}\nthis is permanent: the entry, "
+                        f"its history and its picture.\npass --yes to go ahead."
+                    )
+                gone = purge(pid)
+                print(f"purged {pid}" + (f", removed {gone}" if gone else ""))
         else:
             raise SystemExit(__doc__)
-    except LookupError as e:
+    except (LookupError, ValueError) as e:
         raise SystemExit(str(e))

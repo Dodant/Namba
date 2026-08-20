@@ -132,7 +132,54 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_events_at     ON events(id DESC);
 CREATE INDEX IF NOT EXISTS idx_events_target ON events(target_type, target_id, id DESC);
 CREATE INDEX IF NOT EXISTS idx_events_ip     ON events(ip_hash, id DESC);
+
+-- Operators. This is the only account table there will ever be: readers have
+-- none, there is no signup route, and nothing here is per-post ownership.
+-- An operator exists so that a decision can carry a name and be undone, which
+-- is a different thing from a login.
+--
+-- active rather than a DELETE: every audit row points at an id here, and an
+-- operator who leaves must not take their record with them.
+CREATE TABLE IF NOT EXISTS admins (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  password_hash TEXT NOT NULL,                   -- scrypt$n$r$p$salt$key, see auth.py
+  role          TEXT NOT NULL DEFAULT 'ADMIN',   -- ADMIN | SUPER_ADMIN
+  active        INTEGER NOT NULL DEFAULT 1,
+  created_at    TEXT NOT NULL,
+  last_login_at TEXT
+);
+
+-- The cookie's value is never stored, only its sha256: a leaked database is
+-- then a list of dead tokens rather than a set of live logins. A session token
+-- is 256 bits from secrets, so a bare hash is enough -- the salting in
+-- events.py is for low-entropy inputs like an address, not for this.
+--
+-- The foreign key does cascade, and here that is right: a session is not a
+-- record of anything. What has to outlive the account is the audit row, and
+-- that is in events, which has no keys at all.
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  token_hash TEXT PRIMARY KEY,
+  admin_id   INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  ip_hash    TEXT NOT NULL
+);
 """
+
+
+def get_db():
+    """A connection per request, closed on the way out. A FastAPI dependency.
+
+    Here rather than in main.py so that the admin router can take it without
+    importing the app -- main.py includes that router, so an import the other
+    way round would be a cycle.
+    """
+    con = connect()
+    try:
+        yield con
+    finally:
+        con.close()
 
 
 def now():

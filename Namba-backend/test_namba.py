@@ -22,6 +22,7 @@ with open(os.path.join(_tmp, "dist", "assets", "app.js"), "w") as _fh:
 from fastapi.testclient import TestClient  # noqa: E402
 
 import admin  # noqa: E402
+import auth  # noqa: E402
 import db  # noqa: E402
 import events  # noqa: E402
 import main  # noqa: E402
@@ -290,6 +291,141 @@ def test_grouping():
 
     # and the share card reads the number the way the entry asks for it
     assert "<title>1,000 — " in c.get(f"/p/{typed['id']}").text
+
+
+def test_password_hashing():
+    """stdlib scrypt, and the parameters travel inside the hash so that raising
+    them later leaves every existing password working."""
+    h = auth.hash_password("correct horse battery staple")
+    assert h.startswith(f"scrypt${auth.N}${auth.R}${auth.P}$")
+    assert auth.verify("correct horse battery staple", h)
+    assert not auth.verify("correct horse battery stapl", h)
+    assert "correct" not in h and "staple" not in h
+
+    # salted, so the same password twice is not the same row
+    assert h != auth.hash_password("correct horse battery staple")
+
+    # a stored value this cannot parse is a no, never a 500 -- it is reached
+    # with whatever is in the column, and the column is not always trustworthy
+    for junk in ("", "$", "scrypt$x$8$1$aa$bb", "bcrypt$2$8$1$aa$bb", "aaaa"):
+        assert auth.verify("anything", junk) is False, junk
+
+    # and it reads its own parameters back rather than assuming today's
+    cheap = auth.hash_password("x" * 12).replace(f"scrypt${auth.N}$", "scrypt$1024$")
+    assert not auth.verify("x" * 12, cheap), "the stored cost was ignored"
+
+
+def test_admin_accounts():
+    """The only login in the wiki. Readers still have none: there is no signup
+    route to find, and the account this uses can only have come from a shell."""
+    c = TestClient(main.app)
+    email = "keeper@namba.test"
+    admin.add_admin(email, "a long enough password")
+
+    def sign_in():
+        """Five attempts a minute is the point of the limiter and a nuisance to a
+        test that signs in six times, so the window is cleared rather than
+        widened -- the limit itself is asserted at the end."""
+        auth._attempts.clear()
+        return c.post("/api/admin/login",
+                      json={"email": email, "password": "a long enough password"})
+
+    # nothing is gated by guesswork -- with no cookie it is 401, not an empty body
+    assert c.get("/api/admin/me").status_code == 401
+
+    # there is no route that makes an account, whatever it is called
+    for path in ("/api/admin/signup", "/api/admin/register", "/api/admin/admins"):
+        assert c.post(path, json={"email": "x@y.test", "password": "z" * 12}
+                      ).status_code in (401, 404, 405), path
+
+    assert c.post("/api/admin/login",
+                  json={"email": email, "password": "wrong entirely"}
+                  ).status_code == 401
+    assert c.post("/api/admin/login",
+                  json={"email": "nobody@namba.test", "password": "wrong entirely"}
+                  ).json()["detail"] == "wrong email or password", \
+        "the message told a stranger which addresses exist"
+
+    got = sign_in()
+    assert got.status_code == 200, got.text
+    assert got.json()["role"] == "SUPER_ADMIN", "the first account has to be able " \
+                                               "to create the second"
+    assert c.get("/api/admin/me").json()["email"] == email
+
+    # the cookie the browser cannot read, and the token the database does not hold
+    token = c.cookies[auth.SESSION_COOKIE]
+    jar = got.headers["set-cookie"]
+    assert "httponly" in jar.lower() and "samesite=strict" in jar.lower(), jar
+    con = db.connect()
+    try:
+        rows = [dict(r) for r in con.execute("SELECT * FROM admin_sessions")]
+    finally:
+        con.close()
+    assert token not in [r["token_hash"] for r in rows], "the token is stored in clear"
+    assert rows[-1]["token_hash"] == auth._token_hash(token)
+    assert len(rows[-1]["ip_hash"]) == 64
+
+    # signing in is an audit row like any other decision
+    assert _events(action="ADMIN_LOGIN")[-1]["admin_id"] == c.get("/api/admin/me").json()["id"]
+
+    # logging out kills the row, not just the browser's copy of it
+    assert c.post("/api/admin/logout").status_code == 200
+    assert c.get("/api/admin/me").status_code == 401
+    c.cookies.set(auth.SESSION_COOKIE, token)
+    assert c.get("/api/admin/me").status_code == 401, "the old token still worked"
+    c.cookies.clear()
+
+    # a revoked account loses its live sessions on the next request, which is
+    # the whole reason this is a session table and not a signed token
+    sign_in()
+    assert c.get("/api/admin/me").status_code == 200
+    admin.set_active(email, False)
+    assert c.get("/api/admin/me").status_code == 401
+    c.cookies.clear()
+    assert sign_in().status_code == 401, "a revoked account could still sign in"
+
+    # ...and the join is what does that, not the tidy-up beside it. set_active
+    # deletes the live sessions too, which would hide a session lookup that had
+    # stopped checking -- so this revokes the column alone and asks again.
+    admin.set_active(email, True)
+    sign_in()
+    assert c.get("/api/admin/me").status_code == 200
+    con = db.connect()
+    with con:
+        con.execute("UPDATE admins SET active = 0 WHERE email = ?", (email,))
+    con.close()
+    assert c.get("/api/admin/me").status_code == 401, \
+        "the session lookup is not checking whether the account is still live"
+    con = db.connect()
+    with con:
+        con.execute("UPDATE admins SET active = 1 WHERE email = ?", (email,))
+    con.close()
+    c.cookies.clear()
+
+    # a password change does the same: a change that leaves the old cookie
+    # working is not a change
+    sign_in()
+    assert c.get("/api/admin/me").status_code == 200
+    admin.set_password(email, "an entirely different one")
+    assert c.get("/api/admin/me").status_code == 401
+    c.cookies.clear()
+
+    # five attempts a minute, against the write limiter's twenty
+    auth._attempts.clear()
+    codes = [c.post("/api/admin/login", json={"email": email, "password": "no"}
+                    ).status_code for _ in range(auth.LOGIN_LIMIT + 1)]
+    assert codes[-1] == 429, codes
+    auth._attempts.clear()
+
+    # and the wide-open CORS cannot carry any of this: without credentials a
+    # browser will not send the cookie cross-origin, which is the layer under
+    # SameSite=Strict. Turning this on would undo both at once.
+    cors = next(m for m in main.app.user_middleware
+                if m.cls.__name__ == "CORSMiddleware")
+    assert not cors.kwargs.get("allow_credentials"), \
+        "allow_credentials would hand the admin session to any origin"
+
+    admin.set_active(email, False)
 
 
 def test_bucket():

@@ -14,9 +14,10 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
+import admin_api
 import db
 import events
-from db import now
+from db import get_db, now
 from numfmt import FORMATS, bucket_of, grouped_value, parse_number
 
 # A tag is whatever people call it, like a translation's language label. What
@@ -67,6 +68,11 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+# Before every route below, and a long way before the catch-all: Starlette
+# matches in the order routes are added, so /api/admin/... has to be registered
+# ahead of @app.get("/{path:path}"). Included here rather than at the foot of
+# the file so that the ordering rule is stated once, where the app is built.
+app.include_router(admin_api.router)
 
 
 def uploads_bytes():
@@ -239,14 +245,6 @@ class LinkIn(BaseModel):
 
 
 # --- helpers ------------------------------------------------------------
-def get_db():
-    con = db.connect()
-    try:
-        yield con
-    finally:
-        con.close()
-
-
 def shape(rows, con):
     """Rows -> dicts with tags attached (one query for the whole page)."""
     posts = [dict(r) for r in rows]
