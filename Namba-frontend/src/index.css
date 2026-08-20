@@ -68,6 +68,18 @@
       560  a phone: the search takes a row of its own, the numeral columns stop
             being columns, and the rows that were [number | text | image] fold
 
+   and a floor at 320, which is the width the whole thing is designed down to
+   rather than a fifth breakpoint. 320 because that is the number WCAG 2.1
+   1.4.10 names -- content has to reflow without a sideways scroll at 320 CSS
+   px -- so it is both the lowest floor worth declaring and the highest one
+   allowed. It is not really a phone measurement either: 320 is what a 1280px
+   desktop becomes at 400% zoom, and that reader is the reason for the rule.
+   Measured, the layout holds at exactly 320 and starts going at 300, one
+   piece at a time -- the tabs at 300, the band count at 280, the form's
+   buttons at 220, the header into three rows at 200. min-width collapses
+   those five staggered failures into one: below 320 nothing reflows any
+   further, and the page scrolls sideways as a whole instead.
+
    Everything between them is a clamp() rather than a fifth breakpoint --
    page gutter, section rhythm, the headings and every numeral -- so a window
    dragged from 1920 to 320 has four places where the shape changes and no
@@ -91,6 +103,8 @@ html { -webkit-text-size-adjust: 100%; }
    acts when the word would otherwise overflow, which is the case at hand. */
 body {
   margin: 0;
+  /* the floor -- see the note above the breakpoints */
+  min-width: 320px;
   background: var(--bg);
   color: var(--ink);
   line-height: 1.55;

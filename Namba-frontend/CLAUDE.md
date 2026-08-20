@@ -159,6 +159,17 @@ reaching for a fifth breakpoint, check whether the thing wants a clamp
 instead. Two capability queries carry the rest: `(hover: hover)` for the like
 count a pointer reveals, `(pointer: coarse)` for the sizes a fingertip needs.
 
+**320 is the floor, and `body` has `min-width: 320px` to say so.** It is the
+number WCAG 2.1 1.4.10 names — content must reflow without a sideways scroll
+at 320 CSS px — which makes it both the lowest floor worth declaring and the
+highest one allowed. It is not a phone measurement: 320 is what a 1280px
+desktop becomes at 400% zoom, and that reader is the reason for the rule.
+Measured, the layout holds at exactly 320 and comes apart below it one piece
+at a time — the tabs at 300, the band count at 280, the form's buttons at 220,
+the header into three rows at 200. `min-width` collapses those into one
+behaviour: under 320 nothing reflows further and the page scrolls sideways
+whole. **So 320 is the width to test at, and nothing needs to work under it.**
+
 What actually changes shape, rather than size:
 
 - **The header.** One row above 900. Below it the wordmark keeps its line with
