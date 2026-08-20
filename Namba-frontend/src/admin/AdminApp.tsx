@@ -7,6 +7,8 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Content from './pages/Content'
 import Entry from './pages/Entry'
+import Requests from './pages/Requests'
+import Reports from './pages/Reports'
 
 /** Every page in the panel, in the order the rail lists them.
 
@@ -20,6 +22,9 @@ type Item = { to: string; label: string; group: string; tally?: keyof Stats }
 const NAV: Item[] = [
   { to: '/', label: 'Dashboard', group: '' },
   { to: '/content', label: 'All content', group: 'Content' },
+  { to: '/requests', label: 'Delete requests', group: 'Moderation',
+    tally: 'requests_pending' },
+  { to: '/reports', label: 'Reports', group: 'Moderation', tally: 'reports_open' },
 ]
 
 /** The rail.
@@ -124,6 +129,8 @@ export default function AdminApp() {
                 is linkable -- an operator working a queue needs to be able to
                 send one of these to somebody. */}
             <Route path="/content/:id" element={<Entry />} />
+            <Route path="/requests" element={<Requests onChange={refresh} />} />
+            <Route path="/reports" element={<Reports onChange={refresh} />} />
             {/* Anything else is a stale bookmark from a version of the panel
                 that had more pages, or a typed path. Home, rather than a
                 dead end: there is nowhere else to be in here. */}

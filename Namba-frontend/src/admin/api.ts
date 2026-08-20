@@ -140,6 +140,31 @@ export type Diff = {
   translations: { before: string[]; after: string[] }
 }
 
+/** A row of the delete-request queue. Carries the entry's number, title and
+    current status, because a decision made without seeing what it is about is
+    not a decision -- and `post_status` is null when the entry was purged from a
+    shell, since the request outlives it. */
+export type QueuedRequest = Request & {
+  value: string | null
+  title: string | null
+  post_status: PostStatus | null
+}
+
+/** One row per *entry*, not per report: five people objecting to one entry is
+    one thing to look at. `lead_id` is the lowest report id in the group and is
+    only a stable key -- deciding is keyed on the entry. */
+export type ReportGroup = {
+  post_id: number
+  value: string | null
+  title: string | null
+  post_status: PostStatus | null
+  reports: number
+  first_at: string
+  last_at: string
+  reasons: string
+  lead_id: number
+}
+
 export const adm = {
   login: (email: string, password: string) =>
     req<Who>('/api/admin/login', json('POST', { email, password })),
@@ -174,6 +199,30 @@ export const adm = {
   revert: (id: number | string, rev: number, note: string) =>
     req<FullPost>(`/api/admin/posts/${id}/revisions/${rev}/restore`,
                   json('POST', { note })),
+
+  requests: (p: Params = {}) =>
+    req<Page<QueuedRequest>>(`/api/admin/delete-requests${qs(p)}`),
+
+  /** Approving hides the entry as DELETED and closes every other pending
+      request on it -- they were all asking for what just happened. Rejecting
+      closes this row alone, because it was about its own reason. */
+  decideRequest: (reqId: number, decision: 'APPROVE' | 'REJECT', note: string) =>
+    req<{ id: number; status: string }>(
+      `/api/admin/delete-requests/${reqId}/decide`, json('POST', { decision, note })),
+
+  reports: (p: Params = {}) => req<Page<ReportGroup>>(`/api/admin/reports${qs(p)}`),
+
+  /** Every report filed against one entry, so a grouped row can be opened. The
+      hashes come with them: the same hash on four entries is the difference
+      between a problem and a campaign. */
+  reportDetail: (postId: number) => req<Report[]>(`/api/admin/reports/${postId}/detail`),
+
+  /** Closes every open report on one entry at once, because that is the unit the
+      page shows and the unit an operator actually decides. It does nothing to
+      the entry -- hiding it is its own button with its own audit row. */
+  decideReports: (postId: number, decision: 'RESOLVE' | 'IGNORE', note: string) =>
+    req<{ post_id: number; status: string; closed: number }>(
+      `/api/admin/reports/${postId}/decide`, json('POST', { decision, note })),
 }
 
 /** What `meta` holds, already parsed. It is a JSON blob per action rather than

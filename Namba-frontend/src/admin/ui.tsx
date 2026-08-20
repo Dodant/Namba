@@ -186,3 +186,42 @@ export function Confirm(
     </dialog>
   )
 }
+
+/** A sheet at the right-hand edge, for the detail behind a row.
+
+    The same `<dialog>` `Confirm` uses and for the same reasons -- focus trap,
+    Escape, an inert page -- just parked against the edge instead of the middle.
+    A row you have to leave the list to read is a row you stop reading, and the
+    list is where an operator's place in the queue lives. */
+export function Drawer(
+  { open, title, children, onClose }:
+  { open: boolean; title: ReactNode; children: ReactNode; onClose: () => void },
+) {
+  const box = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const d = box.current
+    if (!d) return
+    if (open && !d.open) d.showModal()
+    if (!open && d.open) d.close()
+  }, [open])
+
+  return (
+    <dialog
+      className="sheet"
+      ref={box}
+      onCancel={(e) => {
+        e.preventDefault()
+        onClose()
+      }}
+    >
+      <div className="sheet-top">
+        <h2>{title}</h2>
+        <button className="btn small" onClick={onClose} aria-label="Close">
+          ✕
+        </button>
+      </div>
+      <div className="sheet-body">{children}</div>
+    </dialog>
+  )
+}
