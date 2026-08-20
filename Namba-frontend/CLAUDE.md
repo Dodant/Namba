@@ -49,13 +49,21 @@ sanitiser config to get wrong.
 - 24px is the floor for anything you press. The two borderless like buttons
   keep their 10.5px type and buy the target with padding, then hand it back
   to the row with a matching negative margin, so the hit box grows and the
-  layout does not move. Do not "tidy" the negative margins away.
+  layout does not move. Do not "tidy" the negative margins away. On a coarse
+  pointer the same trade is made once more, in the `@media (pointer: coarse)`
+  block at the foot of the file, which lands the small controls at 33–40px. A
+  width query cannot ask that question: an iPad at 1024px needs it and a 480px
+  window on a desktop does not.
 - `overflow-wrap: break-word` is inherited from `body`, and the two
   single-column grid overrides say `minmax(0, 1fr)`. Both are there because
   a title is a string a stranger typed: one unbreakable word used to widen
   the document to four times the viewport. `break-word`, not `anywhere` —
   `anywhere` feeds min-content sizing and collapses the columns. The
   numerals keep their own `anywhere`, which is deliberate and different.
+  `break-word` cannot save a box that is *sized* to the whole word, which is
+  what a column flex with `align-items: flex-start` does to its children:
+  `.rev b, .rev span` carry `max-width: 100%` for exactly that, or one long
+  revision title takes the document out to 1008px on a 390px screen.
 - Selects are real `<select>`s and stay that way. The dropdown is styled with
   `appearance: base-select` and `::picker(select)` behind an `@supports`, so
   Chrome 135+ gets the picker in the page's own palette and everything else
@@ -76,7 +84,10 @@ sanitiser config to get wrong.
   the value right-aligned in a fixed 104px column so the numerals line up down
   the page. It reads like the source `Memorable Numbers.md` on purpose. Values
   longer than 7 characters get `.long` and shrink rather than widening the
-  column for every "7". Each band is a `<details>` open by default, and the
+  column for every "7" — the class comes from `numSize()` in `api.ts`, shared
+  with the feed rows, the cards and both heroes, because one font size either
+  shouts at "7" or breaks on "1960년 4월 16일 오후 3시" and a viewport clamp
+  cannot tell those apart. Each band is a `<details>` open by default, and the
   category filter is the same thing closed by default — the browser owns the
   collapse, so there is no open state to hold anywhere. A closed filter still
   shows the tag that is on, or it would hide why the list is short. `Feed` is
@@ -105,6 +116,70 @@ sanitiser config to get wrong.
   read back as prose, so `**bold**` and `## ` are not punctuation in a preview —
   clamped to three lines in CSS. `plain()` is a handful of regexes and is not a
   parser; it does not need to be, because the entry itself is one click away.
+
+## Four widths, and what changes shape at each
+
+The breakpoints are places something stops fitting, not round numbers:
+
+| px | what changes |
+|---|---|
+| 1130 | the form and its History rail stop fitting side by side (680+40+340) |
+| 900 | the wordmark, search, language picker and three pills stop fitting one line |
+| 820 | the entry and its Edit history rail stop fitting side by side |
+| 560 | a phone: rows fold, the search takes a row, the numeral stops being a column |
+
+Between them everything is `clamp()` — the page gutter, the section rhythm,
+every heading and every numeral — so dragging a window from 1920 to 320 has
+four places where the shape changes and none where a size jumps. Before
+reaching for a fifth breakpoint, check whether the thing wants a clamp
+instead. Two capability queries carry the rest: `(hover: hover)` for the like
+count a pointer reveals, `(pointer: coarse)` for the sizes a fingertip needs.
+
+What actually changes shape, rather than size:
+
+- **The header.** One row above 900. Below it the wordmark keeps its line with
+  the search, and the three pills take the line under it flush right; below 560
+  the search takes a row of its own. `.acts` carries an explicit flex basis in
+  both bands, so set `flex`, never `width` — an explicit basis beats `width`
+  outright, and `width: 100%` on it did nothing at all.
+- **A `.card` row** is `[number][title and blurb][thumbnail]` until 560, where
+  it folds: number and thumbnail keep the top line, the prose takes the width
+  under them. It was a 90px column of three-character lines before.
+- **A `.panel-row`** puts its title on a line of its own below 560, whole,
+  rather than an ellipsis at twelve characters.
+- **`.spacer`** becomes a line break below 560 (`flex: 1 0 100%`), so Delete is
+  never beside Save and Edit is never beside the tags under a thumb.
+- **The rails** stop being rails and become the end of the page — and the
+  Edit history stops being a 60dvh scroll port inside a scrolling page. That
+  cap lives on `.side .revs`, not `.revs`: the same list is the recovery view
+  on a deleted entry, where it is the page and holds the only Restore there is.
+
+Mobile browsers, specifically: every box you type in is 16px on a coarse
+pointer, because under that iOS Safari zooms the page in on focus and leaves it
+zoomed — tapping the search pill used to hand back a wiki that scrolled
+sideways. `dvh` rather than `vh` wherever a height is capped, since a phone's
+toolbars make `vh` a promise it does not keep. `index.html` asks for
+`viewport-fit=cover` and `.wrap` maxes its gutter against
+`env(safe-area-inset-*)`, which is what keeps a line of text out from under the
+notch in landscape; `maximum-scale` and `user-scalable=no` are not there and
+must not be — pinch to zoom is how a reader reads a 10px byline.
+
+A markdown table gets a scrolling wrapper from `components={MD}` in
+`PostPage`, not `display: block` on the `<table>`. The old CSS did keep the
+page still, but a table that is not a table box can stop being announced as
+rows and columns, and six columns of data whose headers no longer attach is a
+worse answer than a scrollbar.
+
+Deliberately not done, so nobody re-derives them:
+
+- **No hamburger, drawer or bottom bar.** The whole navigation is a search box
+  and three pills; on a phone they are two rows that need no state, no focus
+  trap and no scrim. A drawer for three links is more machinery than links.
+- **No sticky header.** It is two rows tall on a phone, and this is a page you
+  scroll a long index down.
+- **The container stays 1160px on a 1920 screen.** An index of numbers is a
+  book index and a 1800px title row is unreadable. What a wide screen buys goes
+  into the rails instead — `.detail-layout`'s is `clamp(200px, 22vw, 280px)`.
 
 ## Every control has a name
 
