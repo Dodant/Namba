@@ -313,3 +313,109 @@ td.wide a, td.wide span { display: block; overflow: hidden; text-overflow: ellip
    always on */
 .stat.loud { border-color: var(--warn); background: var(--warn-soft); }
 .stat.loud b { color: var(--warn); }
+
+/* --- pager, modal ------------------------------------------------------ */
+.pager {
+  display: flex; align-items: center; gap: 8px; margin-top: 10px;
+  font-size: 11.5px; color: var(--muted);
+}
+.pager .num { margin-right: auto; }
+
+/* ::backdrop and the focus trap come with showModal(), which is most of the
+   reason this is a <dialog> and not a div. */
+.ask {
+  border: 1px solid var(--line); border-radius: 10px; padding: 0;
+  background: var(--panel); color: var(--ink);
+  width: min(440px, calc(100vw - 32px));
+}
+.ask::backdrop { background: rgba(10, 10, 12, 0.4); }
+.ask h2 {
+  margin: 0; padding: 16px 18px 0; font-size: 15px; font-weight: 600;
+}
+.ask-body { padding: 8px 18px 16px; }
+.ask-body p { margin: 0 0 12px; color: var(--ink-soft); font-size: 12.5px; }
+.ask-acts {
+  display: flex; justify-content: flex-end; gap: 7px;
+  padding: 12px 18px; border-top: 1px solid var(--rule); background: var(--sink);
+  border-radius: 0 0 9px 9px;
+}
+
+/* --- one entry --------------------------------------------------------- */
+.back { display: inline-block; margin-bottom: 12px; font-size: 12px; }
+.entry-head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 14px; }
+.entry-head h1 { margin: 0 0 5px; font-size: 18px; font-weight: 600; }
+/* the numeral is the subject of the page, the way it is on the wiki's entry
+   page -- mono, tabular, and big enough to be the thing you land on */
+.num.big {
+  font-family: var(--mono); font-size: 27px; font-weight: 600;
+  letter-spacing: -0.03em; color: var(--accent); line-height: 1.05;
+  padding-top: 2px; white-space: nowrap;
+}
+.entry-tags { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.bar .self { align-self: center; }
+
+/* Two columns on a desktop: the entry and its history on the left, everything
+   said about it on the right. One column below 1080 -- the right-hand column is
+   notes, and a 240px note is a word per line. */
+.cols { display: grid; gap: 22px; grid-template-columns: minmax(0, 1fr) 300px; }
+@media (max-width: 1080px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+
+/* Source, not prose: this is the markdown a stranger typed, and the whitespace
+   in it is evidence. pre-wrap so a 5000-character body does not scroll
+   sideways forever, break-word so a pasted URL cannot widen the column. */
+.src {
+  margin: 0; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--panel);
+  font-family: var(--mono); font-size: 12px; line-height: 1.55;
+  white-space: pre-wrap; overflow-wrap: anywhere; max-height: 380px; overflow-y: auto;
+}
+.src-box { margin-bottom: 10px; }
+.src-box b { display: block; margin-bottom: 4px; font-size: 12.5px; }
+.src-box .hash { display: block; margin-top: 3px; }
+
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 0; }
+.facts dt { font-size: 11px; color: var(--muted); }
+.facts dd { margin: 0; font-size: 12.5px; }
+
+.note {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel); padding: 8px 10px; margin-bottom: 7px;
+}
+.note b { font-family: var(--mono); font-size: 11.5px; }
+.note p { margin: 4px 0; font-size: 12.5px; overflow-wrap: anywhere; }
+.note .hash { font-size: 11px; }
+
+tbody tr.lit { background: var(--accent-soft); }
+tbody tr.lit:hover { background: var(--accent-soft); }
+
+/* --- the diff ---------------------------------------------------------- */
+/* Fields first and as pairs, because "1969 → 1970" is the whole answer and a
+   unified text diff of a one-line change is three lines of punctuation around
+   it. The body diff is underneath for the case where the body is what moved. */
+.diff {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel); overflow: hidden;
+}
+.dfield {
+  display: flex; flex-wrap: wrap; gap: 7px; align-items: baseline;
+  padding: 7px 11px; border-bottom: 1px solid var(--rule);
+  font-family: var(--mono); font-size: 12px;
+}
+.dname {
+  min-width: 8ch; font-size: 10.5px; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--muted);
+}
+.dwas { color: var(--hit); text-decoration: line-through; overflow-wrap: anywhere; }
+.dsep { color: var(--muted); }
+.dnow { color: var(--accent); font-weight: 600; overflow-wrap: anywhere; }
+
+.dbody {
+  margin: 0; padding: 9px 0; font-family: var(--mono); font-size: 12px;
+  line-height: 1.5; overflow-x: auto;
+}
+.dl { display: block; padding: 0 11px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dl.dl-out { background: var(--hit-soft); color: var(--hit); }
+.dl.dl-in { background: var(--ok-soft); color: var(--ok); }
+/* the @@ hunk header: punctuation rather than content, so it reads as a
+   divider instead of as a line somebody wrote */
+.dl.dl-at { color: var(--muted); font-size: 11px; }

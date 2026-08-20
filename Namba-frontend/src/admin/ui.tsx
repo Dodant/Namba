@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { fmtDate } from '../api'
 
 /** The parts every page in the panel is made of. Small on purpose: a table, a
@@ -86,5 +86,103 @@ export function Empty({ children }: { children: ReactNode }) {
     <p className="empty" role="status">
       {children}
     </p>
+  )
+}
+
+/** 51–100 of 812, and the two arrows.
+
+    A count and a window rather than page numbers: an operator's question is
+    "how much is left", and page 7 of 17 answers it worse than 301–350 of 812
+    does. Both buttons stay in place when they cannot be used -- a control that
+    disappears at the end of a list moves the other one under the cursor. */
+export function Pager(
+  { total, limit, offset, onGo }:
+  { total: number; limit: number; offset: number; onGo: (next: number) => void },
+) {
+  if (total <= limit) return null
+  const from = offset + 1
+  const to = Math.min(offset + limit, total)
+  return (
+    <div className="pager">
+      <span className="num">
+        {from}–{to} of {total}
+      </span>
+      <button
+        className="btn small"
+        disabled={offset === 0}
+        onClick={() => onGo(Math.max(0, offset - limit))}
+      >
+        ← Newer
+      </button>
+      <button
+        className="btn small"
+        disabled={to >= total}
+        onClick={() => onGo(offset + limit)}
+      >
+        Older →
+      </button>
+    </div>
+  )
+}
+
+/** Ask before doing something that looks irreversible.
+
+    A native `<dialog>`, not a div with a backdrop: `showModal()` brings the
+    focus trap, Escape, `::backdrop` and an inert page with it, all of which
+    would otherwise be a hundred lines of hand-rolled and half of it wrong. Not
+    `window.confirm` either -- it blocks the event loop and cannot hold the note
+    field half of these actions want.
+
+    The copy always says what will happen and what will survive it, because on
+    this wiki the second half is the surprising one: hiding an entry keeps its
+    history, its comments and its translations, and the operator needs to know
+    that before they press rather than after. */
+export function Confirm(
+  { open, title, verb, danger, busy, children, onCancel, onOk }: {
+    open: boolean
+    title: string
+    verb: string
+    danger?: boolean
+    busy?: boolean
+    children: ReactNode
+    onCancel: () => void
+    onOk: () => void
+  },
+) {
+  const box = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const d = box.current
+    if (!d) return
+    if (open && !d.open) d.showModal()
+    if (!open && d.open) d.close()
+  }, [open])
+
+  return (
+    <dialog
+      className="ask"
+      ref={box}
+      /* Escape fires this. Cancelling our own way rather than letting the
+         browser close it keeps the caller's state and the element in step. */
+      onCancel={(e) => {
+        e.preventDefault()
+        onCancel()
+      }}
+    >
+      <h2>{title}</h2>
+      <div className="ask-body">{children}</div>
+      <div className="ask-acts">
+        <button className="btn" onClick={onCancel} disabled={busy}>
+          Cancel
+        </button>
+        <button
+          className={`btn ${danger ? 'danger' : 'primary'}`}
+          onClick={onOk}
+          disabled={busy}
+        >
+          {busy ? 'Working…' : verb}
+        </button>
+      </div>
+    </dialog>
   )
 }

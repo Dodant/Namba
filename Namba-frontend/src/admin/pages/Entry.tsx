@@ -1,0 +1,459 @@
+import { useCallback, useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { fmtDate, showValue, tagLabel, type PostStatus } from '../../api'
+import { ACTION_LABEL, adm, type Diff, type FullPost, type Rev } from '../api'
+import { Badge, Confirm, Empty, Hash, Table, When } from '../ui'
+
+/* What each button does, what it says while asking, and what survives it. The
+   last part is the one that matters: on this wiki hiding an entry keeps its
+   history, its comments and its translations, and an operator who does not know
+   that will not press the button. */
+const MOVES: Record<string, {
+  to: PostStatus; label: string; ask: string; verb: string; danger?: boolean; says: string
+}> = {
+  hide: {
+    to: 'HIDDEN', label: 'Take off the wiki', verb: 'Hide it', danger: true,
+    ask: 'Hide this entry?',
+    says: 'It leaves the index, the lists, its own page and both vocabularies. '
+      + 'Its history, its comments and its translations are untouched, and '
+      + 'putting it back is this same button.',
+  },
+  remove: {
+    to: 'DELETED', label: 'Mark removed', verb: 'Remove it', danger: true,
+    ask: 'Mark this entry removed?',
+    says: 'The same as hiding, and it reads differently in the list: removed '
+      + 'means somebody asked and you agreed. Nothing is deleted — no route in '
+      + 'this wiki deletes a row.',
+  },
+  show: {
+    to: 'ACTIVE', label: 'Put back on the wiki', verb: 'Put it back',
+    ask: 'Put this entry back?',
+    says: 'It returns whole, at the same address, with everything that was '
+      + 'attached to it.',
+  },
+}
+
+/* A diff line's sign as a class name. '-' and '+' cannot be one, and building
+   the name by interpolation was how the stylesheet ended up with a rule it
+   could never match -- so the mapping is written out and the CSS names it. */
+const SIGN: Record<string, string> = { '-': 'dl-out', '+': 'dl-in', '@': 'dl-at' }
+
+/** One entry, as only an operator can see it.
+
+    This is the page that justifies `hidden=True` existing: a hidden entry has
+    no page on the wiki, so if it cannot be read here it cannot be judged at
+    all. Which is also why the body is shown as source rather than rendered —
+    an operator deciding about vandalism wants the markdown a stranger typed,
+    not the paragraph it turns into. */
+export default function Entry() {
+  const { id = '' } = useParams()
+  const [post, setPost] = useState<FullPost | null>(null)
+  const [revs, setRevs] = useState<Rev[] | null>(null)
+  const [err, setErr] = useState('')
+  const [ask, setAsk] = useState<keyof typeof MOVES | null>(null)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  /* Which revision the diff is against. 'live' is the entry as it stands, and
+     it is the default because "what did the last person change" is the question
+     this page gets asked ninety per cent of the time. */
+  const [pick, setPick] = useState<string | null>(null)
+  const [diff, setDiff] = useState<Diff | null>(null)
+  const [reverting, setReverting] = useState<Rev | null>(null)
+
+  const load = useCallback(() => {
+    setErr('')
+    adm.post(id).then(setPost, (e: Error) => setErr(e.message))
+    adm.revisions(id).then(setRevs, () => setRevs([]))
+  }, [id])
+
+  useEffect(load, [load])
+
+  useEffect(() => {
+    if (!pick) return setDiff(null)
+    setDiff(null)
+    adm.diff(id, pick, 'live').then(setDiff, (e: Error) => setErr(e.message))
+  }, [id, pick])
+
+  async function move() {
+    if (!ask) return
+    setBusy(true)
+    try {
+      await adm.setStatus(id, MOVES[ask].to, note)
+      setAsk(null)
+      setNote('')
+      load()
+    } catch (e) {
+      setErr((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function revert() {
+    if (!reverting) return
+    setBusy(true)
+    try {
+      await adm.revert(id, reverting.id, note)
+      setReverting(null)
+      setNote('')
+      /* Reverting adds a revision rather than replacing one, so the history
+         list is a row longer than it was and has to be refetched -- not just
+         the entry. */
+      load()
+      setPick(null)
+    } catch (e) {
+      setErr((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (err && !post)
+    return (
+      <div className="page">
+        <p className="err" role="alert">
+          {err}
+        </p>
+        <Link to="/content">← All content</Link>
+      </div>
+    )
+  if (!post) return <div className="page"><Empty>Loading…</Empty></div>
+
+  const flagged = post.reports.filter((r) => r.status === 'OPEN').length
+  const waiting = post.requests.filter((r) => r.status === 'PENDING').length
+
+  return (
+    <div className="page">
+      <Link className="back" to="/content">
+        ← All content
+      </Link>
+      <div className="entry-head">
+        <span className="num big">{showValue(post.value, post.grouped)}</span>
+        <div>
+          <h1>{post.title}</h1>
+          <div className="entry-tags">
+            <Badge>{post.status}</Badge>
+            {!!flagged && <Badge>FLAGGED</Badge>}
+            <span className="hash">{post.format}</span>
+            {post.tags.map((t) => (
+              <span className="badge" key={t}>
+                {tagLabel(t)}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {err && (
+        <p className="err" role="alert">
+          {err}
+        </p>
+      )}
+
+      <div className="bar">
+        {post.status === 'ACTIVE' ? (
+          <>
+            <button className="btn danger" onClick={() => setAsk('hide')}>
+              {MOVES.hide.label}
+            </button>
+            <button className="btn danger" onClick={() => setAsk('remove')}>
+              {MOVES.remove.label}
+            </button>
+          </>
+        ) : (
+          <button className="btn primary" onClick={() => setAsk('show')}>
+            {MOVES.show.label}
+          </button>
+        )}
+        {/* Plain anchors, and they have to be: the wiki is a different
+            document. Editing goes through the wiki's own form rather than a
+            second editor in here -- there is one place that knows how a number
+            value is parsed, and it is that form. */}
+        <a className="btn push" href={`/p/${post.id}/edit`} target="_blank" rel="noreferrer">
+          Edit on the wiki ↗
+        </a>
+        {post.status === 'ACTIVE' ? (
+          <a className="btn" href={`/p/${post.id}`} target="_blank" rel="noreferrer">
+            Open ↗
+          </a>
+        ) : (
+          <span className="hash self">Off the wiki, so it has no page there.</span>
+        )}
+      </div>
+
+      <div className="cols">
+        <div>
+          <section className="stat-group">
+            <h2>Body, as written</h2>
+            {/* Source, not rendered markdown. An operator judging vandalism
+                wants the characters a stranger typed -- a link's real href, a
+                zero-width space, the twelve blank lines. */}
+            {post.body ? (
+              <pre className="src">{post.body}</pre>
+            ) : (
+              <Empty>No details on this one.</Empty>
+            )}
+          </section>
+
+          {!!post.translations?.length && (
+            <section className="stat-group">
+              <h2>Languages</h2>
+              {post.translations.map((t) => (
+                <div className="src-box" key={t.id}>
+                  <b>
+                    {t.lang} · {t.title}
+                  </b>
+                  <pre className="src">{t.body || '—'}</pre>
+                  <span className="hash">
+                    {t.author}
+                    {t.edited_by && ` · last ${t.edited_by}`}
+                  </span>
+                </div>
+              ))}
+            </section>
+          )}
+
+          <section className="stat-group">
+            <h2>
+              History{' '}
+              <span className="hash">
+                {post.revision_count} version{post.revision_count === 1 ? '' : 's'} kept
+              </span>
+            </h2>
+            {revs?.length ? (
+              <Table cols={['#', 'What', 'Who', 'From', 'When', 'Title then', '']}>
+                {revs.map((r) => (
+                  <tr key={r.id} className={pick === String(r.id) ? 'lit' : ''}>
+                    <td className="tight num">{r.number}</td>
+                    <td className="tight">
+                      {ACTION_LABEL[r.action] ?? r.action.toLowerCase().replace(/_/g, ' ')}
+                    </td>
+                    <td className="tight">
+                      {r.by ? <b>{r.by}</b> : r.author}
+                    </td>
+                    <td className="tight">
+                      {r.admin_id ? <Badge>ADMIN</Badge> : <Hash value={r.ip_hash} />}
+                    </td>
+                    <td className="tight">
+                      <When at={r.at} />
+                    </td>
+                    <td className="wide">
+                      <span title={r.title ?? ''}>{r.title}</span>
+                    </td>
+                    <td className="acts">
+                      <button
+                        className={`btn small ${pick === String(r.id) ? 'on' : ''}`}
+                        onClick={() => setPick(pick === String(r.id) ? null : String(r.id))}
+                      >
+                        Diff
+                      </button>
+                      <button className="btn small danger" onClick={() => setReverting(r)}>
+                        Revert
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </Table>
+            ) : (
+              <Empty>Never edited — as first written.</Empty>
+            )}
+          </section>
+
+          {pick && (
+            <section className="stat-group">
+              <h2>
+                What changed since version{' '}
+                {revs?.find((r) => String(r.id) === pick)?.number}
+              </h2>
+              {!diff ? (
+                <Empty>Working it out…</Empty>
+              ) : !diff.fields.length && !diff.body.length
+                && diff.tags.before.join() === diff.tags.after.join() ? (
+                <Empty>Nothing at all. The entry is exactly that version.</Empty>
+              ) : (
+                <div className="diff">
+                  {diff.fields.map((f) => (
+                    <div className="dfield" key={f.name}>
+                      <span className="dname">{f.name}</span>
+                      <span className="dwas">{String(f.before ?? '—')}</span>
+                      <span className="dsep">→</span>
+                      <span className="dnow">{String(f.after ?? '—')}</span>
+                    </div>
+                  ))}
+                  {diff.tags.before.join() !== diff.tags.after.join() && (
+                    <div className="dfield">
+                      <span className="dname">tags</span>
+                      <span className="dwas">{diff.tags.before.join(', ') || '—'}</span>
+                      <span className="dsep">→</span>
+                      <span className="dnow">{diff.tags.after.join(', ') || '—'}</span>
+                    </div>
+                  )}
+                  {diff.translations.before.join() !== diff.translations.after.join() && (
+                    <div className="dfield">
+                      <span className="dname">languages</span>
+                      <span className="dwas">{diff.translations.before.join(', ') || '—'}</span>
+                      <span className="dsep">→</span>
+                      <span className="dnow">{diff.translations.after.join(', ') || '—'}</span>
+                    </div>
+                  )}
+                  {!!diff.body.length && (
+                    <pre className="dbody">
+                      {diff.body.map((l, i) => (
+                        <span className={`dl ${SIGN[l.sign] ?? ''}`} key={i}>
+                          {l.sign}
+                          {l.text}
+                          {'\n'}
+                        </span>
+                      ))}
+                    </pre>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+        </div>
+
+        <aside>
+          <section className="stat-group">
+            <h2>Facts</h2>
+            <dl className="facts">
+              <dt>Written by</dt>
+              <dd>{post.author}</dd>
+              <dt>Last editor</dt>
+              <dd>{post.edited_by ?? '—'}</dd>
+              <dt>Written</dt>
+              <dd title={post.created_at}>{fmtDate(post.created_at)}</dd>
+              <dt>Touched</dt>
+              <dd title={post.updated_at}>{fmtDate(post.updated_at)}</dd>
+              <dt>Likes</dt>
+              <dd className="num">{post.likes}</dd>
+              <dt>Written in</dt>
+              <dd>{post.lang ?? 'not recorded'}</dd>
+              <dt>Picture</dt>
+              <dd>
+                {post.image ? (
+                  <a href={post.image} target="_blank" rel="noreferrer">
+                    yes ↗
+                  </a>
+                ) : (
+                  'none'
+                )}
+              </dd>
+            </dl>
+          </section>
+
+          <section className="stat-group">
+            <h2>
+              Reports{' '}
+              {!!flagged && <span className="badge warn">{flagged} open</span>}
+            </h2>
+            {post.reports.length ? (
+              post.reports.map((r) => (
+                <div className="note" key={r.id}>
+                  <b>{r.reason}</b> <Badge>{r.status}</Badge>
+                  {r.detail && <p>{r.detail}</p>}
+                  <span className="hash">
+                    <Hash value={r.ip_hash} /> · {fmtDate(r.created_at)}
+                  </span>
+                  {r.decision_note && <p className="hash">Closed: {r.decision_note}</p>}
+                </div>
+              ))
+            ) : (
+              <Empty>None.</Empty>
+            )}
+          </section>
+
+          <section className="stat-group">
+            <h2>
+              Delete requests{' '}
+              {!!waiting && <span className="badge warn">{waiting} waiting</span>}
+            </h2>
+            {post.requests.length ? (
+              post.requests.map((r) => (
+                <div className="note" key={r.id}>
+                  <b>{r.reason}</b> <Badge>{r.status}</Badge>
+                  {r.detail && <p>{r.detail}</p>}
+                  <span className="hash">
+                    {r.requested_by ?? 'anonymous'} · <Hash value={r.ip_hash} /> ·{' '}
+                    {fmtDate(r.created_at)}
+                  </span>
+                  {r.decision_note && <p className="hash">Decided: {r.decision_note}</p>}
+                </div>
+              ))
+            ) : (
+              <Empty>None.</Empty>
+            )}
+          </section>
+
+          <section className="stat-group">
+            <h2>Comments</h2>
+            {post.comments.length ? (
+              post.comments.map((c) => (
+                <div className="note" key={c.id}>
+                  <b>{c.author}</b>
+                  <p>{c.body}</p>
+                  <span className="hash">{fmtDate(c.created_at)}</span>
+                </div>
+              ))
+            ) : (
+              <Empty>Nothing said.</Empty>
+            )}
+          </section>
+        </aside>
+      </div>
+
+      <Confirm
+        open={!!ask}
+        title={ask ? MOVES[ask].ask : ''}
+        verb={ask ? MOVES[ask].verb : ''}
+        danger={ask ? MOVES[ask].danger : false}
+        busy={busy}
+        onCancel={() => {
+          setAsk(null)
+          setNote('')
+        }}
+        onOk={move}
+      >
+        <p>{ask && MOVES[ask].says}</p>
+        <div className="field">
+          <label htmlFor="mv-note">Why (kept in the log)</label>
+          <input
+            id="mv-note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Optional, and read by the next operator"
+          />
+        </div>
+      </Confirm>
+
+      <Confirm
+        open={!!reverting}
+        title={`Put version ${reverting?.number} back?`}
+        verb="Revert to it"
+        danger
+        busy={busy}
+        onCancel={() => {
+          setReverting(null)
+          setNote('')
+        }}
+        onOk={revert}
+      >
+        <p>
+          The entry becomes “{reverting?.title}” as it was{' '}
+          {reverting && fmtDate(reverting.at)}. The version being replaced is
+          kept — reverting adds to the history rather than rewriting it, so this
+          is undoable the same way anything else here is.
+        </p>
+        <div className="field">
+          <label htmlFor="rv-note">Why (kept in the log)</label>
+          <input
+            id="rv-note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Optional"
+          />
+        </div>
+      </Confirm>
+    </div>
+  )
+}

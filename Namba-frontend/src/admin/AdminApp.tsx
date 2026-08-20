@@ -5,6 +5,8 @@ import {
 import { adm, type Stats, type Who } from './api'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import Content from './pages/Content'
+import Entry from './pages/Entry'
 
 /** Every page in the panel, in the order the rail lists them.
 
@@ -17,6 +19,7 @@ type Item = { to: string; label: string; group: string; tally?: keyof Stats }
 
 const NAV: Item[] = [
   { to: '/', label: 'Dashboard', group: '' },
+  { to: '/content', label: 'All content', group: 'Content' },
 ]
 
 /** The rail.
@@ -116,6 +119,11 @@ export default function AdminApp() {
         <main className="main">
           <Routes>
             <Route path="/" element={<Dashboard stats={stats} onChange={refresh} />} />
+            <Route path="/content" element={<Content />} />
+            {/* An entry, not a drawer: the diff wants the width, and the page
+                is linkable -- an operator working a queue needs to be able to
+                send one of these to somebody. */}
+            <Route path="/content/:id" element={<Entry />} />
             {/* Anything else is a stale bookmark from a version of the panel
                 that had more pages, or a typed path. Home, rather than a
                 dead end: there is nowhere else to be in here. */}

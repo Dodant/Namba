@@ -35,6 +35,39 @@ and `admin.html` is a file: a small `configureServer` middleware in
 does the same thing. The `basename="/admin"` has to be identical in both, or
 every link in the panel is wrong in one of them.
 
+### Inside the panel
+
+- **`NAV` in `AdminApp.tsx` is the rail.** One list, so a page cannot exist
+  without appearing in it or appear in it without existing. Add a page by adding
+  a line and a `<Route>`, never a link to something unbuilt.
+- **The filters live in the URL, not in state.** Same call the wiki makes for
+  its feed toggle: "everything flagged, oldest first" survives a reload, can be
+  bookmarked, and can be sent to somebody. The search *box* is local and Enter
+  commits — typing into the query fires a request per keystroke and puts every
+  prefix of the word in the history. Any filter change clears `offset`, because
+  page 4 of the old filter is not page 4 of the new one.
+- **One entry is a page, not a drawer.** The diff needs the width, and an
+  operator working a queue has to be able to send one to somebody. Requests,
+  reports and blocks are drawers, since deciding one is a sentence.
+- **The body is shown as source.** An operator judging vandalism wants the
+  characters a stranger typed — a link's real href, a zero-width space, the
+  twelve blank lines — not the paragraph they render into. This is the one place
+  in the product that deliberately does not use `react-markdown`.
+- **Editing goes to the wiki's own form.** `/p/:id/edit` in a new tab, as a
+  plain `<a>` because it is another document. There is one place that knows how
+  a number value is parsed and how `grouped` follows the commas, and a second
+  editor in here would be a second answer.
+- **`Confirm` is a native `<dialog>`.** `showModal()` brings the focus trap,
+  Escape, `::backdrop` and an inert page; hand-rolling those is a hundred lines
+  and half of them wrong. Not `window.confirm` either — it blocks the event loop
+  and cannot hold the note field these actions want. Its copy always says what
+  will happen *and what survives it*, because on this wiki the second half is
+  the surprising one.
+- **A diff line's sign is mapped to a class name, never interpolated.** `-` and
+  `+` are not valid in one, and building it by template produced a rule the
+  stylesheet could never match. `SIGN` in `Entry.tsx` is the mapping and
+  `admin.css` names the same three.
+
 ```sh
 npm run dev
 npx tsc --noEmit && npx oxlint src && npm run build    # all three must be clean

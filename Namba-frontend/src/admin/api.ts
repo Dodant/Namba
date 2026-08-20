@@ -5,7 +5,7 @@
     Nothing here holds a token. The session is an httpOnly cookie the browser
     sends by existing, which is why every call below looks like a plain fetch
     and why a 401 is the only thing that means "signed out". */
-import { json, qs, req, type Params, type Post } from '../api'
+import { json, qs, req, type Params, type Post, type PostStatus } from '../api'
 
 export type Role = 'ADMIN' | 'SUPER_ADMIN'
 export type Who = { id: number; email: string; role: Role }
@@ -50,6 +50,96 @@ export type Event = {
   post_status: string | null
 }
 
+/** One row of the content table. Not a Post: the list carries the two counts
+    that make a badge and leaves out body, tags and translations, because a
+    table of two hundred entries should not be two hundred whole entries. */
+export type Row = {
+  id: number
+  value: string
+  format: string
+  grouped: number
+  title: string
+  status: PostStatus
+  author: string
+  edited_by: string | null
+  likes: number
+  created_at: string
+  updated_at: string
+  /** FLAGGED is this being above zero. It is not a stored status and never will
+      be — `reports` is already the truth, and a column would go stale the
+      moment one was resolved. */
+  open_reports: number
+  pending_requests: number
+}
+
+export type Report = {
+  id: number
+  post_id: number
+  reason: string
+  detail: string
+  ip_hash: string | null
+  client_hash: string | null
+  status: string
+  created_at: string
+  decided_at: string | null
+  decided_by: number | null
+  decision_note: string | null
+}
+
+/** Same columns plus a nickname. Kept apart from Report for the reason the
+    tables are apart: a report is counted per entry, a request is decided one at
+    a time, and the two reason vocabularies do not overlap completely. */
+export type Request = Report & { requested_by: string | null }
+
+export type Comment = {
+  id: number
+  post_id: number
+  author: string
+  body: string
+  created_at: string
+}
+
+/** The entry as only an operator sees it: whatever its status, with everything
+    hanging off it. The one read in the codebase that passes hidden=True. */
+export type FullPost = Post & {
+  status: PostStatus
+  comments: Comment[]
+  reports: Report[]
+  requests: Request[]
+  revision_count: number
+}
+
+/** A revision without its snapshot. The list reads each snapshot to pull a
+    title out as a label and drops it — fifty whole entries is megabytes, and
+    the diff fetches the two actually being looked at. `number` is the position
+    in this list rather than a column: it only means anything in the order it is
+    read in. */
+export type Rev = {
+  id: number
+  number: number
+  author: string
+  at: string
+  action: string
+  ip_hash: string | null
+  client_hash: string | null
+  admin_id: number | null
+  by: string | null
+  title: string | null
+  value: string | null
+}
+
+/** Fields and body answered apart, which is the readable way round: a changed
+    sort key inside a unified text diff is noise, and "the number was quietly
+    changed" — the thing an operator is usually hunting — is a field. */
+export type Diff = {
+  a: string
+  b: string
+  fields: { name: string; before: unknown; after: unknown }[]
+  body: { sign: string; text: string }[]
+  tags: { before: string[]; after: string[] }
+  translations: { before: string[]; after: string[] }
+}
+
 export const adm = {
   login: (email: string, password: string) =>
     req<Who>('/api/admin/login', json('POST', { email, password })),
@@ -61,6 +151,29 @@ export const adm = {
   stats: () => req<Stats>('/api/admin/stats'),
 
   activity: (p: Params = {}) => req<Page<Event>>(`/api/admin/activity${qs(p)}`),
+
+  posts: (p: Params = {}) => req<Page<Row>>(`/api/admin/posts${qs(p)}`),
+
+  post: (id: number | string) => req<FullPost>(`/api/admin/posts/${id}`),
+
+  revisions: (id: number | string) => req<Rev[]>(`/api/admin/posts/${id}/revisions`),
+
+  diff: (id: number | string, a: string, b: string) =>
+    req<Diff>(`/api/admin/posts/${id}/diff${qs({ a, b })}`),
+
+  /** Hide, mark removed, or put back. The same route is the undo, which is what
+      makes moderation here cost nothing to reverse. */
+  setStatus: (id: number | string, status: PostStatus, note: string) =>
+    req<{ id: number; status: PostStatus; was: PostStatus }>(
+      `/api/admin/posts/${id}/status`, json('POST', { status, note }),
+    ),
+
+  /** Put a revision back, credited to the operator. Adds a revision rather than
+      overwriting one, and reaches a hidden entry, which the wiki's own route
+      cannot — an entry worth reverting is usually one that was taken down. */
+  revert: (id: number | string, rev: number, note: string) =>
+    req<FullPost>(`/api/admin/posts/${id}/revisions/${rev}/restore`,
+                  json('POST', { note })),
 }
 
 /** What `meta` holds, already parsed. It is a JSON blob per action rather than
@@ -108,4 +221,4 @@ export const ACTION_LABEL: Record<string, string> = {
   CLIENT_UNBLOCK: 'lifted a block',
 }
 
-export type { Post }
+export type { Post, PostStatus }
