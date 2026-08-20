@@ -46,6 +46,13 @@ sanitiser config to get wrong.
 - Hover is a 120ms colour transition and nothing else moves. No transform, no
   size change, so a pointer running down a list of rows leaves no trail. A
   `prefers-reduced-motion` block cuts it.
+- The chrome is `user-select: none` and the entry is not. One `:is()` list
+  near the top of `index.css` carries every control and every label that
+  names a section or a field, because dragging from a title up the page used
+  to come away with "CATEGORIES 20 tags 1 - 9 8 numbers" on top of it. The
+  line is what a thing *is*: press it or it names a section, it is chrome;
+  numeral, title, blurb, body, byline, and any prose the page speaks in
+  sentences all still select. **A new control belongs in that list.**
 - 24px is the floor for anything you press. The two borderless like buttons
   keep their 10.5px type and buy the target with padding, then hand it back
   to the row with a matching negative margin, so the hit box grows and the

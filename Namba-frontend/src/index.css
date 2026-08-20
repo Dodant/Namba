@@ -126,6 +126,31 @@ button, input, select, textarea { font: inherit; color: inherit; }
   *, *::before, *::after { transition-duration: 0.01ms !important; }
 }
 
+/* The chrome does not come away with the copy. Dragging from a title up the
+   page picked up "CATEGORIES 20 tags 1 - 9 8 numbers" and pasted it above
+   the line that was wanted, because a band label and a chip are text as far
+   as a selection is concerned -- and every one of them is a word the page
+   said about itself, not a word the wiki says.
+
+   The line is what the thing is, not where it sits: a control you press and
+   a label naming a section or a field are chrome; a numeral, a title, a
+   blurb, a body and a byline are the entry, and all of them still select.
+   Prose stays selectable even when the page is the one saying it -- the
+   form's intro, the empty states, the fine print: those are sentences, and
+   the moment sentences start going in here the whole page ends up in here.
+   Inputs are not in here either: what you typed is yours to take back out.
+
+   user-drag with it, so a pill does not lift a link ghost off the header on
+   a slow press. It is a WebKit property and Firefox will still do that; the
+   selection, which is the thing that spoils a copy, is standard. */
+:is(.logo-block, .search .slash, .btn, .chip, .pill, .tag, .kicker,
+    .band-head, .ix-fold, .tabs a, .tabs button, .panel-add, .credits-btn,
+    a.quiet, h4.section, .field label, .field .field-label, .field.check) {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 /* 1160 is the measure and stays the measure on a 1920 screen: an index of
    numbers is a book index, and a title row 1800px wide is unreadable in the
    way a wide column always is. The horizontal room a large screen has goes
