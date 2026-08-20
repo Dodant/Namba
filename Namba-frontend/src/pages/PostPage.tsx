@@ -159,7 +159,7 @@ export default function PostPage() {
             aria-expanded={credits}
             onClick={() => setCredits((v) => !v)}
           >
-            {credits ? 'Hide credits' : 'Credits & history'}
+            {credits ? 'Hide Credits' : 'Show Credits'}
           </button>
         </div>
 
