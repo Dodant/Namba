@@ -370,9 +370,13 @@ function Comments({ id }: { id: string }) {
         </p>
       )}
       {!said ? (
-        <p className="quiet" role="status">
-          Loading…
-        </p>
+        /* the list stays null when the fetch fails, so the error and the wait
+           were both on screen and the wait was the lie -- nothing is coming */
+        !err && (
+          <p className="quiet" role="status">
+            Loading…
+          </p>
+        )
       ) : said.length ? (
         <>
           {said.slice(0, COMMENTS_SHOWN).map(cmt)}
