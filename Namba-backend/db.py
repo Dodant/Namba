@@ -19,6 +19,14 @@ CREATE TABLE IF NOT EXISTS posts (
   lang       TEXT,                                 -- what title/body are written in; free-form, like translations.lang
   grouped    INTEGER NOT NULL DEFAULT 0,           -- show the value with thousands separators; display only, never in `value`
   likes      INTEGER NOT NULL DEFAULT 0,
+  -- ACTIVE | HIDDEN | DELETED. Nothing the API can do removes a row: a hidden
+  -- entry drops out of every public read and `show` brings it back whole,
+  -- which is what makes moderation reversible on a wiki nobody logs into.
+  -- HIDDEN and DELETED read the same to a visitor and are kept apart for the
+  -- operator: one is "taken down", the other "removed on request".
+  -- No index. Three values, and almost every row is ACTIVE, so it could never
+  -- be selective; a few thousand rows scan in microseconds.
+  status     TEXT NOT NULL DEFAULT 'ACTIVE',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -41,10 +49,12 @@ CREATE TABLE IF NOT EXISTS post_links (
 );
 CREATE INDEX IF NOT EXISTS idx_post_links_b ON post_links(b_id);
 
--- Snapshot of a post taken immediately before every edit, restore and delete.
+-- Snapshot of a post taken immediately before every edit and every restore.
 -- Deliberately NOT a foreign key: on an open no-login wiki these rows are the
 -- only thing standing between vandalism and permanent data loss, so they must
--- outlive the post they describe.
+-- outlive the post they describe -- and rows left by the DELETE route that used
+-- to exist are the only copy of the entries it took away. Hiding an entry takes
+-- no snapshot: nothing about it changed except whether the wiki shows it.
 CREATE TABLE IF NOT EXISTS revisions (
   id       INTEGER PRIMARY KEY AUTOINCREMENT,
   post_id  INTEGER NOT NULL,
@@ -75,9 +85,10 @@ CREATE TABLE IF NOT EXISTS translations (
 -- revisions above, for the opposite reason: a snapshot is what stands between
 -- vandalism and permanent loss, so it has to outlive the post it describes,
 -- while a comment is a remark on one and has nothing to recover. So this table
--- does have the foreign key, it does cascade, and it is never snapshotted --
--- deleting an entry takes the talk with it, and a restore brings back the
--- entry alone.
+-- does have the foreign key, it does cascade, and it is never snapshotted.
+-- Hiding an entry hides the talk with it and shows it again unchanged -- the
+-- row stays, so nothing cascades. The cascade is for `admin.py purge`, the one
+-- hard delete there is, where taking the talk along is the point.
 CREATE TABLE IF NOT EXISTS comments (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
@@ -137,5 +148,11 @@ def init():
         if "grouped" not in have:
             con.execute(
                 "ALTER TABLE posts ADD COLUMN grouped INTEGER NOT NULL DEFAULT 0"
+            )
+
+        # ACTIVE on every existing row: a schema change hides nothing
+        if "status" not in have:
+            con.execute(
+                "ALTER TABLE posts ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'"
             )
     con.close()

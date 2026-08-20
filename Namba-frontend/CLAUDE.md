@@ -196,13 +196,14 @@ What actually changes shape, rather than size:
   under them. It was a 90px column of three-character lines before.
 - **A `.panel-row`** puts its title on a line of its own below 560, whole,
   rather than an ellipsis at twelve characters.
-- **`.spacer`** becomes a line break below 560 (`flex: 1 0 100%`), so Delete is
-  never beside Save, and the credits toggle and Edit take a line of their own
-  rather than sitting beside the tags under a thumb.
+- **`.spacer`** becomes a line break below 560 (`flex: 1 0 100%`), so the
+  destructive button — Remove this language — is never beside Save, and the
+  credits toggle and Edit take a line of their own rather than sitting beside
+  the tags under a thumb.
 - **The rails** stop being rails and become the end of the page — and the
   Edit history stops being a 60dvh scroll port inside a scrolling page. That
   cap lives on `.side .revs`, not `.revs`: the same list is the recovery view
-  on a deleted entry, where it is the page and holds the only Restore there is.
+  in `PostPage`, where it is the page and holds the only Restore there is.
 
 Mobile browsers, specifically: every box you type in is 16px on a coarse
 pointer, because under that iOS Safari zooms the page in on focus and leaves it
@@ -400,12 +401,19 @@ filled capsule at the top of the page offers to change an entry nobody has read
 yet. Quiet, at the end of the row, it is a control you find when you look for
 one, which is what an edit link on a wiki is.
 
-Adding a language, rewriting one, unlinking a related entry, restoring a
-revision and deleting the entry all live in `/p/:id/edit` — Languages and
-Related entries as bordered panels in the form, History on a rail to the right
-of it (`.form-layout`, the same shape the read page has). Do not put any of them
-back on the read page — that is where they all were, in five different places,
-and the fix was to give them one home.
+Adding a language, rewriting one, unlinking a related entry and restoring a
+revision all live in `/p/:id/edit` — Languages and Related entries as bordered
+panels in the form, History on a rail to the right of it (`.form-layout`, the
+same shape the read page has). Do not put any of them back on the read page —
+that is where they all were, in five different places, and the fix was to give
+them one home.
+
+**Deleting is not one of them and no longer happens here at all.** The form
+used to carry a `Delete this entry` button and `api.remove()` behind it; both
+are gone, and `DELETE /api/posts/{id}` answers 405. Removing an entry is a
+request an operator decides, and hiding one is a column the operator sets. Do
+not put a delete button back in this form — the whole point is that the wiki
+cannot lose an entry to one stranger's click.
 
 A like is the exception and is not one of them. It writes, but it writes a
 counter beside the entry rather than the entry, so it sits in the meta row here
@@ -420,9 +428,11 @@ belongs to nobody, and unlike an entry a comment has no revision behind it, so
 the button would be the loss rather than the guard against it. If that ever
 needs answering, it is a delete *and* an undo, not a delete.
 
-The exception is the deleted-entry recovery view in `PostPage`: when the post
-404s but its revisions survive, `Restore` belongs there, because there is no
-edit form to reach.
+The exception is the recovery view in `PostPage`: when the post 404s but its
+revisions survive, `Restore` belongs there, because there is no edit form to
+reach. Nothing new can land in that state — no route removes a row — but the
+entries the old `DELETE` route took away are still out there with their
+snapshots, and this is the only door back to them.
 
 `PostForm` keeps two rules straight. A restore replaces the entry, so `fill()`
 resets the fields to it. Linking or translating only changes what is around the

@@ -170,8 +170,6 @@ export const api = {
   update: (id: number, p: Partial<PostInput>) =>
     req<Post>(`/api/posts/${id}`, json('PATCH', p)),
 
-  remove: (id: number) => req<null>(`/api/posts/${id}`, { method: 'DELETE' }),
-
   like: (id: number, on: boolean) =>
     req<{ likes: number }>(`/api/posts/${id}/like`, { method: on ? 'POST' : 'DELETE' }),
 

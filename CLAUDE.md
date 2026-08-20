@@ -42,8 +42,16 @@ branch and has to be agreed on; a tag never did.
 ## Design decisions that are not up for quiet revision
 
 - **No accounts, ever.** No login, no ownership, no per-post permissions. Anyone
-  reads, posts, edits and deletes. Every guard in the codebase assumes this — do
-  not "fix" it by adding auth.
+  reads, posts and edits. Every guard in the codebase assumes this — do not
+  "fix" it by adding auth.
+- **Nothing removes an entry.** `posts.status` is `ACTIVE` / `HIDDEN` /
+  `DELETED`, and a hidden entry drops out of all nine public reads and comes
+  back whole. There is no `DELETE /api/posts/{id}` — the path answers 405 — and
+  no delete button anywhere in the front end. An open wiki where one click can
+  take a page away has no defence at all, and the fix is not confirming harder:
+  it is that the click does not exist. `admin.py hide` is what moderation
+  means here, and `admin.py purge` is the one hard delete, in the shell,
+  for the removal a law requires. Do not add a delete route back.
 - **`author` is the first writer and is never overwritten.** An edit records the
   editor in `edited_by` instead. Without this, a stranger correcting a typo takes
   over the byline, which on an open wiki is most edits. `test_api_round_trip`

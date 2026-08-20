@@ -885,8 +885,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .body :is(th, td) { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
 .body th { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; }
 .actions { display: flex; gap: 9px; flex-wrap: wrap; margin: 20px 0; }
-/* The spacer is what holds Delete away from Save on a wide row. On a narrow
-   one it has nothing to hold: the row wraps, and the destructive button comes
+/* The spacer is what holds the destructive button away from Save on a wide
+   row -- Remove this language, and Delete this entry while there was one. On a
+   narrow one it has nothing to hold: the row wraps, and that button comes
    to rest next to Cancel. At 100% basis it stops being a gap and becomes the
    line break, so the two buttons that act and the one that destroys are never
    on the same line at the width where a thumb is doing the pressing. Same for

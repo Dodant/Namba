@@ -1,14 +1,15 @@
 # Namba-backend
 
-FastAPI over stdlib `sqlite3`. Six files: `main.py` (every route + models),
+FastAPI over stdlib `sqlite3`. Seven files: `main.py` (every route + models),
 `db.py` (schema), `numfmt.py` (number parsing), `seed.py` + `seed_tags.py`
-(the markdown importer) and `gc_uploads.py` (the uploads collector, run from
-cron -- never from a route, since there is nobody to stop a stranger triggering
-it).
+(the markdown importer), `gc_uploads.py` (the uploads collector) and `admin.py`
+(the operator's commands). The last two run from cron and from a shell, never
+from a route -- there is nobody to stop a stranger triggering one.
 
 ```sh
 .venv/bin/python test_namba.py        # run before saying anything passes
 .venv/bin/python seed.py --reset      # wipe + reload from ../Memorable Numbers.md
+.venv/bin/python admin.py hide 42     # take an entry off the public wiki
 .venv/bin/uvicorn main:app --reload
 ```
 
@@ -29,21 +30,28 @@ Env overrides: `NAMBA_DB`, `NAMBA_UPLOADS` (the tests use both to stay hermetic)
   database will not live on a filesystem without shared-memory locks (NFS, SMB).
 - **`revisions` has no foreign key on purpose.** It is the only thing between
   vandalism and permanent loss on a wiki nobody logs into, so the rows must
-  outlive the post. Every edit, restore and delete snapshots first. Adding
-  `REFERENCES posts(id) ON DELETE CASCADE` would silently make deletes
-  unrecoverable.
+  outlive the post. Every edit and every restore snapshots first; **hiding does
+  not**, because nothing about the entry changed except whether the wiki shows
+  it, and `show` is the undo. Adding `REFERENCES posts(id) ON DELETE CASCADE`
+  would silently make `admin.py purge` unrecoverable and, worse, quietly turn
+  the rows left by the `DELETE` route that used to exist into nothing.
 - **`comments` is the same decision inverted, on purpose.** It *does* have the
   foreign key and it *does* cascade, because talk beside an entry has nothing to
-  recover: when the entry goes the talk goes, and a restore brings back the entry
-  alone (`test_comments` asserts both). It is also never snapshotted, which is
+  recover. Hiding an entry does not fire it — the row stays, so the talk is
+  hidden and comes back with the entry. The cascade is for `admin.py purge`,
+  where taking the talk along is exactly the point (`test_comments` asserts
+  both halves). It is also never snapshotted, which is
   why it is its own endpoint rather than a key on `fetch_one` — anything attached
   there rides into every revision taken afterwards. `add_comment` leaves
   `updated_at` alone for the same reason: a remark is not a rewrite and must not
   carry the entry back up the Recent feed.
 - **Do not delete the picture when the entry goes.** `restore_revision` hands
   back the image path the entry had, so a file no live entry shows may be the one
-  a restore needs -- an `os.remove` in `delete_post` or on an image swap turns a
-  recoverable delete into a broken picture. Orphans are collected out of band by
+  a restore needs -- an `os.remove` on an image swap turns a recoverable edit
+  into a broken picture. `admin.py purge` is the one place a picture is deleted,
+  and it asks `gc_uploads.referenced()` first, *after* the rows are gone, so a
+  path another body or snapshot still carries survives. Orphans are otherwise
+  collected out of band by
   `gc_uploads.py`, which counts bodies and snapshots as references and leaves
   anything younger than a day alone, because a picture is uploaded before the
   entry is saved and an unsaved form looks exactly like rubbish.
@@ -122,6 +130,12 @@ edit the DDL and reseed.
 ## Trust boundaries — do not thin these out
 
 No auth means the input validation *is* the security model.
+
+- Nothing the API offers removes a row. `posts.status` is the whole of
+  moderation and `LIVE` is the condition nine public reads carry; the list of
+  them is in `main.py` above the constant, and `test_hidden_is_invisible` walks
+  all nine. A new public read that touches `posts` joins that list, or it leaks
+  the body of something an operator took down.
 
 - Uploads: extension allowlist, 5 MB per file, `UPLOAD_TOTAL_MAX` for the
   directory, and the filename is always `uuid4().hex + ext`. Never build a path

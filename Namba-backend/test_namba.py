@@ -20,6 +20,7 @@ with open(os.path.join(_tmp, "dist", "assets", "app.js"), "w") as _fh:
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+import admin  # noqa: E402
 import db  # noqa: E402
 import main  # noqa: E402
 from numfmt import bucket_of, grouped_value, parse_number  # noqa: E402
@@ -77,7 +78,7 @@ def test_recent_sort():
     finally:
         main.now = real
     for p in (first, second):
-        c.delete(f"/api/posts/{p['id']}")
+        admin.set_status(p["id"], "HIDDEN")
 
 
 def test_share_card():
@@ -152,7 +153,7 @@ def test_grouping():
     for odd in ("1,2,3", "12,34", "Apollo,11"):
         assert c.post("/api/posts", json={"value": odd, "title": odd}
                       ).json()["value"] == odd, odd
-    c.delete(f"/api/posts/{off['id']}")
+    admin.set_status(off["id"], "HIDDEN")
 
     def row(**params):
         nums = c.get("/api/numbers", params={"format": "INTEGER", **params}).json()
@@ -166,8 +167,9 @@ def test_grouping():
     plain = c.post("/api/posts", json={"value": "1000", "title": "no commas"}).json()
     assert row()["grouped"] is False
 
-    # and it comes back once the disagreement goes
-    c.delete(f"/api/posts/{plain['id']}")
+    # and it comes back once the disagreement goes -- an entry taken off the
+    # wiki gets no vote on how its number is written
+    admin.set_status(plain["id"], "HIDDEN")
     assert row()["grouped"] is True
 
     # the preference survives an edit that never mentions it, and a restore
@@ -279,7 +281,9 @@ def test_api_round_trip():
     assert list(vocab) == sorted(vocab, key=lambda t: (-vocab[t], t)), "not by count"
     assert [p["id"] for p in c.get("/api/posts", params={"tag": "DRUM Machine"}).json()] \
         == [coined["id"]], "the filter is case-insensitive on the way in"
-    c.delete(f"/api/posts/{coined['id']}")
+    admin.set_status(coined["id"], "HIDDEN")
+    assert "drum machine" not in {t["tag"] for t in c.get("/api/tags").json()}, \
+        "a hidden entry was still speaking for the vocabulary"
 
     # tag filter
     movies = c.get("/api/posts", params={"tag": "MOVIE"}).json()  # any case in
@@ -445,21 +449,35 @@ def test_api_round_trip():
     # restoring is itself an edit, so it too can be undone
     assert len(c.get(f"/api/posts/{a['id']}/revisions").json()) == 2
 
-    # a delete leaves a recoverable snapshot behind
-    c.delete(f"/api/posts/{slash['id']}")
+    # taking an entry off the wiki needs no snapshot and loses nothing: the row
+    # stays, so the history stays whole and showing it again is one column
+    admin.set_status(slash["id"], "HIDDEN")
     assert c.get(f"/api/posts/{slash['id']}").status_code == 404
-    assert c.get(f"/api/posts/{slash['id']}/revisions").json()[0]["snapshot"]["title"] \
-        == "11/22/63"
+    assert c.get(f"/api/posts/{slash['id']}/revisions").status_code == 404, \
+        "a hidden entry's history was readable"
+    admin.set_status(slash["id"], "ACTIVE")
+    assert c.get(f"/api/posts/{slash['id']}").json()["value"] == "11/22/63"
 
-    # ...and that snapshot can actually put it back, under the same id, or the
-    # revisions kept for it would describe a post that no longer exists
+    # The branch in restore_revision that puts back a post whose *row* is gone
+    # is legacy: no route removes a row any more. But the rows the DELETE route
+    # that used to exist took away are still out there, and their snapshots are
+    # the only copy left of them -- so it stays, and stays covered. Reaching
+    # that state now takes the database directly, which is the point.
+    c.patch(f"/api/posts/{slash['id']}",
+            json={"title": "November 22", "author": "oswald"})
+    con = db.connect()
+    with con:
+        con.execute("DELETE FROM posts WHERE id = ?", (slash["id"],))
+    con.close()
+    assert c.get(f"/api/posts/{slash['id']}").status_code == 404
     dead = c.get(f"/api/posts/{slash['id']}/revisions").json()[0]
+    assert dead["snapshot"]["title"] == "11/22/63"
     alive = c.post(f"/api/posts/{slash['id']}/revisions/{dead['id']}/restore",
                    json={"author": "arthur"}).json()
     assert alive["id"] == slash["id"] and alive["value"] == "11/22/63"
     assert alive["author"] == slash["author"], "the original writer was lost"
     assert alive["edited_by"] == "arthur"
-    assert alive["tags"] == ["book"]
+    assert alive["tags"] == ["book"], "the tags cascaded away and were not rebuilt"
     assert c.get(f"/api/posts/{slash['id']}").status_code == 200
 
     # uploads: extension allowlist, server-generated filename
@@ -482,6 +500,95 @@ def test_api_round_trip():
     # the vocabulary is what is in use, so an unused tag is simply not in it
     tags = {t["tag"]: t["count"] for t in c.get("/api/tags").json()}
     assert tags["movie"] == 1 and "anime" not in tags, tags
+
+
+def test_hidden_is_invisible():
+    """Hiding an entry takes it off the wiki, not out of one view of it.
+
+    Nine public reads carry the status condition and missing one leaks the body
+    of something an operator took down, so this walks all nine: the index, both
+    list endpoints, the entry itself, the two vocabularies, its row among
+    another entry's related entries, its history, the talk beside it, and the
+    <head> written server-side for /p/{id}.
+
+    It moves the column through admin.py because that is the only thing that
+    can -- the operator's endpoints arrive with the admin router, and this is
+    the layer underneath them.
+    """
+    c = TestClient(main.app)
+    p = c.post("/api/posts", json={
+        "value": "6174", "title": "Kaprekar's constant",
+        "body": "Four digits, four steps, and it is always this.",
+        "tags": ["kaprekar"], "lang": "English", "author": "kaprekar",
+    }).json()
+    pid = p["id"]
+    other = c.post("/api/posts", json={"value": "6175", "title": "one along"}).json()
+    c.put(f"/api/posts/{pid}/translations",
+          json={"lang": "Klingon", "title": "loSmaH", "body": "loS", "author": "worf"})
+    c.post(f"/api/posts/{pid}/comments", json={"body": "It really is every time."})
+    c.post(f"/api/posts/{pid}/links", json={"other_id": other["id"]})
+    c.patch(f"/api/posts/{pid}", json={"title": "Kaprekar constant", "author": "d.r."})
+
+    def seen():
+        """Every way a reader could reach this entry. Unique tag and language on
+        purpose: a shared one would be kept alive by somebody else's entry and
+        the assertion would pass without the join doing anything."""
+        return {
+            "index": any(e["id"] == pid for n in c.get("/api/numbers").json()
+                         for e in n["entries"]),
+            "list": any(x["id"] == pid for x in c.get("/api/posts").json()),
+            "search": any(x["id"] == pid for x in
+                          c.get("/api/posts", params={"q": "Kaprekar"}).json()),
+            "one": c.get(f"/api/posts/{pid}").status_code == 200,
+            "tags": any(t["tag"] == "kaprekar" for t in c.get("/api/tags").json()),
+            "langs": any(x["lang"] == "Klingon" for x in c.get("/api/languages").json()),
+            "related": any(r["id"] == pid for r in
+                           c.get(f"/api/posts/{other['id']}").json()["related"]),
+            "history": c.get(f"/api/posts/{pid}/revisions").status_code == 200,
+            "talk": c.get(f"/api/posts/{pid}/comments").status_code == 200,
+            "head": "Kaprekar" in c.get(f"/p/{pid}").text,
+        }
+
+    assert len(seen()) == 9 + 1, "nine reads, and search is the second on /api/posts"
+    assert all(seen().values()), seen()
+
+    admin.set_status(pid, "HIDDEN")
+    assert not any(seen().values()), {k: v for k, v in seen().items() if v}
+
+    # ...and it all comes back, because hiding changed one column and nothing else
+    admin.set_status(pid, "ACTIVE")
+    assert all(seen().values()), {k: v for k, v in seen().items() if not v}
+    revs = c.get(f"/api/posts/{pid}/revisions").json()
+    assert len(revs) == 2, "the translation and the edit, both still there"
+    assert c.get(f"/api/posts/{pid}").json()["translations"][0]["lang"] == "Klingon"
+
+    # DELETED is as invisible as HIDDEN. The two are kept apart for the operator
+    # -- "taken down" against "removed on request" -- not for the reader.
+    admin.set_status(pid, "DELETED")
+    assert not any(seen().values()), {k: v for k, v in seen().items() if v}
+    admin.set_status(pid, "HIDDEN")
+
+    # a write cannot reach a hidden entry either: every one of them asks
+    # fetch_one first, and the three that used to ask it afterwards now do not
+    assert c.patch(f"/api/posts/{pid}", json={"title": "x"}).status_code == 404
+    assert c.post(f"/api/posts/{pid}/like").status_code == 404
+    assert c.delete(f"/api/posts/{pid}/like").status_code == 404
+    assert c.post(f"/api/posts/{pid}/comments", json={"body": "hi"}).status_code == 404
+    assert c.delete(f"/api/posts/{pid}/links/{other['id']}").status_code == 404
+    assert c.post(f"/api/posts/{pid}/revisions/{revs[0]['id']}/restore"
+                  ).status_code == 404
+    assert c.get(f"/api/posts/{pid}").status_code == 404, "a failed write showed it"
+
+
+def test_no_public_delete():
+    """Removing an entry is not a stranger's button any more. The route is gone,
+    so the path answers 405 rather than 404 -- GET and PATCH still live there,
+    which is how a client can tell "not allowed" from "not found"."""
+    c = TestClient(main.app)
+    p = c.post("/api/posts", json={"value": "410", "title": "Gone"}).json()
+    assert c.delete(f"/api/posts/{p['id']}").status_code == 405
+    assert c.get(f"/api/posts/{p['id']}").status_code == 200, "and it is still there"
+    admin.set_status(p["id"], "HIDDEN")
 
 
 def test_likes_are_rate_limited():
@@ -544,13 +651,26 @@ def test_comments():
                                        "author": "clarisse"})
     assert "comments" not in c.get(f"/api/posts/{pid}/revisions").json()[0]["snapshot"]
 
-    # the talk ends with the entry, and a restore brings back the entry alone
-    assert c.delete(f"/api/posts/{pid}").status_code == 204
-    assert c.get(f"/api/posts/{pid}/comments").json() == []
-    rev = c.get(f"/api/posts/{pid}/revisions").json()[0]
-    assert c.post(f"/api/posts/{pid}/revisions/{rev['id']}/restore",
-                  json={"author": "beatty"}).status_code == 200
-    assert c.get(f"/api/posts/{pid}/comments").json() == []
+    # hiding the entry hides the talk with it and gives it all back: the row
+    # stays, so the foreign key never fires
+    admin.set_status(pid, "HIDDEN")
+    assert c.get(f"/api/posts/{pid}/comments").status_code == 404
+    admin.set_status(pid, "ACTIVE")
+    assert len(c.get(f"/api/posts/{pid}/comments").json()) == 3
+
+    # a purge is the other decision, and the one the cascade is for: the entry,
+    # the talk beside it, and the snapshots no foreign key holds
+    admin.purge(pid)
+    assert c.get(f"/api/posts/{pid}").status_code == 404
+    con = db.connect()
+    try:
+        left = {t: con.execute(
+            f"SELECT COUNT(*) FROM {t} WHERE post_id = ?", (pid,)).fetchone()[0]
+            for t in ("comments", "revisions", "translations", "post_tags")}
+    finally:
+        con.close()
+    assert left == {"comments": 0, "revisions": 0, "translations": 0,
+                    "post_tags": 0}, left
 
 
 def test_upload_gc_keeps_what_history_points_at():

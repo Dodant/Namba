@@ -50,6 +50,13 @@ COMMENT_MAX = 300
 # Comments shipped by /api/posts/{id}/comments, newest first. The same bargain
 # REVISIONS_SHOWN makes: the rows all stay, the response is capped.
 COMMENTS_SHOWN = 200
+# The only status a visitor ever sees. Nine reads below carry it -- the index,
+# the two list endpoints, one entry, the two vocabularies, an entry's related
+# row, its history and its comments, and the <head> written for /p/{id} -- and
+# missing one leaks the body of something an operator took down.
+# test_hidden_is_invisible walks all nine. The writes need no equivalent: they
+# reach for fetch_one() first and get the 404 from there.
+LIVE = "ACTIVE"
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 db.init()
@@ -251,8 +258,34 @@ def shape(rows, con):
     return posts
 
 
-def fetch_one(con, post_id):
-    row = con.execute("SELECT * FROM posts WHERE id = ?", (post_id,)).fetchone()
+def guard_public(con, post_id):
+    """404 unless this entry is on the wiki, for the reads that are keyed on a
+    post id rather than joined to one.
+
+    A row that is simply *absent* passes. Entries removed by the DELETE route
+    that used to exist have no row at all, and their snapshots are the only
+    copy left of them -- so the recovery path has to stay open to those, while a
+    hidden entry's history stays shut. Nothing can reach that state any more:
+    no route removes a row.
+    """
+    row = con.execute("SELECT status FROM posts WHERE id = ?", (post_id,)).fetchone()
+    if row is not None and row["status"] != LIVE:
+        raise HTTPException(404, "post not found")
+
+
+def fetch_one(con, post_id, hidden=False):
+    """One entry in full, or a 404.
+
+    Hidden entries are 404s here, which is where most of the wiki gets that for
+    free -- every write reaches through this function first. `hidden=True` is
+    for the operator's own reads, the only ones that may see one.
+    """
+    sql = "SELECT * FROM posts WHERE id = ?"
+    args = [post_id]
+    if not hidden:
+        sql += " AND status = ?"
+        args.append(LIVE)
+    row = con.execute(sql, args).fetchone()
     if row is None:
         raise HTTPException(404, "post not found")
     post = shape([row], con)[0]
@@ -339,12 +372,18 @@ def list_languages(con=Depends(get_db)):
     from the translations themselves rather than a fixed list: the labels are
     free-form, so an enum here would offer "Japanese" to a wiki that says
     "日本語". Entries' own languages are not included -- picking one would
-    show them exactly as Original already does."""
+    show them exactly as Original already does.
+
+    Joined to posts rather than read off translations alone: a language nothing
+    visible is written in is not one the wiki can be read in, and leaving the
+    join out put a hidden entry's language in the header's picker."""
     return [
         {"lang": r["lang"], "count": r["count"]}
         for r in con.execute(
-            """SELECT lang, COUNT(*) AS count FROM translations
-               GROUP BY lang COLLATE NOCASE ORDER BY count DESC, lang"""
+            """SELECT t.lang, COUNT(*) AS count FROM translations t
+               JOIN posts p ON p.id = t.post_id AND p.status = ?
+               GROUP BY t.lang COLLATE NOCASE ORDER BY count DESC, t.lang""",
+            (LIVE,),
         )
     ]
 
@@ -360,8 +399,10 @@ def list_tags(con=Depends(get_db)):
     return [
         {"tag": r["tag"], "count": r["count"]}
         for r in con.execute(
-            """SELECT tag, COUNT(*) AS count FROM post_tags
-               GROUP BY tag ORDER BY count DESC, tag"""
+            """SELECT t.tag, COUNT(*) AS count FROM post_tags t
+               JOIN posts p ON p.id = t.post_id AND p.status = ?
+               GROUP BY t.tag ORDER BY count DESC, t.tag""",
+            (LIVE,),
         )
     ]
 
@@ -388,9 +429,15 @@ def list_numbers(
     if tag:
         sql.append("JOIN post_tags t ON t.post_id = p.id AND t.tag = ?")
         args.append(tag.lower())
+    # A hidden entry gets no vote on how its number is written either: the row
+    # is grouped only when every entry filed under it asked for separators, and
+    # one taken down for vandalism was still voting against them.
+    where = ["p.status = ?"]
+    args.append(LIVE)
     if format:
-        sql.append("WHERE p.format = ?")
+        where.append("p.format = ?")
         args.append(format.upper())
+    sql.append("WHERE " + " AND ".join(where))
     sql.append("ORDER BY p.sort_key IS NULL, p.sort_key, p.value, p.id")
 
     # Which language to read the index in is the reader's, not this endpoint's:
@@ -446,6 +493,10 @@ def list_posts(
     if tag:
         sql.append("JOIN post_tags t ON t.post_id = p.id AND t.tag = ?")
         args.append(tag.lower())
+    # after the join, before every other condition: the args have to line up
+    # with the order the ? marks appear in the text
+    where.append("p.status = ?")
+    args.append(LIVE)
     if value is not None:
         where.append("p.value = ?")
         args.append(value)
@@ -497,11 +548,11 @@ def list_posts(
 def get_post(post_id: int, con=Depends(get_db)):
     post = fetch_one(con, post_id)
     rows = con.execute(
-        """SELECT * FROM posts WHERE id IN (
+        """SELECT * FROM posts WHERE status = ? AND id IN (
              SELECT b_id FROM post_links WHERE a_id = ?
              UNION SELECT a_id FROM post_links WHERE b_id = ?)
            ORDER BY sort_key IS NULL, sort_key, value""",
-        (post_id, post_id),
+        (LIVE, post_id, post_id),
     ).fetchall()
     post["related"] = shape(rows, con)
     return post
@@ -518,6 +569,7 @@ def list_revisions(post_id: int, con=Depends(get_db)):
     standing between vandalism and permanent loss, and reverting vandalism means
     reaching for a recent one.
     """
+    guard_public(con, post_id)
     rows = con.execute(
         """SELECT id, author, at, snapshot FROM revisions WHERE post_id = ?
            ORDER BY id DESC LIMIT ?""",
@@ -538,6 +590,7 @@ def list_comments(post_id: int, con=Depends(get_db)):
     snapshot() reads through -- anything attached there lands in every revision
     taken from then on, and a comment is not part of the entry.
     """
+    guard_public(con, post_id)
     return [
         dict(r)
         for r in con.execute(
@@ -657,6 +710,7 @@ def restore_revision(
     _=Depends(rate_limit),
     con=Depends(get_db),
 ):
+    guard_public(con, post_id)
     row = con.execute(
         "SELECT snapshot FROM revisions WHERE id = ? AND post_id = ?", (rev_id, post_id)
     ).fetchone()
@@ -677,11 +731,14 @@ def restore_revision(
                  who, now(), post_id),
             )
         else:
-            # The post was deleted. Snapshots outliving the post is the entire
-            # point of the revisions table, so restore has to be able to put one
-            # back -- under its original id, or every revision row and inbound
-            # link would be pointing at nothing. There is nothing to snapshot
-            # first: the delete already took one.
+            # The post's row is gone, which only entries removed by the DELETE
+            # route that used to exist can be: nothing removes a row now.
+            # Snapshots outliving the post is the entire point of the revisions
+            # table, so restore has to be able to put one back -- under its
+            # original id, or every revision row and inbound link would be
+            # pointing at nothing. There is nothing to snapshot first: the
+            # delete already took one. It comes back ACTIVE, by the column's
+            # default.
             con.execute(
                 """INSERT INTO posts (id, value, format, sort_key, title, body, image,
                                       lang, grouped, author, edited_by, likes,
@@ -741,19 +798,12 @@ def delete_translation(
     return fetch_one(con, post_id)
 
 
-@app.delete("/api/posts/{post_id}", status_code=204)
-def delete_post(post_id: int, _=Depends(rate_limit), con=Depends(get_db)):
-    fetch_one(con, post_id)  # 404 if missing
-    with con:
-        snapshot(con, post_id, "deleted")  # revisions outlive the post on purpose
-        con.execute("DELETE FROM posts WHERE id = ?", (post_id,))
-
-
 @app.post("/api/posts/{post_id}/like")
 def like(post_id: int, _=Depends(rate_limit), con=Depends(get_db)):
     # ponytail: the client's localStorage stops a reader double-counting by
     # accident, and the limiter above caps what a loop can do on purpose. An
     # ip-hash table is the next step if a count still looks farmed.
+    fetch_one(con, post_id)  # before the counter moves, not after
     with con:
         con.execute("UPDATE posts SET likes = likes + 1 WHERE id = ?", (post_id,))
     return {"likes": fetch_one(con, post_id)["likes"]}
@@ -761,6 +811,7 @@ def like(post_id: int, _=Depends(rate_limit), con=Depends(get_db)):
 
 @app.delete("/api/posts/{post_id}/like")
 def unlike(post_id: int, _=Depends(rate_limit), con=Depends(get_db)):
+    fetch_one(con, post_id)
     with con:
         con.execute(
             "UPDATE posts SET likes = MAX(likes - 1, 0) WHERE id = ?", (post_id,)
@@ -800,6 +851,7 @@ def add_link(post_id: int, link: LinkIn, _=Depends(rate_limit), con=Depends(get_
 
 @app.delete("/api/posts/{post_id}/links/{other_id}")
 def remove_link(post_id: int, other_id: int, _=Depends(rate_limit), con=Depends(get_db)):
+    fetch_one(con, post_id)
     a, b = sorted((post_id, other_id))
     with con:
         con.execute("DELETE FROM post_links WHERE a_id = ? AND b_id = ?", (a, b))
@@ -897,7 +949,8 @@ def _index(con, path: str, base: str) -> HTMLResponse:
         page = fh.read()
     hit = re.fullmatch(r"p/(\d+)", path)
     if hit:
-        row = con.execute("SELECT * FROM posts WHERE id = ?", (hit.group(1),)).fetchone()
+        row = con.execute("SELECT * FROM posts WHERE id = ? AND status = ?",
+                          (hit.group(1), LIVE)).fetchone()
         if row:
             page = og_head(page, dict(row), base)
     return HTMLResponse(page)

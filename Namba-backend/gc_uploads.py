@@ -3,9 +3,9 @@
 A picture is uploaded the moment one is picked, before the entry is saved, so the
 commonest orphan is not a deleted entry -- it is a form somebody closed. Nothing
 in the request path can tell that apart from a picture about to be used, which is
-why this is a cron job with a grace period rather than a hook on delete_post.
+why this is a cron job with a grace period rather than a hook on a delete.
 
-Hooking delete_post would be wrong for a second reason: restore_revision hands
+Hooking one would be wrong for a second reason: restore_revision hands
 back the image path the entry had, so a file no live entry shows may still be the
 one a restore needs. That is also why the snapshots count as references below.
 """

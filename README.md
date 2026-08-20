@@ -41,6 +41,7 @@ go stale the way a table here would.
 | `numfmt.py` | `parse_number()` — a display string to a format and a sort key |
 | `seed.py` + `seed_tags.py` | the markdown importer and its hand-written tags |
 | `gc_uploads.py` | the cron job that deletes pictures nothing points at |
+| `admin.py` | the operator's commands — `status`, `hide`, `show`, `purge` |
 
 `Namba-frontend` — React + Vite, no state library and no UI kit. `src/api.ts` is
 the whole client; `Browse.tsx` serves the number, tag and search pages because
@@ -49,8 +50,9 @@ they differ only by which filter they pass. The home page has two views off a
 rewritten.
 
 Every read page reads. The one control that changes an entry is the `Edit` pill
-on `/p/:id`; everything that writes — languages, history, links, delete — is in
-the form behind it.
+on `/p/:id`; everything that writes — languages, history, links — is in the
+form behind it. Nothing there deletes: an entry can be hidden by whoever runs
+the wiki and is never removed by a visitor.
 
 ### Numbers
 
@@ -87,13 +89,19 @@ every visitor, and the post list offers an `edit` link on each card.
 Two things keep that from being destructive. First, `author` records whoever
 wrote an entry and is **never** overwritten; an editor is recorded separately in
 `edited_by`, so a stranger's correction reads "written by seed, last edited by
-arthur" rather than quietly stealing the byline. Second, every edit, restore and
-delete snapshots the previous state into `revisions` first. That history reads
+arthur" rather than quietly stealing the byline. Second, every edit and every
+restore snapshots the previous state into `revisions` first. That history reads
 down the right-hand column of each entry and is restorable from the entry's edit
 form; the fifty newest are shown, since a snapshot is the whole entry and an
-entry that has been fought over carries hundreds. Those rows deliberately have no foreign key — they outlive the post they
-describe, so a deletion is recoverable too, from the address the entry used to
-have.
+entry that has been fought over carries hundreds. Those rows deliberately have
+no foreign key — they outlive the post they describe, which is what makes the
+entries removed before `posts.status` existed recoverable too, from the address
+they used to have.
+
+Third, nothing takes an entry away. `posts.status` is `ACTIVE`, `HIDDEN` or
+`DELETED`; there is no delete route and no delete button, and a hidden entry
+leaves every public read and comes back whole. Whoever runs the wiki hides one
+with `python admin.py hide <id>`.
 
 An entry's details are markdown — bold, italics, links, lists, headings, quotes,
 code and tables — rendered on the entry page. Lists show it read back as plain
@@ -192,8 +200,8 @@ site shares one allowance.
 
 Two things want a cron entry: `python gc_uploads.py --delete` daily, or abandoned
 uploads accumulate until the 1 GB ceiling stops the wiki taking pictures, and a
-copy of the database somewhere else — anyone can delete any entry, and a restore
-needs the id of a page nothing links to any more.
+copy of the database somewhere else — anyone can rewrite any entry, and the
+snapshots that undo that live in the same file as the entries.
 
 ## Known gaps
 

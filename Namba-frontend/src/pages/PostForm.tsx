@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
-  api, fmtDate, FORMAT_LABEL, FORMATS, nickname, numberPath, originalLabel,
+  api, fmtDate, FORMAT_LABEL, FORMATS, nickname, originalLabel,
   showValue, TAG_MAX, tagLabel, TAGS_PER_POST,
   type Format, type Post, type Revision, type Tag, type Translation,
 } from '../api'
@@ -173,16 +173,6 @@ export default function PostForm() {
       const next = await fn()
       if (replaces) fill(next)
       else setPost(next)
-    } catch (e) {
-      setErr((e as Error).message)
-    }
-  }
-
-  async function remove() {
-    if (!confirm('Delete this entry? The previous version stays in its history.')) return
-    try {
-      await api.remove(Number(id))
-      nav(numberPath(value))
     } catch (e) {
       setErr((e as Error).message)
     }
@@ -447,21 +437,7 @@ export default function PostForm() {
           <button type="button" className="btn" onClick={() => nav(-1)}>
             Cancel
           </button>
-          {editing && (
-            <>
-              <span className="spacer" />
-              <button type="button" className="btn danger" onClick={remove}>
-                Delete this entry
-              </button>
-            </>
-          )}
         </div>
-        {editing && (
-          <p className="fine">
-            Deleting keeps the entry in its history — it can be restored to the same
-            address.
-          </p>
-        )}
       </form>
 
       {post && (
