@@ -174,7 +174,12 @@ What actually changes shape, rather than size:
 
 - **The header.** One row above 900. Below it the wordmark keeps its line with
   the search, and the three pills take the line under it flush right; below 560
-  the search takes a row of its own. `.acts` carries an explicit flex basis in
+  the search takes a row of its own. In the 900 band the search carries
+  `margin-left: auto` so the two rows end on the same edge: its 460px cap
+  bites from about 740 up, and without the auto margin the slack it stops
+  taking collects on its right, leaving the box 41px short of the pills at 768
+  and 166px short at 900. The slack belongs on the wordmark's side, where
+  there is nothing underneath to line up with. `.acts` carries an explicit flex basis in
   both bands, so set `flex`, never `width` — an explicit basis beats `width`
   outright, and `width: 100%` on it did nothing at all.
 - **A `.card` row** is `[number][title and blurb][thumbnail]` until 560, where

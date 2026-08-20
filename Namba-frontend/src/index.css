@@ -281,7 +281,14 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
      so the first thing on the page was a form field. Top-aligned, the wordmark
      is first again. */
   .top { align-items: flex-start; }
-  .search { flex: 1 1 180px; min-width: 0; max-width: 460px; }
+  /* margin-left, so the box ends where the row under it ends. The 460 cap is
+     what makes this necessary: past about 740 the search stops growing and
+     the slack it stops taking used to collect on its right, which left it
+     floating 41px short of the pills at 768 and 166px short at 900 -- the one
+     width band where they are two rows and the misalignment is the only thing
+     the eye has to line them up by. The slack goes to the wordmark's side
+     now, where there is nothing under it to line up with. */
+  .search { flex: 1 1 180px; min-width: 0; max-width: 460px; margin-left: auto; }
   .search input { flex: 1; width: auto; min-width: 0; }
   .acts-main { flex: 1 0 100%; justify-content: flex-end; }
 }
