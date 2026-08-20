@@ -45,7 +45,6 @@ import events
 import gc_uploads
 from main import UPLOAD_DIR
 
-STATUSES = ("ACTIVE", "HIDDEN", "DELETED")
 PASSWORD_MIN = 12
 
 
@@ -64,8 +63,8 @@ def status_of(post_id):
 def set_status(post_id, status):
     """Move an entry on or off the public wiki. Reversible by definition: the
     only thing that changes is a string in one column."""
-    if status not in STATUSES:
-        raise ValueError(f"status must be one of {STATUSES}")
+    if status not in db.POST_STATUSES:
+        raise ValueError(f"status must be one of {db.POST_STATUSES}")
     con = db.connect()
     try:
         with con:

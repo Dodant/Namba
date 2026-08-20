@@ -29,10 +29,20 @@ package). **Change one, change the other:**
 |---|---|---|
 | the 4 number formats | `numfmt.py` `FORMATS` | `src/api.ts` `FORMATS` |
 | the two tag limits | `main.py` `TAG_MAX`, `TAGS_PER_POST` | `src/api.ts`, same names |
+| the moderation vocabularies | `db.py` `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`, `REQUEST_STATUSES`, `REPORT_STATUSES` | `src/api.ts`, same names |
 
-The backend rejects an unknown format with a 422 rather than dropping it, and
-a tag past either limit the same way, so a frontend-only change fails loudly
-rather than silently.
+The backend rejects an unknown format with a 422 rather than dropping it, a tag
+past either limit the same way, and an invented delete-request or report reason
+the same way again — so a frontend-only change fails loudly rather than
+silently. The five vocabularies live in `db.py` rather than beside the routes
+because they are what the `TEXT` columns may hold, and both `main.py` and
+`admin_api.py` need them without importing each other.
+
+They are **not** SQL `CHECK` constraints, and that is a trade rather than an
+oversight: `CREATE TABLE IF NOT EXISTS` skips a database that already exists and
+SQLite cannot `ALTER` a `CHECK` in afterwards, so the rule would hold on fresh
+installs and be absent on upgraded ones. One enforced rule in Pydantic beats two
+different databases.
 
 There used to be a second row here for the 20 category tags. Tags are
 free-form now: the backend checks a tag's shape, never its membership, and

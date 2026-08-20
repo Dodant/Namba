@@ -5,7 +5,7 @@ import os
 import re
 import time
 from collections import defaultdict
-from typing import List, Optional
+from typing import ClassVar, List, Optional
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
@@ -238,6 +238,39 @@ class CommentIn(BaseModel):
         if not v:
             raise ValueError("must not be blank")
         return v
+
+
+class FlagIn(BaseModel):
+    """What a visitor sends instead of pressing a button that removes things.
+
+    The shape of a delete request and of a report are the same shape; only the
+    vocabulary of reasons differs, so the two below are three lines each. A
+    detail box of 1000 rather than the comment cap of 300: a report is an
+    argument addressed to whoever runs the wiki, not a remark beside the entry,
+    and the one thing it must be able to do is explain itself.
+    """
+
+    REASONS: ClassVar[tuple] = ()
+    reason: str = Field(max_length=40)
+    detail: str = Field(default="", max_length=1000)
+
+    @field_validator("reason")
+    @classmethod
+    def known_reason(cls, v):
+        if v not in cls.REASONS:
+            raise ValueError(f"reason must be one of {cls.REASONS}")
+        return v
+
+
+class DeleteRequestIn(FlagIn):
+    REASONS: ClassVar[tuple] = db.DELETE_REASONS
+    author: str = Field(default="anonymous", max_length=40)
+
+
+class ReportIn(FlagIn):
+    # No nickname. A report is addressed to the operator and read once; a byline
+    # on it would only ever be a name to hold against somebody.
+    REASONS: ClassVar[tuple] = db.REPORT_REASONS
 
 
 class LinkIn(BaseModel):
@@ -878,6 +911,82 @@ def add_comment(post_id: int, c: CommentIn, who=Depends(guard), con=Depends(get_
         events.record(con, "COMMENT", client=who, who=c.author.strip() or "anonymous",
                       target_type="post", target_id=post_id)
     return list_comments(post_id, con)
+
+
+def _already_open(con, table, post_id, who, open_state):
+    """Has this client already got something waiting on this entry?
+
+    A count is only worth reading if it counts *people*: without this one
+    visitor could file twenty reports and the moderation page would show an
+    entry twenty people objected to.
+
+    Keyed on the cookie when there is one and on the address only when there is
+    not. An office, a school and a mobile carrier are each one address for
+    hundreds of people, and refusing the second of them is a worse failure than
+    a count a determined spammer can pad -- which the write limiter caps at
+    twenty a minute anyway, and which the abuse view is for. In a table rather
+    than a UNIQUE index because NULL is distinct from NULL in one, so the
+    constraint would not hold for precisely the cookieless half.
+    """
+    col, val = ("client_hash", who["client_hash"]) if who["client_hash"] \
+        else ("ip_hash", who["ip_hash"])
+    return con.execute(
+        f"SELECT 1 FROM {table} WHERE post_id = ? AND {col} = ? AND status = ?",
+        (post_id, val, open_state),
+    ).fetchone() is not None
+
+
+@app.post("/api/posts/{post_id}/delete-request", status_code=201)
+def request_deletion(
+    post_id: int, r: DeleteRequestIn, who=Depends(guard), con=Depends(get_db)
+):
+    """Ask for an entry to go. Nobody can take one away, including whoever wrote
+    it, so this is the only route that leads there -- and what it leads to is a
+    person reading it, not a state change."""
+    fetch_one(con, post_id)  # 404 on a missing or already hidden entry
+    if _already_open(con, "delete_requests", post_id, who, "PENDING"):
+        raise HTTPException(409, "you have already asked about this entry")
+    with con:
+        cur = con.execute(
+            """INSERT INTO delete_requests
+                   (post_id, reason, detail, requested_by, ip_hash, ua_hash,
+                    client_hash, created_at)
+               VALUES (?,?,?,?,?,?,?,?)""",
+            (post_id, r.reason, r.detail.strip(), r.author.strip() or "anonymous",
+             who["ip_hash"], who["ua_hash"], who["client_hash"], now()),
+        )
+        events.record(con, "DELETE_REQUEST", client=who,
+                      who=r.author.strip() or "anonymous", target_type="request",
+                      target_id=cur.lastrowid, post=post_id, reason=r.reason)
+    return {"id": cur.lastrowid, "status": "PENDING"}
+
+
+@app.post("/api/posts/{post_id}/report", status_code=201)
+def report(post_id: int, r: ReportIn, who=Depends(guard), con=Depends(get_db)):
+    """Say something is wrong with an entry without asking for it to go.
+
+    Answers with the entry's open count, which is what the page can show back --
+    and deliberately not with the reports themselves. They are addressed to the
+    operator, and a public list of them is a second place to write abuse.
+    """
+    fetch_one(con, post_id)
+    if _already_open(con, "reports", post_id, who, "OPEN"):
+        raise HTTPException(409, "you have already reported this entry")
+    with con:
+        cur = con.execute(
+            """INSERT INTO reports (post_id, reason, detail, ip_hash, ua_hash,
+                                    client_hash, created_at)
+               VALUES (?,?,?,?,?,?,?)""",
+            (post_id, r.reason, r.detail.strip(), who["ip_hash"], who["ua_hash"],
+             who["client_hash"], now()),
+        )
+        events.record(con, "REPORT", client=who, target_type="report",
+                      target_id=cur.lastrowid, post=post_id, reason=r.reason)
+        open_now = con.execute(
+            "SELECT COUNT(*) FROM reports WHERE post_id = ? AND status = 'OPEN'",
+            (post_id,),
+        ).fetchone()[0]
+    return {"id": cur.lastrowid, "open": open_now}
 
 
 @app.post("/api/posts/{post_id}/links", status_code=201)

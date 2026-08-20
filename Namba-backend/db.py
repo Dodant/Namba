@@ -165,7 +165,67 @@ CREATE TABLE IF NOT EXISTS admin_sessions (
   expires_at TEXT NOT NULL,
   ip_hash    TEXT NOT NULL
 );
+
+-- What a visitor sends instead of a delete button. No foreign key: a request
+-- has to be readable after the entry it asked about is gone, or the audit trail
+-- ends exactly where somebody would want to read it.
+--
+-- One pending request per client per entry, enforced in the route rather than
+-- by a UNIQUE -- a visitor with no cookie has a NULL client_hash, and NULL is
+-- distinct from NULL in a unique index, so the constraint would not hold for
+-- the half of visitors it matters most for.
+CREATE TABLE IF NOT EXISTS delete_requests (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id       INTEGER NOT NULL,
+  reason        TEXT NOT NULL,
+  detail        TEXT NOT NULL DEFAULT '',
+  requested_by  TEXT,                              -- the nickname typed, if any
+  ip_hash       TEXT, ua_hash TEXT, client_hash TEXT,
+  status        TEXT NOT NULL DEFAULT 'PENDING',   -- PENDING | APPROVED | REJECTED
+  created_at    TEXT NOT NULL,
+  decided_at    TEXT,
+  decided_by    INTEGER,                           -- admins.id
+  decision_note TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_delete_requests_status ON delete_requests(status, id DESC);
+CREATE INDEX IF NOT EXISTS idx_delete_requests_post   ON delete_requests(post_id);
+
+-- Nearly the same columns as delete_requests and deliberately not the same
+-- table. A report is counted per entry -- five of them is one row on the
+-- moderation page with a count of five -- while a request is decided one at a
+-- time. The reason vocabularies differ, the decisions differ, and the dashboard
+-- counts them apart.
+CREATE TABLE IF NOT EXISTS reports (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id       INTEGER NOT NULL,
+  reason        TEXT NOT NULL,
+  detail        TEXT NOT NULL DEFAULT '',
+  ip_hash       TEXT, ua_hash TEXT, client_hash TEXT,
+  status        TEXT NOT NULL DEFAULT 'OPEN',      -- OPEN | RESOLVED | IGNORED
+  created_at    TEXT NOT NULL,
+  decided_at    TEXT,
+  decided_by    INTEGER,
+  decision_note TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_reports_post   ON reports(post_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, id DESC);
 """
+
+# What the TEXT columns above may hold. Here rather than beside the routes
+# because they are a property of the schema, and both main.py and admin_api.py
+# need them without importing each other.
+#
+# Not SQL CHECK constraints, and that is a real trade rather than laziness:
+# CREATE TABLE IF NOT EXISTS skips a database that already exists, and SQLite
+# cannot ALTER a CHECK in afterwards -- so a constraint here would be enforced
+# on fresh installs and absent on upgraded ones, which is worse than none.
+# Pydantic on the way in is what holds it, and a 422 says so loudly.
+POST_STATUSES = ("ACTIVE", "HIDDEN", "DELETED")
+DELETE_REASONS = ("DUPLICATE", "INCORRECT", "NO_SOURCE", "SPAM", "VANDALISM", "OTHER")
+REPORT_REASONS = ("INCORRECT", "SPAM", "AD", "ABUSE", "COPYRIGHT", "SOURCE",
+                  "VANDALISM", "OTHER")
+REQUEST_STATUSES = ("PENDING", "APPROVED", "REJECTED")
+REPORT_STATUSES = ("OPEN", "RESOLVED", "IGNORED")
 
 
 def get_db():

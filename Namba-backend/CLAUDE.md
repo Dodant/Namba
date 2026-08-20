@@ -132,6 +132,21 @@ it is unset, `secret.key` beside the database is generated and used instead).
   them. `active = 0` is in the session join, so it takes effect on the next
   request; `admin.py` also drops the live sessions, and the test checks the join
   separately so the tidy-up cannot hide it.
+- **A count only counts if it counts people.** `_already_open` refuses a second
+  pending delete request or open report from the same visitor, keyed on the
+  `namba_cid` cookie when there is one and on the IP hash only when there is
+  not. An office, a school and a mobile carrier are each one address for
+  hundreds, and refusing the second of them is a worse failure than a count a
+  determined spammer can pad — which the write limiter caps anyway. Not a UNIQUE
+  index, because NULL is distinct from NULL in one and the constraint would miss
+  precisely the cookieless half.
+- **Approving one delete request closes the rest on that entry; rejecting one
+  does not.** They were all asking for what just happened, and leaving them open
+  shows five rows for one decision already made. A rejection is about its own
+  reason and closes its own row alone.
+- **`decide_reports` does nothing to the entry, on purpose.** Hiding it, editing
+  it and blocking whoever wrote it are separate routes with separate audit rows.
+  Folding them in would be one button that does four things and logs one.
 - **`events` is append-only, and that is the feature.** Nothing in this codebase
   issues an `UPDATE` or a `DELETE` against it. An audit log an operator can tidy
   up after themselves in is not an audit log, so do not add a route that edits

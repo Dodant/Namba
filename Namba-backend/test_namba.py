@@ -138,6 +138,165 @@ def _events(**where):
         con.close()
 
 
+def _visitor(pid):
+    """A client with a namba_cid of its own. Every TestClient reports the same
+    address, so a second one is not a second person until it has loaded a page:
+    the document is what sets the cookie the dedup keys on."""
+    c = TestClient(main.app)
+    c.get(f"/p/{pid}")
+    assert events.COOKIE in c.cookies
+    return c
+
+
+def _operator(c, email="mod@namba.test"):
+    """Sign in as an operator, creating one the only way there is to. Returns the
+    client, which now carries the session cookie."""
+    try:
+        admin.add_admin(email, "a long enough password")
+    except ValueError:
+        admin.set_active(email, True)
+        admin.set_password(email, "a long enough password")
+    auth._attempts.clear()
+    got = c.post("/api/admin/login", json={"email": email,
+                                           "password": "a long enough password"})
+    assert got.status_code == 200, got.text
+    return c
+
+
+def test_delete_requests():
+    """Removing an entry is a request now, so the request has to be a real
+    thing: a row with a reason, a queue, a decision, and an audit trail on both
+    halves of it."""
+    c = TestClient(main.app)
+    p = c.post("/api/posts", json={"value": "31337", "title": "please remove me",
+                                   "body": "0118 999 881 999 119 725 3"}).json()
+    pid = p["id"]
+
+    # the whole queue is behind the login
+    assert TestClient(main.app).get("/api/admin/delete-requests").status_code == 401
+
+    # the shape is checked the way a tag's is: an invented reason is a 422, not
+    # a row nobody can filter on
+    assert c.post(f"/api/posts/{pid}/delete-request",
+                  json={"reason": "BECAUSE"}).status_code == 422
+    assert c.post(f"/api/posts/{pid}/delete-request",
+                  json={"reason": "SPAM", "detail": "x" * 1001}).status_code == 422
+    assert c.post("/api/posts/999999/delete-request",
+                  json={"reason": "SPAM"}).status_code == 404
+
+    asked = c.post(f"/api/posts/{pid}/delete-request",
+                   json={"reason": "OTHER", "detail": "that is a phone number",
+                         "author": "moss"})
+    assert asked.status_code == 201, asked.text
+    req_id = asked.json()["id"]
+
+    # one pending request per client, or a count stops counting people
+    assert c.post(f"/api/posts/{pid}/delete-request",
+                  json={"reason": "SPAM"}).status_code == 409
+
+    # and asking changes nothing at all about the entry
+    assert c.get(f"/api/posts/{pid}").status_code == 200
+
+    ops = _operator(TestClient(main.app))
+    queue = ops.get("/api/admin/delete-requests").json()
+    mine = next(r for r in queue["rows"] if r["id"] == req_id)
+    assert queue["total"] >= 1 and mine["status"] == "PENDING"
+    assert mine["reason"] == "OTHER" and mine["requested_by"] == "moss"
+    assert mine["title"] == "please remove me", "the queue does not say what it is about"
+    assert mine["post_status"] == "ACTIVE"
+    assert "testclient" not in str(mine), "the raw address reached the queue"
+
+    # a rejection leaves the entry alone and says why
+    bad = ops.post(f"/api/admin/delete-requests/{req_id}/decide",
+                   json={"decision": "MAYBE"})
+    assert bad.status_code == 422, bad.text
+    done = ops.post(f"/api/admin/delete-requests/{req_id}/decide",
+                    json={"decision": "REJECT", "note": "it is a joke, not a number"})
+    assert done.json()["status"] == "REJECTED"
+    assert c.get(f"/api/posts/{pid}").status_code == 200
+    assert ops.post(f"/api/admin/delete-requests/{req_id}/decide",
+                    json={"decision": "APPROVE"}).status_code == 409, \
+        "a decided request was decided twice"
+
+    # an approval hides the entry, and takes every other pending request on it
+    # with it -- they were all asking for what just happened
+    one, two = _visitor(pid), _visitor(pid)   # two people, so two pending requests
+    a = one.post(f"/api/posts/{pid}/delete-request", json={"reason": "SPAM"}).json()
+    b = two.post(f"/api/posts/{pid}/delete-request", json={"reason": "VANDALISM"}).json()
+    assert a["id"] != b["id"], (a, b)
+    ops.post(f"/api/admin/delete-requests/{a['id']}/decide",
+             json={"decision": "APPROVE", "note": "yes, that is somebody's phone"})
+    assert c.get(f"/api/posts/{pid}").status_code == 404, "the entry is still up"
+    left = ops.get("/api/admin/delete-requests", params={"status": "ALL"}).json()["rows"]
+    assert {r["status"] for r in left if r["post_id"] == pid} == {"APPROVED", "REJECTED"}
+    assert next(r for r in left if r["id"] == b["id"])["decision_note"] \
+        == f"decided with request {a['id']}"
+
+    # ...reversibly. It is a column, so the entry is whole and so is its history.
+    admin.set_status(pid, "ACTIVE")
+    assert c.get(f"/api/posts/{pid}").json()["body"].startswith("0118")
+
+    # both halves are audited, and the operator's half carries who
+    kinds = {e["action"]: e for e in _events(target_id=pid)}
+    assert kinds["CONTENT_DELETE"]["admin_id"], "the decision has no name on it"
+    assert _events(action="DELETE_REQUEST"), "the asking was not recorded"
+    assert _events(action="REQUEST_REJECT")[-1]["admin_id"]
+    admin.set_status(pid, "HIDDEN")
+
+
+def test_reports():
+    """A report is counted per entry, because five people objecting to one entry
+    is one thing for an operator to look at."""
+    c = TestClient(main.app)
+    p = c.post("/api/posts", json={"value": "8008", "title": "buy cheap watches"}).json()
+    pid = p["id"]
+
+    assert c.post(f"/api/posts/{pid}/report", json={"reason": "NONSENSE"}
+                  ).status_code == 422
+    # a report has no byline: it is addressed to the operator and read once
+    assert c.post(f"/api/posts/{pid}/report",
+                  json={"reason": "AD", "author": "sneak"}).status_code == 201
+    assert c.post(f"/api/posts/{pid}/report", json={"reason": "SPAM"}
+                  ).status_code == 409, "one client filed two open reports"
+
+    others = [_visitor(pid) for _ in range(2)]
+    for i, o in enumerate(others):
+        got = o.post(f"/api/posts/{pid}/report",
+                     json={"reason": "SPAM", "detail": f"seen it {i} times"})
+        assert got.status_code == 201, got.text
+    assert got.json()["open"] == 3, got.json()
+
+    ops = _operator(TestClient(main.app))
+    row = next(r for r in ops.get("/api/admin/reports").json()["rows"]
+               if r["post_id"] == pid)
+    assert row["reports"] == 3 and row["title"] == "buy cheap watches"
+    assert set(row["reasons"].split(",")) == {"AD", "SPAM"}
+    assert row["first_at"] <= row["last_at"]
+    assert "sneak" not in str(row), "a report carried a byline"
+
+    detail = ops.get(f"/api/admin/reports/{pid}/detail").json()
+    assert len(detail) == 3 and all(len(d["ip_hash"]) == 64 for d in detail)
+    assert len({d["ip_hash"] for d in detail}) >= 1
+
+    # closing them is one decision on one entry, and it touches nothing else
+    assert ops.post(f"/api/admin/reports/{pid}/decide",
+                    json={"decision": "SHRUG"}).status_code == 422
+    shut = ops.post(f"/api/admin/reports/{pid}/decide",
+                    json={"decision": "RESOLVE", "note": "hidden and blocked"})
+    assert shut.json() == {"post_id": pid, "status": "RESOLVED", "closed": 3}
+    assert c.get(f"/api/posts/{pid}").status_code == 200, \
+        "resolving a report changed the entry, which is four things in one button"
+    assert ops.get("/api/admin/reports").json()["rows"] == [] or \
+        pid not in [r["post_id"] for r in ops.get("/api/admin/reports").json()["rows"]]
+    assert ops.post(f"/api/admin/reports/{pid}/decide",
+                    json={"decision": "IGNORE"}).status_code == 404
+
+    # ...and now the entry can be reported again, by the same people
+    assert c.post(f"/api/posts/{pid}/report", json={"reason": "AD"}).status_code == 201
+    assert _events(action="REPORT_RESOLVE")[-1]["admin_id"]
+    admin.set_status(pid, "HIDDEN")
+
+
 def test_events_log_every_write():
     """The log is the activity feed, the audit trail and the spam evidence at
     once, so every write that changes something has to land in it -- and the
