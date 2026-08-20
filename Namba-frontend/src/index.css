@@ -893,15 +893,22 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   color: var(--hit); font-size: 10.5px;
 }
 .post-like .btn:hover { border-color: var(--hit); }
-/* no border until it is open: closed, it is a label you can press; open, it
-   is a thing holding a panel below it */
+/* Borderless in both states. It used to draw one once it was open -- a label
+   when closed, a thing holding a panel when open -- but the panel underneath
+   already says that, and the outline said it a second time in the one row on
+   the page where a bordered capsule means "press me": the tags and the like
+   sit at the other end of it. What changes on press is the word, which is
+   what the button is for.
+
+   The transparent border stays. It is 2px of the box's height, so dropping it
+   shrinks the target a fingertip is already only just getting, and it keeps
+   this label the height of the like pill it shares a baseline with. */
 .credits-btn {
   font-family: var(--mono); font-size: 10.5px; padding: 3px 9px;
   border: 1px solid transparent; border-radius: 999px;
   background: none; color: var(--faint); cursor: pointer;
 }
 .credits-btn:hover { color: var(--ink); }
-.credits-btn[aria-expanded="true"] { border-color: var(--line); }
 .credits {
   display: flex; flex-direction: column; gap: 3px;
   font-family: var(--mono); font-size: 11px; line-height: 1.5;
