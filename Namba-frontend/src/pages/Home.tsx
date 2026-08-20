@@ -175,6 +175,17 @@ function Feed({ lang }: { lang: string }) {
    past, not one you have to get around. */
 const FOLD_OVER = 10
 
+/* "8 numbers · 21 entries". The row count on its own says how far the band
+   scrolls and nothing about how much is in it -- eight numbers is eight
+   entries on a thin band and forty on a busy one, and the second figure is
+   the one that moves as the wiki fills up. Both, because the band folds:
+   closed, this line is all it says about itself. */
+function bandCount(items: NumberEntry[]) {
+  const entries = items.reduce((n, item) => n + item.entries.length, 0)
+  return `${items.length} ${items.length === 1 ? 'number' : 'numbers'} · ${
+    entries} ${entries === 1 ? 'entry' : 'entries'}`
+}
+
 function Index({ lang }: { lang: string }) {
   const [params, setParams] = useSearchParams()
   const format = (params.get('format') ?? 'INTEGER') as Format
@@ -279,9 +290,7 @@ function Index({ lang }: { lang: string }) {
               <summary className="band-head">
                 <h2>{band.label}</h2>
                 <span className="rule" />
-                <span className="n">
-                  {band.items.length} {band.items.length === 1 ? 'number' : 'numbers'}
-                </span>
+                <span className="n">{bandCount(band.items)}</span>
               </summary>
               <ol className="index">
                 {band.items.map((n: NumberEntry) => {

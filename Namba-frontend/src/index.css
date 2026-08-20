@@ -362,15 +362,27 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 .band:not([open]) .band-head::before { transform: rotate(-90deg); }
 .band-head:hover h2, .band-head:hover::before { color: var(--ink); }
 .band-head .rule { flex: 1; height: 1px; background: var(--line); }
+/* nowrap at any width: a count is one figure and then another, and broken
+   over two lines it stops being either */
 .band-head .n {
   font-family: var(--mono); font-size: 10.5px; color: var(--fainter);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .band h2 {
   margin: 0;
   font-family: var(--mono); font-size: 10.5px; font-weight: 600;
   letter-spacing: 0.16em; text-transform: uppercase;
   color: var(--muted); font-variant-numeric: tabular-nums;
+}
+/* "1,000 - 9,999" against "27 numbers · 27 entries" wants 292px of the 288
+   a 320px screen has, and the head broke its own label across two lines to
+   fit -- which costs more than it saves, since a band head that wraps stops
+   reading as the one line across the page it is drawn to be. The rule has
+   already collapsed to nothing by that width, so what is left to give is the
+   gaps around it. */
+@media (max-width: 560px) {
+  .band-head { gap: 8px; }
+  .band-head h2 { white-space: nowrap; }
 }
 
 .index { list-style: none; margin: 0; padding: 0; }
