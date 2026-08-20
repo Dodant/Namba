@@ -81,6 +81,18 @@ def purge(post_id):
     """Remove an entry, its history and its picture. Not reversible.
 
     Returns the picture filename if one was removed, else None.
+
+    **What it does not take is the entry's rows in `events`.** They keep the
+    nickname that was typed, the three salted hashes behind each write, and
+    whatever `meta` was worth reading -- so a purge run for a legal removal
+    leaves that much behind. Deliberate, not missed: `events` is append-only by
+    convention (see its module docstring), and nothing in this codebase issues
+    an UPDATE or a DELETE against it, which is the whole reason an operator
+    cannot quietly tidy up after themselves in it. Redacting the identity
+    columns here would close the gap and spend that guarantee, and on a wiki
+    this size the guarantee is worth more. If a removal ever has to reach them,
+    it is a decision to take in the open -- the exception goes in the docstring
+    and in CLAUDE.md first, the way the reader-accounts line was revised.
     """
     con = db.connect()
     try:

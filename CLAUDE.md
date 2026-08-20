@@ -92,6 +92,16 @@ branch and has to be agreed on; a tag never did.
 - **The seed reports, it does not correct.** `seed.py` prints Korean titles and
   the `801.11` typo instead of translating or fixing them. Correcting source data
   is the wiki's job. Do not add cleanup passes to the importer.
+- **`events` is append-only, and that costs something.** Nothing in this
+  codebase issues an UPDATE or a DELETE against it, which is what makes it an
+  audit log an operator cannot quietly tidy up after themselves in. The price
+  is paid by `admin.py purge`: it takes the entry, its snapshots and its
+  picture, and leaves the entry's event rows holding the nickname typed, three
+  salted hashes and whatever is in `meta`. So the one hard delete does not
+  reach everything about a purged entry, and there is no retention sweep
+  expiring the hashes either. Both were weighed and declined — a wiki this
+  size gets more out of a log nobody can edit than out of a redaction. Neither
+  is a bug to fix in passing: revising this means saying so here first.
 
 ## Working here
 
