@@ -778,6 +778,16 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
 .cmt-form .field input, .cmt-form .field textarea { padding: 8px 14px; }
 .cmt-form .field textarea { min-height: 60px; }
 
+/* The two sides of the flag panel. .btn.on is the treatment the header's
+   Recent pill already wears, so "this is the one that is on" looks the same
+   wherever it happens; flex: 1 1 auto lets them share a line in a wide rail
+   and take one each in a narrow one, with no width to guess. The lead
+   sentence under them says what the chosen side will actually do, which is
+   the part a reader needs before picking a reason. */
+.flag-kind { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 9px; }
+.flag-kind .btn { flex: 1 1 auto; padding: 7px 13px; }
+.cmt-form > .quiet { margin: 0 0 10px; }
+
 .quiet { font-family: var(--mono); font-size: 10.5px; line-height: 1.5; color: var(--muted); }
 a.quiet { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 

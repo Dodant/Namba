@@ -7,6 +7,37 @@ export type Tag = string
 export const TAG_MAX = 24
 export const TAGS_PER_POST = 2
 
+/* Hand-mirrored from `db.py`, which holds them because they are what the TEXT
+   columns may contain and both `main.py` and `admin_api.py` need them. Same
+   bargain as FORMATS: send one that is not here and the API answers 422 rather
+   than storing a value nothing can filter on. */
+export const DELETE_REASONS = [
+  'DUPLICATE', 'INCORRECT', 'NO_SOURCE', 'SPAM', 'VANDALISM', 'OTHER',
+] as const
+export const REPORT_REASONS = [
+  'INCORRECT', 'SPAM', 'AD', 'ABUSE', 'COPYRIGHT', 'SOURCE', 'VANDALISM', 'OTHER',
+] as const
+export const POST_STATUSES = ['ACTIVE', 'HIDDEN', 'DELETED'] as const
+export const REQUEST_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const
+export const REPORT_STATUSES = ['OPEN', 'RESOLVED', 'IGNORED'] as const
+
+export type PostStatus = (typeof POST_STATUSES)[number]
+
+/** One map for both vocabularies: four of the reasons are in each, and a
+    reader picking one does not know or care which list it came from. */
+export const REASON_LABEL: Record<string, string> = {
+  DUPLICATE: 'It duplicates another entry',
+  INCORRECT: 'The information is wrong',
+  NO_SOURCE: 'There is no reliable source',
+  SOURCE: 'The source is wrong or missing',
+  SPAM: 'Spam',
+  AD: 'An advertisement',
+  ABUSE: 'Abusive or hateful',
+  COPYRIGHT: 'A copyright problem',
+  VANDALISM: 'Vandalism',
+  OTHER: 'Something else',
+}
+
 export const FORMATS = ['INTEGER', 'DECIMAL', 'MIXED', 'TIME'] as const
 export type Format = (typeof FORMATS)[number]
 
@@ -44,6 +75,10 @@ export type Post = {
       translation's label, and null on everything written before it existed. */
   lang: string | null
   likes: number
+  /** Always 'ACTIVE' on anything a reader can fetch — a hidden entry leaves
+      every public read. It comes down the wire because the row does, and the
+      back office is the only place it is ever anything else. */
+  status?: PostStatus
   created_at: string
   updated_at: string
   tags: Tag[]
@@ -194,6 +229,20 @@ export const api = {
     req<Post>(`/api/posts/${id}/revisions/${rev}/restore`, json('POST', { author })),
 
   comments: (id: number | string) => req<Comment[]>(`/api/posts/${id}/comments`),
+
+  /** Ask for an entry to go. There is no route that takes one away — this leads
+      to a person reading it, which is the whole design. */
+  requestDeletion: (
+    id: number | string,
+    r: { reason: string; detail: string; author: string },
+  ) => req<{ id: number; status: string }>(`/api/posts/${id}/delete-request`,
+                                           json('POST', r)),
+
+  /** Say something is wrong without asking for the entry to go. No nickname:
+      a report is addressed to whoever runs the wiki and read once, and a byline
+      on it would only ever be a name to hold against somebody. */
+  report: (id: number | string, r: { reason: string; detail: string }) =>
+    req<{ id: number; open: number }>(`/api/posts/${id}/report`, json('POST', r)),
 
   /** Answers with the whole list, newest first, so what comes back *is* the new
       state -- the same shape link() and translate() hand the post back in, and

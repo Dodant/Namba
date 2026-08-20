@@ -1,7 +1,7 @@
 # Namba-frontend
 
 React 19 + Vite + TypeScript. `src/api.ts` is the entire client; four pages and
-one component. Dev server proxies `/api` and `/uploads` to `127.0.0.1:8000`
+two components. Dev server proxies `/api` and `/uploads` to `127.0.0.1:8000`
 (`vite.config.ts`) — no CORS config needed locally.
 
 ```sh
@@ -415,6 +415,20 @@ request an operator decides, and hiding one is a column the operator sets. Do
 not put a delete button back in this form — the whole point is that the wiki
 cannot lose an entry to one stranger's click.
 
+Where it went is `FlagPanel`, the third `<details>` in the read page's rail. It
+is on the read page for the reason the comment box is: it writes something
+*beside* the entry rather than changing it. It carries both halves — "something
+is wrong" and "it should be removed" — behind one toggle rather than two folds,
+because the fields are identical apart from the reason list and a rail with four
+sections is a rail nobody reaches the bottom of. Switching sides clears the
+chosen reason on purpose: four of the ten reasons are in both lists, so keeping
+it would carry "Vandalism" across and silently drop "An advertisement". Only the
+removal half asks for a nickname, because only that half has one on the API — a
+report is read once by one person, and a byline on it would only ever be a name
+to hold against somebody. On success the form is replaced rather than re-offered:
+the API refuses a second open one from the same reader, and showing the box again
+just to answer 409 is the app pretending it did not take this.
+
 A like is the exception and is not one of them. It writes, but it writes a
 counter beside the entry rather than the entry, so it sits in the meta row here
 and on every card and index row, the same as anywhere else.
@@ -442,8 +456,12 @@ the entry form, an inner submit bubbles out and publishes the entry.
 
 ## Mirrors the backend
 
-`FORMATS` in `api.ts` is a hand-copy of `numfmt.py`. Changing it here alone gets
-a 422 from the API. Tags are **not** a list any more — do not add one back. The
+`FORMATS` in `api.ts` is a hand-copy of `numfmt.py`, and the five moderation
+vocabularies — `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`,
+`REQUEST_STATUSES`, `REPORT_STATUSES` — are hand-copies of `db.py`. Changing any
+of them here alone gets a 422 from the API. `REASON_LABEL` is one map for both
+reason lists, because four reasons are in each and a reader picking one neither
+knows nor cares which list it came from. Tags are **not** a list any more — do not add one back. The
 form's chips come from `api.tags()`, which reports what the wiki actually uses,
 and `toggleTag()` normalises a typed tag the same way the API will so that
 "Book" turns the existing book chip on rather than looking like a second one.

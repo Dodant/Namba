@@ -214,6 +214,39 @@ function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void })
   )
 }
 
+/* Four things that belong on every page and nowhere else.
+
+   Not five. The takedown path was going to live here until it turned out
+   /api/posts/{id}/report and /delete-request both want an id -- you report an
+   entry, not a wiki -- so that control belongs on the entry and there is no id
+   down here to send it.
+
+   Sentences rather than a row of policy pages. With no reader accounts there is
+   nothing to disclose that does not fit in one, and a sentence carried by every
+   page is read more than a page nobody clicks. */
+function Footer() {
+  return (
+    <footer className="foot">
+      <p>
+        Everything written here is{' '}
+        <a href="https://creativecommons.org/publicdomain/zero/1.0/">CC0</a> — public
+        domain. Take it, quote it, feed it to a machine; no permission and no credit
+        needed. The byline stays anyway, because it says who got there first.
+      </p>
+      <p>
+        No accounts and no addresses. A salted hash of yours is kept to slow a flood
+        and to make a block mean something, and nothing else about you is stored.
+      </p>
+      <p>
+        {/* Absolute, not a Link: FastAPI serves these, not the router. Both are
+            in the dev proxy beside /api for the same reason. */}
+        <a href="/docs">API</a> — open, no key.{' · '}
+        <a href="https://github.com/MIIRAIII/Namba">Source</a>
+      </p>
+    </footer>
+  )
+}
+
 export default function App() {
   /* Held here and handed down rather than read from localStorage in each page:
      the pages have to refetch when it changes, and only a value they render
@@ -251,6 +284,7 @@ export default function App() {
             />
           </Routes>
         </main>
+        <Footer />
       </div>
     </BrowserRouter>
   )
