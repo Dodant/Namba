@@ -234,6 +234,11 @@ td.wide a, td.wide span { display: block; overflow: hidden; text-overflow: ellip
 .empty {
   padding: 26px 14px; text-align: center; color: var(--muted); font-size: 12.5px;
 }
+/* ...except in the narrow column, where a centred banner with 26px of air
+   around the word "None." is three lines of nothing. Left and tight there. */
+aside .empty, .sheet-body .empty {
+  padding: 2px 0 6px; text-align: left; font-size: 12px;
+}
 .err {
   margin: 0 0 14px; padding: 8px 11px; border-radius: var(--radius);
   background: var(--hit-soft); color: var(--hit); font-size: 12.5px;
@@ -292,12 +297,18 @@ td.wide a, td.wide span { display: block; overflow: hidden; text-overflow: ellip
   margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.07em;
   text-transform: uppercase; color: var(--muted);
 }
-/* auto-fit rather than a column count: the row is four cells on a desktop and
-   two on a tablet with nothing to declare, and a group of three does not leave
-   a hole where the fourth would be. */
+/* what sits *beside* a heading is not part of it: the uppercase and the letter
+   spacing made "History 3 versions kept" one shouted run-on */
+.stat-group h2 .hash, .stat-group h2 .badge {
+  text-transform: none; letter-spacing: 0; font-weight: 400;
+}
+/* auto-*fill*, not auto-fit, and that is the whole point: fit collapses the
+   empty tracks, so a group of three cards stretched to fill a row four cards
+   wide and the columns stopped lining up down the page. Filling keeps the
+   fourth track empty and the grid reads as a grid. */
 .stats {
   display: grid; gap: 8px;
-  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
 }
 .stat {
   border: 1px solid var(--line); border-radius: var(--radius);

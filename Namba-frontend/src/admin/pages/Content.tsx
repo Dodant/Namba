@@ -62,9 +62,10 @@ export default function Content() {
     <div className="page">
       <h1>All content</h1>
       <p className="lede">
-        Every entry, including the ones that are off the wiki. FLAGGED means an
-        entry has an open report — it is a count, not a state, so it clears when
-        the reports do.
+        Every entry, including the ones that are off the wiki. Only the
+        exceptions carry a badge, so a row reading “on the wiki” is a row with
+        nothing wrong with it. FLAGGED means an open report — a count rather than
+        a state, so it clears when the reports do.
       </p>
 
       <div className="bar">
@@ -143,9 +144,16 @@ export default function Content() {
                   <Link to={`/content/${r.id}`}>{r.title}</Link>
                 </td>
                 <td className="tight">
-                  <Badge>{r.status}</Badge>
-                  {r.status === 'ACTIVE' && !!r.open_reports && ' '}
-                  {r.status === 'ACTIVE' && !!r.open_reports && <Badge>FLAGGED</Badge>}
+                  {/* Only the exceptions get a badge. Almost every row is
+                      ACTIVE, and a hundred and eighty green pills is a column
+                      an operator stops seeing -- which is the opposite of what
+                      a status column is for. The lede says what blank means. */}
+                  {r.status !== 'ACTIVE' && <Badge>{r.status}</Badge>}
+                  {r.status !== 'ACTIVE' && !!r.open_reports && ' '}
+                  {!!r.open_reports && <Badge>FLAGGED</Badge>}
+                  {r.status === 'ACTIVE' && !r.open_reports && (
+                    <span className="hash">on the wiki</span>
+                  )}
                 </td>
                 <td className="tight">
                   {r.author}
@@ -157,18 +165,14 @@ export default function Content() {
                   <When at={r.updated_at} />
                 </td>
                 <td className="tight right num">
-                  {/* two counts in one column, and the words say which: a bare
-                      "2 / 1" needs a legend and a legend needs reading */}
-                  {!r.open_reports && !r.pending_requests ? (
-                    <span className="hash">—</span>
-                  ) : (
-                    <>
-                      {!!r.open_reports && <span title="open reports">{r.open_reports}r</span>}
-                      {!!r.open_reports && !!r.pending_requests && ' '}
-                      {!!r.pending_requests && (
-                        <span title="pending delete requests">{r.pending_requests}d</span>
-                      )}
-                    </>
+                  {/* Two counts in one column, and the letters say which: a
+                      bare "2 / 1" needs a legend and a legend needs reading.
+                      Blank when there are none -- a dash on a hundred and
+                      eighty rows is the same noise the status badges were. */}
+                  {!!r.open_reports && <span title="open reports">{r.open_reports}r</span>}
+                  {!!r.open_reports && !!r.pending_requests && ' '}
+                  {!!r.pending_requests && (
+                    <span title="pending delete requests">{r.pending_requests}d</span>
                   )}
                 </td>
               </tr>

@@ -23,6 +23,7 @@ with open(os.path.join(_tmp, "dist", "assets", "app.js"), "w") as _fh:
 from fastapi.testclient import TestClient  # noqa: E402
 
 import admin  # noqa: E402
+import admin_api  # noqa: E402
 import auth  # noqa: E402
 import db  # noqa: E402
 import events  # noqa: E402
@@ -677,6 +678,11 @@ def test_admin_content_and_dashboard():
     assert changed["title"] == ("Moon landing", "Moon landings")
     assert changed["grouped"] == (False, True)
     assert "body" not in changed, "a body change belongs in the body diff"
+    assert "edited_by" not in changed, \
+        "every edit changes edited_by, so a row for it says nothing"
+    # ...and author is in the field list for the opposite reason: it must never
+    # change, so a row for it turning up at all is the tripwire
+    assert "author" in admin_api.DIFF_FIELDS, "the byline tripwire went missing"
     assert {"sign": "+", "text": "And a third."} in d["body"]
     assert d["tags"] == {"before": ["space"], "after": ["history", "space"]}
     assert ops.get(f"/api/admin/posts/{pid}/diff",

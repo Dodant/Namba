@@ -41,11 +41,19 @@ export function LogTable({ rows }: { rows: Event[] }) {
               <When at={e.at} />
             </td>
             <td className="tight">
-              {/* An operator's decision carries their address; a visitor's write
+              {/* Three kinds of actor and they have to be told apart. An
+                  operator's decision carries their address. A visitor's write
                   carries the nickname they typed, which is not an identity and
-                  is not checked. "anonymous" rather than a blank keeps the
-                  column honest about which of the two it is. */}
-              {e.by ? <b>{e.by}</b> : <span>{e.actor || 'anonymous'}</span>}
+                  is not checked. And an `admin.py` command carries neither,
+                  because nobody was signed in -- calling that "anonymous"
+                  filed a shell command as a passing stranger. */}
+              {e.by ? (
+                <b>{e.by}</b>
+              ) : meta(e).by === 'shell' ? (
+                <span className="hash">the server, from a shell</span>
+              ) : (
+                <span>{e.actor || 'anonymous'}</span>
+              )}
             </td>
             <td>
               {said}
