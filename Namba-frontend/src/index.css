@@ -471,6 +471,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
   display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
   padding: 11px 0; border-bottom: 1px solid var(--rule);
 }
+/* align-items: flex-start is here so the Restore button in the recovery view
+   is the width of its label rather than the width of the rail -- and in a
+   column flex that means every child is sized to fit-content, which for an
+   unbreakable word is its min-content: one 132-character title in a revision
+   pushed the document out to 1008px at a 390px viewport, header rule and all.
+   The button still wants flex-start; the two text children do not, so they are
+   capped and break-word can do its job inside the cap. */
+.rev b, .rev span { max-width: 100%; }
 .rev b { font-size: 14.5px; font-weight: 400; line-height: 1.35; }
 .rev span { font-family: var(--mono); font-size: 10.5px; line-height: 1.4; color: var(--faint); }
 .rev.now b { color: var(--accent); font-weight: 600; }
@@ -818,7 +826,15 @@ h4.section {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .panel-title.ink { color: var(--ink); }
-.panel-by { font-family: var(--mono); font-size: 10.5px; color: var(--faint); flex: none; }
+/* shrinkable, not flex: none. A nickname is 40 characters if someone wants it
+   to be, and at flex: none one of those pushed the row past the panel at every
+   width -- .panel overflow: hidden meant the button on the end was simply cut
+   off rather than the page scrolling, which is the same bug wearing a hat. */
+.panel-by {
+  font-family: var(--mono); font-size: 10.5px; color: var(--faint);
+  flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .panel-num {
   font-family: var(--mono); font-variant-numeric: tabular-nums;
   font-size: 15px; font-weight: 600; color: var(--accent);
