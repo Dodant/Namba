@@ -58,6 +58,27 @@
 
 * { box-sizing: border-box; }
 
+/* Four widths, and each one is a place something stops fitting rather than a
+   round number off a chart:
+
+     1130  the form and its History rail stop fitting side by side (680+40+340)
+      900  the wordmark, the search, the language picker and the three pills
+            stop fitting one line, so the pills take the line under them
+      820  the entry and its Edit history rail stop fitting side by side
+      560  a phone: the search takes a row of its own, the numeral columns stop
+            being columns, and the rows that were [number | text | image] fold
+
+   Everything between them is a clamp() rather than a fifth breakpoint --
+   page gutter, section rhythm, the headings and every numeral -- so a window
+   dragged from 1920 to 320 has four places where the shape changes and no
+   place where a size jumps. Two capability queries do the rest of the work:
+   (hover: hover) for anything revealed by a pointer, (pointer: coarse) for
+   the sizes a fingertip needs, which is not the same question as width.
+
+   iOS Safari inflates text in landscape unless told not to. It is not a zoom
+   the reader asked for, and it lands on some elements and not others. */
+html { -webkit-text-size-adjust: 100%; }
+
 /* Every numeral on the page already carried overflow-wrap, because a value
    is a string a stranger typed. So is a title, and so is a body: one
    136-character word in an entry title pushed the whole document sideways --
@@ -105,7 +126,23 @@ button, input, select, textarea { font: inherit; color: inherit; }
   *, *::before, *::after { transition-duration: 0.01ms !important; }
 }
 
-.wrap { max-width: 1160px; margin: 0 auto; padding: 0 34px 80px; }
+/* 1160 is the measure and stays the measure on a 1920 screen: an index of
+   numbers is a book index, and a title row 1800px wide is unreadable in the
+   way a wide column always is. The horizontal room a large screen has goes
+   into the rails instead -- see .detail-layout.
+
+   The gutter is a clamp rather than two values behind a media query: 34px on
+   a desktop, 16px at 320 where every pixel is a character, and no step in
+   between. max() with the safe-area inset for a phone held sideways, where
+   the notch eats the left edge of the page; the insets are 0 unless
+   index.html asks for viewport-fit=cover, which it does. */
+.wrap {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding-left: max(clamp(16px, 4vw, 34px), env(safe-area-inset-left));
+  padding-right: max(clamp(16px, 4vw, 34px), env(safe-area-inset-right));
+  padding-bottom: clamp(56px, 8vw, 80px);
+}
 
 /* --- header ------------------------------------------------------- */
 /* flex-end, not center: the wordmark block and the pills are different
@@ -113,8 +150,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .top {
   display: flex;
   align-items: flex-end;
-  gap: 18px;
-  padding: 26px 0 18px;
+  gap: 12px 18px;
+  padding: clamp(18px, 3vw, 26px) 0 clamp(14px, 2vw, 18px);
   flex-wrap: wrap;
   border-bottom: 1px solid var(--ink);
 }
@@ -125,8 +162,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
    fights the face: the glyphs are drawn for a fixed advance, so closing it
    up ran the letters together, "mb" worst of all. */
 .logo {
-  font-family: Newsreader, Georgia, serif; font-size: 30px; font-weight: 600;
-  letter-spacing: -0.02em; line-height: 1;
+  font-family: Newsreader, Georgia, serif; font-size: clamp(26px, 3.4vw, 30px);
+  font-weight: 600; letter-spacing: -0.02em; line-height: 1;
 }
 .logo span { color: var(--accent); }
 /* the logo and its sub-line are one link, so neither underlines on its own */
@@ -166,6 +203,34 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .search:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
 .search input::placeholder { color: var(--muted); }
 
+/* The header is five controls and a wordmark, and it stops fitting one line at
+   about 900px -- 940 when the wiki has enough translations for the language
+   picker to be there, 740 when it does not. Left to wrap on its own it broke
+   wherever the search box happened to end: [search][picker][Recent] over
+   [Random][+ Add], a different pair on each line at each width, which is the
+   same ragged split the phone rules were written to stop. So it breaks in one
+   named place instead. The search keeps the wordmark's line and grows into
+   whatever is left of it; the three that act take the line underneath and sit
+   flush right, where they sit on a wide screen.
+   1024 is above this, so a laptop and an iPad in landscape still get one row. */
+@media (max-width: 900px) {
+  /* a 220px basis rather than auto: at auto the group's base size is its
+     max-content, which includes the action row's 100% basis, so .acts was too
+     wide to sit beside the wordmark and took a line of its own -- three rows
+     of header before the first number. At 220 it fits, then grows into what is
+     left of the wordmark's line. */
+  .acts { flex: 1 1 220px; min-width: 0; }
+  /* flex-end is a baseline argument between a wordmark and a row of pills, and
+     there is no single row to have it in once the group is two rows tall: it
+     dropped the masthead down beside the actions with the search box above it,
+     so the first thing on the page was a form field. Top-aligned, the wordmark
+     is first again. */
+  .top { align-items: flex-start; }
+  .search { flex: 1 1 180px; min-width: 0; max-width: 460px; }
+  .search input { flex: 1; width: auto; min-width: 0; }
+  .acts-main { flex: 1 0 100%; justify-content: flex-end; }
+}
+
 /* --- buttons ------------------------------------------------------ */
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
@@ -194,7 +259,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn.outline:hover { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 
 /* --- filter rows -------------------------------------------------- */
-.chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 22px; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: clamp(16px, 3vw, 22px); }
 .chip {
   padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
   background: var(--panel); cursor: pointer;
@@ -232,7 +297,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .chips-fold .chips { margin: 12px 0 0; }
 
 /* --- number index ------------------------------------------------- */
-.band { margin: 0 0 34px; }
+.band { margin: 0 0 clamp(24px, 4vw, 34px); }
 /* the rule runs from the label to the count, so a band reads as one line
    across the page rather than as a heading floating above a list */
 .band-head {
@@ -320,14 +385,20 @@ button, input, select, textarea { font: inherit; color: inherit; }
   vertical-align: -1px; color: var(--muted);
 }
 
+/* The phone. The masthead's own air and the page gutter are clamps now, so
+   what is left here is the shape changing: the numeral stops being a column
+   and leads the row inline with the title it belongs to. A 104px right-aligned
+   column is a third of a 320px screen spent on alignment nobody can see -- at
+   this width there is no second row of numerals for it to line up with. */
 @media (max-width: 560px) {
-  .wrap { padding: 0 20px 80px; }
   .ix { gap: 14px; }
-  .ix-num { flex: 0 0 auto; text-align: left; }
-  /* the header wraps to two rows on a phone, so it was spending 190px of an
-     844px screen before the first number -- the same masthead, less air */
-  .top { padding: 18px 0 14px; gap: 12px; }
-  .logo { font-size: 26px; }
+  /* 24px is the floor for anything you press, and "3" set at 19px mono is 11px
+     wide -- in a column it was 104. The minimum only bites the one-character
+     values and left alignment keeps the glyph where it was. */
+  .ix-num { flex: 0 0 auto; min-width: 24px; text-align: left; }
+  /* inline, the numeral is competing with the title for the row rather than
+     sitting in a column of its own, so the middle sizes shrink too */
+  .ix-num.mid { font-size: 16px; }
   .acts { gap: 6px; }
 
   /* Left to wrap on their natural widths the five controls came out as
@@ -337,17 +408,16 @@ button, input, select, textarea { font: inherit; color: inherit; }
      the box gets the width it always wanted on a phone, and the actions
      read as the one group they are.
 
-     width, not just the wrap: .acts is a flex item of .top and sizes to its
-     content, so flex-basis: 100% inside it would resolve against a row only
-     as wide as the controls already were. */
-  .acts { width: 100%; margin-left: 0; }
-  /* basis auto, not 100%: the language picker -- when the wiki has one --
-     belongs beside the search rather than among the actions, and at 100%
-     the search took the row alone and pushed the picker down onto theirs.
-     The group below carries the 100% instead, so it always breaks. */
-  .search { flex: 1 1 auto; }
-  .search input { flex: 1; width: auto; min-width: 0; }
-  .acts-main { flex: 1 0 100%; gap: 6px; }
+     flex-basis, not width: the 900 band above gives .acts a 220px basis so it
+     can sit beside the wordmark, and an explicit basis beats width outright --
+     width: 100% here did nothing at all, and the search came back up onto the
+     masthead's line at 560. */
+  .acts { flex: 1 1 100%; margin-left: 0; }
+  /* basis auto and no cap, not the 900 band's 180/460: the picker -- when the
+     wiki has one -- belongs beside the search rather than among the actions,
+     and this is the width where the search is entitled to the whole row. */
+  .search { flex: 1 1 auto; max-width: none; }
+  .acts-main { gap: 6px; }
 }
 
 /* --- feed --------------------------------------------------------- */
@@ -372,7 +442,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .fx-num.long { font-size: 22px; }
 .fx h3 {
   margin: 0; min-width: 0; align-self: baseline;
-  font-size: 23px; font-weight: 500; line-height: 1.2; letter-spacing: -0.01em;
+  font-size: clamp(20px, 2.6vw, 23px); font-weight: 500; line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 .fx h3 a:hover { color: var(--accent); text-decoration: none; }
 .fx-body { grid-column: 2 / 3; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
@@ -402,7 +473,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* --- post list ---------------------------------------------------- */
 .card {
-  display: flex; gap: 20px; align-items: flex-start;
+  display: flex; gap: clamp(12px, 2.5vw, 20px); align-items: flex-start;
   padding: 20px 0; border-bottom: 1px solid var(--rule);
 }
 .card .num {
@@ -410,8 +481,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-size: 19px; font-weight: 600; min-width: 78px; text-align: right;
   letter-spacing: -0.03em; color: var(--accent); overflow-wrap: anywhere;
 }
+/* the same trade the index and the feed make: a long value shrinks rather
+   than wrapping down a 78px column three lines deep */
+.card .num.mid { font-size: 17px; }
+.card .num.long { font-size: 14px; }
 .card .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.card h3 { margin: 0; font-size: 21px; font-weight: 500; line-height: 1.25; }
+.card h3 { margin: 0; font-size: clamp(19px, 2.4vw, 21px); font-weight: 500; line-height: 1.25; }
 .card h3 a:hover { color: var(--accent); text-decoration: none; }
 .card p {
   margin: 0; color: var(--muted); font-size: 15.5px; line-height: 1.5;
@@ -439,11 +514,31 @@ button, input, select, textarea { font: inherit; color: inherit; }
   -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
 }
 
+/* On a phone this row was [number][title and blurb][thumbnail] inside 288px:
+   the number asks for 78, the thumbnail for 76, and the words -- which are the
+   entry -- were left with about 90px and three characters to a line. So it
+   folds. The number and the thumbnail keep the top line, the prose takes the
+   whole width under them.
+
+   order rather than a change to the markup: the thumbnail is alt="" and
+   nothing tabs to it, so moving it past the text costs no focus order. */
+@media (max-width: 560px) {
+  .card { flex-wrap: wrap; padding: 16px 0; }
+  .card .num { order: 1; min-width: 24px; text-align: left; }
+  .card img.thumb { order: 2; width: 56px; height: 56px; margin-left: auto; }
+  .card .main { order: 3; flex: 1 0 100%; }
+}
+
 /* --- post detail -------------------------------------------------- */
+/* The rail is where a wide screen's extra room goes, since the page's own
+   measure is fixed: 200px at 820 where it barely earns its place, 280 at 1440
+   where a revision line stops wrapping after "edited". A clamp rather than a
+   third column width behind a breakpoint -- there is no width at which the
+   rail has to change shape, only room it can use. */
 .detail-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 250px;
-  gap: 0 44px;
+  grid-template-columns: minmax(0, 1fr) clamp(200px, 22vw, 280px);
+  gap: 0 clamp(24px, 3.6vw, 44px);
   align-items: start;
 }
 .side { position: sticky; top: 20px; padding-top: 20px; }
@@ -456,10 +551,26 @@ button, input, select, textarea { font: inherit; color: inherit; }
      page scrolled sideways by a thousand pixels. break-word cannot help a
      column that is sized to fit the word whole. */
   .detail-layout { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-  .side { border-top: 1px solid var(--line); padding-top: 6px; }
+  /* static, not just restyled: stuck to the top of the viewport is what a
+     column beside the page does, and this is the bottom of the page now.
+     .form-side has always said so; this one was relying on a sticky box
+     inside a grid area its own height having nowhere to travel. */
+  .side { position: static; border-top: 1px solid var(--line); padding-top: 6px; }
 }
-.revs { list-style: none; margin: 0; padding: 0; max-height: 60vh; overflow-y: auto; }
-.side .revs { border-left: 1px solid var(--line); padding-left: 4px; }
+.revs { list-style: none; margin: 0; padding: 0; }
+/* the cap and the scroll belong to the rail, not to the list: the same <ol>
+   is the recovery view on a deleted entry, where it is the width of the page
+   and every row carries the only Restore button there is -- a 60vh scroll
+   port inside a scrolling page, holding the one control that undoes a delete.
+   dvh, because a phone's toolbars make vh a promise it does not keep. */
+.side .revs {
+  max-height: min(60dvh, 560px); overflow-y: auto; overscroll-behavior-y: contain;
+  border-left: 1px solid var(--line); padding-left: 4px;
+}
+/* stacked, it is the end of the page and the page is the scroller */
+@media (max-width: 820px) {
+  .side .revs { max-height: none; overflow: visible; }
+}
 .side .rev { padding: 11px 0 11px 10px; position: relative; border: 0; }
 /* the dot sits on the rail, not in the row -- it is the timeline, not a bullet */
 .side .rev::before {
@@ -487,16 +598,29 @@ button, input, select, textarea { font: inherit; color: inherit; }
 a.quiet { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 
 .hero {
-  display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap;
-  padding: 30px 0 14px; border-bottom: 1px solid var(--ink);
+  display: flex; align-items: flex-end; gap: clamp(12px, 2.4vw, 24px); flex-wrap: wrap;
+  padding: clamp(20px, 3.4vw, 30px) 0 14px; border-bottom: 1px solid var(--ink);
 }
+/* Two sizes at once: the viewport's, and the value's. 11vw alone is a bet that
+   every number is "42" -- at 320px a 56px floor put "299792458" through the
+   right-hand edge, and break-anywhere turned it into two lines of digits, which
+   is a number nobody can read. So each length band gets its own clamp: a short
+   value still fills a desktop hero at 104px, and a sentence-shaped value
+   ("1960년 4월 16일 오후 3시") comes in at a size that fits the page it is on.
+   .mid and .long come from numSize() in api.ts, which the feed and the index
+   rows already share. */
 .hero .num {
   font-family: var(--mono); font-variant-numeric: tabular-nums;
-  font-size: clamp(56px, 11vw, 104px); font-weight: 700; letter-spacing: -0.06em;
+  font-size: clamp(44px, 11vw, 104px); font-weight: 700; letter-spacing: -0.06em;
   color: var(--accent); line-height: 0.82; overflow-wrap: anywhere;
 }
-.hero h1 { margin: 0; font-size: 27px; font-weight: 400; line-height: 1.15; }
-.hero-said { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 200px; }
+.hero .num.mid { font-size: clamp(36px, 8.5vw, 80px); }
+.hero .num.long { font-size: clamp(24px, 5.5vw, 52px); letter-spacing: -0.04em; }
+.hero h1 { margin: 0; font-size: clamp(22px, 3.4vw, 27px); font-weight: 400; line-height: 1.15; }
+/* 200px is a floor a 320px screen can still pay: the numeral beside it is 44px
+   at that width, so the two share the line instead of the title being pushed
+   under a number it is the caption for */
+.hero-said { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: min(200px, 100%); }
 .hero-said .kicker {
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--muted);
@@ -505,14 +629,24 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 /* the entry's own hero is the same shape one size down, and sits on air
    rather than on a rule -- the meta row below it draws the line instead */
 .detail .hero {
-  align-items: baseline; gap: 18px; padding: 0;
+  align-items: baseline; gap: clamp(10px, 1.8vw, 18px); padding: 0;
   border: 0; margin-bottom: 10px;
 }
-.detail .hero .num { font-size: 64px; letter-spacing: -0.055em; line-height: 0.9; }
-.detail .hero h1 {
-  font-size: 29px; line-height: 1.2; flex: 1; min-width: 200px; text-wrap: balance;
+/* one size down from the number page's hero, and the same three bands. 64px
+   flat meant a 22-character value ran to 1400px and wrapped through the title */
+.detail .hero .num {
+  font-size: clamp(38px, 9vw, 64px); letter-spacing: -0.055em; line-height: 0.9;
 }
-.detail img.full { max-width: 100%; border-radius: var(--radius); border: 1px solid var(--line); margin: 16px 0; }
+.detail .hero .num.mid { font-size: clamp(30px, 6.5vw, 48px); }
+.detail .hero .num.long { font-size: clamp(22px, 4.5vw, 34px); letter-spacing: -0.03em; }
+.detail .hero h1 {
+  font-size: clamp(23px, 3.6vw, 29px); line-height: 1.2; flex: 1;
+  min-width: min(200px, 100%); text-wrap: balance;
+}
+.detail img.full {
+  max-width: 100%; height: auto; border-radius: var(--radius);
+  border: 1px solid var(--line); margin: 16px 0;
+}
 /* no pre-wrap: markdown owns the line breaks now, and remark-breaks keeps a
    single Enter meaning what it looks like it means */
 .detail .body {
@@ -542,21 +676,40 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   font-family: var(--mono); font-size: 0.82em;
   padding: 1px 5px; border-radius: 4px; background: var(--accent-soft); color: var(--accent);
 }
+/* contain, so a two-finger swipe that runs out of code does not hand the
+   gesture to Safari's back-navigation */
 .body pre {
-  margin: 1em 0; padding: 12px 14px; overflow-x: auto;
+  margin: 1em 0; padding: 12px 14px; overflow-x: auto; overscroll-behavior-x: contain;
   border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
 }
 .body pre code { padding: 0; background: none; color: var(--ink); font-size: 13.5px; }
 .body hr { border: 0; border-top: 1px solid var(--line); margin: 1.6em 0; }
-.body img { max-width: 100%; border-radius: var(--radius); }
-/* a table can be wider than 60ch and must scroll itself rather than the page */
-.body table {
-  display: block; overflow-x: auto; border-collapse: collapse;
-  margin: 1em 0; font-size: 15.5px;
+.body img { max-width: 100%; height: auto; border-radius: var(--radius); }
+/* A table in an entry is written by a stranger and can be any width, so it
+   scrolls itself rather than the page. The scroller is the wrapper, not the
+   table: this rule used to say display: block on the <table>, which does keep
+   the page still, but a table that is not a table box is a table a screen
+   reader may stop announcing rows and columns for. Six columns of data whose
+   headers no longer attach to it is a worse answer than a scrollbar.
+   PostPage hands react-markdown the wrapper -- there is nowhere else to put
+   it, since the markdown decides when there is a table at all. */
+.tbl {
+  overflow-x: auto; overscroll-behavior-x: contain;
+  margin: 1em 0; max-width: 100%;
 }
+.body table { border-collapse: collapse; font-size: 15.5px; }
 .body :is(th, td) { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
 .body th { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; }
 .actions { display: flex; gap: 9px; flex-wrap: wrap; margin: 20px 0; }
+/* The spacer is what holds Delete away from Save on a wide row. On a narrow
+   one it has nothing to hold: the row wraps, and the destructive button comes
+   to rest next to Cancel. At 100% basis it stops being a gap and becomes the
+   line break, so the two buttons that act and the one that destroys are never
+   on the same line at the width where a thumb is doing the pressing. Same for
+   the entry's meta row, where it separates the tags from Edit. */
+@media (max-width: 560px) {
+  .spacer { flex: 1 0 100%; }
+}
 .form > .actions { margin: 26px 0 0; }
 .form > .actions .btn { padding: 10px 18px; }
 
@@ -606,7 +759,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 h4.section {
   font-family: var(--mono); font-size: 10.5px; font-weight: 600;
   letter-spacing: 0.16em; text-transform: uppercase;
-  color: var(--muted); margin: 30px 0 4px;
+  color: var(--muted); margin: clamp(22px, 4vw, 30px) 0 4px;
 }
 .side .section { margin: 0 0 6px; }
 
@@ -634,11 +787,14 @@ h4.section {
 .form-side .field :is(label, .field-label) { flex-wrap: wrap; }
 .form-side .field .hint { flex-basis: 100%; }
 .form { max-width: 680px; padding-bottom: 28px; }
-.form h1 { font-size: 31px; font-weight: 400; letter-spacing: -0.015em; margin: 26px 0 8px; }
+.form h1 {
+  font-size: clamp(26px, 4vw, 31px); font-weight: 400; letter-spacing: -0.015em;
+  margin: clamp(20px, 3vw, 26px) 0 8px;
+}
 /* 28 between fields against 8 inside one: the gap has to say which label
    belongs to which control, and at 20/6 the two readings were close enough
    that the form read as one undifferentiated column. */
-.field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+.field { display: flex; flex-direction: column; gap: 8px; margin-bottom: clamp(20px, 3.5vw, 28px); }
 /* .field-label is the same thing over a group rather than over a control --
    the chips, the three panels. A <label> there names nothing, which is both
    invalid and a screen reader announcing a caption with no field under it.
@@ -735,7 +891,9 @@ h4.section {
     border: 1px solid var(--line); border-radius: var(--radius);
     background: var(--panel); padding: 5px; margin-top: 5px;
     box-shadow: 0 10px 28px rgb(23 23 18 / 0.12);
-    max-height: 320px;                     /* eighteen languages is a scroll */
+    /* eighteen languages is a scroll, and on a phone in landscape 320px is
+       most of the window -- dvh keeps the menu inside the visible part */
+    max-height: min(320px, 60dvh);
   }
   .select option {
     display: flex; align-items: center; gap: 8px;
@@ -867,6 +1025,19 @@ h4.section {
 .panel-edit { padding: 14px; display: flex; flex-direction: column; gap: 14px; }
 .panel-edit .field, .panel-edit .actions { margin: 0; }
 
+/* At 320px one of these rows is a language, a title, a nickname and a button
+   on a single line, and the title -- the only part that says what the row is
+   -- is the child that can shrink, so it went first: "The Hitchhiker…" at
+   twelve characters. It takes the line underneath instead, whole, and the row
+   above it keeps the labels and the one control. */
+@media (max-width: 560px) {
+  .panel-row { flex-wrap: wrap; row-gap: 6px; padding: 11px 12px; }
+  .panel-lang { min-width: 0; }
+  .panel-title { order: 3; flex: 1 0 100%; white-space: normal; }
+  .panel-t { white-space: normal; }
+  .panel-row .pill { margin-left: auto; }
+}
+
 /* quiet enough to sit inside a row, not beside it */
 .pill {
   font-family: var(--mono); font-size: 10.5px; padding: 3px 10px;
@@ -894,3 +1065,53 @@ h4.section {
 .empty { color: var(--muted); padding: 36px 0; text-align: center; }
 .empty a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* --- touch -------------------------------------------------------- */
+/* A fingertip is not a small pointer, and it is not a narrow window either:
+   an iPad at 1024px gets this and a 480px-wide window on a desktop does not,
+   which is why it is a capability query and not a width. Two things change
+   here, and they change everywhere at once rather than page by page.
+
+   First, every box you type in goes to 16px. Under that, iOS Safari zooms the
+   page in when the field takes focus and leaves it zoomed -- so tapping the
+   search pill, the one control everybody uses, handed back a wiki that
+   scrolled sideways from then on. 12.5px mono is the design's floor for
+   chrome and this is the one place it cannot hold.
+
+   Second, the small controls buy the height a fingertip needs out of padding,
+   and the ones that sit inside a line of text hand it straight back with a
+   matching negative margin -- the trade .ix-like already makes, so the hit
+   box grows and the row does not move. 44px is the number everyone quotes; a
+   chip row and a byline row cannot pay it without turning into something
+   else, and these land at 33-40 with 8px between them, which a thumb hits.
+   The page's own 24px floor is unchanged for a mouse. */
+@media (pointer: coarse) {
+  .search input { font-size: 16px; width: 172px; }
+  .field select, .field .coin input, .panel-find input { font-size: 16px; }
+  .field.check input[type="checkbox"] { width: 20px; height: 20px; }
+
+  .chips { gap: 8px; }
+  .chip { padding: 9px 15px; }
+  .tabs a, .tabs button { padding: 12px 16px; }
+  .btn.small { padding: 8px 14px; }
+  .pill { padding: 9px 14px; }
+  .post-like .btn { padding: 9px 14px; }
+  .post-meta .btn.primary { padding: 10px 16px; }
+  .credits-btn { padding: 9px 12px; }
+  .tag { padding: 6px 9px; }
+  .panel-add { padding: 8px 0; }
+  /* the summary is already the width of the row; this is its height */
+  .band-head { padding: 8px 0; }
+  /* inline, so the padding grows the hit box and leaves the line box alone */
+  a.quiet { padding: 8px 3px; }
+  /* The links that *are* the row. A title set at 16.5-20px draws a 19-22px
+     line box, under the page's own 24px floor, and it is the one thing on an
+     index row anyone taps. Inline padding grows the box a tap lands in and
+     leaves the line where it is; the two numerals are a flex and a grid item,
+     so theirs buys the row a few pixels of height instead. */
+  .ix-link, .fx h3 a, .card h3 a, .rel-t { padding-block: 3px; }
+  .ix-num, .fx-num, .card .num, .hero .num { padding-block: 4px; }
+
+  /* the two like counts that live in a text row */
+  .ix-like .btn, .card .meta .btn { padding: 11px 12px; margin: -11px -12px; }
+}

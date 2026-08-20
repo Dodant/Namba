@@ -254,6 +254,16 @@ export function showValue(value: string, grouped?: boolean) {
 
 export const numberPath = (value: string) => `/n/${encodeURIComponent(value)}`
 
+/** Which size class a numeral wears, from how much room the value needs. A
+    value is a string a stranger typed -- "7" and "1960년 4월 16일 오후 3시" are
+    both valid -- so one font size either shouts at the first or breaks the
+    layout on the second, and a viewport clamp cannot tell them apart. Every
+    numeral on the wiki reads it: the index rows, the feed, both heroes and the
+    cards. Pass what is on screen, not the raw value: grouping adds commas.
+    The sizes themselves are in index.css, per surface. */
+export const numSize = (shown: string) =>
+  shown.length > 7 ? 'long' : shown.length > 4 ? 'mid' : ''
+
 /** How the entry's own tab reads. "Original" is all it can say until someone
     records what the entry was written in, which is null on every entry older
     than the column. Shared so the tab and the edit form cannot drift. */

@@ -1,14 +1,28 @@
 import { useState } from 'react'
-import Markdown from 'react-markdown'
+import Markdown, { type Components } from 'react-markdown'
 import { Link, useParams } from 'react-router-dom'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import {
-  api, fmtDate, nickname, numberPath, originalLabel, plain, showValue, tagLabel,
-  tagPath, type Revision,
+  api, fmtDate, nickname, numberPath, numSize, originalLabel, plain, showValue,
+  tagLabel, tagPath, type Revision,
 } from '../api'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
+
+/* A table in an entry is written by a stranger and can be any width, so it
+   scrolls inside its own box rather than scrolling the page. The box has to
+   wrap the table -- a <table> cannot be its own scroll port without giving up
+   being a table box, which is what this used to do in CSS and what costs a
+   screen reader its rows and columns. Only the markdown knows when there is a
+   table at all, so the wrapper is handed to it here. */
+const MD: Components = {
+  table: ({ node: _node, ...rest }) => (   // node is react-markdown's, not the DOM's
+    <div className="tbl">
+      <table {...rest} />
+    </div>
+  ),
+}
 
 /* A read route reads. Every write this page used to carry inline -- adding a
    language, rewriting one, unlinking a related entry, restoring a revision,
@@ -119,7 +133,10 @@ export default function PostPage() {
         )}
 
         <div className="hero">
-          <Link className="num" to={numberPath(post.value)}>
+          <Link
+            className={`num ${numSize(showValue(post.value, post.grouped))}`}
+            to={numberPath(post.value)}
+          >
             {showValue(post.value, post.grouped)}
           </Link>
           <h1>{shown.title}</h1>
@@ -184,7 +201,9 @@ export default function PostPage() {
             pressing Enter visibly makes a line and ought to keep making one. */}
         {shown.body ? (
           <div className="body">
-            <Markdown remarkPlugins={[remarkGfm, remarkBreaks]}>{shown.body}</Markdown>
+            <Markdown remarkPlugins={[remarkGfm, remarkBreaks]} components={MD}>
+              {shown.body}
+            </Markdown>
           </div>
         ) : (
           /* most entries arrive as a title and a number, so this is the common

@@ -1,5 +1,5 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { api, FORMAT_LABEL, showValue, tagLabel, type Post } from '../api'
+import { api, FORMAT_LABEL, numSize, showValue, tagLabel, type Post } from '../api'
 import PostCard from '../components/PostCard'
 import { useAsync } from '../useAsync'
 
@@ -40,6 +40,7 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
 
   const n = posts.data?.length ?? 0
   const count = `${n} ${n === 1 ? 'entry' : 'entries'}`
+  const shownValue = showValue(value, !!posts.data?.length && posts.data.every((p) => p.grouped))
 
   return (
     <>
@@ -47,9 +48,9 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
         <div className="hero">
           {/* same rule as the index row: this page is one number shared by
               several entries, so separators need all of them to agree */}
-          <div className="num">
-            {showValue(value, !!posts.data?.length && posts.data.every((p) => p.grouped))}
-          </div>
+          {/* numSize off what is drawn, not off `value`: the separators are
+              two of the characters the hero has to find room for */}
+          <div className={`num ${numSize(shownValue)}`}>{shownValue}</div>
           {/* stays even when empty: it is the flex spacer that holds the
               middle. At zero there is nothing to describe and no format to
               read it from, so the empty state below says the rest */}

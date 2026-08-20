@@ -1,8 +1,8 @@
 import { Fragment } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  api, BUCKETS, BUCKET_LABEL, fmtDate, FORMATS, FORMAT_LABEL, numberPath, plain,
-  showValue, tagLabel, tagPath, type Format, type NumberEntry, type Post,
+  api, BUCKETS, BUCKET_LABEL, fmtDate, FORMATS, FORMAT_LABEL, numberPath, numSize,
+  plain, showValue, tagLabel, tagPath, type Format, type NumberEntry, type Post,
 } from '../api'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
@@ -103,10 +103,6 @@ export default function Home({ lang }: { lang: string }) {
   return params.get('view') === 'feed' ? <Feed lang={lang} /> : <Index lang={lang} />
 }
 
-/* the numeral carries the row, so it is set by how much room the value needs
-   rather than at one size that either shouts at "7" or breaks at "299792458" */
-const feedSize = (v: string) => (v.length > 7 ? 'long' : v.length > 4 ? 'mid' : '')
-
 function Feed({ lang }: { lang: string }) {
   /* sort=recent is updated_at DESC, so an entry someone rewrote this morning
      comes back to the top. Sorted by the API, not here: a client-side sort
@@ -133,7 +129,7 @@ function Feed({ lang }: { lang: string }) {
       {posts.data?.map((p: Post) => (
         <article className="fx" key={p.id}>
           <Link
-            className={`fx-num ${feedSize(showValue(p.value, p.grouped))}`}
+            className={`fx-num ${numSize(showValue(p.value, p.grouped))}`}
             to={numberPath(p.value)}
           >
             {showValue(p.value, p.grouped)}
@@ -288,7 +284,7 @@ function Index({ lang }: { lang: string }) {
                   return (
                   <li className="ix" key={`${n.format}-${n.value}`}>
                     <Link
-                      className={`ix-num ${shown.length > 7 ? 'long' : ''}`}
+                      className={`ix-num ${numSize(shown)}`}
                       to={numberPath(n.value)}
                     >
                       {shown}
