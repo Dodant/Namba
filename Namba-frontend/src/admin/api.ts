@@ -221,6 +221,17 @@ export type Block = {
   live: number
 }
 
+export type Operator = {
+  id: number
+  email: string
+  role: Role
+  /** 0 is revoked. There is no delete, because every audit row points here and
+      an operator who leaves must not take their record with them. */
+  active: number
+  created_at: string
+  last_login_at: string | null
+}
+
 export const adm = {
   login: (email: string, password: string) =>
     req<Who>('/api/admin/login', json('POST', { email, password })),
@@ -292,6 +303,18 @@ export const adm = {
   liftBlock: (id: number) =>
     req<{ id: number; lifted: boolean }>(`/api/admin/blocks/${id}/lift`,
                                          { method: 'POST' }),
+
+  admins: () => req<Operator[]>('/api/admin/admins'),
+
+  /** Still not a signup: it needs a super admin's live session, and there is no
+      route a visitor can reach that creates anything here. */
+  addAdmin: (b: { email: string; password: string; role: Role }) =>
+    req<Who>('/api/admin/admins', json('POST', b)),
+
+  /** Revoked, never deleted: every row of the log points at an id here. */
+  setAdminActive: (id: number, active: boolean) =>
+    req<{ id: number; active: boolean }>(`/api/admin/admins/${id}/active`,
+                                         json('POST', { active })),
 }
 
 /** What `meta` holds, already parsed. It is a JSON blob per action rather than

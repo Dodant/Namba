@@ -12,6 +12,7 @@ import Reports from './pages/Reports'
 import Abuse from './pages/Abuse'
 import Blocks from './pages/Blocks'
 import Log from './pages/Log'
+import Operators from './pages/Operators'
 
 /** Every page in the panel, in the order the rail lists them.
 
@@ -32,6 +33,7 @@ const NAV: Item[] = [
   { to: '/abuse', label: 'Spam & abuse', group: 'Moderation' },
   { to: '/blocks', label: 'Blocked clients', group: 'Security', tally: 'blocked' },
   { to: '/audit', label: 'Audit log', group: 'Security' },
+  { to: '/operators', label: 'Operators', group: 'Settings' },
 ]
 
 /** The rail.
@@ -146,6 +148,7 @@ export default function AdminApp() {
             <Route path="/abuse" element={<Abuse />} />
             <Route path="/blocks" element={<Blocks />} />
             <Route path="/audit" element={<Log kind="admin" />} />
+            <Route path="/operators" element={<Operators who={who} />} />
             {/* Anything else is a stale bookmark from a version of the panel
                 that had more pages, or a typed path. Home, rather than a
                 dead end: there is nowhere else to be in here. */}

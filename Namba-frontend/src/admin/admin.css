@@ -474,3 +474,11 @@ tbody tr.dim:hover td { opacity: 1; }
 }
 /* the abuse table is twelve columns of counts, so an empty cell says nothing
    rather than saying zero twelve times */
+
+/* --- operators --------------------------------------------------------- */
+.new-op { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+.new-op .bar { align-items: flex-end; }
+code {
+  padding: 1px 5px; border-radius: 4px; background: var(--sink);
+  font-size: 11.5px;
+}
