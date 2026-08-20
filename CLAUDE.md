@@ -103,6 +103,10 @@ branch and has to be agreed on; a tag never did.
   size gets more out of a log nobody can edit than out of a redaction. Neither
   is a bug to fix in passing: revising this means saying so here first.
 
+- **Everything readers write is CC0.** Public domain, stated where it is given
+  away — a line at the form's Publish button, not only in the footer, because a
+  waiver read after the fact is not one. The byline still stands: `author` is a
+  record of who got there first, not a right retained.
 ## Working here
 
 Prefer editing what exists over adding files — this is deliberately a small

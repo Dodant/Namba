@@ -160,7 +160,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
     .band-head, .ix-fold, .tabs a, .tabs button, .panel-add, .meta-btn,
     .quiet, h4.section, .field label, .field .field-label, .field.check,
     .form h1, .form-intro, .fine, .feed-intro, .empty, .panel-empty,
-    .body-none) {
+    .body-none, .foot) {
   -webkit-user-select: none;
   user-select: none;
   -webkit-user-drag: none;
@@ -1342,3 +1342,26 @@ h4.section {
   /* the two like counts that live in a text row */
   .ix-like .btn, .card .meta .btn { padding: 11px 12px; margin: -11px -12px; }
 }
+
+/* --- footer ------------------------------------------------------- */
+/* --rule, not --ink: the header's line is the page beginning and has a
+   masthead to hold up. This one is the page stopping, and a full-strength
+   rule under the last row of content reads as one more separator in the
+   list rather than the end of it.
+
+   Capped at 68ch and left where it is: these are three sentences, and a
+   sentence set the full 1160px is a sentence nobody finishes. */
+.foot {
+  border-top: 1px solid var(--rule);
+  margin-top: clamp(40px, 6vw, 64px);
+  padding-top: 16px;
+  display: flex; flex-direction: column; gap: 7px;
+  max-width: 68ch;
+  font-size: 13px; line-height: 1.55; color: var(--faint);
+  text-wrap: pretty;
+}
+.foot p { margin: 0; }
+/* inherit, not --accent: four links in three short lines, and coloured they
+   become the loudest thing under the fold */
+.foot a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.foot a:hover { color: var(--accent); }

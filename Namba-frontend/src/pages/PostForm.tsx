@@ -438,6 +438,14 @@ export default function PostForm() {
             Cancel
           </button>
         </div>
+        {/* Here rather than only in the footer, because this is the one moment
+            a reader gives something away: CC0 is a waiver, and a waiver read
+            after the fact is not one. Same line either way -- an edit is a
+            contribution too. */}
+        <p className="fine">
+          {editing ? 'Saving' : 'Publishing'} puts this in the public domain
+          (CC0). Anyone may reuse it, for anything, without asking.
+        </p>
       </form>
 
       {post && (
