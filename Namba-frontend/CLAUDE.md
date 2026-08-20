@@ -338,8 +338,11 @@ same side of the page so that Edit does not move it.
 
 ## Read routes read, the edit route writes
 
-`/p/:id` has exactly one control that changes the entry: the `Edit` pill in its
-meta row. Adding a language, rewriting one, unlinking a related entry, restoring
+`/p/:id` has exactly one control that changes the entry: the `Edit` pill at the
+foot of the article, in an `.actions` row under Related entries. It used to sit
+in the meta row beside the tags, where the page offered to change the entry
+before anyone had read it; last is where a reader knows whether it needs
+changing. Adding a language, rewriting one, unlinking a related entry, restoring
 a revision and deleting the entry all live in `/p/:id/edit` — Languages and
 Related entries as bordered panels in the form, History on a rail to the right
 of it (`.form-layout`, the same shape the read page has). Do not put any of them

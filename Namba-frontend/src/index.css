@@ -832,15 +832,16 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    to rest next to Cancel. At 100% basis it stops being a gap and becomes the
    line break, so the two buttons that act and the one that destroys are never
    on the same line at the width where a thumb is doing the pressing. Same for
-   the entry's meta row, where it separates the tags from Edit. */
+   the entry's meta row, where it separates the tags from the credits toggle. */
 @media (max-width: 560px) {
   .spacer { flex: 1 0 100%; }
 }
 .form > .actions { margin: 26px 0 0; }
 .form > .actions .btn { padding: 10px 18px; }
 
-/* the meta row is the entry's whole control surface now: what it is filed
-   under, whether you liked it, and the one way to change any of it */
+/* what the entry is filed under and whether you liked it, with the credits
+   toggle pushed to the far end. Edit used to sit here too and is at the foot
+   of the article now -- see .post-actions */
 .post-meta { gap: 10px; padding-bottom: 18px; border-bottom: 1px solid var(--rule); }
 /* here the like is a pill. This page has one entry and one heart, so it can
    afford an outline the list rows could not */
@@ -849,7 +850,6 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   color: var(--hit); font-size: 10.5px;
 }
 .post-like .btn:hover { border-color: var(--hit); }
-.post-meta .btn.primary { padding: 5px 13px; font-size: 11px; }
 /* no border until it is open: closed, it is a label you can press; open, it
    is a thing holding a panel below it */
 .credits-btn {
@@ -866,6 +866,13 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 }
 .credits .last { color: var(--faint); padding-top: 4px; }
 .spacer { flex: 1; }
+
+/* Edit sits at the end of the read on .actions' own margin and nothing else.
+   The rule above it is the last .rel's border when something is linked and
+   there is none when the body ends the page, so the margin has to read as the
+   whole separation on its own -- and the one below it counts as much, since
+   at 820 the rail stops being a rail and the edit history's rule comes up
+   under the button. */
 
 /* related entries, read-only: numeral, title, blurb, and nothing to press */
 .rel {
@@ -1222,7 +1229,6 @@ h4.section {
   .btn.small { padding: 8px 14px; }
   .pill { padding: 9px 14px; }
   .post-like .btn { padding: 9px 14px; }
-  .post-meta .btn.primary { padding: 10px 16px; }
   .credits-btn { padding: 9px 12px; }
   .tag { padding: 6px 9px; }
   .panel-add { padding: 8px 0; }

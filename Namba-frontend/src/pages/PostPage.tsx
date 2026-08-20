@@ -27,8 +27,9 @@ const MD: Components = {
 /* A read route reads. Every write this page used to carry inline -- adding a
    language, rewriting one, unlinking a related entry, restoring a revision,
    deleting the entry -- now lives at /p/:id/edit, and what is left here is one
-   Edit pill. The exception is the recovery view below: when the entry is gone
-   there is no edit form to reach, so Restore stays. */
+   Edit pill, at the foot of the article. The exception is the recovery view
+   below: when the entry is gone there is no edit form to reach, so Restore
+   stays. */
 export default function PostPage() {
   const { id = '' } = useParams()
   const loaded = useAsync(() => api.post(id), [id])
@@ -160,9 +161,6 @@ export default function PostPage() {
           >
             {credits ? 'Hide credits' : 'Credits & history'}
           </button>
-          <Link className="btn primary" to={`/p/${post.id}/edit`}>
-            Edit
-          </Link>
         </div>
 
         {/* who wrote it, who changed it, and who wrote the tab in front. All
@@ -240,6 +238,17 @@ export default function PostPage() {
             ))}
           </>
         )}
+
+        {/* The one write on a read page, at the end of the read. In the meta
+            row it was a pill beside the tags, offered before the entry had
+            been read and competing with the number for the top of the page;
+            here it is what you reach after the body and whatever is linked
+            under it, which is when a reader knows whether it needs changing. */}
+        <div className="actions">
+          <Link className="btn primary" to={`/p/${post.id}/edit`}>
+            Edit
+          </Link>
+        </div>
       </article>
 
       <aside className="side">
