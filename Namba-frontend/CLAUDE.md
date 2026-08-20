@@ -90,7 +90,15 @@ sanitiser config to get wrong.
   cannot tell those apart. Each band is a `<details>` open by default, and the
   category filter is the same thing closed by default — the browser owns the
   collapse, so there is no open state to hold anywhere. A closed filter still
-  shows the tag that is on, or it would hide why the list is short. `Feed` is
+  shows the tag that is on, or it would hide why the list is short. A single
+  number past `FOLD_OVER` entries is a third `<details>`, open, its summary
+  the count: it is there to be closed by a reader who wants past a number the
+  wiki has taken to, and it never hides an entry from one who did not ask.
+  The numeral stays outside it — it links to `/n/:value`, and a link inside a
+  summary is one click that has to be two things. Its rows need the
+  `.ix-list` box: everything after a summary goes into one anonymous content
+  box, so the column's `gap` lands between the summary and that box rather
+  than between the rows in it. `Feed` is
   `sort=recent` off `/api/posts` — `updated_at DESC`, so a rewrite brings an old
   entry back up. It is labelled `Recent` in the header and the component is
   still `Feed`: the label names the order, `?view=feed` names the shape. One

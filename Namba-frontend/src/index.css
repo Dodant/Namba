@@ -341,10 +341,37 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* a handful of values are sentences ("1960년 4월 16일 오후 3시"); shrink those
    rather than widening the column for every "7" */
 .ix-num.long { font-size: 13px; }
-.ix-titles {
+/* .ix-list is the same column one level in, for the rows of a number that
+   folds -- see the note in Home.tsx. Both here so the two can never drift. */
+.ix-titles, .ix-list {
   display: flex; flex-direction: column;
-  gap: 4px; min-width: 0; flex: 1;
+  gap: 4px; min-width: 0;
 }
+.ix-titles { flex: 1; }
+/* The fold on a number that has collected more entries than a screen. Same
+   disclosure the bands use, one level in and one step quieter: the count is
+   the band's own .n, and the caret is the band's own caret, because this is
+   the same gesture at a smaller scale. fit-content so the control is the
+   words and not the whole row -- a band head spans its row because it draws
+   the rule across it, and this one has no rule to draw. */
+.ix-fold {
+  display: flex; align-items: baseline; gap: 7px;
+  width: fit-content; cursor: pointer; list-style: none;
+  font-family: var(--mono); font-size: 10.5px; color: var(--fainter);
+  font-variant-numeric: tabular-nums;
+  /* 10.5px mono draws a 16px line box, and unlike .band-head this control is
+     only as wide as its words, so it cannot make the 24px floor up on the
+     other axis. Padding out, margin back -- the row keeps its height. */
+  padding-block: 5px; margin-block: -5px;
+}
+.ix-fold::-webkit-details-marker { display: none; }
+.ix-fold::before {
+  content: '▾'; flex: none; display: inline-block;
+  font-size: 9px; color: var(--muted);
+}
+.ix-titles:not([open]) .ix-fold::before { transform: rotate(-90deg); }
+.ix-fold:hover, .ix-fold:hover::before { color: var(--ink); }
+
 .ix-e { display: flex; align-items: baseline; gap: 10px; }
 .ix-link { min-width: 0; font-size: 16.5px; line-height: 1.35; }
 /* the whole entry is one link, but only the title underlines -- the blurb
@@ -1102,6 +1129,8 @@ h4.section {
   .panel-add { padding: 8px 0; }
   /* the summary is already the width of the row; this is its height */
   .band-head { padding: 8px 0; }
+  /* this one is only as wide as its words, so it pays on both axes */
+  .ix-fold { padding: 8px 10px; margin: -8px -10px; }
   /* inline, so the padding grows the hit box and leaves the line box alone */
   a.quiet { padding: 8px 3px; }
   /* The links that *are* the row. A title set at 16.5-20px draws a 19-22px

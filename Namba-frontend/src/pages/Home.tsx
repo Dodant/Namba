@@ -169,6 +169,12 @@ function Feed({ lang }: { lang: string }) {
   )
 }
 
+/* Past this many entries one number is a wall in the middle of an index you
+   are reading down, so it gets a fold of its own. Ten because that is about a
+   screen of rows on a phone: a number with nine meanings is a row you scroll
+   past, not one you have to get around. */
+const FOLD_OVER = 10
+
 function Index({ lang }: { lang: string }) {
   const [params, setParams] = useSearchParams()
   const format = (params.get('format') ?? 'INTEGER') as Format
@@ -281,6 +287,22 @@ function Index({ lang }: { lang: string }) {
                 {band.items.map((n: NumberEntry) => {
                   const rx = marker(n)
                   const shown = showValue(n.value, n.grouped)
+                  const rows = n.entries.map((e) => (
+                    // the like sits outside the link: a button inside an
+                    // anchor is invalid, and both want the same click
+                    <div className="ix-e" key={e.id}>
+                      <Link className="ix-link" to={`/p/${e.id}`}>
+                        <span className="ix-t">{mark(e.title, rx)}</span>
+                        {e.image && PHOTO}
+                        {e.body && (
+                          <span className="ix-b"> — {mark(plain(e.body), rx)}</span>
+                        )}
+                      </Link>
+                      <span className="ix-like">
+                        <Like post={e} />
+                      </span>
+                    </div>
+                  ))
                   return (
                   <li className="ix" key={`${n.format}-${n.value}`}>
                     <Link
@@ -289,24 +311,31 @@ function Index({ lang }: { lang: string }) {
                     >
                       {shown}
                     </Link>
-                    <div className="ix-titles">
-                      {n.entries.map((e) => (
-                        // the like sits outside the link: a button inside an
-                        // anchor is invalid, and both want the same click
-                        <div className="ix-e" key={e.id}>
-                          <Link className="ix-link" to={`/p/${e.id}`}>
-                            <span className="ix-t">{mark(e.title, rx)}</span>
-                            {e.image && PHOTO}
-                            {e.body && (
-                              <span className="ix-b"> — {mark(plain(e.body), rx)}</span>
-                            )}
-                          </Link>
-                          <span className="ix-like">
-                            <Like post={e} />
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    {/* <details> and not a piece of state, the same as the
+                        band above it: the browser owns the collapse and gets
+                        the keyboard and the screen reader right for free.
+
+                        Open, so a fold never hides an entry from a reader who
+                        did not ask -- it is there to be closed by someone who
+                        wants past this number, and the summary says what
+                        closing it costs. The numeral stays outside it: it is
+                        a link to /n/:value, and a link inside a summary is one
+                        click that has to be two things. */}
+                    {n.entries.length > FOLD_OVER ? (
+                      <details className="ix-titles" open>
+                        <summary className="ix-fold">{n.entries.length} entries</summary>
+                        {/* the rows need a box of their own in here. A
+                            <details> puts everything after the summary into
+                            one anonymous content box, so the column's gap
+                            falls between the summary and that box rather than
+                            between the rows inside it, and a folded number
+                            drew its entries 4px tighter than every other row
+                            on the page. */}
+                        <div className="ix-list">{rows}</div>
+                      </details>
+                    ) : (
+                      <div className="ix-titles">{rows}</div>
+                    )}
                   </li>
                   )
                 })}
