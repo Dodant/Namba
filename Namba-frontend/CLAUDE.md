@@ -336,6 +336,24 @@ not on a route of its own; there is no `/p/:id/history`. It is a read-only
 timeline — restoring happens in the History rail of `PostForm`, which is the
 same side of the page so that Edit does not move it.
 
+Comments are under it, in the same rail: how the entry got here, then what
+people make of it. Five, then a `<details>` fold whose summary is the rest's
+count — the same disclosure the index uses for a number with more entries than a
+screen, so the browser owns the collapse and there is no open state anywhere.
+The body is plain text on `white-space: pre-wrap` and not markdown: a remark is
+a remark, and React escapes it, so there is nothing here to sanitise. `api.comment()`
+answers with the whole list, which is why nothing refetches and there is no bump
+dep — what came back *is* the state.
+
+**The rail is a scroll port now, and that is what makes the form in it
+reachable.** A `position: sticky` box taller than the viewport pins its top and
+leaves its bottom out of reach, and the bottom is the box you type in — so the
+cap moved out one level, from `.side .revs` to `.side`. The list keeps a cap of
+its own, lowered to `min(40dvh, 320px)`: fifty revisions are 2700px of rail to
+scroll past before reaching the comment box, and an entry that has been fought
+over is exactly the one with something to discuss. Below 820 both caps lift and
+the page is the scroller again.
+
 ## Read routes read, the edit route writes
 
 `/p/:id` has exactly one control that changes the entry: the `Edit` pill at the
@@ -352,6 +370,15 @@ and the fix was to give them one home.
 A like is the exception and is not one of them. It writes, but it writes a
 counter beside the entry rather than the entry, so it sits in the meta row here
 and on every card and index row, the same as anywhere else.
+
+**A comment is the second one, and for the same reason.** It writes something
+*beside* the entry, so it belongs where the entry is read rather than at `/edit`
+with the five controls that change it — a reader who wants to say the number
+means something slightly different should not have to open the editor to say so.
+Nothing on the page rewrites or removes one: with no accounts a Remove button
+belongs to nobody, and unlike an entry a comment has no revision behind it, so
+the button would be the loss rather than the guard against it. If that ever
+needs answering, it is a delete *and* an undo, not a delete.
 
 The exception is the deleted-entry recovery view in `PostPage`: when the post
 404s but its revisions survive, `Restore` belongs there, because there is no

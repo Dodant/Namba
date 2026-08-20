@@ -458,7 +458,8 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
   content: '▾'; flex: none; display: inline-block;
   font-size: 9px; color: var(--muted);
 }
-.ix-titles:not([open]) .ix-fold::before { transform: rotate(-90deg); }
+/* any fold whose summary is an .ix-fold: the index's, and the comments' */
+details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
 .ix-fold:hover, .ix-fold:hover::before { color: var(--ink); }
 
 .ix-e { display: flex; align-items: baseline; gap: 10px; }
@@ -667,7 +668,20 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
   gap: 0 clamp(24px, 3.6vw, 44px);
   align-items: start;
 }
-.side { position: sticky; top: 20px; padding-top: 20px; }
+/* The rail holds a form now, and a sticky box taller than the viewport pins its
+   top and leaves its bottom out of reach -- the bottom being the box you type
+   in. So the rail is the scroll port: it is capped to the viewport and scrolls
+   inside itself, and the page behind it is not what has to move to reach the
+   end of it. dvh, because a phone's toolbars make vh a promise it does not
+   keep; 40 is the 20 above it and 20 to breathe under it. */
+.side {
+  position: sticky; top: 20px; padding-top: 20px;
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto; overscroll-behavior-y: contain;
+}
+/* Edit history is the first of the rail's two headings and sits tight under the
+   top; Comments follows a list and needs the room a section break is. */
+.side .section:not(:first-child) { margin-top: 20px; }
 /* one column, and the rail stops being a rail: it is the last thing on the
    page rather than the thing beside it */
 @media (max-width: 820px) {
@@ -681,7 +695,10 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
      column beside the page does, and this is the bottom of the page now.
      .form-side has always said so; this one was relying on a sticky box
      inside a grid area its own height having nowhere to travel. */
-  .side { position: static; border-top: 1px solid var(--line); padding-top: 6px; }
+  .side {
+    position: static; border-top: 1px solid var(--line); padding-top: 6px;
+    max-height: none; overflow: visible;
+  }
 }
 .revs { list-style: none; margin: 0; padding: 0; }
 /* the cap and the scroll belong to the rail, not to the list: the same <ol>
@@ -690,7 +707,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
    port inside a scrolling page, holding the one control that undoes a delete.
    dvh, because a phone's toolbars make vh a promise it does not keep. */
 .side .revs {
-  max-height: min(60dvh, 560px); overflow-y: auto; overscroll-behavior-y: contain;
+  max-height: min(40dvh, 320px); overflow-y: auto; overscroll-behavior-y: contain;
   border-left: 1px solid var(--line); padding-left: 4px;
 }
 /* stacked, it is the end of the page and the page is the scroller */
@@ -719,6 +736,24 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 .rev b { font-size: 14.5px; font-weight: 400; line-height: 1.35; }
 .rev span { font-family: var(--mono); font-size: 10.5px; line-height: 1.4; color: var(--faint); }
 .rev.now b { color: var(--accent); font-weight: 600; }
+
+/* Said beside the entry, under the history of the entry. A rule and padding
+   rather than a flex gap on the column, deliberately: everything after a
+   <summary> lands in one anonymous box, so the gap would fall above that box
+   instead of between the rows inside it -- the trap .ix-list exists for.
+
+   pre-wrap because this is the one body on the wiki that is not markdown: a
+   remark typed on three lines was written on three lines, and there is no
+   renderer here to turn them into anything else. */
+.cmt { padding: 11px 0; border-bottom: 1px solid var(--rule); }
+.cmt p { margin: 0 0 4px; font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; }
+.cmt span { font-family: var(--mono); font-size: 10.5px; line-height: 1.4; color: var(--faint); }
+/* 12 rather than the form's 28 between fields, and 72 rather than 104 for the
+   box: two fields and a button in a 200px column is not the entry form, and the
+   rail is a scroll port that everything else in it has to stay reachable past */
+.cmt-form { margin: 4px 0 12px; }
+.cmt-form .field { margin-bottom: 12px; }
+.cmt-form .field textarea { min-height: 72px; }
 
 .quiet { font-family: var(--mono); font-size: 10.5px; line-height: 1.5; color: var(--muted); }
 a.quiet { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }

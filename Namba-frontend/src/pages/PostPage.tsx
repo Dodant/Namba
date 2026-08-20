@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import Markdown, { type Components } from 'react-markdown'
 import { Link, useParams } from 'react-router-dom'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import {
   api, fmtDate, nickname, numberPath, numSize, originalLabel, plain, showValue,
-  tagLabel, tagPath, type Revision,
+  tagLabel, tagPath, type Comment, type Revision,
 } from '../api'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
@@ -272,10 +272,135 @@ export default function PostPage() {
         {!revs.loading && !revs.data?.length && (
           <p className="quiet">No edits yet — as first written.</p>
         )}
+        <Comments id={id} />
       </aside>
     </div>
   )
 }
+
+/* Five, then a fold. The browser owns the collapse -- the same <details> the
+   index uses for a number that has collected more entries than a screen -- so
+   there is no open state to hold anywhere on this page. */
+const COMMENTS_SHOWN = 5
+
+/** Talk beside the entry, under the history of how the entry got here.
+
+    It is a write on a read page, which the like already established the
+    carve-out for: it writes something beside the entry rather than the entry,
+    so it does not belong at /edit with the five controls that change it.
+
+    Nothing here rewrites or removes a comment. With no accounts a Remove button
+    belongs to nobody, and unlike an entry a comment has no revision behind it,
+    so the button would be the loss rather than the guard against it. */
+function Comments({ id }: { id: string }) {
+  const uid = useId()
+  const fid = (name: string) => `${uid}-${name}`
+  const [said, setSaid] = useState<Comment[] | null>(null)   // null is "loading"
+  const [body, setBody] = useState('')
+  const [author, setAuthor] = useState(nickname.get())
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    setSaid(null)
+    api.comments(id).then(setSaid, (e: Error) => setErr(e.message))
+  }, [id])
+
+  /* The POST answers with the list, so what came back is the state: no refetch,
+     no bump dep. The nickname is remembered the way every other form on the
+     wiki remembers it -- it is the one thing a reader should not retype. */
+  async function say() {
+    if (!body.trim() || busy) return
+    setBusy(true)
+    setErr('')
+    nickname.set(author)
+    try {
+      setSaid(await api.comment(id, { author: author.trim() || 'anonymous', body }))
+      setBody('')
+    } catch (e) {
+      setErr((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const rest = said?.slice(COMMENTS_SHOWN) ?? []
+
+  return (
+    <>
+      <h4 className="section">Comments</h4>
+      <div className="cmt-form">
+        <div className="field">
+          <label htmlFor={fid('nick')}>Your nickname</label>
+          <input
+            id={fid('nick')}
+            value={author}
+            onChange={(e) => setAuthor(e.target.value)}
+            placeholder="anonymous"
+            maxLength={40}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor={fid('say')}>
+            Say something{' '}
+            {/* 300 is COMMENT_MAX in main.py, hand-copied the way every other
+                field cap is -- past it the API answers 422 rather than trimming */}
+            <span className="hint">at most 300 characters</span>
+          </label>
+          <textarea
+            id={fid('say')}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="What do you make of it?"
+            maxLength={300}
+          />
+        </div>
+        <button
+          type="button"
+          className="btn primary"
+          disabled={busy || !body.trim()}
+          onClick={say}
+        >
+          {busy ? 'Posting…' : 'Post'}
+        </button>
+      </div>
+      {err && (
+        <p className="err" role="alert">
+          {err}
+        </p>
+      )}
+      {!said ? (
+        <p className="quiet" role="status">
+          Loading…
+        </p>
+      ) : said.length ? (
+        <>
+          {said.slice(0, COMMENTS_SHOWN).map(cmt)}
+          {!!rest.length && (
+            <details>
+              <summary className="ix-fold">{rest.length} more</summary>
+              {rest.map(cmt)}
+            </details>
+          )}
+        </>
+      ) : (
+        <p className="quiet">Nothing said yet.</p>
+      )}
+    </>
+  )
+}
+
+/* Plain text, not markdown: a remark is a remark, and the entry below the
+   number is where the formatting belongs. React escapes it, so there is nothing
+   to sanitise either. */
+const cmt = (c: Comment) => (
+  <div className="cmt" key={c.id}>
+    <p>{c.body}</p>
+    <span>
+      {c.author} · {fmtDate(c.created_at)}
+    </span>
+  </div>
+)
 
 /* A delete snapshots under the author "deleted", which reads badly inside a
    sentence that already says "replaced by". If the backend ever words it

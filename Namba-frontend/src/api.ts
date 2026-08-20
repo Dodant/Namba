@@ -95,6 +95,17 @@ export type Revision = {
   snapshot: Post
 }
 
+/** Something said beside an entry rather than in it. No `edited_by` and no
+    revision behind it: once posted, a comment cannot be rewritten or removed.
+    That is a decision and not a gap -- with no accounts, a Remove button
+    belongs to nobody. */
+export type Comment = {
+  id: number
+  author: string
+  body: string
+  created_at: string
+}
+
 export type PostInput = {
   value: string
   format?: Format | null
@@ -183,6 +194,14 @@ export const api = {
 
   restore: (id: number, rev: number, author: string) =>
     req<Post>(`/api/posts/${id}/revisions/${rev}/restore`, json('POST', { author })),
+
+  comments: (id: number | string) => req<Comment[]>(`/api/posts/${id}/comments`),
+
+  /** Answers with the whole list, newest first, so what comes back *is* the new
+      state -- the same shape link() and translate() hand the post back in, and
+      the reason nothing here needs a refetch. */
+  comment: (id: number | string, c: { author: string; body: string }) =>
+    req<Comment[]>(`/api/posts/${id}/comments`, json('POST', c)),
 
   upload: (file: File) => {
     const fd = new FormData()
