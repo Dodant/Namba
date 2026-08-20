@@ -252,26 +252,35 @@ export default function PostPage() {
       </article>
 
       <aside className="side">
-        <h4 className="section">Edit history</h4>
-        <ol className="revs">
-          <li className="rev now">
-            <b>{post.title}</b>
-            <span>
-              current · {post.edited_by ? `edited by ${post.edited_by}` : `by ${post.author}`}
-            </span>
-          </li>
-          {revs.data?.map((r) => (
-            <li className="rev" key={r.id}>
-              <b>{r.snapshot.title}</b>
+        {/* Both sections in the rail fold, and neither remembers -- open on
+            arrival, closed for as long as the reader wants it closed. A
+            <summary> rather than a button and a piece of state, the same as the
+            index's bands; the heading stays a heading inside it, which is what
+            keeps it in the outline and announced as one. */}
+        <details open>
+          <summary className="ix-fold">
+            <h4 className="section">Edit history</h4>
+          </summary>
+          <ol className="revs">
+            <li className="rev now">
+              <b>{post.title}</b>
               <span>
-                {byline(r)} · {fmtDate(r.at)}
+                current · {post.edited_by ? `edited by ${post.edited_by}` : `by ${post.author}`}
               </span>
             </li>
-          ))}
-        </ol>
-        {!revs.loading && !revs.data?.length && (
-          <p className="quiet">No edits yet — as first written.</p>
-        )}
+            {revs.data?.map((r) => (
+              <li className="rev" key={r.id}>
+                <b>{r.snapshot.title}</b>
+                <span>
+                  {byline(r)} · {fmtDate(r.at)}
+                </span>
+              </li>
+            ))}
+          </ol>
+          {!revs.loading && !revs.data?.length && (
+            <p className="quiet">No edits yet — as first written.</p>
+          )}
+        </details>
         <Comments id={id} />
       </aside>
     </div>
@@ -327,8 +336,10 @@ function Comments({ id }: { id: string }) {
   const rest = said?.slice(COMMENTS_SHOWN) ?? []
 
   return (
-    <>
-      <h4 className="section">Comments</h4>
+    <details open>
+      <summary className="ix-fold">
+        <h4 className="section">Comments</h4>
+      </summary>
       <div className="cmt-form">
         <div className="field">
           <label htmlFor={fid('nick')}>Your nickname</label>
@@ -370,8 +381,6 @@ function Comments({ id }: { id: string }) {
         </p>
       )}
       {!said ? (
-        /* the list stays null when the fetch fails, so the error and the wait
-           were both on screen and the wait was the lie -- nothing is coming */
         !err && (
           <p className="quiet" role="status">
             Loading…
@@ -390,7 +399,7 @@ function Comments({ id }: { id: string }) {
       ) : (
         <p className="quiet">Nothing said yet.</p>
       )}
-    </>
+    </details>
   )
 }
 

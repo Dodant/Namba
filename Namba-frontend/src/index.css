@@ -679,9 +679,17 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
   max-height: calc(100dvh - 40px);
   overflow-y: auto; overscroll-behavior-y: contain;
 }
-/* Edit history is the first of the rail's two headings and sits tight under the
-   top; Comments follows a list and needs the room a section break is. */
-.side .section:not(:first-child) { margin-top: 20px; }
+/* Both of the rail's sections are a <details>, so the space between them is
+   between the two of them and not under a heading: with Edit history closed,
+   a margin on the Comments heading would have been 20px of nothing. The caret,
+   the hidden marker and the hit box all come from .ix-fold on the summary --
+   the index's fold, reused, which is also why it is already in the list of the
+   app's own words that do not select. */
+/* 25 to draw 20: .ix-fold buys its 24px hit box out of padding and hands the
+   height straight back with a negative block margin, and the summary that
+   margin pulls up is the second section's own top edge. */
+.side > details + details { margin-top: 25px; }
+.side > details > summary .section { margin-bottom: 5px; }
 /* one column, and the rail stops being a rail: it is the last thing on the
    page rather than the thing beside it */
 @media (max-width: 820px) {

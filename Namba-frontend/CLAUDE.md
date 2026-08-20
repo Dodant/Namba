@@ -337,8 +337,16 @@ timeline — restoring happens in the History rail of `PostForm`, which is the
 same side of the page so that Edit does not move it.
 
 Comments are under it, in the same rail: how the entry got here, then what
-people make of it. Five, then a `<details>` fold whose summary is the rest's
-count — the same disclosure the index uses for a number with more entries than a
+people make of it. **Both sections are a `<details>`, open on arrival**, so a
+reader who wants the form and not the history can fold the history away — and
+neither remembers, the same as the credits toggle: press it and it is closed for
+as long as you want it closed. The `<summary>` wears `.ix-fold`, which is where
+its caret, its hidden marker and its 24px hit box come from; the `<h4>` stays a
+heading *inside* it, so it is still in the outline and still announced as one.
+Nesting a fold in a fold is deliberate: the section, then the rest of the
+comments inside it.
+
+Five, then a `<details>` fold whose summary is the rest's count — the same disclosure the index uses for a number with more entries than a
 screen, so the browser owns the collapse and there is no open state anywhere.
 The body is plain text on `white-space: pre-wrap` and not markdown: a remark is
 a remark, and React escapes it, so there is nothing here to sanitise. `api.comment()`
