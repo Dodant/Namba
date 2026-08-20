@@ -358,15 +358,21 @@ heading *inside* it, so it is still in the outline and still announced as one.
 Nesting a fold in a fold is deliberate: the section, then the rest of the
 comments inside it.
 
-Each summary carries a count in a `.n` beside its heading — "2 edits",
-"3 comments" — and only when there is one to carry: a section with nothing in it
+Each summary carries a count in a `.n` beside its heading — "Edit history 2",
+"Comments 3" — and only when there is one to carry: a section with nothing in it
 says so in the line underneath, and a `0` before the fetch lands is an answer
-where a wait belongs. The noun as well as the figure, the way every count on the
-wiki reads, because closed, that line is all the section says about itself. It
-counts the rows *below it*, which `REVISIONS_SHOWN` caps at 50 — a true total
-would have to come off the API, and nothing needs one yet. The `.n` needs no
-font of its own: it inherits `.ix-fold`'s. What it does need is the `{' '}`
-before it, or the summary is announced as "Edit history2 edits".
+where a wait belongs. **The figure alone, unlike a band on the index**, which
+says "12 entries" under a heading of "Under 100": here the heading is the noun
+already, and "Comments 8 comments" is the word twice in a row. It counts the
+rows *below it*, which `REVISIONS_SHOWN` caps at 50 — a true total would have to
+come off the API, and nothing needs one yet. The `.n` needs no font or rule of
+its own: it inherits `.ix-fold`'s, and the 7px between it and the heading is
+that flex row's `gap`. What it does need is the `{' '}` before it, or the
+summary is announced as "Edit history2".
+
+The two sections are divided by a rule (`.side > details + details`), not by
+space alone: folded shut, Edit history is one line, and two headings 20px apart
+is the gap a heading keeps from its own list everywhere else on this page.
 
 Five, then a `<details>` fold whose summary is the rest's count — the same disclosure the index uses for a number with more entries than a
 screen, so the browser owns the collapse and there is no open state anywhere.

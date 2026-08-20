@@ -265,12 +265,12 @@ export default function PostPage() {
                 arrived: "0 edits" before the fetch lands is an answer rather
                 than a wait, and the line under the list already says an entry
                 has none. It counts the rows below it, which REVISIONS_SHOWN
-                caps at 50 -- a total would have to come off the API. */}
-            {!!revs.data?.length && (
-              <span className="n">
-                {revs.data.length} {revs.data.length === 1 ? 'edit' : 'edits'}
-              </span>
-            )}
+                caps at 50 -- a total would have to come off the API.
+
+                The figure alone here, unlike the index's bands: the heading a
+                rail count sits beside is the noun already, and "Edit history
+                3 edits" says edit twice in four words. */}
+            {!!revs.data?.length && <span className="n">{revs.data.length}</span>}
           </summary>
           <ol className="revs">
             <li className="rev now">
@@ -350,14 +350,11 @@ function Comments({ id }: { id: string }) {
     <details open>
       <summary className="ix-fold">
         <h4 className="section">Comments</h4>{' '}
-        {/* the noun as well as the figure, the way every other count on the
-            wiki reads it: closed, this line is all the section says about
-            itself, and "Comments 12" can be read as the twelfth of them */}
-        {!!said?.length && (
-          <span className="n">
-            {said.length} {said.length === 1 ? 'comment' : 'comments'}
-          </span>
-        )}
+        {/* the figure alone -- "Comments 8 comments" was the word twice in a
+            row. A band on the index says "12 entries" because its heading is
+            "Under 100" and the noun is news there; here the heading is the
+            noun, and what is left to say is how many. */}
+        {!!said?.length && <span className="n">{said.length}</span>}
       </summary>
       <div className="cmt-form">
         <div className="field">

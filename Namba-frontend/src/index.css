@@ -685,16 +685,17 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
    the hidden marker and the hit box all come from .ix-fold on the summary --
    the index's fold, reused, which is also why it is already in the list of the
    app's own words that do not select. */
-/* 25 to draw 20: .ix-fold buys its 24px hit box out of padding and hands the
-   height straight back with a negative block margin, and the summary that
-   margin pulls up is the second section's own top edge. */
-.side > details + details { margin-top: 25px; }
-/* A count beside the heading, the same as a band's. It needs no font of its
-   own: .ix-fold is already mono 10.5 in --fainter with tabular figures and the
-   span inherits all of it -- only the nowrap has to be said, for the reason it
-   is said on .band-head .n, that a count broken over two lines is one figure
-   and then another. */
-.ix-fold .n { white-space: nowrap; }
+/* A rule between them, because the space alone stopped saying where one ends:
+   with Edit history folded shut the rail is two headings 20px apart, which is
+   the gap between a heading and its own list elsewhere on the page.
+
+   20 above and 25 below to draw 20 on both sides: .ix-fold buys its 24px hit
+   box out of padding and hands the height straight back with a negative block
+   margin, and the summary that margin pulls up is the second section's own
+   top edge. */
+.side > details + details {
+  margin-top: 20px; border-top: 1px solid var(--rule); padding-top: 25px;
+}
 .side > details > summary .section { margin-bottom: 5px; }
 /* one column, and the rail stops being a rail: it is the last thing on the
    page rather than the thing beside it */
