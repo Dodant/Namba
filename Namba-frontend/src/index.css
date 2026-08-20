@@ -762,12 +762,20 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
 .cmt { padding: 11px 0; border-bottom: 1px solid var(--rule); }
 .cmt p { margin: 0 0 4px; font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; }
 .cmt span { font-family: var(--mono); font-size: 10.5px; line-height: 1.4; color: var(--faint); }
-/* 12 rather than the form's 28 between fields, and 72 rather than 104 for the
-   box: two fields and a button in a 200px column is not the entry form, and the
-   rail is a scroll port that everything else in it has to stay reachable past */
+/* The entry form's rhythm is for eleven fields in a 680px column. Here it is
+   two and a button in 200px, at the top of a scroll port everything under it
+   has to stay reachable past -- so every measure around the type comes in:
+   28 between fields becomes 8, the 8 from a label to its control becomes 5,
+   and the boxes give back the 11px of padding they wear at full size.
+
+   What does not move is the type. 16px in anything you type into is what stops
+   iOS Safari zooming the page on focus and leaving it zoomed, and the label is
+   the pinned 10.5/600 over its 10.5/400 hint. A compact form is one with less
+   room around it, not one set smaller. */
 .cmt-form { margin: 4px 0 12px; }
-.cmt-form .field { margin-bottom: 12px; }
-.cmt-form .field textarea { min-height: 72px; }
+.cmt-form .field { gap: 5px; margin-bottom: 8px; }
+.cmt-form .field input, .cmt-form .field textarea { padding: 8px 14px; }
+.cmt-form .field textarea { min-height: 60px; }
 
 .quiet { font-family: var(--mono); font-size: 10.5px; line-height: 1.5; color: var(--muted); }
 a.quiet { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
