@@ -136,6 +136,15 @@ sanitiser config to get wrong.
   mean storing an offset per history entry.
 - `PostCard.tsx` must export only components (fast refresh). Shared helpers like
   `fmtDate` and `numberPath` live in `api.ts`.
+- **Every date is relative.** `fmtDate` is "4 minutes ago", "2 days ago",
+  "5 months ago" — the same scale a feed uses, because every date on this wiki
+  is a byline in a list, an edit in a history or a remark under an entry, and
+  all three are read to answer how fresh a thing is. It is one function and ten
+  call sites, one of them inside a template literal, which is why it returns a
+  string and not a `<time>`. The exact timestamp is therefore nowhere on screen:
+  if it is ever wanted, it is a `title` on the elements that carry a date, not a
+  second format for lists to choose between. Months are 30 days and a year is
+  twelve of those, so "12 months ago" cannot happen.
 - Markdown renders on `/p/:id` only. Every list shows `plain(body)` — the source
   read back as prose, so `**bold**` and `## ` are not punctuation in a preview —
   clamped to three lines in CSS. `plain()` is a handful of regexes and is not a

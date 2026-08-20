@@ -289,9 +289,37 @@ export const numSize = (shown: string) =>
 export const originalLabel = (lang: string | null | undefined) =>
   lang ? `Original (${lang})` : 'Original'
 
+/* How long ago, not which day: "4 minutes ago", "2 days ago", "5 months ago".
+   Every date on this wiki is a byline in a list, an edit in a history or a
+   remark under an entry, and all three are read to answer how fresh the thing
+   is -- "Aug 20, 2026" made the reader do that subtraction on every row.
+
+   Intl.RelativeTimeFormat rather than a table of plurals: it is the platform's
+   own, it knows "1 day" from "2 days", and it is the same Intl the absolute
+   form was already asking for. numeric: 'always' so the scale stays one voice
+   -- 'auto' answers -1 day with "yesterday" and -1 month with "last month",
+   which is a different register from "3 weeks ago" above it.
+
+   A month is 30 days here, which is what every relative clock does and is
+   invisible at this resolution: nothing turns on whether a five-week-old edit
+   reads as 5 weeks or 1 month. The year is twelve of those months rather than
+   365 days, so that the five days between them cannot come out as "12 months
+   ago" -- the months stop at 11 and hand over. */
+const RTF = new Intl.RelativeTimeFormat('en', { numeric: 'always' })
+const MONTH = 30 * 86400
+const SPANS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ['year', 12 * MONTH], ['month', MONTH], ['week', 604800],
+  ['day', 86400], ['hour', 3600], ['minute', 60],
+]
+
 export function fmtDate(s: string) {
   const d = new Date(s)
-  return isNaN(+d)
-    ? s
-    : d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  if (isNaN(+d)) return s   // whatever the API said, unchanged -- as before
+  const secs = (Date.now() - +d) / 1000
+  for (const [unit, per] of SPANS) {
+    if (secs >= per) return RTF.format(-Math.floor(secs / per), unit)
+  }
+  /* under the minute, and also anything stamped by a clock ahead of this one:
+     a comment posted "in 6 seconds" is a skew, not news. */
+  return 'just now'
 }
