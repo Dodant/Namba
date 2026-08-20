@@ -10,8 +10,11 @@ in `README.md`.
 
 ```sh
 cd Namba-backend  && .venv/bin/uvicorn main:app --reload   # :8000
-cd Namba-frontend && npm run dev                           # :5173, proxies /api and /uploads
+cd Namba-frontend && npm run dev                           # :5173, wiki at /, back office at /admin
 ```
+
+There is no signup, so the first operator comes from a shell:
+`cd Namba-backend && .venv/bin/python admin.py add you@example.com`.
 
 Before claiming anything works:
 

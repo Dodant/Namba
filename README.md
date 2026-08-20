@@ -4,6 +4,9 @@ An open wiki of numbers. Every number means something to someone — 42 is a boo
 1885 is a film, 09:41 is a keynote — and this is where people write those meanings
 down. No account, no login: anyone can read, post and edit.
 
+Nobody can delete. There is a back office at `/admin` where whoever runs the wiki
+decides that instead, and it is the only login in the place.
+
 Seeded from `Memorable Numbers.md` (183 entries).
 
 ## Running it
@@ -19,9 +22,18 @@ uv pip install -r requirements.txt --python .venv/bin/python
 .venv/bin/uvicorn main:app --reload
 
 # web  → http://localhost:5173  (proxies /api and /uploads to the api)
+#        the wiki is at /, the back office at /admin
 cd Namba-frontend
 npm install
 npm run dev
+```
+
+There is no signup, so the first operator comes from a shell:
+
+```sh
+cd Namba-backend
+.venv/bin/python admin.py add you@example.com  # prompts twice; the first is a super admin
+.venv/bin/python admin.py admins               # who can sign in
 ```
 
 Self-check: `cd Namba-backend && .venv/bin/python test_namba.py`
@@ -177,6 +189,57 @@ type as you type it, so the tag you see in the field is the tag that gets
 made, and `/t/BOOK` still resolves — the filter folds case on the way in, so
 links written before the rule changed keep working.
 
+### Nobody deletes
+
+A wiki anyone can edit is also a wiki anyone could empty, and the fix is not a
+confirmation dialog — it is that the button does not exist. There is no
+`DELETE /api/posts/{id}` (the path answers 405) and no delete control anywhere in
+the front end. `posts.status` is `ACTIVE`, `HIDDEN` or `DELETED`, and a hidden
+entry drops out of all nine public reads and comes back whole: its history, its
+comments, its translations, at the same address.
+
+So a reader who thinks an entry should go asks, in the "Flag a problem" fold
+beside the entry, and an operator decides. Reports live in the same place and are
+the other half of it: *something is wrong here*, as against *this should not be
+here*.
+
+The one hard delete is `python admin.py purge <id> --yes`, in a shell, for the
+removal a law requires. It has to be its own thing because on this wiki an *edit*
+cannot remove anything — `snapshot()` copies the old body into `revisions` and
+that endpoint is public, so blanking a phone number by editing moves it one click
+away rather than removing it. A purge takes the entry, its snapshots and its
+picture together.
+
+### The back office
+
+`/admin`, behind a login, and a second document rather than a route in the wiki's
+bundle — the reading pages should not carry a table UI nobody but an operator
+opens, and 1300 lines of the wiki's global CSS should not reach a dense table.
+
+| | |
+|---|---|
+| Dashboard | where the wiki is, what happened today, what is waiting |
+| All content | every entry including the hidden ones — the one list that does not filter on status |
+| One entry | the body as source, every revision, a diff between any two, hide / remove / revert |
+| Recent changes | every write a visitor made |
+| Delete requests | the queue; approve or reject, with the reason kept |
+| Reports | grouped per entry, with each reporter's hashes |
+| Spam & abuse | writes per client per window, and the same paragraph filed under several numbers |
+| Blocked clients | by address or by cookie, with an expiry; lifted ones stay listed |
+| Audit log | every decision an operator made, and nothing can edit it |
+| Operators | the accounts, addable by a super admin |
+
+Two things it deliberately does not do. It has no editor of its own — "Edit on
+the wiki" opens the wiki's own form, because there is one place that knows how a
+number value is parsed and a second answer to that is a bug waiting. And
+resolving a report does nothing to the entry: hiding it, reverting it and
+blocking whoever wrote it are separate buttons with separate audit rows, rather
+than one button that does four things and logs one.
+
+No address is stored anywhere. Every IP, user agent and client cookie is a
+sha256 salted with the install's own key, and only the first four characters are
+ever shown.
+
 ## Deploying
 
 One process. `npm run build` writes `Namba-frontend/dist/`, and the API serves
@@ -207,12 +270,40 @@ copy of the database somewhere else — anyone can rewrite any entry, and the
 snapshots that undo that live in the same file as the entries. Back up
 `secret.key` next to it: it is what the hashes in `events` and the blocks are
 salted with, and without it they stop matching anything and nothing complains.
+`NAMBA_SECRET` overrides it if you would rather it came from the environment.
+
+The admin session cookie is `SameSite=Strict`, and `Secure` whenever the request
+arrived over https. That is what stands in for a CSRF token — the panel is
+same-origin with the API, so nothing legitimate is a cross-site request — and it
+holds only while CORS credentials stay off. **Do not turn on
+`allow_credentials`**: the wide-open `allow_origins` is harmless precisely
+because a browser will not send this cookie to another origin, and the two
+together would undo both layers at once. `test_admin_accounts` asserts it stays
+off.
 
 ## Known gaps
 
 - 20 seeded entries still have Korean titles (`아비정전`, `36계 줄행랑`). Left
   verbatim rather than machine-translated — the wiki should fix them, now by
   adding an English tab beside the original.
-- Search reads the entry itself, not its translations.
 - `801.11` is in the data as written; the Wi-Fi standard is `802.11`.
-- Search is `LIKE`. Fine for thousands of rows, not for millions.
+- Search is `LIKE`, on both sides. Fine for thousands of rows, not for millions.
+- **The abuse view counts; it does not detect.** Writes per client per window,
+  and the one pattern a query answers outright — the same paragraph filed under
+  three or more numbers. The rest of what the shape is there for (an entry
+  rewritten in a loop, a campaign spread thin over a day) needs a scoring pass
+  that has not been written. Every write is already in `events`, which is what
+  it would read.
+- **A purge does not reach the entry's rows in `events`** — the nickname typed,
+  three salted hashes, whatever `meta` held. `events` is append-only by
+  convention and that is the only thing making it a log an operator cannot tidy
+  up after themselves in; on a wiki this size that is worth more than closing
+  the gap. Weighed and declined rather than missed, and there is no retention
+  sweep on the hashes either.
+- **No bulk actions in the panel.** They double every confirmation and
+  partial-failure path for an operator who has one account and twenty rows.
+- The write limiter and the login limiter both live in process memory, so both
+  are per-worker. Run one worker, or move them to redis.
+- The back office has no front-end tests, because the front end has no test
+  runner and that is deliberate. Every route it calls is covered on the API
+  side; the layout is checked by looking at it.
