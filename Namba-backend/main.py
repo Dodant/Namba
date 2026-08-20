@@ -5,7 +5,6 @@ import os
 import re
 import time
 from collections import defaultdict
-from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import uuid4
 
@@ -16,6 +15,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 import db
+import events
+from db import now
 from numfmt import FORMATS, bucket_of, grouped_value, parse_number
 
 # A tag is whatever people call it, like a translation's language label. What
@@ -78,25 +79,33 @@ def uploads_bytes():
     return sum(f.stat().st_size for f in os.scandir(UPLOAD_DIR) if f.is_file())
 
 
-def now():
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
-
-
-# --- write rate limit ---------------------------------------------------
+# --- the write guard ----------------------------------------------------
 # ponytail: in-memory, resets on restart and is per-process. Move to redis if
 # this ever runs behind more than one worker.
 _writes = defaultdict(list)
 WRITE_LIMIT, WINDOW = 20, 60
 
 
-def rate_limit(request: Request):
-    ip = request.client.host if request.client else "unknown"
+def guard(request: Request):
+    """Every write in the file depends on this: who is asking, and may they.
+
+    It hands the caller's three hashes back, so a route that wants to record
+    what happened has them without asking twice -- which is why the writes below
+    take it as `who=` rather than throwing it away in `_=`.
+
+    Counting is keyed on the *hash* now rather than the address. Same behaviour,
+    and the raw IP stops sitting in a process dict for the lifetime of the
+    worker. Reads go through nothing: there is nothing to record about a page
+    view, and reading this wiki is meant to cost nothing at all.
+    """
+    who = events.client_of(request)
     cutoff = time.monotonic() - WINDOW
-    hits = [t for t in _writes[ip] if t > cutoff]
+    hits = [t for t in _writes[who["ip_hash"]] if t > cutoff]
     if len(hits) >= WRITE_LIMIT:
         raise HTTPException(429, "Too many writes. Slow down for a minute.")
     hits.append(time.monotonic())
-    _writes[ip] = hits
+    _writes[who["ip_hash"]] = hits
+    return who
 
 
 # --- models -------------------------------------------------------------
@@ -302,12 +311,17 @@ def fetch_one(con, post_id, hidden=False):
 
 
 def snapshot(con, post_id, author):
-    """Store the current state of a post so an edit or delete can be undone."""
+    """Store the current state of a post so an edit can be undone.
+
+    Returns the new revision's id, which is what an event row carries so that
+    "who did this" and "what it was before" are one join apart.
+    """
     post = fetch_one(con, post_id)
-    con.execute(
+    cur = con.execute(
         "INSERT INTO revisions (post_id, snapshot, author, at) VALUES (?,?,?,?)",
         (post_id, json.dumps(post, ensure_ascii=False), author, now()),
     )
+    return cur.lastrowid
 
 
 # 1,000 and 299,792,458 and 1,234.5678 -- but not 1,2,3 or 12,34, which are
@@ -638,7 +652,7 @@ def _write_translations(con, post_id, rows):
 
 
 @app.post("/api/posts", status_code=201)
-def create_post(p: PostIn, _=Depends(rate_limit), con=Depends(get_db)):
+def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
     value, grouped = ungroup(p.value, p.grouped)
     fmt, key = resolve_format(value, p.format)
     ts = now()
@@ -652,18 +666,24 @@ def create_post(p: PostIn, _=Depends(rate_limit), con=Depends(get_db)):
         )
         _write_tags(con, cur.lastrowid, p.tags)
         post_id = cur.lastrowid
+        # A create has no prior state, so there is no snapshot to point at --
+        # which is the whole reason the log is its own table and not a column on
+        # revisions. Without this row a spammer's first twenty entries would be
+        # invisible to the abuse view.
+        events.record(con, "CREATE", client=who, who=p.author.strip() or "anonymous",
+                      target_type="post", target_id=post_id, value=value)
     return fetch_one(con, post_id)
 
 
 @app.patch("/api/posts/{post_id}")
-def edit_post(post_id: int, p: PostPatch, _=Depends(rate_limit), con=Depends(get_db)):
+def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db)):
     current = fetch_one(con, post_id)
     # Which fields the caller actually sent. For image, null is a value -- it
     # is how the form removes one -- and defaulting it to None made "unchanged"
     # and "clear this" the same request, so Remove quietly did nothing.
     sent = p.model_dump(exclude_unset=True)
     with con:
-        snapshot(con, post_id, p.author.strip() or "anonymous")
+        rev = snapshot(con, post_id, p.author.strip() or "anonymous")
         # the box has to be settled before the value is, since it decides
         # whether separators in what was typed are stripped or kept
         grouped = p.grouped if "grouped" in sent else bool(current["grouped"])
@@ -695,6 +715,12 @@ def edit_post(post_id: int, p: PostPatch, _=Depends(rate_limit), con=Depends(get
         )
         if p.tags is not None:
             _write_tags(con, post_id, p.tags)
+        # which fields were sent, not which actually changed: the diff between
+        # the snapshot and the row is where "changed" is answered, and there is
+        # no point storing a worse copy of it here
+        events.record(con, "EDIT", client=who, who=p.author.strip() or "anonymous",
+                      target_type="post", target_id=post_id, revision_id=rev,
+                      fields=sorted(sent))
     return fetch_one(con, post_id)
 
 
@@ -707,7 +733,7 @@ def restore_revision(
     post_id: int,
     rev_id: int,
     body: RestoreIn = RestoreIn(),
-    _=Depends(rate_limit),
+    who=Depends(guard),
     con=Depends(get_db),
 ):
     guard_public(con, post_id)
@@ -717,18 +743,19 @@ def restore_revision(
     if row is None:
         raise HTTPException(404, "revision not found")
     old = json.loads(row["snapshot"])
-    who = body.author.strip() or "anonymous"
+    author = body.author.strip() or "anonymous"
     alive = con.execute("SELECT 1 FROM posts WHERE id = ?", (post_id,)).fetchone()
+    rev = None
     with con:
         if alive:
-            snapshot(con, post_id, who)  # restoring is itself undoable
+            rev = snapshot(con, post_id, author)  # restoring is itself undoable
             con.execute(
                 """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
                                     image=?, lang=?, grouped=?, edited_by=?,
                                     updated_at=? WHERE id=?""",
                 (old["value"], old["format"], old["sort_key"], old["title"], old["body"],
                  old["image"], old.get("lang"), int(old.get("grouped") or 0),
-                 who, now(), post_id),
+                 author, now(), post_id),
             )
         else:
             # The post's row is gone, which only entries removed by the DELETE
@@ -746,26 +773,29 @@ def restore_revision(
                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (post_id, old["value"], old["format"], old["sort_key"], old["title"],
                  old["body"], old["image"], old.get("lang"),
-                 int(old.get("grouped") or 0), old["author"], who,
+                 int(old.get("grouped") or 0), old["author"], author,
                  old.get("likes", 0), old["created_at"], now()),
             )
         _write_tags(con, post_id, old.get("tags", []))
         # a snapshot from before translations existed has none, and restoring it
         # says so -- the ones dropped are in the snapshot this restore just took
         _write_translations(con, post_id, old.get("translations", []))
+        events.record(con, "RESTORE", client=who, who=author, target_type="post",
+                      target_id=post_id, revision_id=rev, restored=rev_id,
+                      resurrected=not alive)
     return fetch_one(con, post_id)
 
 
 @app.put("/api/posts/{post_id}/translations")
 def put_translation(
-    post_id: int, t: TranslationIn, _=Depends(rate_limit), con=Depends(get_db)
+    post_id: int, t: TranslationIn, client=Depends(guard), con=Depends(get_db)
 ):
     """Add this entry in another language, or rewrite the one already there."""
     fetch_one(con, post_id)  # 404 if the post is gone
     who = t.author.strip() or "anonymous"
     ts = now()
     with con:
-        snapshot(con, post_id, who)  # a translation is content, so it is undoable
+        rev = snapshot(con, post_id, who)  # a translation is content, so undoable
         # UNIQUE(post_id, lang) turns a second write in the same language into an
         # edit. author is the first writer and stays put, as it does on a post.
         con.execute(
@@ -777,6 +807,8 @@ def put_translation(
                    edited_by=excluded.author, updated_at=excluded.updated_at""",
             (post_id, t.lang, t.title, t.body, who, ts, ts),
         )
+        events.record(con, "TRANSLATE", client=client, who=who, target_type="post",
+                      target_id=post_id, revision_id=rev, lang=t.lang)
     return fetch_one(con, post_id)
 
 
@@ -785,24 +817,33 @@ def delete_translation(
     post_id: int,
     tr_id: int,
     author: str = Query(default="anonymous", max_length=40),
-    _=Depends(rate_limit),
+    who=Depends(guard),
     con=Depends(get_db),
 ):
     with con:
-        snapshot(con, post_id, author.strip() or "anonymous")
+        rev = snapshot(con, post_id, author.strip() or "anonymous")
         cur = con.execute(
             "DELETE FROM translations WHERE id = ? AND post_id = ?", (tr_id, post_id)
         )
+        if cur.rowcount:
+            events.record(con, "UNTRANSLATE", client=who,
+                          who=author.strip() or "anonymous", target_type="post",
+                          target_id=post_id, revision_id=rev, translation=tr_id)
     if not cur.rowcount:
         raise HTTPException(404, "translation not found")
     return fetch_one(con, post_id)
 
 
 @app.post("/api/posts/{post_id}/like")
-def like(post_id: int, _=Depends(rate_limit), con=Depends(get_db)):
+def like(post_id: int, _=Depends(guard), con=Depends(get_db)):
     # ponytail: the client's localStorage stops a reader double-counting by
     # accident, and the limiter above caps what a loop can do on purpose. An
     # ip-hash table is the next step if a count still looks farmed.
+    #
+    # Deliberately not recorded in events. A like is the one write that says
+    # nothing about the entry, and at one row per tap the abuse view would be
+    # nothing but likes -- the limiter is what answers a farmed count, and it
+    # already has.
     fetch_one(con, post_id)  # before the counter moves, not after
     with con:
         con.execute("UPDATE posts SET likes = likes + 1 WHERE id = ?", (post_id,))
@@ -810,7 +851,7 @@ def like(post_id: int, _=Depends(rate_limit), con=Depends(get_db)):
 
 
 @app.delete("/api/posts/{post_id}/like")
-def unlike(post_id: int, _=Depends(rate_limit), con=Depends(get_db)):
+def unlike(post_id: int, _=Depends(guard), con=Depends(get_db)):
     fetch_one(con, post_id)
     with con:
         con.execute(
@@ -820,7 +861,7 @@ def unlike(post_id: int, _=Depends(rate_limit), con=Depends(get_db)):
 
 
 @app.post("/api/posts/{post_id}/comments", status_code=201)
-def add_comment(post_id: int, c: CommentIn, _=Depends(rate_limit), con=Depends(get_db)):
+def add_comment(post_id: int, c: CommentIn, who=Depends(guard), con=Depends(get_db)):
     """The other write that lands beside an entry rather than in it.
 
     So no snapshot(), and updated_at is left alone: a remark is not a rewrite
@@ -834,11 +875,15 @@ def add_comment(post_id: int, c: CommentIn, _=Depends(rate_limit), con=Depends(g
             "INSERT INTO comments (post_id, author, body, created_at) VALUES (?,?,?,?)",
             (post_id, c.author.strip() or "anonymous", c.body, now()),
         )
+        # no revision_id: a comment takes no snapshot, which is the same reason
+        # it is not on fetch_one
+        events.record(con, "COMMENT", client=who, who=c.author.strip() or "anonymous",
+                      target_type="post", target_id=post_id)
     return list_comments(post_id, con)
 
 
 @app.post("/api/posts/{post_id}/links", status_code=201)
-def add_link(post_id: int, link: LinkIn, _=Depends(rate_limit), con=Depends(get_db)):
+def add_link(post_id: int, link: LinkIn, who=Depends(guard), con=Depends(get_db)):
     if link.other_id == post_id:
         raise HTTPException(400, "a post cannot link to itself")
     fetch_one(con, post_id)
@@ -846,20 +891,24 @@ def add_link(post_id: int, link: LinkIn, _=Depends(rate_limit), con=Depends(get_
     a, b = sorted((post_id, link.other_id))
     with con:
         con.execute("INSERT OR IGNORE INTO post_links (a_id, b_id) VALUES (?,?)", (a, b))
+        events.record(con, "LINK", client=who, target_type="post",
+                      target_id=post_id, other=link.other_id)
     return get_post(post_id, con)
 
 
 @app.delete("/api/posts/{post_id}/links/{other_id}")
-def remove_link(post_id: int, other_id: int, _=Depends(rate_limit), con=Depends(get_db)):
+def remove_link(post_id: int, other_id: int, who=Depends(guard), con=Depends(get_db)):
     fetch_one(con, post_id)
     a, b = sorted((post_id, other_id))
     with con:
         con.execute("DELETE FROM post_links WHERE a_id = ? AND b_id = ?", (a, b))
+        events.record(con, "UNLINK", client=who, target_type="post",
+                      target_id=post_id, other=other_id)
     return get_post(post_id, con)
 
 
 @app.post("/api/upload")
-async def upload(file: UploadFile = File(...), _=Depends(rate_limit)):
+async def upload(file: UploadFile = File(...), who=Depends(guard)):
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_EXT:
         raise HTTPException(400, f"allowed types: {', '.join(sorted(ALLOWED_EXT))}")
@@ -874,6 +923,15 @@ async def upload(file: UploadFile = File(...), _=Depends(rate_limit)):
     name = uuid4().hex + ext  # server-generated name: no user-controlled path
     with open(os.path.join(UPLOAD_DIR, name), "wb") as fh:
         fh.write(data)
+    # Recorded even though there is no entry to attach it to yet: an upload is
+    # the write that costs disk, and at 5 MB a file it is the one worth seeing
+    # in the abuse view before the ceiling is what tells you.
+    con = db.connect()
+    try:
+        with con:
+            events.record(con, "UPLOAD", client=who, bytes=len(data), name=name)
+    finally:
+        con.close()
     return {"url": f"/uploads/{name}"}
 
 
@@ -967,4 +1025,17 @@ def spa(path: str, request: Request, con=Depends(get_db)):
         target = os.path.realpath(os.path.join(DIST, path))
         if target.startswith(os.path.realpath(DIST) + os.sep) and os.path.isfile(target):
             return FileResponse(target)
-    return _index(con, path, str(request.base_url))
+    res = _index(con, path, str(request.base_url))
+    # The one place the client cookie is set: on the document, and only when
+    # there is not one already. A middleware would set it on every asset of the
+    # first page load and the last one to arrive would win; here a page load
+    # sets it once. httponly because nothing in the front end reads it -- it
+    # exists so the operator can tell a spammer on a fresh address from a fresh
+    # visitor, and it is advisory either way, since clearing it is a click.
+    # In development Vite serves the document, so there is no cookie and the
+    # abuse view has the IP hash alone. That is the same answer it falls back to
+    # for anyone who clears theirs.
+    if events.COOKIE not in request.cookies:
+        res.set_cookie(events.COOKIE, uuid4().hex, max_age=events.COOKIE_MAX_AGE,
+                       httponly=True, samesite="lax", path="/")
+    return res

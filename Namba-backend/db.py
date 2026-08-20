@@ -1,6 +1,7 @@
 """SQLite access. No ORM -- stdlib sqlite3 is enough at this size."""
 import os
 import sqlite3
+from datetime import datetime, timezone
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.environ.get("NAMBA_DB", os.path.join(DIR, "namba.db"))
@@ -97,7 +98,51 @@ CREATE TABLE IF NOT EXISTS comments (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id, id DESC);
+
+-- One row for everything that happened. admin_id NULL is a visitor and a set
+-- one is an operator's own decision, which is what makes this the activity
+-- feed, the audit log and the spam evidence all at once: the shape is the same
+-- and only the filter differs.
+--
+-- Append-only. Nothing in this codebase issues an UPDATE or a DELETE here, and
+-- that is the point -- an audit log an operator can tidy is not one. No foreign
+-- keys either, for the reason revisions has none: a record of what happened to
+-- a thing must outlive the thing, and target_id points at four different
+-- tables anyway.
+--
+-- No raw address is stored. The three hashes are salted with the install's own
+-- key (see events.py); ip_hash is what the write limiter counts and what a
+-- block is written against.
+CREATE TABLE IF NOT EXISTS events (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  at          TEXT NOT NULL,
+  action      TEXT NOT NULL,   -- CREATE EDIT RESTORE TRANSLATE UNTRANSLATE
+                               -- COMMENT LINK UNLINK UPLOAD, and the operator's
+                               -- own ADMIN_* and CONTENT_* actions
+  admin_id    INTEGER,
+  actor       TEXT,            -- the nickname typed, when there was one
+  target_type TEXT,            -- post | request | report | block | admin
+  target_id   INTEGER,
+  revision_id INTEGER,         -- the snapshot this action pushed into history
+  ip_hash     TEXT,
+  ua_hash     TEXT,
+  client_hash TEXT,
+  meta        TEXT             -- JSON; whatever the action needs to be readable
+);
+CREATE INDEX IF NOT EXISTS idx_events_at     ON events(id DESC);
+CREATE INDEX IF NOT EXISTS idx_events_target ON events(target_type, target_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_events_ip     ON events(ip_hash, id DESC);
 """
+
+
+def now():
+    """The one timestamp format in this database: UTC, ISO 8601, whole seconds.
+
+    Here rather than in main.py because it is a property of the schema -- every
+    `TEXT NOT NULL` date column above is written by this function, and events.py
+    needs it without importing the app.
+    """
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def connect():

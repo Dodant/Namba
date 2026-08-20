@@ -1,4 +1,5 @@
 """Self-check: python test_namba.py   (no pytest, no fixtures)"""
+import json
 import os
 import tempfile
 
@@ -22,6 +23,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 import admin  # noqa: E402
 import db  # noqa: E402
+import events  # noqa: E402
 import main  # noqa: E402
 from numfmt import bucket_of, grouped_value, parse_number  # noqa: E402
 
@@ -118,6 +120,111 @@ def test_share_card():
     assert c.get(f"/p/{p['id']}999").text.count("og:title") == 0, "unknown id got a card"
     # ".." off the wire must not walk out of dist
     assert c.get("/../test.db").status_code in (200, 404) and "sqlite" not in c.get("/../test.db").text.lower()
+
+
+def _events(**where):
+    """Straight out of the table. There is no endpoint over it yet -- the
+    operator's reads arrive with the admin router -- and this is the layer
+    underneath them."""
+    con = db.connect()
+    try:
+        sql = "SELECT * FROM events"
+        if where:
+            sql += " WHERE " + " AND ".join(f"{k} = ?" for k in where)
+        return [dict(r) for r in con.execute(sql + " ORDER BY id",
+                                            tuple(where.values()))]
+    finally:
+        con.close()
+
+
+def test_events_log_every_write():
+    """The log is the activity feed, the audit trail and the spam evidence at
+    once, so every write that changes something has to land in it -- and the
+    reads must not, or a page view would be the loudest thing in the table.
+    """
+    c = TestClient(main.app)
+    before = len(_events())
+    # a user agent of its own: TestClient sends "testclient" as both the client
+    # address and the UA, so the two hashes would match for a reason that has
+    # nothing to do with the code
+    p = c.post("/api/posts", json={"value": "1123", "title": "Fibonacci-ish",
+                                   "author": "leonardo"},
+               headers={"user-agent": "namba-test/1.0"}).json()
+    pid = p["id"]
+    other = c.post("/api/posts", json={"value": "1124", "title": "one along"}).json()
+    c.patch(f"/api/posts/{pid}", json={"title": "Fibonacci", "author": "pisa"})
+    c.put(f"/api/posts/{pid}/translations",
+          json={"lang": "Latin", "title": "Fibonacci", "body": "", "author": "pisa"})
+    c.post(f"/api/posts/{pid}/comments", json={"body": "1 1 2 3", "author": "ada"})
+    c.post(f"/api/posts/{pid}/links", json={"other_id": other["id"]})
+    c.post(f"/api/posts/{pid}/like")        # a write, and deliberately not logged
+    c.get(f"/api/posts/{pid}")              # reads log nothing at all
+    c.get("/api/numbers")
+    c.get(f"/api/posts/{pid}/revisions")
+
+    mine = [r for r in _events(target_id=pid) if r["target_type"] == "post"]
+    assert [r["action"] for r in mine] == [
+        "CREATE", "EDIT", "TRANSLATE", "COMMENT", "LINK"], [r["action"] for r in mine]
+    assert len(_events()) == before + 6, "a read or a like reached the table"
+
+    create, edit, translate, comment, link = mine
+    assert create["actor"] == "leonardo", create
+    assert json.loads(create["meta"])["value"] == "1123"
+    assert create["revision_id"] is None, "a create has no prior state to point at"
+    assert json.loads(translate["meta"])["lang"] == "Latin"
+    assert comment["revision_id"] is None, "a comment takes no snapshot"
+    assert json.loads(link["meta"])["other"] == other["id"]
+
+    # "who did this" and "what it was before" are one join apart, which is the
+    # whole reason a revision id is on the row
+    assert edit["revision_id"], "an edit did not point at the snapshot it pushed"
+    con = db.connect()
+    try:
+        was = con.execute("SELECT snapshot FROM revisions WHERE id = ?",
+                          (edit["revision_id"],)).fetchone()
+    finally:
+        con.close()
+    assert json.loads(was["snapshot"])["title"] == "Fibonacci-ish"
+
+    # no address reaches the table, in any column, ever
+    assert len(create["ip_hash"]) == 64 and len(create["ua_hash"]) == 64
+    assert create["ip_hash"] != create["ua_hash"], "one hash is doing both jobs"
+    assert "testclient" not in " ".join(
+        str(v) for r in _events() for v in r.values() if v is not None), \
+        "the raw client address reached the table"
+
+    # nothing has told this visitor apart from any other yet
+    assert create["client_hash"] is None
+
+    # the document is where the cookie is set, so that a page load sets it once
+    # rather than once per asset
+    assert events.COOKIE not in c.cookies
+    assert c.get(f"/p/{pid}").cookies[events.COOKIE]
+    c.post(f"/api/posts/{pid}/comments", json={"body": "and now with a cookie"})
+    tagged = _events(action="COMMENT")[-1]
+    assert tagged["client_hash"] and tagged["client_hash"] != tagged["ip_hash"]
+    admin.set_status(pid, "HIDDEN")
+    admin.set_status(other["id"], "HIDDEN")
+
+
+def test_client_secret_is_durable():
+    """A key that changed on restart would void every stored block and orphan
+    every hash in events without one thing failing loudly, so it is written
+    beside the database rather than left to an environment variable somebody
+    forgets. It belongs in the backup with the database."""
+    assert events.SECRET == events._secret(), "a second read produced another key"
+    assert oct(os.stat(events._SECRET_PATH).st_mode)[-3:] == "600", "world-readable"
+
+    # and it is the whole reason the hash is not just the address in disguise:
+    # under another install's key the same address is another hash
+    here = events._hash("203.0.113.9")
+    was = events.SECRET
+    try:
+        events.SECRET = b"another install entirely"
+        assert events._hash("203.0.113.9") != here, "the key is not in the hash"
+    finally:
+        events.SECRET = was
+    assert events._hash("203.0.113.9") == here
 
 
 def test_grouping():

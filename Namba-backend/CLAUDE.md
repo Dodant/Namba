@@ -1,10 +1,11 @@
 # Namba-backend
 
-FastAPI over stdlib `sqlite3`. Seven files: `main.py` (every route + models),
-`db.py` (schema), `numfmt.py` (number parsing), `seed.py` + `seed_tags.py`
-(the markdown importer), `gc_uploads.py` (the uploads collector) and `admin.py`
-(the operator's commands). The last two run from cron and from a shell, never
-from a route -- there is nobody to stop a stranger triggering one.
+FastAPI over stdlib `sqlite3`. Eight files: `main.py` (every route + models),
+`db.py` (schema), `events.py` (who a request is from, and the log of what they
+did), `numfmt.py` (number parsing), `seed.py` + `seed_tags.py` (the markdown
+importer), `gc_uploads.py` (the uploads collector) and `admin.py` (the
+operator's commands). The last two run from cron and from a shell, never from a
+route -- there is nobody to stop a stranger triggering one.
 
 ```sh
 .venv/bin/python test_namba.py        # run before saying anything passes
@@ -13,7 +14,9 @@ from a route -- there is nobody to stop a stranger triggering one.
 .venv/bin/uvicorn main:app --reload
 ```
 
-Env overrides: `NAMBA_DB`, `NAMBA_UPLOADS` (the tests use both to stay hermetic).
+Env overrides: `NAMBA_DB`, `NAMBA_UPLOADS` (the tests use both to stay
+hermetic), `NAMBA_SECRET` (the key the client hashes are salted with -- and if
+it is unset, `secret.key` beside the database is generated and used instead).
 
 ## Load-bearing details
 
@@ -89,6 +92,41 @@ Env overrides: `NAMBA_DB`, `NAMBA_UPLOADS` (the tests use both to stay hermetic)
   left where it is. In `/api/numbers` a row is grouped only when
   every entry filed under it is: one number, one spelling, and a disagreement
   falls back to the plain form nobody had to opt into.
+- **`events` is append-only, and that is the feature.** Nothing in this codebase
+  issues an `UPDATE` or a `DELETE` against it. An audit log an operator can tidy
+  up after themselves in is not an audit log, so do not add a route that edits
+  one, and do not "clean up" old rows without saying so out loud. It has no
+  foreign keys for the reason `revisions` has none — a record of what happened
+  to a thing outlives the thing — and `target_id` points at four different
+  tables anyway. `admin_id` is the whole split: `NULL` is a visitor, set is an
+  operator's own decision, which is why the activity feed and the audit log are
+  one table with two filters rather than two tables of the same shape.
+- **`events.SECRET` must survive a restart or every hash in the database goes
+  quiet.** No raw address is stored anywhere — not in `events`, not in the write
+  limiter's dict, not in a log line this code writes — so an IP is only ever a
+  salted sha256, and a block is written against that hash. Change the key and
+  every stored block stops matching and nothing fails: it is the one setting
+  here whose loss is silent. `NAMBA_SECRET` wins; otherwise `secret.key` is
+  written beside the database at 0600, by `os.open` with the mode at creation
+  rather than a `chmod` afterwards. **It belongs in the backup with the
+  database.**
+- **`guard` replaced `rate_limit` and hands back an identity.** It is still the
+  single `Depends` on every write, it still refuses at 20 a minute, and it now
+  returns the caller's three hashes so a route can record what happened without
+  asking twice — hence `who=Depends(guard)` on the nine writes that log and
+  `_=Depends(guard)` on the two that do not. `like` and `unlike` are the two:
+  a like says nothing about the entry and at one row per tap the abuse view
+  would be nothing else. The limiter counts hashes now, not addresses.
+- **`now()` lives in `db.py`.** It is a property of the schema — every date
+  column is written by it — and `events.py` needs it without importing the app.
+  `main.py` imports the name, so `main.now` is still what `test_recent_sort`
+  monkeypatches.
+- **The client cookie is set on the document and nowhere else.** `spa()` sets
+  `namba_cid` when the request arrives without one. A middleware would set it on
+  every asset of the first page load and the last response to arrive would win;
+  this way a page load sets it once. In development Vite serves the document, so
+  there is no cookie and the abuse view has the IP hash alone — which is also
+  what it falls back to for anyone who clears theirs.
 - **The SPA catch-all must stay the last route in the file.** Starlette matches
   in the order routes are added, so `@app.get("/{path:path}")` swallows every
   `/api/...` declared below it. It serves built assets by path and `index.html`
@@ -152,8 +190,9 @@ No auth means the input validation *is* the security model.
   nobody, so it is one stranger's button over everyone's words, and a comment has
   no revision to fall back to. If spam ever needs answering, the next step is a
   delete plus something to undo it, not a delete on its own.
-- Write rate limit is a per-process in-memory dict (20/min/IP). It is per-worker;
-  run one worker or move it to redis. Reads are not limited.
+- Write rate limit is a per-process in-memory dict, 20 a minute per IP *hash*.
+  It is per-worker; run one worker or move it to redis. Reads are not limited
+  and are not identified — there is nothing to record about a page view.
 - Likes are a bare counter, and rate limited like every other write. The
   browser's `localStorage` stops an accidental second vote; the limiter is what
   stops a script. Deliberately naive beyond that.

@@ -2,3 +2,4 @@ namba.db*
 uploads/
 .venv/
 __pycache__/
+secret.key

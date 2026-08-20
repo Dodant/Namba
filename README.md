@@ -40,6 +40,7 @@ go stale the way a table here would.
 | `db.py` | connection + schema |
 | `numfmt.py` | `parse_number()` — a display string to a format and a sort key |
 | `seed.py` + `seed_tags.py` | the markdown importer and its hand-written tags |
+| `events.py` | who a request is from, as hashes, and the log of what they did |
 | `gc_uploads.py` | the cron job that deletes pictures nothing points at |
 | `admin.py` | the operator's commands — `status`, `hide`, `show`, `purge` |
 
@@ -201,7 +202,9 @@ site shares one allowance.
 Two things want a cron entry: `python gc_uploads.py --delete` daily, or abandoned
 uploads accumulate until the 1 GB ceiling stops the wiki taking pictures, and a
 copy of the database somewhere else — anyone can rewrite any entry, and the
-snapshots that undo that live in the same file as the entries.
+snapshots that undo that live in the same file as the entries. Back up
+`secret.key` next to it: it is what the hashes in `events` and the blocks are
+salted with, and without it they stop matching anything and nothing complains.
 
 ## Known gaps
 
