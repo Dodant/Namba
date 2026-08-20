@@ -204,8 +204,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .search input::placeholder { color: var(--muted); }
 
 /* The header is five controls and a wordmark, and it stops fitting one line at
-   about 900px -- 940 when the wiki has enough translations for the language
-   picker to be there, 740 when it does not. Left to wrap on its own it broke
+   about 900px -- 762 without the language picker, and with it whatever the
+   longest language name it has to draw comes to: 882 for "한국어 · 1", past
+   900 for "Bahasa Indonesia · 12". Left to wrap on its own it broke
    wherever the search box happened to end: [search][picker][Recent] over
    [Random][+ Add], a different pair on each line at each width, which is the
    same ragged split the phone rules were written to stop. So it breaks in one
@@ -238,10 +239,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
   background: var(--panel); cursor: pointer; text-decoration: none;
   font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.02em;
   color: var(--ink-soft);
+  /* a pill is a label, not a paragraph. Squeezed a hair under its content
+     width -- which is one icon's worth of room at 320 -- "+ Add" broke at its
+     space and came back two lines tall and 10px out of line with the two
+     beside it. It can shrink; it cannot wrap. */
+  white-space: nowrap;
 }
 .btn:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
-/* .btn is already a flex row with a gap, so the die only needs a size */
-.die { width: 14px; height: 14px; }
+/* .btn is already a flex row with a gap, so an icon only needs a size */
+.ico { width: 14px; height: 14px; }
 .btn.primary {
   background: var(--accent); border-color: var(--accent);
   color: var(--on-accent); font-weight: 600;
@@ -444,7 +450,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
      wiki has one -- belongs beside the search rather than among the actions,
      and this is the width where the search is entitled to the whole row. */
   .search { flex: 1 1 auto; max-width: none; }
-  .acts-main { gap: 6px; }
+  /* space-between, not the 900 band's flush right: on a phone the group has
+     the row to itself under a full-width search box, and clumped at one end
+     it read as three buttons pushed aside rather than as the row's own three
+     actions. Spread, they answer the box above them edge to edge -- 38px
+     apart at 390, where the floor below would have given them 6.
+
+     6px and not 8: with the clock on Recent the three want 273px, and 320
+     leaves the row 288 -- two 8px gaps are one pixel more than that. The gap
+     is a floor nothing reaches until the row is narrower than any phone, and
+     wrap is what happens after that rather than three squeezed pills. */
+  .acts-main { gap: 6px; justify-content: space-between; flex-wrap: wrap; }
 }
 
 /* --- feed --------------------------------------------------------- */

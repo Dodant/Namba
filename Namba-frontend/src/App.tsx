@@ -47,12 +47,26 @@ function Random() {
    OS keeps its emoji in -- neither of which is this page. Inherits
    currentColor, so it greens on hover with the label beside it. */
 const DIE = (
-  <svg className="die" viewBox="0 0 16 16" aria-hidden="true">
+  <svg className="ico" viewBox="0 0 16 16" aria-hidden="true">
     <rect x="1.7" y="1.7" width="12.6" height="12.6" rx="3" fill="none"
           stroke="currentColor" strokeWidth="1.3" />
     <circle cx="5.1" cy="5.1" r="0.95" fill="currentColor" />
     <circle cx="8" cy="8" r="0.95" fill="currentColor" />
     <circle cx="10.9" cy="10.9" r="0.95" fill="currentColor" />
+  </svg>
+)
+
+/* A clock, because Recent names an order and not a thing: this list is
+   last-touched first. Drawn to the die's spec -- the same 16px box, the same
+   1.3 stroke, no fill, currentColor -- so the two pills side by side read as
+   one set rather than as two icons that happened to turn up together. Hands
+   at twelve and four, different lengths: at 14px a clock face only reads as
+   one if the two hands can be told apart. */
+const CLOCK = (
+  <svg className="ico" viewBox="0 0 16 16" aria-hidden="true">
+    <circle cx="8" cy="8" r="6.35" fill="none" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M8 4.4v3.75l2.5 1.45" fill="none" stroke="currentColor"
+          strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 )
 
@@ -184,6 +198,7 @@ function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void })
             aria-current={feed ? 'page' : undefined}
             to={feed ? '/' : '/?view=feed'}
           >
+            {CLOCK}
             Recent
           </Link>
           <Link className="btn" to="/random">
