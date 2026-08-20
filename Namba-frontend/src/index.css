@@ -132,24 +132,39 @@ button, input, select, textarea { font: inherit; color: inherit; }
    as a selection is concerned -- and every one of them is a word the page
    said about itself, not a word the wiki says.
 
-   The line is what the thing is, not where it sits: a control you press and
-   a label naming a section or a field are chrome; a numeral, a title, a
-   blurb, a body and a byline are the entry, and all of them still select.
-   Prose stays selectable even when the page is the one saying it -- the
-   form's intro, the empty states, the fine print: those are sentences, and
-   the moment sentences start going in here the whole page ends up in here.
-   Inputs are not in here either: what you typed is yours to take back out.
+   The line is whose words they are. The wiki's words select: a numeral, a
+   title, a blurb, a body, a byline -- everything somebody wrote into this
+   thing. The app's words do not: a control you press, a label naming a
+   section or a field, and the sentences the page says about itself, which
+   are the form's heading and intro, its fine print and the empty states.
+   Nobody quotes "One entry per meaning" out of a wiki.
 
    user-drag with it, so a pill does not lift a link ghost off the header on
    a slow press. It is a WebKit property and Firefox will still do that; the
    selection, which is the thing that spoils a copy, is standard. */
 :is(.logo-block, .search .slash, .btn, .chip, .pill, .tag, .kicker,
     .band-head, .ix-fold, .tabs a, .tabs button, .panel-add, .credits-btn,
-    a.quiet, h4.section, .field label, .field .field-label, .field.check) {
+    .quiet, h4.section, .field label, .field .field-label, .field.check,
+    .form h1, .form-intro, .fine, .feed-intro, .empty, .panel-empty,
+    .body-none) {
   -webkit-user-select: none;
   user-select: none;
   -webkit-user-drag: none;
 }
+
+/* A field joins the page's selection only while you are inside it. Dragging
+   across the form used to paint a highlight over every placeholder and over
+   the file input's "No file chosen", none of which is text anyone can
+   actually take -- the copy never contained a word of it, the boxes just lit
+   up as though it had.
+
+   Chrome computes none on an <input> as none rather than as the contain the
+   spec asks for, so blanket none here would cost you selecting what you
+   typed. :focus buys it back, and buys it back in time: a click into a field
+   focuses on mousedown, before the drag that selects has begun. A file input
+   has nothing to select in the first place and stays out of it. */
+input, textarea { -webkit-user-select: none; user-select: none; }
+input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 
 /* 1160 is the measure and stays the measure on a 1920 screen: an index of
    numbers is a book index, and a title row 1800px wide is unreadable in the

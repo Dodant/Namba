@@ -46,13 +46,22 @@ sanitiser config to get wrong.
 - Hover is a 120ms colour transition and nothing else moves. No transform, no
   size change, so a pointer running down a list of rows leaves no trail. A
   `prefers-reduced-motion` block cuts it.
-- The chrome is `user-select: none` and the entry is not. One `:is()` list
-  near the top of `index.css` carries every control and every label that
-  names a section or a field, because dragging from a title up the page used
-  to come away with "CATEGORIES 20 tags 1 - 9 8 numbers" on top of it. The
-  line is what a thing *is*: press it or it names a section, it is chrome;
-  numeral, title, blurb, body, byline, and any prose the page speaks in
-  sentences all still select. **A new control belongs in that list.**
+- **The wiki's words select and the app's words do not.** One `:is()` list
+  near the top of `index.css` holds the app's: every control, every label
+  naming a section or a field, and every sentence the page says about itself
+  — the form's heading and intro, the fine print, the empty states. What a
+  reader wrote is what comes away with a drag: numerals, titles, blurbs,
+  bodies, bylines. Nobody quotes "One entry per meaning" out of a wiki, and
+  before this a drag from a title came away with "CATEGORIES 20 tags 1 - 9
+  8 numbers" sitting on top of it. **Anything new that the app says, rather
+  than the wiki, belongs in that list.**
+- A field joins the page's selection only while it has the focus. Chrome
+  computes `user-select: none` on an `<input>` as `none` and not the `contain`
+  the spec asks for, so a blanket rule would cost you selecting what you
+  typed; `:focus` buys it back, and in time, because a click focuses on
+  mousedown before the drag begins. Without it, dragging over the form lit up
+  every placeholder and the file input's "No file chosen" — none of which the
+  copy ever actually contained.
 - 24px is the floor for anything you press. The two borderless like buttons
   keep their 10.5px type and buy the target with padding, then hand it back
   to the row with a matching negative margin, so the hit box grows and the
