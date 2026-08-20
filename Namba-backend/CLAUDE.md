@@ -6,6 +6,7 @@ FastAPI over stdlib `sqlite3`. Ten files:
 |---|---|
 | `main.py` | the wiki's routes and models |
 | `admin_api.py` | the back office's routes, under `/api/admin` |
+| `store.py` | reading and writing one entry — the pieces both APIs need |
 | `db.py` | schema, `connect()`, `get_db()`, `now()` |
 | `events.py` | who a request is from, as hashes, and the log of what they did |
 | `auth.py` | operator passwords, sessions and the `require_admin` dependency |
@@ -105,9 +106,11 @@ it is unset, `secret.key` beside the database is generated and used instead).
   falls back to the plain form nobody had to opt into.
 - **`admin_api.py` must not import `main`.** `main.py` imports it and includes
   the router, so the arrow only points one way. Everything both need lives
-  below them — `db.py` (`get_db`, `now`, the schema), `events.py`, `auth.py`.
-  That is also why `get_db` is in `db.py` rather than beside the routes that use
-  it. The router is included where the app is built, well above the catch-all,
+  below them — `db.py` (`get_db`, `now`, the schema and the five vocabularies),
+  `events.py`, `auth.py`, and `store.py` for `fetch_one`, `shape`, `snapshot`,
+  `guard_public`, `write_tags` and `write_translations`. That layering is the
+  only reason `store.py` exists: put a shared entry helper there, not in
+  `main.py`, or the admin router cannot reach it without a cycle. The router is included where the app is built, well above the catch-all,
   because Starlette matches in the order routes are added.
 - **The operator's login is deliberately the smallest correct one.** stdlib
   `hashlib.scrypt` and not bcrypt or passlib; an opaque token and not a JWT,

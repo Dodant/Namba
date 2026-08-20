@@ -18,6 +18,9 @@ import admin_api
 import db
 import events
 from db import get_db, now
+from store import (
+    LIVE, fetch_one, guard_public, shape, snapshot, write_tags, write_translations,
+)
 from numfmt import FORMATS, bucket_of, grouped_value, parse_number
 
 # A tag is whatever people call it, like a translation's language label. What
@@ -52,13 +55,6 @@ COMMENT_MAX = 300
 # Comments shipped by /api/posts/{id}/comments, newest first. The same bargain
 # REVISIONS_SHOWN makes: the rows all stay, the response is capped.
 COMMENTS_SHOWN = 200
-# The only status a visitor ever sees. Nine reads below carry it -- the index,
-# the two list endpoints, one entry, the two vocabularies, an entry's related
-# row, its history and its comments, and the <head> written for /p/{id} -- and
-# missing one leaks the body of something an operator took down.
-# test_hidden_is_invisible walks all nine. The writes need no equivalent: they
-# reach for fetch_one() first and get the 404 from there.
-LIVE = "ACTIVE"
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 db.init()
@@ -303,83 +299,6 @@ class LinkIn(BaseModel):
 
 
 # --- helpers ------------------------------------------------------------
-def shape(rows, con):
-    """Rows -> dicts with tags attached (one query for the whole page)."""
-    posts = [dict(r) for r in rows]
-    if not posts:
-        return posts
-    ids = [p["id"] for p in posts]
-    by_id = {p["id"]: p for p in posts}
-    for p in posts:
-        p["tags"] = []
-        p["bucket"] = bucket_of(p["sort_key"], p["format"])
-        # sqlite has no bool; the wire and the client both want one
-        p["grouped"] = bool(p["grouped"])
-    q = "SELECT post_id, tag FROM post_tags WHERE post_id IN (%s) ORDER BY tag" % (
-        ",".join("?" * len(ids))
-    )
-    for r in con.execute(q, ids):
-        by_id[r["post_id"]]["tags"].append(r["tag"])
-    return posts
-
-
-def guard_public(con, post_id):
-    """404 unless this entry is on the wiki, for the reads that are keyed on a
-    post id rather than joined to one.
-
-    A row that is simply *absent* passes. Entries removed by the DELETE route
-    that used to exist have no row at all, and their snapshots are the only
-    copy left of them -- so the recovery path has to stay open to those, while a
-    hidden entry's history stays shut. Nothing can reach that state any more:
-    no route removes a row.
-    """
-    row = con.execute("SELECT status FROM posts WHERE id = ?", (post_id,)).fetchone()
-    if row is not None and row["status"] != LIVE:
-        raise HTTPException(404, "post not found")
-
-
-def fetch_one(con, post_id, hidden=False):
-    """One entry in full, or a 404.
-
-    Hidden entries are 404s here, which is where most of the wiki gets that for
-    free -- every write reaches through this function first. `hidden=True` is
-    for the operator's own reads, the only ones that may see one.
-    """
-    sql = "SELECT * FROM posts WHERE id = ?"
-    args = [post_id]
-    if not hidden:
-        sql += " AND status = ?"
-        args.append(LIVE)
-    row = con.execute(sql, args).fetchone()
-    if row is None:
-        raise HTTPException(404, "post not found")
-    post = shape([row], con)[0]
-    # Only the single-post view pays for these; the list endpoints stay lean.
-    # snapshot() reads through here, so a translation lands in the edit history
-    # with everything else and is no more losable than the post itself.
-    post["translations"] = [
-        dict(r)
-        for r in con.execute(
-            "SELECT * FROM translations WHERE post_id = ? ORDER BY id", (post_id,)
-        )
-    ]
-    return post
-
-
-def snapshot(con, post_id, author):
-    """Store the current state of a post so an edit can be undone.
-
-    Returns the new revision's id, which is what an event row carries so that
-    "who did this" and "what it was before" are one join apart.
-    """
-    post = fetch_one(con, post_id)
-    cur = con.execute(
-        "INSERT INTO revisions (post_id, snapshot, author, at) VALUES (?,?,?,?)",
-        (post_id, json.dumps(post, ensure_ascii=False), author, now()),
-    )
-    return cur.lastrowid
-
-
 # 1,000 and 299,792,458 and 1,234.5678 -- but not 1,2,3 or 12,34, which are
 # not thousands separators and are left alone.
 _GROUPED_IN = re.compile(r"^(\d{1,3}(?:,\d{3})+)(\.\d+)?$")
@@ -672,41 +591,6 @@ def list_comments(post_id: int, con=Depends(get_db)):
 
 
 # --- write --------------------------------------------------------------
-def _write_tags(con, post_id, tags):
-    """Folds case here too, because a snapshot may predate the rule.
-
-    Restoring a revision written while tags were upper-cased must not put BOOK
-    back beside book. Normalising without validating, deliberately: a restore
-    has to work on whatever the past wrote, and refusing one because an old
-    tag breaks a rule invented since would make history unreachable.
-    """
-    clean = []
-    for t in tags:
-        t = " ".join(str(t).split()).lower()
-        if t and t not in clean:
-            clean.append(t)
-    con.execute("DELETE FROM post_tags WHERE post_id = ?", (post_id,))
-    con.executemany(
-        "INSERT INTO post_tags (post_id, tag) VALUES (?,?)",
-        [(post_id, t) for t in clean],
-    )
-
-
-def _write_translations(con, post_id, rows):
-    """Put a snapshot's translations back, ids and all, so links to them hold."""
-    con.execute("DELETE FROM translations WHERE post_id = ?", (post_id,))
-    con.executemany(
-        """INSERT INTO translations (id, post_id, lang, title, body, author,
-                                     edited_by, created_at, updated_at)
-           VALUES (?,?,?,?,?,?,?,?,?)""",
-        [
-            (r["id"], post_id, r["lang"], r["title"], r["body"], r["author"],
-             r.get("edited_by"), r["created_at"], r["updated_at"])
-            for r in rows
-        ],
-    )
-
-
 @app.post("/api/posts", status_code=201)
 def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
     value, grouped = ungroup(p.value, p.grouped)
@@ -720,7 +604,7 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
             (value, fmt, key, p.title.strip(), p.body, p.image,
              p.author.strip() or "anonymous", p.lang, int(grouped), ts, ts),
         )
-        _write_tags(con, cur.lastrowid, p.tags)
+        write_tags(con, cur.lastrowid, p.tags)
         post_id = cur.lastrowid
         # A create has no prior state, so there is no snapshot to point at --
         # which is the whole reason the log is its own table and not a column on
@@ -770,7 +654,7 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
             ),
         )
         if p.tags is not None:
-            _write_tags(con, post_id, p.tags)
+            write_tags(con, post_id, p.tags)
         # which fields were sent, not which actually changed: the diff between
         # the snapshot and the row is where "changed" is answered, and there is
         # no point storing a worse copy of it here
@@ -832,10 +716,10 @@ def restore_revision(
                  int(old.get("grouped") or 0), old["author"], author,
                  old.get("likes", 0), old["created_at"], now()),
             )
-        _write_tags(con, post_id, old.get("tags", []))
+        write_tags(con, post_id, old.get("tags", []))
         # a snapshot from before translations existed has none, and restoring it
         # says so -- the ones dropped are in the snapshot this restore just took
-        _write_translations(con, post_id, old.get("translations", []))
+        write_translations(con, post_id, old.get("translations", []))
         events.record(con, "RESTORE", client=who, who=author, target_type="post",
                       target_id=post_id, revision_id=rev, restored=rev_id,
                       resurrected=not alive)
