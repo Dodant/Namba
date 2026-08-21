@@ -193,10 +193,23 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 .wrap {
   max-width: 1160px;
   margin: 0 auto;
+  /* A column the height of the viewport at least, so the footer is at the
+     bottom of the window on a page too short to fill it -- /random while it
+     picks, an empty tag, the 404 -- instead of floating halfway up with the
+     background below it. dvh, not vh, for the reason every other capped
+     height here uses dvh. */
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   padding-left: max(clamp(16px, 4vw, 34px), env(safe-area-inset-left));
   padding-right: max(clamp(16px, 4vw, 34px), env(safe-area-inset-right));
   padding-bottom: clamp(56px, 8vw, 80px);
 }
+
+/* The one that grows. On .foot instead, margin-top: auto would push it down
+   and take the clamp that spaces it off a long page with it; here main takes
+   the slack and the footer keeps one gap rule for both cases. */
+.wrap > main { flex: 1; }
 
 /* --- header ------------------------------------------------------- */
 /* flex-end, not center: the wordmark block and the pills are different
