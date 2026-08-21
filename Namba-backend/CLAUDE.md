@@ -326,7 +326,12 @@ there. The operator's half has a login, and the notes above are the whole of it.
   delete plus something to undo it, not a delete on its own.
 - Write rate limit is a per-process in-memory dict, 20 a minute per IP *hash*.
   It is per-worker; run one worker or move it to redis. Reads are not limited
-  and are not identified — there is nothing to record about a page view.
+  and are not identified — there is nothing to record about a page view. Past
+  `KEEP_CLIENTS` keys the dict drops the ones whose last write is outside the
+  window: only the timestamps *inside* a key used to expire, so a long-lived
+  worker kept an entry for every address that ever wrote. `auth._attempts` does
+  the same two lines for the login limiter and repeats them rather than sharing
+  — `auth` may not import `main`.
 - Likes are a bare counter, and rate limited like every other write. The
   browser's `localStorage` stops an accidental second vote; the limiter is what
   stops a script. Deliberately naive beyond that.

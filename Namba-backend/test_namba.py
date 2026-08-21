@@ -678,7 +678,30 @@ def test_admin_accounts():
     codes = [c.post("/api/admin/login", json={"email": email, "password": "no"}
                     ).status_code for _ in range(auth.LOGIN_LIMIT + 1)]
     assert codes[-1] == 429, codes
-    auth._attempts.clear()
+
+    # and the dict it counts in does not keep every address that ever knocked.
+    # Nothing expired a *key* before this, only the timestamps inside one, so a
+    # long-lived worker grew one entry per client for good. A live client keeps
+    # its count across the sweep; a stale one is rebuilt if it ever comes back.
+    #
+    # The ceiling is lowered for the check rather than filled up to -- the same
+    # move the suite makes with main.WRITE_LIMIT at the top of the file. Filling
+    # to it would make this test allocate whatever the constant happens to say,
+    # which is a thing somebody would raise one day and not think about.
+    for mod in (auth, main):
+        was, mod.KEEP_CLIENTS = mod.KEEP_CLIENTS, 2
+        try:
+            seen = auth._attempts if mod is auth else main._writes
+            seen.clear()
+            seen.update({f"stale{i}": [1.0] for i in range(3)})
+            if mod is auth:
+                auth.limit_login("live")
+            else:
+                c.post("/api/posts", json={"value": "77", "title": "after a sweep"})
+            assert len(seen) == 1, (mod.__name__, dict(seen))
+        finally:
+            mod.KEEP_CLIENTS = was
+            (auth._attempts if mod is auth else main._writes).clear()
 
     # and the wide-open CORS cannot carry any of this: without credentials a
     # browser will not send the cookie cross-origin, which is the layer under

@@ -106,6 +106,16 @@ def uploads_bytes():
 # this ever runs behind more than one worker.
 _writes = defaultdict(list)
 WRITE_LIMIT, WINDOW = 20, 60
+# When to throw away the addresses that have stopped writing. Nothing here
+# expired a key, only the timestamps inside one, so every IP hash that ever
+# posted stayed in the dict for the life of the process -- a slow leak on the
+# one structure that is per-worker and never looked at again. Swept in bulk
+# rather than per request because the sweep is O(keys) and the common case is
+# a dict of forty. Nothing is lost by dropping a key: an absent one and one
+# holding an empty list are the same answer, since a defaultdict rebuilds it.
+# auth._attempts has the same shape and repeats these two lines -- auth may
+# not import main, and a shared home for them would be worse than the repeat.
+KEEP_CLIENTS = 10_000
 
 
 def blocked(con, who):
@@ -147,6 +157,9 @@ def guard(request: Request, con=Depends(get_db)):
                  + (f" Reason given: {hit['reason']}." if hit["reason"] else "")
                  + " Reading is unaffected.")
     cutoff = time.monotonic() - WINDOW
+    if len(_writes) > KEEP_CLIENTS:
+        for k in [k for k, v in _writes.items() if not v or v[-1] <= cutoff]:
+            del _writes[k]
     hits = [t for t in _writes[who["ip_hash"]] if t > cutoff]
     if len(hits) >= WRITE_LIMIT:
         raise HTTPException(429, "Too many writes. Slow down for a minute.")

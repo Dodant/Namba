@@ -36,6 +36,9 @@ DKLEN = 32
 # ponytail as main._writes: per-process, gone on restart, fine for one worker.
 _attempts = defaultdict(list)
 LOGIN_LIMIT, LOGIN_WINDOW = 5, 60
+# When the dict is big enough to be worth emptying of the clients that stopped
+# knocking. Nothing expired a key before, only the timestamps inside one.
+KEEP_CLIENTS = 10_000
 
 
 def hash_password(password):
@@ -68,6 +71,14 @@ DUMMY = hash_password(secrets.token_hex(16))
 
 def limit_login(ip_hash):
     cutoff = time.monotonic() - LOGIN_WINDOW
+    # the same unbounded-dict sweep main.guard does, written out again rather
+    # than shared: auth may not import main (main imports this), and a helper
+    # in db.py for two lines about a rate limiter would be a worse home than
+    # either. This dict grows a key per address that ever reached the login
+    # form, which on a panel only an operator uses is mostly crawlers.
+    if len(_attempts) > KEEP_CLIENTS:
+        for k in [k for k, v in _attempts.items() if not v or v[-1] <= cutoff]:
+            del _attempts[k]
     hits = [t for t in _attempts[ip_hash] if t > cutoff]
     if len(hits) >= LOGIN_LIMIT:
         raise HTTPException(429, "Too many attempts. Wait a minute.")
