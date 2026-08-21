@@ -130,6 +130,13 @@ it is unset, `secret.key` beside the database is generated and used instead).
   should be readable from anywhere — and that is only safe while credentials are
   off. Turning them on undoes both layers at once. `test_admin_accounts` asserts
   it stays off.
+- **`admin.py` asks for a password on a terminal, reads one from a pipe, and
+  never takes one from argv.** argv is refused because it would sit in the shell
+  history. The pipe branch exists because `getpass` cannot turn echo off without
+  a tty — `docker exec`, a deploy script, or Claude Code's own `!` shell — and
+  raised `termios.error` and then `EOFError` on top of it, printing a traceback
+  instead of saying what was wrong. It now says which of the two to use and that
+  a pipe costs you the history a terminal does not.
 - **An account is revoked, never deleted.** Every audit row in `events` points
   at an `admins.id`, and an operator who leaves must not take their record with
   them. `active = 0` is in the session join, so it takes effect on the next

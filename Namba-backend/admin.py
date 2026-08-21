@@ -202,12 +202,44 @@ def set_active(email, active):
 
 
 def _ask_password():
-    """Twice, and never from argv -- a password on a command line is a password
-    in the shell history."""
-    first = getpass.getpass("password: ")
-    if first != getpass.getpass("again: "):
-        raise SystemExit("they did not match")
-    return first
+    """Twice from a terminal, once from a pipe, never from argv.
+
+    argv stays refused: a password on a command line is a password in the shell
+    history, for as long as that file lives. The other two are both real.
+
+    A terminal is the normal case, and getpass hides the typing. A pipe is the
+    case this was written for after the fact -- provisioning an operator over
+    `docker exec`, from a deploy script, or through a shell with no tty at all,
+    where getpass cannot turn echo off and raises `termios.error` and then
+    EOFError on top of it. It used to do exactly that and print a traceback
+    instead of saying what was wrong.
+
+    Whatever feeds the pipe owns the question of where the password came from;
+    the note below says so, because a pipe *does* put it in the history that a
+    terminal does not.
+    """
+    if sys.stdin.isatty():
+        first = getpass.getpass("password: ")
+        if first != getpass.getpass("again: "):
+            raise SystemExit("they did not match")
+        return first
+    piped = sys.stdin.readline().rstrip("\n")
+    if not piped:
+        raise SystemExit(
+            "There is no terminal here to ask on, and nothing arrived on stdin.\n"
+            "\n"
+            "Run it in a real terminal:\n"
+            "    .venv/bin/python admin.py add you@example.com\n"
+            "\n"
+            "...or pipe the password in, if you have nowhere better:\n"
+            "    printf '%s\\n' 'the password' | .venv/bin/python admin.py add "
+            "you@example.com\n"
+            "\n"
+            "A pipe puts it wherever your shell keeps its history. A terminal "
+            "does not,\nwhich is why that is the first suggestion and not the "
+            "second."
+        )
+    return piped
 
 
 if __name__ == "__main__":

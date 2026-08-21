@@ -36,6 +36,16 @@ cd Namba-backend
 .venv/bin/python admin.py admins               # who can sign in
 ```
 
+That wants a real terminal, because it hides the typing. Somewhere without one —
+`docker exec`, a deploy script — pipe it instead, knowing that a pipe puts the
+password wherever your shell keeps its history:
+
+```sh
+printf '%s\n' 'the password' | .venv/bin/python admin.py add you@example.com
+```
+
+It is never read from the command line, in either case.
+
 Self-check: `cd Namba-backend && .venv/bin/python test_namba.py`
 
 The endpoints are not listed anywhere in this file on purpose —
