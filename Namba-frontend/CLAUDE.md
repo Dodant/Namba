@@ -354,6 +354,12 @@ nobody is coining a language, so a list is not a claim about what people may
 mean. They are endonyms — the name a language calls itself is the one a reader
 of it recognises.
 
+`Written in` has no empty choice: `LANGS[0]` — English, because the wiki is
+English-first — is what a new entry starts on and what an entry with nothing
+recorded picks up the next time it is saved. The field used to default to
+`Not set`, so most entries recorded no language at all and the credits line
+under them fell back to "As first entered".
+
 `LANGS` is **not** mirrored anywhere: the backend still takes any 40-character
 string, and `/api/languages` still reports what the wiki actually says rather
 than this list. Adding a language is one line here and no migration. Taking one
