@@ -380,6 +380,23 @@ def test_events_log_every_write():
         str(v) for r in _events() for v in r.values() if v is not None), \
         "the raw client address reached the table"
 
+    # A write that wrote nothing leaves nothing. Both of these used to record
+    # anyway: the unlink appended an UNLINK row for a link that was never
+    # there, and the untranslate committed its snapshot before raising the 404,
+    # so a 404 grew the edit history by one. `events` is append-only and
+    # `revisions` is what a restore reaches for, so neither is a table to leave
+    # a record of nothing in -- and the abuse view counts those event rows as
+    # this client's writes.
+    quiet = _events()[-1]["id"]
+    revs_before = len(c.get(f"/api/posts/{pid}/revisions").json())
+    assert c.delete(f"/api/posts/{pid}/links/{other['id']}").status_code == 200
+    assert c.delete(f"/api/posts/{pid}/links/{other['id']}").status_code == 200
+    assert c.delete(f"/api/posts/{pid}/translations/999999").status_code == 404
+    assert len(c.get(f"/api/posts/{pid}/revisions").json()) == revs_before, \
+        "a 404 left a revision behind"
+    after = [r["action"] for r in _events() if r["id"] > quiet]
+    assert after == ["UNLINK"], after
+
     # nothing has told this visitor apart from any other yet
     assert create["client_hash"] is None
 

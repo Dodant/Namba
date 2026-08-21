@@ -787,12 +787,19 @@ def delete_translation(
         cur = con.execute(
             "DELETE FROM translations WHERE id = ? AND post_id = ?", (tr_id, post_id)
         )
-        if cur.rowcount:
-            events.record(con, "UNTRANSLATE", client=who,
-                          who=author.strip() or "anonymous", target_type="post",
-                          target_id=post_id, revision_id=rev, translation=tr_id)
-    if not cur.rowcount:
-        raise HTTPException(404, "translation not found")
+        # Inside the block, not after it. Raising out here is what rolls the
+        # snapshot back: the 404 used to be thrown once `with con` had already
+        # committed, so a delete of a translation that was never there left a
+        # revision behind saying somebody replaced the entry. Nothing had
+        # happened, and the rows that stand between vandalism and permanent
+        # loss are the wrong table to leave noise in -- REVISIONS_SHOWN is 50,
+        # and every phantom pushes a real version out of the window the edit
+        # form offers.
+        if not cur.rowcount:
+            raise HTTPException(404, "translation not found")
+        events.record(con, "UNTRANSLATE", client=who,
+                      who=author.strip() or "anonymous", target_type="post",
+                      target_id=post_id, revision_id=rev, translation=tr_id)
     return fetch_one(con, post_id)
 
 
@@ -939,9 +946,15 @@ def remove_link(post_id: int, other_id: int, who=Depends(guard), con=Depends(get
     fetch_one(con, post_id)
     a, b = sorted((post_id, other_id))
     with con:
-        con.execute("DELETE FROM post_links WHERE a_id = ? AND b_id = ?", (a, b))
-        events.record(con, "UNLINK", client=who, target_type="post",
-                      target_id=post_id, other=other_id)
+        cur = con.execute("DELETE FROM post_links WHERE a_id = ? AND b_id = ?", (a, b))
+        # Only if something was actually unlinked. `events` is append-only by
+        # design, so a row for a link that was never there cannot be tidied up
+        # later -- and it counts towards the client's writes in /api/admin/abuse,
+        # which is the number a block gets decided on. The sibling routes here
+        # already guard on rowcount; this one did not.
+        if cur.rowcount:
+            events.record(con, "UNLINK", client=who, target_type="post",
+                          target_id=post_id, other=other_id)
     return get_post(post_id, con)
 
 
