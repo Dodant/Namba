@@ -442,7 +442,7 @@ const cmt = (c: Comment) => (
 )
 
 /* A delete snapshots under the author "deleted", which reads badly inside a
-   sentence that already says "replaced by". If the backend ever words it
+   sentence that already says "edited by". If the backend ever words it
    differently this just falls back to the normal phrasing. */
 const byline = (r: Revision) =>
-  r.author === 'deleted' ? 'deleted' : `replaced by ${r.author}`
+  r.author === 'deleted' ? 'deleted' : `edited by ${r.author}`
