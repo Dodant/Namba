@@ -189,6 +189,13 @@ it is unset, `secret.key` beside the database is generated and used instead).
   middle of their own restore — an entry worth reverting is usually one they took
   down first. This was a real bug caught by `test_admin_content_and_dashboard`,
   not a hypothetical.
+- **`events` is joined on `revision_id`, so it is indexed on it.** The admin
+  revisions list turns "someone" into an action and a client hash through that
+  join, and without `idx_events_revision` the plan is `SCAN e` over the one
+  table here that only ever grows — once per entry whose history gets opened,
+  and the entry worth opening is the fought-over one with the most revisions to
+  join. It is a plain `CREATE INDEX IF NOT EXISTS` inside `SCHEMA`, so unlike a
+  new *column* it reaches existing databases with no `ALTER` pass.
 - **The admin revisions list does not ship snapshots.** It reads them to pull a
   title out as a label and drops them: fifty whole entries is megabytes, and
   `/diff` fetches the two actually being looked at. `revision_number` is the

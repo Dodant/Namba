@@ -132,6 +132,13 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_events_at     ON events(id DESC);
 CREATE INDEX IF NOT EXISTS idx_events_target ON events(target_type, target_id, id DESC);
 CREATE INDEX IF NOT EXISTS idx_events_ip     ON events(ip_hash, id DESC);
+-- The back office's revision list joins events on this to turn "someone" into
+-- an action and a client hash. Without it that join scans the one table here
+-- that only ever grows, once per entry whose history an operator opens -- and
+-- the entry worth opening is the one that has been fought over, which is also
+-- the one with the most revisions to join. Mostly NULL (only an action that
+-- pushed a snapshot has a value), which is what makes the index small.
+CREATE INDEX IF NOT EXISTS idx_events_revision ON events(revision_id);
 
 -- Operators. This is the only account table there will ever be: readers have
 -- none, there is no signup route, and nothing here is per-post ownership.
