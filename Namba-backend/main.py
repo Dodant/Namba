@@ -519,12 +519,15 @@ def list_posts(
         # come back once. Without it, giving a Korean entry an English title
         # left it unfindable in the language the site is written in.
         where.append(
-            """(p.title LIKE ? OR p.body LIKE ? OR p.value LIKE ?
-                OR EXISTS (SELECT 1 FROM translations t
-                           WHERE t.post_id = p.id
-                             AND (t.title LIKE ? OR t.body LIKE ?)))"""
+            f"""(p.title LIKE ? ESCAPE '{db.LIKE_ESC}'
+                 OR p.body LIKE ? ESCAPE '{db.LIKE_ESC}'
+                 OR p.value LIKE ? ESCAPE '{db.LIKE_ESC}'
+                 OR EXISTS (SELECT 1 FROM translations t
+                            WHERE t.post_id = p.id
+                              AND (t.title LIKE ? ESCAPE '{db.LIKE_ESC}'
+                                   OR t.body LIKE ? ESCAPE '{db.LIKE_ESC}')))"""
         )
-        args += ["%%%s%%" % q] * 5
+        args += [db.like(q)] * 5
     if where:
         sql.append("WHERE " + " AND ".join(where))
     order = {

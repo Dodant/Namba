@@ -425,8 +425,10 @@ def list_all_posts(
         where.append("p.status = ?")
         args.append(status)
     if q:
-        where.append("(p.title LIKE ? OR p.body LIKE ? OR p.value LIKE ?)")
-        args += [f"%{q}%"] * 3
+        where.append(f"""(p.title LIKE ? ESCAPE '{db.LIKE_ESC}'
+                          OR p.body LIKE ? ESCAPE '{db.LIKE_ESC}'
+                          OR p.value LIKE ? ESCAPE '{db.LIKE_ESC}')""")
+        args += [db.like(q)] * 3
     if flagged:
         where.append("open_reports > 0")
     order = {

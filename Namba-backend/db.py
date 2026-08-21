@@ -278,6 +278,32 @@ def now():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+# The one character LIKE patterns are escaped with. Backslash is the usual
+# pick and would have to be doubled in every Python string and every SQL
+# literal here; "!" is neither special to LIKE nor to either language, so both
+# sides stay readable.
+LIKE_ESC = "!"
+
+
+def like(q):
+    """A user's words as a LIKE pattern, with the wildcards taken out.
+
+    Here beside the schema for the same reason `now()` is: it is a property of
+    how this database is queried, and both `main.py` and `admin_api.py` need it
+    without importing each other. Every `LIKE ?` fed from this has to carry
+    `ESCAPE '!'`.
+
+    Not a security fix -- the value is bound, never interpolated. It is a
+    correctness one: `%` and `_` are wildcards, so searching for "100%" matched
+    everything beginning 100, "snake_case" matched "snakeXcase", and a search
+    for "_" alone matched the whole wiki, which on an unlimited read is also
+    the cheapest way to make the server work hard.
+    """
+    for ch in (LIKE_ESC, "%", "_"):
+        q = q.replace(ch, LIKE_ESC + ch)
+    return f"%{q}%"
+
+
 def connect():
     # check_same_thread=False because FastAPI opens the connection in one
     # threadpool thread and runs the endpoint in another. Safe here: every

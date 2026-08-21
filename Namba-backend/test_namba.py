@@ -673,6 +673,9 @@ def test_admin_content_and_dashboard():
     assert mine["status"] == "HIDDEN" and mine["author"] == "armstrong"
     assert mine["edited_by"] == "vandal"
     assert mine["open_reports"] == 0 and mine["pending_requests"] == 0
+    # the operator's search escapes LIKE's wildcards too -- same helper, and
+    # this is the box an operator hunts a specific entry in
+    assert ops.get("/api/admin/posts", params={"q": "_"}).json()["total"] == 0
     assert not any(r["id"] == pid for r in ops.get(
         "/api/admin/posts", params={"status": "ACTIVE"}).json()["rows"])
     assert ops.get("/api/admin/posts", params={"status": "NONSENSE"}
@@ -1086,6 +1089,17 @@ def test_api_round_trip():
         assert c.patch(f"/api/posts/{keep['id']}", json=blank).status_code == 422, blank
     assert c.patch(f"/api/posts/{keep['id']}", json={"body": "b"}).status_code == 200
     assert c.get(f"/api/posts/{keep['id']}").json()["title"] == "kept"
+
+    # A search is for the characters somebody typed, wildcards and all. "%" and
+    # "_" are LIKE's own, so searching for "100%" used to match everything
+    # beginning 100 and searching for "_" matched the entire wiki -- which on an
+    # unlimited read is also the cheapest way to make the server work hard.
+    c.post("/api/posts", json={"value": "990", "title": "battery at 100%"})
+    c.post("/api/posts", json={"value": "991", "title": "battery at 1000 mAh"})
+    hits = [h["title"] for h in c.get("/api/posts", params={"q": "100%"}).json()]
+    assert hits == ["battery at 100%"], hits
+    assert c.get("/api/posts", params={"q": "_"}).json() == []
+    assert len(c.get("/api/posts", params={"q": "battery"}).json()) == 2
 
     # and the coined one joins the wiki's vocabulary, which is read off the
     # posts rather than a list in main.py
