@@ -1107,6 +1107,10 @@ h4.section {
   border-color: var(--ink); color: var(--accent);
   font-size: 24px; font-weight: 600; letter-spacing: -0.03em;
 }
+/* editing an entry cannot move it to another number, so there the field is
+   the number rather than a box to type one in -- the hard border above is
+   what says "type here", and this is the only field that ever drops it */
+.num-field input:read-only { border-color: var(--line); cursor: default; }
 .select { position: relative; }
 .select select { appearance: none; padding-right: 34px; }
 .select::after {

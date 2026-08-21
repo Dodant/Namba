@@ -195,15 +195,24 @@ export default function PostForm() {
         </p>
 
         <div className="row">
+          {/* An entry is a meaning of one number, and /n/42 is a query on
+              this column -- so retyping it here would not correct an entry,
+              it would move it to a page about something else and leave 42
+              short one meaning. readOnly rather than disabled: the number is
+              the first thing you check before editing the rest, and disabled
+              takes it out of the tab order and reads as "unavailable". */}
           <div className="field num-field">
             <label htmlFor={fid('value')}>
               Number{' '}
-              <span className="hint">{EXAMPLES[format]}</span>
+              <span className="hint">
+                {editing ? 'fixed — another number is another entry' : EXAMPLES[format]}
+              </span>
             </label>
             <input
               id={fid('value')}
               className="mono"
               required
+              readOnly={editing}
               maxLength={32}
               value={value}
               inputMode={format === 'INTEGER' ? 'numeric' : format === 'DECIMAL' ? 'decimal' : undefined}

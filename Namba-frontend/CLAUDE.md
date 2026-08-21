@@ -367,6 +367,15 @@ has been decided yet. Filtering happens as you type and **never** rewrites what
 is already in the field — picking Integer by mistake with `11/22/63` in there
 must not turn it into `112263`.
 
+On an **edit** the Number field is `readOnly` and its hint says so. An entry is
+one meaning of one number and `/n/:value` is a query on that column, so
+retyping it there would not correct the entry — it would move it to a page
+about a different number and leave the old one short a meaning. Format and the
+separator checkbox stay editable either way: they change how the same digits
+are read, not which number the entry is about. `readOnly` and not `disabled` —
+the number is the first thing you check before editing the rest, and `disabled`
+takes it out of the tab order and announces it as unavailable.
+
 `showValue(value, grouped)` is display only — **never build a link from it.**
 `numberPath()` takes the raw value, and `/n/1,000` is a different page from
 `/n/1000`. Index rows and the `/n/:value` hero use the all-entries-agree rule
