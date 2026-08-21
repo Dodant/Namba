@@ -220,6 +220,25 @@ export default function PostForm() {
                 setValue(KEEP[format] ? e.target.value.replace(KEEP[format], '') : e.target.value)
               }
             />
+            {groupable(format) && (
+              /* under the number it rewrites, not a third column in the row:
+                 the row is two fields wide, and a column that came and went as
+                 you chose a format re-measured Number and Format underneath
+                 the choice. The preview only shows when the box would change
+                 something, so ticking it on 42 does nothing and looks like it
+                 does nothing. */
+              <label className="field check">
+                <input
+                  type="checkbox"
+                  checked={grouped}
+                  onChange={(e) => setGrouped(e.target.checked)}
+                />
+                Group thousands
+                {showValue(value, true) !== value && (
+                  <span className="hint">{showValue(value, true)}</span>
+                )}
+              </label>
+            )}
           </div>
           <div className="field fmt-field">
             <label htmlFor={fid('format')}>Format</label>
@@ -244,25 +263,6 @@ export default function PostForm() {
                 ))}
               </select>
             </div>
-            {groupable(format) && (
-              /* under the select that decides whether it exists at all, not a
-                 third column in the row: the row is two fields wide, and a
-                 column that came and went as you chose a format re-measured
-                 Number and Format underneath the choice. The preview only
-                 shows when the box would change something, so ticking it on
-                 42 does nothing and looks like it does nothing. */
-              <label className="field check">
-                <input
-                  type="checkbox"
-                  checked={grouped}
-                  onChange={(e) => setGrouped(e.target.checked)}
-                />
-                Group thousands
-                {showValue(value, true) !== value && (
-                  <span className="hint">{showValue(value, true)}</span>
-                )}
-              </label>
-            )}
           </div>
         </div>
 

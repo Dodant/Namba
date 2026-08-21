@@ -1089,11 +1089,11 @@ h4.section {
 /* the preview is what you will get, so it is coloured like the numeral it
    becomes rather than like a hint */
 .field.check .hint { color: var(--accent); }
-/* under the Format select: flex-start so a 999px-wide column does not stretch
-   the row of checkbox and words across it, no bottom margin because the field
-   it is in already carries one, and 400 because .field label reaches it now
-   and 600 is the one thing .field.check does not say for itself. */
-.fmt-field .field.check {
+/* under the Number input: flex-start so the row of checkbox and words is not
+   stretched across the column, no bottom margin because the field it is in
+   already carries one, and 400 because .field label reaches it now and 600 is
+   the one thing .field.check does not say for itself. */
+.num-field .field.check {
   align-self: flex-start; margin-bottom: 0; font-weight: 400;
 }
 
@@ -1109,10 +1109,18 @@ h4.section {
 
 /* the one field with a hard border, because it is the entry's identity:
    every other field describes the number, this one is the number */
-.num-field input {
+.num-field > input {
   border-color: var(--ink); color: var(--accent);
   font-size: 24px; font-weight: 600; letter-spacing: -0.03em;
 }
+/* One height for both controls in the top row. Left to their own line boxes
+   the pair sits crooked -- the number is set at 24px and the format at 15.5px
+   -- so the number's box is written out and the select is told to wear it:
+   24px of text at 1.2, the 11px padding both already have, the border. Each
+   centres its own single line inside it, so nothing else has to move. */
+/* > input, not input: the Group-thousands box is inside this field now, and
+   .field.check never had to say a height to be a checkbox. */
+.num-field > input, .fmt-field select { height: 53px; }
 /* editing an entry cannot move it to another number, so there the field is
    the number rather than a box to type one in -- the hard border above is
    what says "type here", and this is the only field that ever drops it */
