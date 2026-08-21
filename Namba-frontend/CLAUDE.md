@@ -360,6 +360,16 @@ recorded picks up the next time it is saved. The field used to default to
 `Not set`, so most entries recorded no language at all and the credits line
 under them fell back to "As first entered".
 
+The Languages panel's first row says `Original (English)` off the **field
+above it**, not off the saved `post.lang` — the select is what the entry will
+be written in the moment it saves, and a row still reading plain `Original`
+disagrees with it on screen. That live value also drops out of the Add-a-
+language menu along with every language already on the list: `UNIQUE(post_id,
+lang)` turns a second write in the same language into an edit of the version
+already there, so an Add that offered it would quietly overwrite one, and a
+translation into the entry's own language is the entry twice. Rewriting keeps
+its own language on the menu, or the select would show nothing.
+
 `LANGS` is **not** mirrored anywhere: the backend still takes any 40-character
 string, and `/api/languages` still reports what the wiki actually says rather
 than this list. Adding a language is one line here and no migration. Taking one

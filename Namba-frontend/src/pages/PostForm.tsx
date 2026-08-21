@@ -316,7 +316,7 @@ export default function PostForm() {
 
         {post && (
           <>
-            <Languages post={post} onSaved={setPost} onError={setErr} bumpRevs={() => setRevBump((n) => n + 1)} />
+            <Languages post={post} lang={lang} onSaved={setPost} onError={setErr} bumpRevs={() => setRevBump((n) => n + 1)} />
 
             <LinkPanel post={post} onLinked={setPost} onError={setErr} />
           </>
@@ -519,17 +519,25 @@ const byline = (r: Revision) =>
     Rewrite, so a destructive control is never one slip from a benign one. */
 function Languages({
   post,
+  lang,
   onSaved,
   onError,
   bumpRevs,
 }: {
   post: Post
+  lang: string
   onSaved: (p: Post) => void
   onError: (m: string) => void
   bumpRevs: () => void
 }) {
   const [open, setOpen] = useState<Translation | 'new' | null>(null)
   const gid = useId()
+  /* The entry's own language and every language already on the list. A second
+     version in a language that is already here is not a new one: UNIQUE(post_id,
+     lang) turns it into an edit of that version, so "+ Add a language" would
+     quietly overwrite one. And a translation into the entry's own language is
+     the entry twice. Neither is worth a menu line. */
+  const taken = [lang, ...(post.translations ?? []).map((t) => t.lang)]
 
   return (
     <div className="field" role="group" aria-labelledby={gid}>
@@ -540,6 +548,7 @@ function Languages({
       {open ? (
         <TranslationEditor
           post={post}
+          taken={taken}
           editing={open === 'new' ? null : open}
           onCancel={() => setOpen(null)}
           onSaved={(next) => {
@@ -554,7 +563,10 @@ function Languages({
           {/* the entry's own language has no Rewrite: the fields above are its
               editor, and a second one here would be two homes again */}
           <div className="panel-row now">
-            <span className="panel-lang">{originalLabel(post.lang)}</span>
+            {/* the live field, not post.lang: the select above is what this
+                entry will be written in the moment it saves, and a panel that
+                still says plain "Original" disagrees with it on screen */}
+            <span className="panel-lang">{originalLabel(lang)}</span>
             <span className="panel-title">{post.title}</span>
             <span className="panel-by">{post.author}</span>
           </div>
@@ -584,12 +596,14 @@ function Languages({
     the outer one on Enter. */
 function TranslationEditor({
   post,
+  taken,
   editing,
   onSaved,
   onCancel,
   onError,
 }: {
   post: Post
+  taken: string[]
   editing: Translation | null
   onSaved: (next: Post) => void
   onCancel: () => void
@@ -648,11 +662,13 @@ function TranslationEditor({
             onChange={(e) => setLang(e.target.value)}
           >
             <option value="">Pick one…</option>
-            {langsWith(lang).map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
-            ))}
+            {langsWith(lang)
+              .filter((l) => l === lang || !taken.includes(l))
+              .map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
           </select>
         </div>
       </div>
