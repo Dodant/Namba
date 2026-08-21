@@ -49,6 +49,9 @@ function toggleTag(tags: Tag[], raw: Tag, keep = false) {
    it recognises: 한국어, not Korean. Not every language in the world, just
    the ones this wiki is plausibly written in -- adding one is a line here.
    English first because the wiki is English-first, then by rough reach. */
+/* The first line is also the default: "Written in" has no empty choice, so a
+   new entry starts English and an old one with nothing recorded picks it up on
+   the next save. Nothing on this wiki reads better for not knowing. */
 const LANGS = [
   'English', '한국어', '日本語', '中文', 'Español', 'Français', 'Deutsch',
   'Português', 'Русский', 'Italiano', 'Nederlands', 'Polski', 'Türkçe',
@@ -79,7 +82,7 @@ export default function PostForm() {
   const [body, setBody] = useState('')
   const [tags, setTags] = useState<Tag[]>([])
   const [image, setImage] = useState<string | null>(null)
-  const [lang, setLang] = useState('')
+  const [lang, setLang] = useState(LANGS[0])
   const [grouped, setGrouped] = useState(false)
   const [coined, setCoined] = useState('')
   /* the chips are the wiki's working vocabulary, not a list in here. Capped so
@@ -110,7 +113,7 @@ export default function PostForm() {
     setBody(p.body)
     setTags(p.tags)
     setImage(p.image)
-    setLang(p.lang ?? '')
+    setLang(p.lang ?? LANGS[0])
     setGrouped(p.grouped)
   }
 
@@ -287,16 +290,12 @@ export default function PostForm() {
         {/* "Written in", not "Language" -- the Languages panel below lists the
             same entry written again, and two adjacent fields a plural apart
             read as the same control twice */}
-        {/* the width caps the control, not the field: on the field it caps the
-            label too, and a two-word hint comes apart across two lines */}
+        {/* narrow caps the control, not the field -- on the field it caps the
+            label with it */}
         <div className="field">
-          <label htmlFor={fid('lang')}>
-            Written in{' '}
-            <span className="hint">optional</span>
-          </label>
+          <label htmlFor={fid('lang')}>Written in</label>
           <div className="select narrow">
             <select id={fid('lang')} value={lang} onChange={(e) => setLang(e.target.value)}>
-              <option value="">Not set</option>
               {langsWith(lang).map((l) => (
                 <option key={l} value={l}>
                   {l}
