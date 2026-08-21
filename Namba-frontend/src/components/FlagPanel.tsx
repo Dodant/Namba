@@ -130,12 +130,16 @@ export default function FlagPanel({ id }: { id: number | string }) {
           </div>
           <div className="field">
             <label htmlFor={fid('more')}>
-              Anything else{' '}
+              Details{' '}
               {/* 1000 is the detail cap in main.py, hand-copied the way every
                   other field cap is. Longer than a comment's 300 on purpose:
                   this is an argument addressed to one person, and the one thing
-                  it has to be able to do is explain itself. */}
-              <span className="hint">optional, at most 1000 characters</span>
+                  it has to be able to do is explain itself.
+
+                  One word, because the label and this hint share a line and the
+                  rail is 280px: "Anything else" plus the sentence wrapped into
+                  four lines that read as one sentence broken in half. */}
+              <span className="hint">optional, up to 1000</span>
             </label>
             <textarea
               id={fid('more')}

@@ -784,9 +784,16 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
    and take one each in a narrow one, with no width to guess. The lead
    sentence under them says what the chosen side will actually do, which is
    the part a reader needs before picking a reason. */
+/* Stacked in the rail and side by side once there is room for both labels.
+   flex-wrap does it on its own -- "It should be removed" needs more than half
+   of 280px, so the pair takes a line each there and one line on a wide screen
+   without a breakpoint deciding it. */
 .flag-kind { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 9px; }
-.flag-kind .btn { flex: 1 1 auto; padding: 7px 13px; }
+.flag-kind .btn { flex: 1 1 auto; padding: 7px 13px; justify-content: center; }
 .cmt-form > .quiet { margin: 0 0 10px; }
+/* A hint beside its label is fine at the width of the form; in the rail the two
+   of them wrapped into each other. Its own line there. */
+.side .cmt-form .field label .hint { display: block; margin-top: 1px; }
 
 .quiet { font-family: var(--mono); font-size: 10.5px; line-height: 1.5; color: var(--muted); }
 a.quiet { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
