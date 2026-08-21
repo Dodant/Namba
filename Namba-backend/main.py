@@ -1071,6 +1071,13 @@ def spa(path: str, request: Request, con=Depends(get_db)):
         if not os.path.isfile(page):
             raise HTTPException(404, "back office not built; run npm run build")
         return FileResponse(page)
+    # An /api path that reached here is one no route above matched, and the
+    # catch-all must not answer it with the front end: a client that mistyped
+    # an endpoint got 200 and a page of HTML where it expected JSON, which is
+    # a worse answer than a 404 in every case and an unreadable one for the
+    # "open, no key" API the footer advertises.
+    if path == "api" or path.startswith("api/"):
+        raise HTTPException(404, "no such endpoint")
     # A built asset if it is one, index.html otherwise -- /n/42 and /p/12 are
     # the client's routes, not files. realpath before serving: "path" comes off
     # the wire and ".." in it must not walk out of dist.

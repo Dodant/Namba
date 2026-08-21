@@ -133,6 +133,12 @@ def test_share_card():
     assert c.get("/assets/app.js").text == "console.log(1)"
     assert c.get("/api/tags").status_code == 200
     assert c.get(f"/p/{p['id']}999").text.count("og:title") == 0, "unknown id got a card"
+    # ...but a mistyped *endpoint* is not a page. The catch-all used to hand it
+    # index.html with a 200, so a client asking the wrong /api path got HTML
+    # where it expected JSON and res.ok said everything was fine.
+    miss = c.get("/api/psots")
+    assert miss.status_code == 404 and miss.json()["detail"] == "no such endpoint"
+    assert c.get("/api").status_code == 404
     # ".." off the wire must not walk out of dist
     assert c.get("/../test.db").status_code in (200, 404) and "sqlite" not in c.get("/../test.db").text.lower()
 
