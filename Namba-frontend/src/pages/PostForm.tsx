@@ -220,13 +220,23 @@ export default function PostForm() {
                 setValue(KEEP[format] ? e.target.value.replace(KEEP[format], '') : e.target.value)
               }
             />
-            {groupable(format) && (
-              /* under the number it rewrites, not a third column in the row:
-                 the row is two fields wide, and a column that came and went as
-                 you chose a format re-measured Number and Format underneath
-                 the choice. The preview only shows when the box would change
-                 something, so ticking it on 42 does nothing and looks like it
-                 does nothing. */
+            {/* under the number it rewrites, not a third column in the row:
+                the row is two fields wide, and a column that came and went as
+                you chose a format re-measured Number and Format underneath the
+                choice.
+
+                It waits for a fourth digit. Separators are the same rule on
+                both sides -- 4+ digits, because there is no thousand in 100 --
+                so under that the box was a control you could tick and untick
+                with nothing on the page changing either way, which reads as
+                broken rather than as inapplicable. Asking showValue rather
+                than counting digits here: it is the function that decides,
+                and it also knows 3.14159 has nothing to group after the point.
+
+                The tick survives a value that drops back under four digits.
+                grouped is display only and showValue ignores it there, so
+                nothing shows and nothing is lost when the digit comes back. */}
+            {groupable(format) && showValue(value, true) !== value && (
               <label className="field check">
                 <input
                   type="checkbox"
@@ -234,9 +244,7 @@ export default function PostForm() {
                   onChange={(e) => setGrouped(e.target.checked)}
                 />
                 Group thousands
-                {showValue(value, true) !== value && (
-                  <span className="hint">{showValue(value, true)}</span>
-                )}
+                <span className="hint">{showValue(value, true)}</span>
               </label>
             )}
           </div>

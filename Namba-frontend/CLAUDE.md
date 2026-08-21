@@ -377,7 +377,15 @@ out is safe too — `langsWith()` keeps an entry's existing language on the menu
 so the form cannot drop it on the next save.
 
 The Format select reshapes the Number field beside it: Integer and Decimal
-filter what can be typed and offer the separator checkbox under the Number
+filter what can be typed and offer the separator checkbox — from the fourth
+digit, because there is no thousand in `100` and a box that ticks with nothing
+on the page changing reads as broken rather than as inapplicable. It asks
+`showValue(value, true) !== value` rather than counting digits: that is the
+function that decides, and it knows `3.14159` has nothing to group after the
+point. The tick survives a value dropping back under four digits — `grouped`
+is display only, so nothing shows until the digit comes back.
+
+The checkbox sits under the Number
 field, where it stays out of the top row — a third column that came and went
 with the format re-measured Number and Format underneath the choice, and the
 preview it carries belongs under the number it rewrites. The two controls in
