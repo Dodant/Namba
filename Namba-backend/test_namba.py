@@ -1597,6 +1597,13 @@ def test_upload_gc_keeps_what_history_points_at():
         put("shown.png", 9), put("replaced.png", 9), put("inbody.png", 9),
         put("fresh.png"), put("rubbish.png", 9))
 
+    # /uploads is the one place a stranger's bytes come back off our own
+    # origin, and the upload route never looks inside the file -- so the type
+    # StaticFiles guesses from the name has to be binding rather than a hint
+    served = c.get("/uploads/shown.png")
+    assert served.headers["x-content-type-options"] == "nosniff", served.headers
+    assert c.get("/api/tags").headers["x-content-type-options"] == "nosniff"
+
     p = c.post("/api/posts", json={"value": "8", "title": "with a picture",
                                    "image": "/uploads/replaced.png"}).json()
     c.patch(f"/api/posts/{p['id']}", json={"image": "/uploads/shown.png"})

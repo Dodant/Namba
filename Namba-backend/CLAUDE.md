@@ -307,7 +307,12 @@ there. The operator's half has a login, and the notes above are the whole of it.
 - Uploads: extension allowlist, 5 MB per file, `UPLOAD_TOTAL_MAX` for the
   directory, and the filename is always `uuid4().hex + ext`. Never build a path
   from `file.filename`. The total matters because 20 writes a minute times 5 MB
-  fills the disk the database is on.
+  fills the disk the database is on. Nothing looks *inside* the file, so a
+  `.png` full of markup is uploadable — `/uploads` is the one place a
+  stranger's bytes come back off this origin, and what keeps the guessed
+  content type binding is the `nosniff` header the `_nosniff` middleware puts
+  on every response. Content sniffing was the whole attack; a magic-number
+  check would be the larger, later answer.
 - Pydantic length caps on every field. Tags are checked for shape, not
   membership — there is no `TAGS` list any more. `_clean_tags()` folds case and
   whitespace, refuses a blank and a slash, and holds `TAG_MAX` (24) and

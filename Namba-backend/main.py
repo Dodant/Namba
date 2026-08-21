@@ -64,6 +64,26 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+
+@app.middleware("http")
+async def _nosniff(request, call_next):
+    """Every response says its content type is the content type.
+
+    For /uploads above, which is the only place on this wiki where a stranger's
+    bytes are served back from our own origin. The upload route checks the
+    extension and renames the file to a uuid, and it never looks inside -- so a
+    .png holding markup is uploadable, and the only thing standing between that
+    and the browser is the type StaticFiles guesses from the name. This is the
+    header that makes the guess binding.
+
+    Applied to the whole app rather than to that one mount: it is right for the
+    JSON and for the two documents as well, and a subclass of StaticFiles to
+    reach one response is more machinery than the rule deserves.
+    """
+    res = await call_next(request)
+    res.headers["X-Content-Type-Options"] = "nosniff"
+    return res
 # Before every route below, and a long way before the catch-all: Starlette
 # matches in the order routes are added, so /api/admin/... has to be registered
 # ahead of @app.get("/{path:path}"). Included here rather than at the foot of
