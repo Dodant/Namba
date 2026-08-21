@@ -1064,8 +1064,6 @@ h4.section {
   border-radius: 999px; background: var(--panel); font-size: 16px;
 }
 .field select { font-size: 15.5px; }
-/* sits under the number it describes rather than beside it, so the row of
-   Number and Format keeps its shape */
 /* naming a tag is a smaller act than filling a field, so the control is
    smaller than one -- it sits under the chips it adds to */
 .coin { display: flex; gap: 7px; align-items: center; }
@@ -1075,8 +1073,9 @@ h4.section {
 }
 .coin .btn { padding: 6px 13px; font-size: 11px; }
 
-/* wears .field too, so it can sit in the .row beside the number it applies
-   to; .field alone would stack it into a column and stretch it */
+/* wears .field too -- .field alone would stack it into a column and stretch
+   it. It lives inside the Format field rather than beside it in the .row, so
+   the nested rule below takes back the two bits that arrangement decides. */
 .field.check {
   flex: none; flex-direction: row; align-items: center; gap: 7px;
   align-self: center; margin-bottom: 20px;
@@ -1090,6 +1089,13 @@ h4.section {
 /* the preview is what you will get, so it is coloured like the numeral it
    becomes rather than like a hint */
 .field.check .hint { color: var(--accent); }
+/* under the Format select: flex-start so a 999px-wide column does not stretch
+   the row of checkbox and words across it, no bottom margin because the field
+   it is in already carries one, and 400 because .field label reaches it now
+   and 600 is the one thing .field.check does not say for itself. */
+.fmt-field .field.check {
+  align-self: flex-start; margin-bottom: 0; font-weight: 400;
+}
 
 /* the widths of the two fields in the top row, and of the two controls that
    would look absurd stretched to 680. They were inline styles in PostForm --

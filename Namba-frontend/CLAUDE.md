@@ -377,7 +377,9 @@ out is safe too — `langsWith()` keeps an entry's existing language on the menu
 so the form cannot drop it on the next save.
 
 The Format select reshapes the Number field beside it: Integer and Decimal
-filter what can be typed and offer the separator checkbox, Mixed and Time are
+filter what can be typed and offer the separator checkbox under the select,
+where it stays out of the top row -- a third column that came and went with
+the format re-measured Number and Format underneath the choice. Mixed and Time are
 plain text with no checkbox, and Auto-detect constrains nothing because nothing
 has been decided yet. Filtering happens as you type and **never** rewrites what
 is already in the field — picking Integer by mistake with `11/22/63` in there

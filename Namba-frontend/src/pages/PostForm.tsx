@@ -244,23 +244,26 @@ export default function PostForm() {
                 ))}
               </select>
             </div>
+            {groupable(format) && (
+              /* under the select that decides whether it exists at all, not a
+                 third column in the row: the row is two fields wide, and a
+                 column that came and went as you chose a format re-measured
+                 Number and Format underneath the choice. The preview only
+                 shows when the box would change something, so ticking it on
+                 42 does nothing and looks like it does nothing. */
+              <label className="field check">
+                <input
+                  type="checkbox"
+                  checked={grouped}
+                  onChange={(e) => setGrouped(e.target.checked)}
+                />
+                Group thousands
+                {showValue(value, true) !== value && (
+                  <span className="hint">{showValue(value, true)}</span>
+                )}
+              </label>
+            )}
           </div>
-          {groupable(format) && (
-            /* beside the field it applies to. The preview only shows when the
-               box would change something, so ticking it on 42 does nothing and
-               looks like it does nothing */
-            <label className="field check">
-              <input
-                type="checkbox"
-                checked={grouped}
-                onChange={(e) => setGrouped(e.target.checked)}
-              />
-              Group thousands
-              {showValue(value, true) !== value && (
-                <span className="hint">{showValue(value, true)}</span>
-              )}
-            </label>
-          )}
         </div>
 
         <div className="field">
