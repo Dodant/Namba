@@ -1050,6 +1050,20 @@ def test_api_round_trip():
         assert c.post("/api/posts", json={"value": "1", "title": "x", "tags": bad}
                       ).status_code == 422, bad
 
+    # A tag of spaces is refused above, and so are the two fields that make the
+    # page. min_length passes three spaces and the insert stores value.strip(),
+    # so this used to be a 201 holding an empty title under an empty number:
+    # a blank row on the index linking to /n/, which matches no route, on a
+    # wiki where nothing takes an entry away again.
+    for blank in ({"value": "  ", "title": "x"}, {"value": "1", "title": "   "}):
+        assert c.post("/api/posts", json=blank).status_code == 422, blank
+    # an edit cannot empty them either, and absent still means unchanged
+    keep = c.post("/api/posts", json={"value": "606", "title": "kept"}).json()
+    for blank in ({"title": " "}, {"value": "\t"}):
+        assert c.patch(f"/api/posts/{keep['id']}", json=blank).status_code == 422, blank
+    assert c.patch(f"/api/posts/{keep['id']}", json={"body": "b"}).status_code == 200
+    assert c.get(f"/api/posts/{keep['id']}").json()["title"] == "kept"
+
     # and the coined one joins the wiki's vocabulary, which is read off the
     # posts rather than a list in main.py
     vocab = {t["tag"]: t["count"] for t in c.get("/api/tags").json()}

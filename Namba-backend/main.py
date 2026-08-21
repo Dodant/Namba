@@ -177,6 +177,20 @@ class PostIn(BaseModel):
     lang: Optional[str] = Field(default=None, max_length=40)
     grouped: bool = False
 
+    # min_length counts characters and "   " has three of them, while the
+    # writes below store `value.strip()` and `title.strip()`. Without this a
+    # form submitted with spaces in both was a 201 holding an empty title under
+    # an empty number -- a blank row on the index whose link is /n/, which
+    # matches no route, on a wiki where nothing removes an entry. Checked here
+    # rather than by stripping on the way in: a poster who typed only spaces
+    # meant to type something, and a 422 says so.
+    @field_validator("value", "title")
+    @classmethod
+    def not_blank(cls, v):
+        if v is not None and not v.strip():
+            raise ValueError("must not be blank")
+        return v
+
     @field_validator("lang")
     @classmethod
     def blank_lang(cls, v):
@@ -205,6 +219,14 @@ class PostPatch(BaseModel):
     tags: Optional[List[str]] = None
     lang: Optional[str] = Field(default=None, max_length=40)
     grouped: Optional[bool] = None
+
+    # the same rule as PostIn: absent is fine, three spaces is not
+    @field_validator("value", "title")
+    @classmethod
+    def not_blank(cls, v):
+        if v is not None and not v.strip():
+            raise ValueError("must not be blank")
+        return v
 
     @field_validator("lang")
     @classmethod
