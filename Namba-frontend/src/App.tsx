@@ -144,12 +144,21 @@ function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void })
           }}
         >
           <span className="slash">/</span>
+          {/* Not "Search numbers". q goes at the value, the title, the body and
+              every translation's title and body -- one LIKE clause in main.py
+              -- so a box that says numbers is a box nobody types a word into,
+              on a wiki where the words are the point.
+
+              Short because it has to be: at (pointer: coarse) this input is
+              172px of 16px mono, which is seventeen characters before the
+              placeholder is cut. The enumeration goes in the label, which has
+              no width to run out of. */}
           <input
             ref={box}
             type="search"
             name="q"
-            aria-label="Search numbers"
-            placeholder="Search numbers…"
+            aria-label="Search the wiki by number, title or text"
+            placeholder="Search the wiki…"
             defaultValue={params.get('q') ?? ''}
           />
         </form>
