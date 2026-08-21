@@ -1005,11 +1005,19 @@ def og_head(page: str, post: dict, base: str) -> str:
         f'<meta property="{k}" content="{html.escape(v, quote=True)}" />' for k, v in tags
     )
     esc = html.escape(title, quote=True)
+    # Both replacements are callables rather than strings, and that is not a
+    # style choice: re.sub reads a *string* replacement for group references, so
+    # a title carrying a backslash -- "C:\1\2" is a fine thing to write an entry
+    # about -- raised `invalid group reference` and answered this page with a
+    # 500 for good. html.escape does not touch a backslash and should not; it is
+    # escaping for HTML, and this was a regex problem wearing its clothes. A
+    # callable is handed the match and its return value is used verbatim.
     # replaced, not appended: two <title>s and the browser keeps the first
-    page = re.sub(r"<title>.*?</title>", f"<title>{esc}</title>", page, count=1, flags=re.S)
+    page = re.sub(r"<title>.*?</title>", lambda _: f"<title>{esc}</title>",
+                  page, count=1, flags=re.S)
     page = re.sub(
         r'<meta name="description" content=".*?"\s*/?>',
-        f'<meta name="description" content="{html.escape(desc, quote=True)}" />',
+        lambda _: f'<meta name="description" content="{html.escape(desc, quote=True)}" />',
         page, count=1, flags=re.S,
     )
     return page.replace("</head>", f"  {meta}\n  </head>", 1)

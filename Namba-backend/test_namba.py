@@ -116,6 +116,18 @@ def test_share_card():
     page = c.get(f"/p/{ev['id']}").text
     assert "<one>" not in page and "&lt;one&gt;" in page, "markup got through"
 
+    # ...and a title with a backslash in it must not break the *regex*. This is
+    # a different escape from the one above and html.escape does not do it: a
+    # string replacement in re.sub reads \1 as a group reference, so this used
+    # to raise `invalid group reference` and answer 500 for good. The body goes
+    # through the same substitution, so it is checked here too.
+    bs = c.post("/api/posts", json={
+        "value": "512", "title": r"C:\1\2 backup", "body": r"the \g<0> folder",
+    }).json()
+    res = c.get(f"/p/{bs['id']}")
+    assert res.status_code == 200, "a backslash in a title took the page down"
+    assert r"C:\1\2 backup" in res.text and r"the \g&lt;0&gt; folder" in res.text
+
     # every other route is the app as built, and the api still answers first
     assert "<title>Namba — a wiki of numbers</title>" in c.get("/n/42").text
     assert c.get("/assets/app.js").text == "console.log(1)"
