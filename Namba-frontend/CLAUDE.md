@@ -352,7 +352,13 @@ option. Free text gets one language written three ways ("Korean", "한국어",
 "korean"), which reads as three languages and filters as three. Unlike a tag,
 nobody is coining a language, so a list is not a claim about what people may
 mean. They are endonyms — the name a language calls itself is the one a reader
-of it recognises.
+of it recognises — each shown with its ISO 639-1 code, `한국어 (ko)`, because an
+endonym only recognises the reader back: `ไทย` and `العربية` say nothing to
+everyone else and `(th)` and `(ar)` do. `LANG_CODE` is the list itself rather
+than a table of codes beside one, so adding a language is still one line. The
+code is **display only** — `lang` is stored as the name, `/api/languages`
+counts the names, and `langLabel()` falls back to the bare name for a language
+`langsWith()` kept but the map has never heard of.
 
 `Written in` has no empty choice: `LANGS[0]` — English, because the wiki is
 English-first — is what a new entry starts on and what an entry with nothing

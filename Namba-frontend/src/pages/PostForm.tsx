@@ -48,15 +48,26 @@ function toggleTag(tags: Tag[], raw: Tag, keep = false) {
    Endonyms, because the name a language calls itself is the one a reader of
    it recognises: 한국어, not Korean. Not every language in the world, just
    the ones this wiki is plausibly written in -- adding one is a line here.
-   English first because the wiki is English-first, then by rough reach. */
-/* The first line is also the default: "Written in" has no empty choice, so a
+   English first because the wiki is English-first, then by rough reach.
+
+   With the code beside it, because an endonym is only recognisable to someone
+   who can already read it -- ไทย and العربية say nothing to everyone else,
+   and (th) and (ar) do. A map rather than a list and a table of codes beside
+   it, so adding a language stays one line and there is nothing to keep in
+   step. Display only: lang is stored as the name and /api/languages counts
+   the names, so a code never reaches the wire. */
+const LANG_CODE: Record<string, string> = {
+  'English': 'en', '한국어': 'ko', '日本語': 'ja', '中文': 'zh',
+  'Español': 'es', 'Français': 'fr', 'Deutsch': 'de', 'Português': 'pt',
+  'Русский': 'ru', 'Italiano': 'it', 'Nederlands': 'nl', 'Polski': 'pl',
+  'Türkçe': 'tr', 'Tiếng Việt': 'vi', 'ไทย': 'th', 'Bahasa Indonesia': 'id',
+  'हिन्दी': 'hi', 'العربية': 'ar',
+}
+/* The first key is also the default: "Written in" has no empty choice, so a
    new entry starts English and an old one with nothing recorded picks it up on
    the next save. Nothing on this wiki reads better for not knowing. */
-const LANGS = [
-  'English', '한국어', '日本語', '中文', 'Español', 'Français', 'Deutsch',
-  'Português', 'Русский', 'Italiano', 'Nederlands', 'Polski', 'Türkçe',
-  'Tiếng Việt', 'ไทย', 'Bahasa Indonesia', 'हिन्दी', 'العربية',
-]
+const LANGS = Object.keys(LANG_CODE)
+const langLabel = (l: string) => (LANG_CODE[l] ? `${l} (${LANG_CODE[l]})` : l)
 
 /* An entry written before this list, or before a line was taken out of it,
    keeps what it has: a form that loaded a language it cannot show would drop
@@ -318,7 +329,7 @@ export default function PostForm() {
             <select id={fid('lang')} value={lang} onChange={(e) => setLang(e.target.value)}>
               {langsWith(lang).map((l) => (
                 <option key={l} value={l}>
-                  {l}
+                  {langLabel(l)}
                 </option>
               ))}
             </select>
@@ -677,7 +688,7 @@ function TranslationEditor({
               .filter((l) => l === lang || !taken.includes(l))
               .map((l) => (
                 <option key={l} value={l}>
-                  {l}
+                  {langLabel(l)}
                 </option>
               ))}
           </select>
