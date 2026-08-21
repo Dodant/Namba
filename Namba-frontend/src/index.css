@@ -1363,11 +1363,14 @@ h4.section {
   margin-top: clamp(40px, 6vw, 64px);
   padding-top: 16px;
   display: flex; flex-direction: column; gap: 7px;
-  max-width: 68ch;
   font-size: 13px; line-height: 1.55; color: var(--faint);
   text-wrap: pretty;
 }
-.foot p { margin: 0; }
+/* 68ch on the paragraphs, not on .foot: the cap is there because a sentence
+   set the full 1160px is a sentence nobody finishes, and on the box it took
+   the border-top with it -- a rule ending at 524px of a 1092px page reads as
+   one more separator in a list rather than as the page stopping. */
+.foot p { margin: 0; max-width: 68ch; }
 /* inherit, not --accent: four links in three short lines, and coloured they
    become the loudest thing under the fold */
 .foot a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
