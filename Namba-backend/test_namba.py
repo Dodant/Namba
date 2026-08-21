@@ -1,6 +1,7 @@
 """Self-check: python test_namba.py   (no pytest, no fixtures)"""
 import json
 import os
+import re
 import tempfile
 from datetime import datetime, timedelta, timezone
 
@@ -28,7 +29,7 @@ import auth  # noqa: E402
 import db  # noqa: E402
 import events  # noqa: E402
 import main  # noqa: E402
-from numfmt import bucket_of, grouped_value, parse_number  # noqa: E402
+from numfmt import FORMATS, bucket_of, grouped_value, parse_number  # noqa: E402
 
 # The write limiter counts per IP, and the whole suite is one IP making a
 # hundred writes in a second. Lift it here rather than thin it out in main.py,
@@ -61,6 +62,65 @@ def test_parse():
     for raw, want in cases.items():
         got = parse_number(raw)
         assert got == want, f"parse_number({raw!r}) = {got}, want {want}"
+
+
+def test_the_two_apps_still_agree():
+    """The hand-copied lists in `../Namba-frontend/src/api.ts` match these ones.
+
+    The root CLAUDE.md calls these "kept in sync by hand" and says change one,
+    change the other -- and until this test there was nothing checking that
+    anybody had. The 422 the API answers only catches drift in one direction:
+    a front end offering a reason the backend does not know fails loudly, while
+    a backend that grows one the front end never lists just quietly drops a
+    choice off a menu. Nobody sees an error; the option is simply not there.
+
+    Parsed out of the TypeScript with a regex rather than by generating either
+    side from the other. Codegen is what this repo declined -- being one repo so
+    the pair can move in one commit *is* the design -- so the job here is to
+    notice, not to enforce a source of truth.
+
+    Missing file is a failure, not a skip: the two apps living in one checkout
+    is the premise, and a check that quietly passes when it cannot look is the
+    kind of test that is worse than none.
+    """
+    path = os.path.join(db.DIR, os.pardir, "Namba-frontend", "src", "api.ts")
+    assert os.path.isfile(path), f"the other half of the repo is not at {path}"
+    src = open(path, encoding="utf-8").read()
+
+    def listed(name):
+        """One `export const NAME = [...]` as Python.
+
+        Every literal in these lists -- 'SPAM', 1, 24 * 7, null -- happens to be
+        valid Python once null is None, so one reader does all eight rather than
+        a parser per shape. eval with no builtins, over a file in this repo.
+        """
+        m = re.search(rf"export const {name}\b[^=]*=\s*\[(.*?)\]", src, re.S)
+        assert m, f"{name} is not in api.ts at all"
+        body = m.group(1).replace("null", "None").strip().rstrip(",")
+        return tuple(eval(f"[{body}]", {"__builtins__": {}}))  # noqa: S307
+
+    def number(name):
+        m = re.search(rf"export const {name}\b[^=]*=\s*(\d+)", src)
+        assert m, f"{name} is not in api.ts at all"
+        return int(m.group(1))
+
+    # the four number formats -- a format is a parser branch and both sides
+    # have to agree on the word
+    assert listed("FORMATS") == FORMATS, listed("FORMATS")
+    # the five vocabularies the TEXT columns may hold, plus what the panel offers
+    for name in ("DELETE_REASONS", "REPORT_REASONS", "POST_STATUSES",
+                 "REQUEST_STATUSES", "REPORT_STATUSES", "BLOCK_TYPES",
+                 "BLOCK_HOURS"):
+        assert listed(name) == getattr(db, name), (name, listed(name))
+    # the two tag limits
+    assert number("TAG_MAX") == main.TAG_MAX
+    assert number("TAGS_PER_POST") == main.TAGS_PER_POST
+
+    # every reason on either side has words on it, or the picker shows a bare
+    # SCREAMING_CASE token to a reader
+    labels = set(re.findall(r"^  (\w+): '", src, re.M))
+    for reason in set(db.DELETE_REASONS) | set(db.REPORT_REASONS):
+        assert reason in labels, f"REASON_LABEL has nothing to say about {reason}"
 
 
 def test_recent_sort():

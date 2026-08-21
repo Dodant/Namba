@@ -34,12 +34,19 @@ package). **Change one, change the other:**
 | the two tag limits | `main.py` `TAG_MAX`, `TAGS_PER_POST` | `src/api.ts`, same names |
 | the moderation vocabularies | `db.py` `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`, `REQUEST_STATUSES`, `REPORT_STATUSES`, `BLOCK_TYPES`, `BLOCK_HOURS` | `src/api.ts`, same names |
 
-The backend rejects an unknown format with a 422 rather than dropping it, a tag
-past either limit the same way, and an invented delete-request or report reason
-the same way again — so a frontend-only change fails loudly rather than
-silently. The five vocabularies live in `db.py` rather than beside the routes
-because they are what the `TEXT` columns may hold, and both `main.py` and
-`admin_api.py` need them without importing each other.
+`test_the_two_apps_still_agree` in `test_namba.py` reads `src/api.ts` and checks
+every row of that table, so "change one, change the other" is a thing the suite
+notices rather than a thing you remember. It parses the TypeScript; it does not
+generate either side from the other, because moving the pair in one commit is
+the design and codegen is what this repo declined.
+
+That test is there because the 422 only catches drift one way. The backend
+rejects an unknown format, a tag past either limit and an invented reason — so a
+frontend-only change fails loudly. A **backend**-only one does not: add a reason
+here and forget `api.ts` and nothing errors, the choice is simply missing from a
+menu and nobody finds out. The five vocabularies live in `db.py` rather than
+beside the routes because they are what the `TEXT` columns may hold, and both
+`main.py` and `admin_api.py` need them without importing each other.
 
 They are **not** SQL `CHECK` constraints, and that is a trade rather than an
 oversight: `CREATE TABLE IF NOT EXISTS` skips a database that already exists and
