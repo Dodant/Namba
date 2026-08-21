@@ -628,6 +628,18 @@ def test_admin_accounts():
     assert not cors.kwargs.get("allow_credentials"), \
         "allow_credentials would hand the admin session to any origin"
 
+    # ...and it really is the only layer under SameSite. The docstring in
+    # auth.py used to offer the JSON content type as a second one, "since it
+    # costs a preflight another origin cannot pass". It costs one and the
+    # preflight passes, which this pins so the claim cannot come back: what
+    # stops the attack is the two lines above, not the 200 below.
+    pre = c.options("/api/admin/posts/1/status", headers={
+        "origin": "https://evil.test",
+        "access-control-request-method": "POST",
+        "access-control-request-headers": "content-type",
+    })
+    assert pre.status_code == 200 and pre.headers["access-control-allow-origin"] == "*"
+
     admin.set_active(email, False)
 
 

@@ -124,11 +124,19 @@ def set_cookie(response, request, token):
     cookie by existing. SameSite=Strict is what stands in for a CSRF token: the
     admin app is same-origin with the API, so nothing legitimate is a
     cross-site request, and the browser will not attach this cookie to one.
-    A JSON content type on every write is the second layer, since it costs a
-    preflight another origin cannot pass. **Do not turn on
-    `allow_credentials` in the CORS middleware** -- that is what makes the
-    wide-open `allow_origins` harmless here, and the two together would undo
-    both layers at once.
+
+    The second layer is `allow_credentials` being off, and **it must stay off**:
+    a credentialed cross-origin request against `Access-Control-Allow-Origin: *`
+    is refused by the browser before it is sent. That is the whole of what makes
+    the wide-open `allow_origins` harmless here, and `test_admin_accounts`
+    asserts it.
+
+    This used to claim the second layer was the JSON content type, "since it
+    costs a preflight another origin cannot pass". It does cost a preflight and
+    the preflight *passes* -- `allow_headers=["*"]` answers `content-type` with
+    a 200 for any origin that asks. So that layer never existed. The defence is
+    the two above and nothing else, which is worth knowing before anybody
+    reaches for `allow_credentials` believing there is one in reserve.
 
     Secure follows the scheme the request arrived on, so this works on
     http://localhost without a flag and is set in production without one.

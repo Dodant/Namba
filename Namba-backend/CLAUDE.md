@@ -123,13 +123,18 @@ it is unset, `secret.key` beside the database is generated and used instead).
   directories otherwise. Five attempts a minute, against the write limiter's
   twenty.
 - **`SameSite=Strict` is standing in for a CSRF token, and `allow_credentials`
-  must stay off.** The admin app is same-origin with the API, so no legitimate
-  request is cross-site and the browser will not attach the session cookie to
-  one; the JSON content type on every write is the second layer, since it costs
-  a preflight. `CORSMiddleware` is wide open on purpose — an open wiki's API
-  should be readable from anywhere — and that is only safe while credentials are
-  off. Turning them on undoes both layers at once. `test_admin_accounts` asserts
-  it stays off.
+  must stay off.** Those are the two layers, and there is no third. The admin
+  app is same-origin with the API, so no legitimate request is cross-site and
+  the browser will not attach the session cookie to one; and a *credentialed*
+  cross-origin request against `Access-Control-Allow-Origin: *` is refused by
+  the browser before it leaves. `CORSMiddleware` is wide open on purpose — an
+  open wiki's API should be readable from anywhere — and that is only safe
+  while credentials are off. `test_admin_accounts` asserts it stays off.
+  This entry used to name the JSON content type as a second layer, "since it
+  costs a preflight". It costs one, and the preflight passes:
+  `allow_headers=["*"]` answers `content-type` with a 200 for any origin. The
+  layer was never there, which is exactly the sort of thing to know before
+  turning credentials on in the belief that one is held in reserve.
 - **`admin.py` asks for a password on a terminal, reads one from a pipe, and
   never takes one from argv.** argv is refused because it would sit in the shell
   history. The pipe branch exists because `getpass` cannot turn echo off without
