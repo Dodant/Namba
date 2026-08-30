@@ -94,6 +94,42 @@ function ScrollTop() {
   return null
 }
 
+/* The one thing in here that touches the head, and it only ever puts it back.
+
+   main.py writes the real title per request -- "7 — 4 entries · Namba" -- and
+   it is right on the load, the reload, the share and the crawl. A client-side
+   navigation does not fetch a document, so without this the tab still said
+   "book — 17 entries" while you read /p/1, and a bookmark taken there saved
+   that name. Wrong is worse than plain, so a navigation restores the site's
+   own title and stops.
+
+   Not the *page's* title, deliberately: building that here means a second copy
+   of four format strings that live in main.py, with nothing to notice when the
+   two drift. This app still writes no metadata -- it has one line that undoes
+   a value it did not set, on a document it did not build. If the tab is ever
+   to say more than this, the answer is one title per route from the server,
+   not a hand-copy over here.
+
+   The ref is what keeps the first render out of it: the title the server just
+   wrote is the correct one, and resetting it on mount would throw it away
+   before anybody read the tab. */
+function SiteTitle() {
+  const { pathname, search } = useLocation()
+  const first = useRef(true)
+  useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    document.title = SITE_TITLE
+  }, [pathname, search])
+  return null
+}
+
+/* index.html's <title>, which is also what main.py reads back out of it as the
+   site's own name. Here so a navigation can put it back; see SiteTitle. */
+const SITE_TITLE = 'Namba — a wiki of numbers'
+
 /* One copy, because it is drawn as two different elements below and a second
    copy is a wordmark that can be spelled two ways. */
 const WORDMARK = (
@@ -288,6 +324,7 @@ export default function App() {
     <BrowserRouter>
       <div className="wrap">
         <ScrollTop />
+        <SiteTitle />
         <Header lang={lang} onLang={pickLang} />
         <main>
           <Routes>

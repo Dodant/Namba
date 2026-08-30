@@ -227,6 +227,29 @@ def _ld(page):
         r'<script type="application/ld\+json">(.*?)</script>', page, re.S)]
 
 
+def test_the_site_has_one_name():
+    """index.html's <title> and App.tsx's SITE_TITLE are the same string.
+
+    Two places hold the site's own name and neither generates the other.
+    main.py reads index.html's back out rather than keeping a third copy, so
+    the server cannot drift; the front end's is a hand-copy, because the one
+    thing it does with the head is put that title back after a client-side
+    navigation and building it from the server's would mean fetching it.
+
+    Same bargain as test_the_two_apps_still_agree: notice, do not enforce. Drift
+    here is quiet -- the tab reads the old name after a navigation and is right
+    again on reload -- which is exactly the kind nobody reports.
+    """
+    root = os.path.join(db.DIR, os.pardir, "Namba-frontend")
+    page = open(os.path.join(root, "index.html"), encoding="utf-8").read()
+    app = open(os.path.join(root, "src", "App.tsx"), encoding="utf-8").read()
+    in_html = re.search(r"<title>(.*?)</title>", page, re.S)
+    in_app = re.search(r"const SITE_TITLE = '(.*?)'", app)
+    assert in_html, "index.html has no <title> -- og_head rewrites that tag by regex"
+    assert in_app, "App.tsx has no SITE_TITLE"
+    assert in_html.group(1) == in_app.group(1), (in_html.group(1), in_app.group(1))
+
+
 def test_head_per_route():
     """Every page worth keeping arrives with a head of its own, and every page
     that is not worth keeping says so.

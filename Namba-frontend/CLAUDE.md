@@ -618,6 +618,15 @@ as a copy of the front page. Two consequences for work in here:
 - **A new route is `noindex` until somebody says otherwise**, which is the safe
   way round. If a route added here deserves to be in a search result, it needs a
   branch in `_index()` — adding the `<Route>` alone is not enough.
+- **`SiteTitle` in `App.tsx` is the one thing in here that touches the head, and
+  it only ever puts it back.** A client-side navigation fetches no document, so
+  the tab kept the last server-written title — "book — 17 entries" while you
+  read `/p/1`, and a bookmark taken there saved that name. It restores
+  `SITE_TITLE` and stops. Not the *page's* title: building that here is a second
+  copy of four format strings that live in `main.py`, with nothing to notice the
+  drift. `SITE_TITLE` is a hand-copy of `index.html`'s `<title>` and
+  `test_the_site_has_one_name` compares them. A `useRef` keeps the first render
+  out of it, or the title the server just wrote is thrown away on mount.
 
 `vite.config.ts`'s proxy is a development convenience only — in production there
 is one origin and nothing to proxy.
