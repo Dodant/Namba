@@ -50,7 +50,13 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
               several entries, so separators need all of them to agree */}
           {/* numSize off what is drawn, not off `value`: the separators are
               two of the characters the hero has to find room for */}
-          <div className={`num ${numSize(shownValue)}`}>{shownValue}</div>
+          {/* the <h1>, because it is what this page is about. It was a div
+              under a heading that read "Three people have written about this
+              number" -- a sentence that names its subject only by pointing at
+              something beside it, which is exactly what a crawler, an answer
+              engine and a screen reader's heading list cannot follow.
+              .hero .num beats .hero h1 on specificity, so it draws unchanged. */}
+          <h1 className={`num ${numSize(shownValue)}`}>{shownValue}</h1>
           {/* stays even when empty: it is the flex spacer that holds the
               middle. At zero there is nothing to describe and no format to
               read it from, so the empty state below says the rest */}
@@ -58,10 +64,13 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
             {posts.data?.length ? (
               <>
                 <span className="kicker">{kicker(posts.data[0])}</span>
-                <h1>
+                {/* a <p> now that the numeral above is the heading. The words
+                    are unchanged: "this number" was only vague while nothing
+                    on the page was marked up as being the number. */}
+                <p>
                   {COUNTS[n] ?? n} {n === 1 ? 'person has' : 'people have'} written
                   about this number.
-                </h1>
+                </p>
               </>
             ) : null}
           </div>

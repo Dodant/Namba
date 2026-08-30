@@ -159,7 +159,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 :is(.logo-block, .search .slash, .btn, .chip, .pill, .tag, .kicker,
     .band-head, .ix-fold, .tabs a, .tabs button, .panel-add, .meta-btn,
     .quiet, h4.section, .field label, .field .field-label, .field.check,
-    .form h1, .form-intro, .fine, .feed-intro, .empty, .panel-empty,
+    .form h1, .form-intro, .fine, .feed-intro, .hero-said p, .empty, .panel-empty,
     .body-none, .foot) {
   -webkit-user-select: none;
   user-select: none;
@@ -830,7 +830,11 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 }
 .hero .num.mid { font-size: clamp(36px, 8.5vw, 80px); }
 .hero .num.long { font-size: clamp(24px, 5.5vw, 52px); letter-spacing: -0.04em; }
-.hero h1 { margin: 0; font-size: clamp(22px, 3.4vw, 27px); font-weight: 400; line-height: 1.15; }
+/* Both, because the number page's sentence moved out of the h1 when the
+   numeral moved into it, and the two still sit in the same place and read the
+   same size. The h1 on /n/ is the numeral and takes .hero .num over this on
+   specificity -- all it keeps from here is the margin. */
+.hero h1, .hero-said p { margin: 0; font-size: clamp(22px, 3.4vw, 27px); font-weight: 400; line-height: 1.15; }
 /* 200px is a floor a 320px screen can still pay: the numeral beside it is 44px
    at that width, so the two share the line instead of the title being pushed
    under a number it is the caption for */
