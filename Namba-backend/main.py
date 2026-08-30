@@ -1071,7 +1071,7 @@ CC0 = "https://creativecommons.org/publicdomain/zero/1.0/"
 
 def clip(s: str, n: int = OG_DESC) -> str:
     """A line of prose, no longer than n, ending in an ellipsis if it was."""
-    return s[: n - 1].rstrip() + "\u2026" if len(s) > n else s
+    return s[: n - 1].rstrip() + "…" if len(s) > n else s
 
 
 def og_summary(body: str) -> str:
@@ -1256,7 +1256,7 @@ def head_list(page, base, *, kind, subject, url, rows, empty):
     pages in front of the ones that say something.
     """
     if not rows:
-        return write_head(page, title=f"{subject} \u00b7 Namba", desc=empty,
+        return write_head(page, title=f"{subject} · Namba", desc=empty,
                           canonical=url, robots="noindex, follow")
     n = len(rows)
     count = "1 entry" if n == 1 else f"{n} entries"
@@ -1264,9 +1264,9 @@ def head_list(page, base, *, kind, subject, url, rows, empty):
     rest = n - len(titles)
     lead = (f"What {subject} means" if kind == "number"
             else f"Numbers tagged {subject}")
-    desc = clip(f"{lead} \u2014 {count} on Namba: " + "; ".join(titles)
+    desc = clip(f"{lead} — {count} on Namba: " + "; ".join(titles)
                 + (f"; and {rest} more." if rest else "."))
-    title = f"{subject} \u2014 {count} \u00b7 Namba"
+    title = f"{subject} — {count} · Namba"
     page_ld = {
         "@context": "https://schema.org", "@type": "CollectionPage",
         "name": title, "url": url, "description": desc, "inLanguage": "en",
@@ -1323,8 +1323,13 @@ def og_head(page: str, post: dict, base: str, tags=()) -> str:
     as a second date format nobody asked to read.
     """
     value = grouped_value(post["value"], post["grouped"])
-    title = f"{value} \u2014 {post['title']} \u00b7 Namba"
-    desc = og_summary(post["body"]) or f"What {value} means, on Namba."
+    title = f"{value} — {post['title']} · Namba"
+    # The fallback names the entry, because 84% of this wiki is a title and no
+    # body and "What 2 means, on Namba." was the description on all of them --
+    # identical, word for word, on the 29 that share a number. A description
+    # that cannot tell two pages apart is one a search engine drops.
+    desc = og_summary(post["body"]) or clip(
+        f"{post['title']} — what {value} means, on Namba.")
     img = f"{base}{post['image'].lstrip('/')}" if post["image"] else None
     url = f"{base}p/{post['id']}"
     article = {

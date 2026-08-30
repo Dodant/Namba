@@ -335,6 +335,15 @@ def test_head_per_route():
         "the link is built from the raw value, never the grouped one")
     assert "1%2C000" not in page and "/n/1,000" not in page
 
+    # -- an entry with no body still gets a description of its own. Most of
+    # this wiki is a title and nothing else, and the fallback used to name only
+    # the number -- so every bodiless entry filed under 13 had the same one.
+    bare = c.post("/api/posts", json={"value": "808", "title": "no body here"}).json()
+    page = c.get(f"/p/{bare['id']}").text
+    assert 'content="no body here — what 808 means, on Namba."' in page, page[:600]
+    twin = c.post("/api/posts", json={"value": "808", "title": "nor here"}).json()
+    assert 'content="nor here — what 808 means, on Namba."' in c.get(f"/p/{twin['id']}").text
+
     # -- and everything else stays out of an index. Three controls, one form,
     # an entry an operator took down, and a path that does not exist -- all of
     # which answer 200 with the app, and all of which used to answer with the
