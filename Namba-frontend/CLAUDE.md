@@ -615,6 +615,15 @@ as a copy of the front page. Two consequences for work in here:
   an `og:` tag beside them and the substitution silently no-ops or duplicates.
   They are also read back out as the site's own title and blurb, so they stay
   the one place those words are written.
+- **`public/og.png` is the share card, and it is the only asset in this repo.**
+  Vite copies `public/` into `dist/` untouched, which is the whole reason it
+  exists here rather than as a route in the API. `main.py`'s `OG_CARD` points
+  every page at it by name, so renaming or resizing the file breaks the card on
+  every share and nothing in this app would notice —
+  `test_the_share_card_is_a_real_png` in the backend suite holds it at
+  1200×630. It is drawn in this app's own tokens (`--bg`, `--accent`) and the
+  numeral is `.hero .num`'s treatment, so a palette change here can leave it
+  behind: it is a flat PNG and cannot follow a theme, let alone dark mode.
 - **A new route is `noindex` until somebody says otherwise**, which is the safe
   way round. If a route added here deserves to be in a search result, it needs a
   branch in `_index()` — adding the `<Route>` alone is not enough.

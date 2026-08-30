@@ -309,6 +309,33 @@ it is unset, `secret.key` beside the database is generated and used instead).
   `plain()` in the front end's `api.ts`; they are deliberately not kept in
   step, since one feeds a preview row and the other a meta tag and nobody sees
   both at once.
+- **Every page falls back to one share card, and it is a file, not a route.**
+  `OG_CARD` is `og.png` in the front end's `public/`, so Vite copies it into
+  `dist/` and the catch-all serves it like any other build output — there is no
+  image code in this app and no dependency that draws one. `og_tags()` reaches
+  for it whenever a page has no picture of its own, which is **every page**:
+  not one entry in this wiki has an image, so the fallback is the normal case
+  and an entry's own picture is the exception. That is also why `twitter:card`
+  is now always `summary_large_image` rather than a ternary — before the
+  fallback existed, every pasted Namba link came out a bare grey box.
+
+  An empty `/n/` or `/t/` gets the card too, `noindex` notwithstanding: the two
+  do not consult each other, one is about a search result and the other about
+  what a chat window draws. The `noindex` **default** branch is the one place
+  with no card — `/search`, `/new` and a mistyped path keep the head
+  `index.html` shipped, which still unfurls as the site's title and blurb
+  without an image. Left that way on purpose: giving it a card means giving it
+  a `og:url`, and the branch stays dumb by design.
+
+  `og:image:alt` rides only with the fallback, because this file knows what
+  that card reads. An uploaded picture has no alt text stored anywhere and a
+  title is a caption for the entry, not a description of the image — writing
+  one from it would be inventing it.
+
+  `test_the_share_card_is_a_real_png` reads the IHDR chunk by hand and holds
+  the file at 1200×630. It is the shape Facebook, Slack and Twitter all crop
+  from, and a resized card would be cut somewhere nobody chose with nothing
+  else in the repo to notice.
 - **`path_seg()` reads the raw path, and `enc()` has to match
   `encodeURIComponent`.** A number value may hold a slash — `11/22/63` — so by
   the time ASGI has decoded the path, `n/11%2F22%2F63` and a three-segment path

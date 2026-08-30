@@ -1067,6 +1067,15 @@ HEADLINE = 110
 # head as well now, because a machine reading this wiki should not have to
 # infer whether it may quote it.
 CC0 = "https://creativecommons.org/publicdomain/zero/1.0/"
+# The card a page falls back to when it has no picture of its own -- which is
+# every page: not one entry in this wiki has an image, so this is not the
+# exception, it is what a pasted Namba link looks like in Slack, on Twitter and
+# in iMessage. There is no route for it here. It is a file in the front end's
+# public/, so Vite copies it to dist/ and the catch-all at the bottom serves it
+# like any other build output; test_the_share_card_is_a_real_png keeps it
+# 1200x630, which is the size the scrapers crop from.
+OG_CARD = "og.png"
+OG_CARD_ALT = "Namba — every number means something to someone"
 
 
 def clip(s: str, n: int = OG_DESC) -> str:
@@ -1189,18 +1198,32 @@ def write_head(page: str, *, title=None, desc=None, canonical=None,
     return page.replace("</head>", "  " + "\n    ".join(out) + "\n  </head>", 1)
 
 
-def og_tags(title, desc, url, kind, image=None):
+def og_tags(title, desc, url, kind, base, image=None):
     """The share card.
 
     twitter:card alone beside the og: tags: Twitter reads og:title,
     og:description and og:image when its own are missing, so a second copy of
     each would be three more lines saying the same thing.
+
+    Always the large card now, because there is always an image: an entry's own
+    picture when it has one, and OG_CARD when it does not. It used to be the
+    small "summary" card with no picture at all, which described every page on
+    the site -- a pasted link came out a bare grey rectangle with the title
+    beside it.
+
+    og:image:alt only for the fallback. It says what that card actually reads,
+    which is a thing this file knows. An entry's uploaded picture has no alt
+    text stored anywhere, and the title is a caption for the entry rather than
+    a description of the image, so writing one from it would be inventing it.
     """
+    alt = None
+    if not image:
+        image, alt = f"{base}{OG_CARD}", OG_CARD_ALT
     tags = [("og:type", kind), ("og:site_name", "Namba"), ("og:locale", "en"),
             ("og:title", title), ("og:description", desc), ("og:url", url),
-            ("twitter:card", "summary_large_image" if image else "summary")]
-    if image:
-        tags.append(("og:image", image))
+            ("twitter:card", "summary_large_image"), ("og:image", image)]
+    if alt:
+        tags.append(("og:image:alt", alt))
     return tags
 
 
@@ -1241,7 +1264,7 @@ def head_home(page, base):
     # re-sort or filter the same index, and ?tag=book is the page /t/book
     # already is -- four addresses for one page, and this says which of them.
     return write_head(page, canonical=base, ld=[ld],
-                      og=og_tags(title, desc, base, "website"))
+                      og=og_tags(title, desc, base, "website", base=base))
 
 
 def head_list(page, base, *, kind, subject, url, rows, empty):
@@ -1256,8 +1279,14 @@ def head_list(page, base, *, kind, subject, url, rows, empty):
     pages in front of the ones that say something.
     """
     if not rows:
-        return write_head(page, title=f"{subject} · Namba", desc=empty,
-                          canonical=url, robots="noindex, follow")
+        # a card even so. noindex is about a search result; a share card is
+        # what a chat window draws, and the two do not consult each other --
+        # "nobody has written about 1234 yet, want to?" is a link somebody
+        # pastes on purpose, and it should not paste as a grey box.
+        title = f"{subject} · Namba"
+        return write_head(page, title=title, desc=empty, canonical=url,
+                          robots="noindex, follow",
+                          og=og_tags(title, empty, url, "website", base=base))
     n = len(rows)
     count = "1 entry" if n == 1 else f"{n} entries"
     titles = [r["title"] for r in rows[:DESC_TITLES]]
@@ -1284,7 +1313,7 @@ def head_list(page, base, *, kind, subject, url, rows, empty):
         },
     }
     return write_head(page, title=title, desc=desc, canonical=url,
-                      og=og_tags(title, desc, url, "website"),
+                      og=og_tags(title, desc, url, "website", base=base),
                       ld=[page_ld, crumbs(base, [(subject, url)])])
 
 
@@ -1355,7 +1384,7 @@ def og_head(page: str, post: dict, base: str, tags=()) -> str:
         article["inLanguage"] = {"@type": "Language", "name": post["lang"]}
     return write_head(
         page, title=title, desc=desc, canonical=url,
-        og=og_tags(title, desc, url, "article", img)
+        og=og_tags(title, desc, url, "article", base=base, image=img)
            + [("article:published_time", post["created_at"]),
               ("article:modified_time", post["updated_at"])],
         ld=[article, crumbs(base, [(value, f"{base}n/{enc(post['value'])}"),

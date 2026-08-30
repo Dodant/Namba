@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import struct
 import tempfile
 from datetime import datetime, timedelta, timezone
 from xml.etree import ElementTree
@@ -163,17 +164,22 @@ def test_share_card():
     assert 'property="og:description" content="Ramanujan The dullest number, until he spoke."' in page
     assert page.count('name="description"') == 1
     assert 'property="og:url" content="http://testserver/p/%d"' % p["id"] in page
-    assert 'name="twitter:card" content="summary"' in page
-    assert "og:image" not in page, "no picture, so no image card"
+    # no picture of its own, so it falls back to the site's card -- which is
+    # every entry here, none of them has one
+    assert 'name="twitter:card" content="summary_large_image"' in page
+    assert 'property="og:image" content="http://testserver/og.png"' in page
+    assert 'property="og:image:alt"' in page, "the fallback card says what it reads"
     # the entry's own address, said once, so /p/12?anything is not a second page
     assert 'rel="canonical" href="http://testserver/p/%d"' % p["id"] in page
     assert 'property="article:published_time"' in page
 
-    # an entry with a picture gets the big card, at an absolute url
+    # an entry with a picture uses its own, at an absolute url, and takes no
+    # alt: nothing here has ever seen that image
     with_img = c.patch(f"/api/posts/{p['id']}", json={"image": "/uploads/x.png"}).json()
     page = c.get(f"/p/{with_img['id']}").text
     assert 'property="og:image" content="http://testserver/uploads/x.png"' in page
-    assert 'name="twitter:card" content="summary_large_image"' in page
+    assert "og.png" not in page, "its own picture, not the fallback"
+    assert "og:image:alt" not in page
 
     # a title with a quote in it must not break out of the attribute
     ev = c.post("/api/posts", json={"value": "13", "title": 'the "unlucky" <one>'}).json()
@@ -320,8 +326,12 @@ def test_head_per_route():
     # set, so indexing it means an unbounded number of blank pages in front of
     # the ones that say something.
     for empty in ("/n/999999999", "/t/nothingistaggedthis"):
-        assert "noindex" in c.get(empty).text, empty
-        assert 'rel="canonical"' in c.get(empty).text, empty
+        page = c.get(empty).text
+        assert "noindex" in page, empty
+        assert 'rel="canonical"' in page, empty
+        # ...and still a card. noindex keeps it out of a search result; it says
+        # nothing about the chat window someone pastes "be the first" into.
+        assert 'property="og:image" content="http://testserver/og.png"' in page, empty
 
     # -- the entry itself is grouped as its own flag says
     grouped = c.post("/api/posts", json={
@@ -343,6 +353,14 @@ def test_head_per_route():
     assert 'content="no body here — what 808 means, on Namba."' in page, page[:600]
     twin = c.post("/api/posts", json={"value": "808", "title": "nor here"}).json()
     assert 'content="nor here — what 808 means, on Namba."' in c.get(f"/p/{twin['id']}").text
+
+    # -- and every one of them carries the site's card. An entry, a number, a
+    # tag and the front page: four routes, no picture between them, and before
+    # the fallback existed all four pasted into Slack as a bare grey box.
+    for path in ("/", "/n/808", "/t/breakbeat", f"/p/{a['id']}"):
+        page = c.get(path).text
+        assert 'property="og:image" content="http://testserver/og.png"' in page, path
+        assert 'name="twitter:card" content="summary_large_image"' in page, path
 
     # -- and everything else stays out of an index. Three controls, one form,
     # an entry an operator took down, and a path that does not exist -- all of
@@ -1873,6 +1891,27 @@ def test_connection_crosses_threads():
     assert err == [None], err
     con.close()
 
+
+
+def test_the_share_card_is_a_real_png():
+    """`Namba-frontend/public/og.png` exists and is 1200x630.
+
+    The one asset in this repo, and the head points every page at it by name --
+    so a missing or resized file is a broken card on every share, and nothing
+    else would notice. The size is not decoration: Facebook, Slack and Twitter
+    all crop from 1.91:1, and a card that is not that shape gets cut somewhere
+    nobody chose.
+
+    Read by hand out of the IHDR chunk rather than with Pillow, which is not a
+    dependency of this app and is not worth becoming one for eight bytes.
+    """
+    path = os.path.join(db.DIR, os.pardir, "Namba-frontend", "public", main.OG_CARD)
+    assert os.path.isfile(path), f"{path} is gone; every share card is a 404"
+    with open(path, "rb") as fh:
+        head = fh.read(24)
+    assert head[:8] == b"\x89PNG\r\n\x1a\n", "not a PNG, and a scraper will not guess"
+    width, height = struct.unpack(">II", head[16:24])
+    assert (width, height) == (1200, 630), (width, height)
 
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
