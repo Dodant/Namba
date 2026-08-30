@@ -202,7 +202,13 @@ export default function PostPage() {
           </div>
         )}
 
-        {post.image && <img className="full" src={post.image} alt={post.title} />}
+        {/* not lazy: this one is the entry's own picture, near the top of the
+            page it is on, and is very often what the largest paint is. Only
+            decoding=async, which takes it off the main thread without delaying
+            the request. */}
+        {post.image && (
+          <img className="full" src={post.image} alt={post.title} decoding="async" />
+        )}
 
         {/* No rehype-raw, deliberately: react-markdown renders to React
             elements and escapes raw HTML unless you hand it a plugin that

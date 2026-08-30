@@ -406,7 +406,7 @@ export default function PostForm() {
           </label>
           {image ? (
             <div className="file-row">
-              <img className="thumb" src={image} alt="" />
+              <img className="thumb" src={image} alt="" decoding="async" />
               <button type="button" className="pill" onClick={() => setImage(null)}>
                 Remove
               </button>

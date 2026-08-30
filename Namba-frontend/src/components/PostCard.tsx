@@ -88,7 +88,13 @@ export default function PostCard({
           </Link>
         </div>
       </div>
-      {post.image && <img className="thumb" src={post.image} alt="" />}
+      {/* lazy because a card is a row in a list and most of the list is under
+          the fold -- an index of 180 numbers used to fetch every thumbnail at
+          once. alt="" is deliberate and stays: the title beside it is the link
+          and the picture repeats it. */}
+      {post.image && (
+        <img className="thumb" src={post.image} alt="" loading="lazy" decoding="async" />
+      )}
     </article>
   )
 }
