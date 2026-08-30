@@ -267,14 +267,61 @@ it is unset, `secret.key` beside the database is generated and used instead).
   `/api/...` declared below it. It serves built assets by path and `index.html`
   otherwise, and `realpath`s the target first — `path` comes off the wire and
   `..` in it must not walk out of `dist/`.
-- **`/p/{id}` gets its `<head>` written server-side.** `og_head()` replaces the
-  title and description and appends the `og:`/`twitter:` tags, because no
-  crawler runs the JavaScript that would set them client-side — that is the
-  reason the API serves the front end at all. Everything is `html.escape`d:
-  entry titles are written by strangers and land inside an attribute.
-  `og_summary()` is a simpler cousin of `plain()` in the front end's `api.ts`;
-  they are deliberately not kept in step, since one feeds a preview row and the
-  other a meta tag and nobody sees both at once.
+- **`/robots.txt` and `/sitemap.xml` are routes, and they are declared above the
+  catch-all** for the reason directly above. Both are dynamic because both name
+  the site's own address, and there is no configured domain in this repo to
+  build one from — `site_base()` answers with `request.base_url` unless
+  `NAMBA_BASE_URL` is set, which is what a reverse proxy that drops
+  `X-Forwarded-Proto` needs so that canonicals on an https site do not all say
+  http.
+
+  **`robots.txt` allows the AI crawlers on purpose.** One `User-agent: *` group
+  and no rule naming GPTBot, ClaudeBot or PerplexityBot: everything readers
+  write here is CC0 and the footer invites anyone to "take it, quote it, feed
+  it to a machine", so blocking them would contradict the licence the site
+  states on every page. If that is ever to change it changes here *and* in the
+  footer, and `test_robots_and_sitemap` asserts the pair.
+
+  `Disallow` covers only `/admin` and `/api/`. Everything else that should stay
+  out of a result carries a `noindex` meta instead, because a path disallowed
+  in `robots.txt` can never be crawled to *find* that meta — an old link to one
+  sits in an index as a bare URL for good.
+- **Four routes get their `<head>` written server-side, and everything else is
+  told not to be indexed.** `_index()` is the one place that decides which:
+  `/` gets the site's own head, `/n/{value}` and `/t/{tag}` get a title,
+  description and `ItemList` naming the entries filed there, `/p/{id}` gets
+  `og_head()`. No crawler runs the JavaScript that would set any of it
+  client-side — that is the reason the API serves the front end at all, and
+  `Namba-frontend/CLAUDE.md` says nothing in that app should try.
+
+  **The last branch is a default, not a list of routes, and that is the
+  design.** `/search`, `/random`, `/new`, `/p/{id}/edit`, an entry an operator
+  hid and every mistyped path all fall into it and all get
+  `robots: noindex, follow`. A list of them here would be a second copy of
+  `App.tsx`'s `<Routes>`, and a route added there would arrive claiming to be
+  indexable until somebody remembered this file. Being indexable is the thing
+  that has to be spelled out.
+
+  Everything is `html.escape`d — entry titles are written by strangers and land
+  inside an attribute — and everything in the JSON-LD has its `<` escaped,
+  because `</script>` inside a JSON string ends the block for the HTML parser
+  whatever the JSON makes of it. `og_summary()` is a simpler cousin of
+  `plain()` in the front end's `api.ts`; they are deliberately not kept in
+  step, since one feeds a preview row and the other a meta tag and nobody sees
+  both at once.
+- **`path_seg()` reads the raw path, and `enc()` has to match
+  `encodeURIComponent`.** A number value may hold a slash — `11/22/63` — so by
+  the time ASGI has decoded the path, `n/11%2F22%2F63` and a three-segment path
+  are the same string; the value comes off `scope["raw_path"]` or `/n/` answers
+  about the wrong number. Coming back the other way, `enc()`'s safe set is
+  `encodeURIComponent`'s character for character, because `numberPath()` and
+  `tagPath()` in `api.ts` build every link that way and a canonical encoded
+  differently is a second URL for one page. `test_head_per_route` and
+  `test_robots_and_sitemap` both walk an awkward value.
+- **The canonical drops the query string.** `?view=feed`, `?format=` and
+  `?tag=` re-sort or filter one index, and `?tag=book` is the page `/t/book`
+  already is — four addresses for one page, and the canonical says which one
+  counts.
 - **`/api/numbers` is an ordered scan grouped in Python, not a `GROUP BY`.** The
   home list needs each number's entry titles, so aggregating and then re-querying
   for them would be two passes to build one thing. It returns `entries`, not a

@@ -4,6 +4,7 @@ import os
 import re
 import tempfile
 from datetime import datetime, timedelta, timezone
+from xml.etree import ElementTree
 
 _tmp = tempfile.mkdtemp()
 os.environ["NAMBA_DB"] = os.path.join(_tmp, "test.db")
@@ -162,14 +163,17 @@ def test_share_card():
     assert 'property="og:description" content="Ramanujan The dullest number, until he spoke."' in page
     assert page.count('name="description"') == 1
     assert 'property="og:url" content="http://testserver/p/%d"' % p["id"] in page
-    assert 'property="twitter:card" content="summary"' in page
+    assert 'name="twitter:card" content="summary"' in page
     assert "og:image" not in page, "no picture, so no image card"
+    # the entry's own address, said once, so /p/12?anything is not a second page
+    assert 'rel="canonical" href="http://testserver/p/%d"' % p["id"] in page
+    assert 'property="article:published_time"' in page
 
     # an entry with a picture gets the big card, at an absolute url
     with_img = c.patch(f"/api/posts/{p['id']}", json={"image": "/uploads/x.png"}).json()
     page = c.get(f"/p/{with_img['id']}").text
     assert 'property="og:image" content="http://testserver/uploads/x.png"' in page
-    assert 'property="twitter:card" content="summary_large_image"' in page
+    assert 'name="twitter:card" content="summary_large_image"' in page
 
     # a title with a quote in it must not break out of the attribute
     ev = c.post("/api/posts", json={"value": "13", "title": 'the "unlucky" <one>'}).json()
@@ -188,8 +192,22 @@ def test_share_card():
     assert res.status_code == 200, "a backslash in a title took the page down"
     assert r"C:\1\2 backup" in res.text and r"the \g&lt;0&gt; folder" in res.text
 
-    # every other route is the app as built, and the api still answers first
-    assert "<title>Namba — a wiki of numbers</title>" in c.get("/n/42").text
+    # the entry's JSON-LD is what an answer engine reads it out of, and it has
+    # to survive a title nobody would choose: "<" is escaped everywhere in it,
+    # or "</script>" in an entry title ends the block for the HTML parser.
+    blocks = re.findall(r'<script type="application/ld\+json">(.*?)</script>',
+                        c.get(f"/p/{p['id']}").text, re.S)
+    assert len(blocks) == 1, blocks
+    art, crumb = json.loads(blocks[0])
+    assert art["@type"] == "Article" and art["headline"] == "Taxicab number"
+    assert art["author"]["name"] == "anonymous" and art["about"]["name"] == "1729"
+    assert art["datePublished"] == p["created_at"], art["datePublished"]
+    assert crumb["@type"] == "BreadcrumbList"
+    assert [i["item"] for i in crumb["itemListElement"]] == [
+        "http://testserver/", "http://testserver/n/1729",
+        "http://testserver/p/%d" % p["id"]]
+
+    # every asset is still an asset, and the api still answers first
     assert c.get("/assets/app.js").text == "console.log(1)"
     assert c.get("/api/tags").status_code == 200
     assert c.get(f"/p/{p['id']}999").text.count("og:title") == 0, "unknown id got a card"
@@ -201,6 +219,165 @@ def test_share_card():
     assert c.get("/api").status_code == 404
     # ".." off the wire must not walk out of dist
     assert c.get("/../test.db").status_code in (200, 404) and "sqlite" not in c.get("/../test.db").text.lower()
+
+
+def _ld(page):
+    """Every JSON-LD block on a page, parsed."""
+    return [json.loads(b) for b in re.findall(
+        r'<script type="application/ld\+json">(.*?)</script>', page, re.S)]
+
+
+def test_head_per_route():
+    """Every page worth keeping arrives with a head of its own, and every page
+    that is not worth keeping says so.
+
+    Only /p/{id} used to get one. /n/42 -- the page this wiki exists to have --
+    was byte-for-byte the front page as far as a crawler could tell, and so
+    were /t/book and a mistyped path. None of it can be set from React: no
+    crawler runs the JavaScript that would do it, which is why this is here and
+    not there.
+    """
+    c = TestClient(main.app)
+    a = c.post("/api/posts", json={
+        "value": "808", "title": "Roland TR-808",
+        "body": "The drum machine.", "tags": ["breakbeat"]}).json()
+    c.post("/api/posts", json={
+        # an ampersand, because the same string has to survive an HTML
+        # attribute and a JSON string on the same page and they escape
+        # differently
+        "value": "808", "title": "808s & Heartbreak", "tags": ["breakbeat"]})
+
+    # -- the front page: what the site is, and that it can be searched
+    home = c.get("/").text
+    assert "<title>Namba — a wiki of numbers</title>" in home, "site title lost"
+    assert 'rel="canonical" href="http://testserver/"' in home
+    assert "noindex" not in home
+    site, = _ld(home)[0]
+    assert site["@type"] == "WebSite" and site["url"] == "http://testserver/"
+    assert site["potentialAction"]["target"]["urlTemplate"] == (
+        "http://testserver/search?q={search_term_string}")
+    # ?view=feed and ?format= re-sort one index; ?tag=book is /t/book already.
+    # Four addresses for one page, and the canonical says which.
+    for q in ("?view=feed", "?format=TIME", "?tag=breakbeat"):
+        assert 'rel="canonical" href="http://testserver/"' in c.get("/" + q).text, q
+
+    # -- /n/808 is about 808, and names what is filed under it
+    page = c.get("/n/808").text
+    assert "<title>808 — 2 entries · Namba</title>" in page, page[:400]
+    assert ('name="description" content="What 808 means — 2 entries on Namba: '
+            "Roland TR-808; 808s &amp; Heartbreak.\"") in page, page[:600]
+    assert 'rel="canonical" href="http://testserver/n/808"' in page
+    coll, crumb = _ld(page)[0]
+    assert coll["@type"] == "CollectionPage" and coll["about"]["name"] == "808"
+    assert coll["mainEntity"]["numberOfItems"] == 2
+    # names, not just urls: this and the description are all a reader that does
+    # not run the JavaScript ever learns about what is on this page
+    assert [i["name"] for i in coll["mainEntity"]["itemListElement"]] == [
+        "Roland TR-808", "808s & Heartbreak"]
+    assert crumb["itemListElement"][-1]["item"] == "http://testserver/n/808"
+
+    # -- a value with a slash in it. The router hands us a decoded path, where
+    # "n/11%2F22%2F63" and a three-segment path are the same string, so this
+    # reads the raw one. Get it wrong and the page 404s its own number.
+    c.post("/api/posts", json={"value": "11/22/63", "title": "Stephen King"})
+    page = c.get("/n/11%2F22%2F63").text
+    assert "<title>11/22/63 — " in page, page[:400]
+    assert "Stephen King" in _ld(page)[0][0]["mainEntity"]["itemListElement"][-1]["name"]
+    assert 'href="http://testserver/n/11%2F22%2F63"' in page, "canonical re-encoded"
+    # ...and one segment only. /n/42/anything is not a page the client has.
+    assert "noindex" in c.get("/n/808/x").text
+
+    # -- a tag page is the same shape, and folds case like tagLabel() does
+    page = c.get("/t/BREAKBEAT").text
+    assert "<title>breakbeat — 2 entries · Namba</title>" in page, page[:400]
+    assert 'rel="canonical" href="http://testserver/t/breakbeat"' in page
+    assert _ld(page)[0][0]["about"]["name"] == "breakbeat"
+
+    # -- an empty number is a real page and not one to index: /n/ is an open
+    # set, so indexing it means an unbounded number of blank pages in front of
+    # the ones that say something.
+    for empty in ("/n/999999999", "/t/nothingistaggedthis"):
+        assert "noindex" in c.get(empty).text, empty
+        assert 'rel="canonical"' in c.get(empty).text, empty
+
+    # -- the entry itself is grouped as its own flag says
+    grouped = c.post("/api/posts", json={
+        "value": "1000", "title": "A grand", "grouped": True}).json()
+    assert "<title>1,000 — A grand · Namba</title>" in c.get(f"/p/{grouped['id']}").text
+    # the list page groups only when every entry filed under the number agrees,
+    # which is the rule the hero draws by -- so whether 1000 reads as 1,000
+    # here depends on the entries, and the *link* never does either way
+    page = c.get("/n/1000").text
+    assert 'href="http://testserver/n/1000"' in page, (
+        "the link is built from the raw value, never the grouped one")
+    assert "1%2C000" not in page and "/n/1,000" not in page
+
+    # -- and everything else stays out of an index. Three controls, one form,
+    # an entry an operator took down, and a path that does not exist -- all of
+    # which answer 200 with the app, and all of which used to answer with the
+    # front page's head.
+    for path in ("/search?q=x", "/random", "/new", f"/p/{a['id']}/edit",
+                 f"/p/{a['id']}999", "/nope", "/n/", "/t/"):
+        assert 'content="noindex, follow"' in c.get(path).text, path
+    # follow, not nofollow: /search and /new are full of links to entries that
+    # should be crawled, and the page just should not be the one in the result.
+    assert "nofollow" not in c.get("/search?q=x").text
+
+
+def test_robots_and_sitemap():
+    """A crawler can find the whole wiki, and is allowed to.
+
+    Every link to /n/42 and /t/book is a <Link> the router draws after the
+    JavaScript runs, and most crawlers -- every AI one -- do not run it. Before
+    the sitemap this site was one page deep however much was written in it.
+    """
+    c = TestClient(main.app)
+    p = c.post("/api/posts", json={
+        "value": "23", "title": "Discordians", "tags": ["conspiracy"]}).json()
+    gone = c.post("/api/posts", json={"value": "23", "title": "taken down"}).json()
+
+    res = c.get("/robots.txt")
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("text/plain")
+    assert "Sitemap: http://testserver/sitemap.xml" in res.text
+    assert "Disallow: /admin" in res.text and "Disallow: /api/" in res.text
+    # One group and no per-bot rule. Everything here is CC0 and the footer
+    # invites anyone to feed it to a machine, so blocking the machines would
+    # contradict the licence the site states on every page. If that changes it
+    # changes in both places, and this is the assertion that says so.
+    assert res.text.count("User-agent:") == 1
+    for bot in ("GPTBot", "ClaudeBot", "PerplexityBot", "CCBot", "Google-Extended"):
+        assert bot not in res.text, f"{bot} is blocked but the footer says CC0"
+
+    res = c.get("/sitemap.xml")
+    assert res.headers["content-type"].startswith("application/xml")
+    root = ElementTree.fromstring(res.text)          # well-formed, or this raises
+    ns = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
+    locs = [u.findtext(f"{ns}loc") for u in root.findall(f"{ns}url")]
+    assert "http://testserver/" in locs
+    assert f"http://testserver/p/{p['id']}" in locs
+    assert "http://testserver/n/23" in locs
+    assert "http://testserver/t/conspiracy" in locs
+    assert len(locs) == len(set(locs)), "one address per page"
+    # every entry carries the date it was last rewritten, which is the whole
+    # point of asking a crawler back
+    at = root.find(f"{ns}url/[{ns}loc='http://testserver/p/{p['id']}']").findtext(f"{ns}lastmod")
+    assert at == c.get(f"/api/posts/{p['id']}").json()["updated_at"], at
+
+    # a value that is not URL-safe has to come back out the way api.ts would
+    # have built it, or the sitemap points at a page that is not there
+    c.post("/api/posts", json={"value": "9¾", "title": "the platform"})
+    locs = [u.findtext(f"{ns}loc") for u in
+            ElementTree.fromstring(c.get("/sitemap.xml").text).findall(f"{ns}url")]
+    assert "http://testserver/n/9%C2%BE" in locs, [x for x in locs if "9" in x]
+    assert c.get("/n/9%C2%BE").text.count("<title>9¾ — 1 entry · Namba</title>") == 1
+
+    # a hidden entry keeps its row and must not be handed to a crawler anyway
+    admin.set_status(gone["id"], "HIDDEN")
+    locs = ElementTree.fromstring(c.get("/sitemap.xml").text).findall(f"{ns}url")
+    locs = [u.findtext(f"{ns}loc") for u in locs]
+    assert f"http://testserver/p/{gone['id']}" not in locs
+    assert "http://testserver/n/23" in locs, "the other entry under 23 is still up"
 
 
 def _events(**where):
@@ -1428,11 +1605,12 @@ def test_api_round_trip():
 def test_hidden_is_invisible():
     """Hiding an entry takes it off the wiki, not out of one view of it.
 
-    Nine public reads carry the status condition and missing one leaks the body
-    of something an operator took down, so this walks all nine: the index, both
-    list endpoints, the entry itself, the two vocabularies, its row among
-    another entry's related entries, its history, the talk beside it, and the
-    <head> written server-side for /p/{id}.
+    Twelve public reads carry the status condition and missing one leaks the
+    body of something an operator took down, so this walks all twelve: the
+    index, both list endpoints, the entry itself, the two vocabularies, its row
+    among another entry's related entries, its history, the talk beside it, the
+    <head> written server-side for /p/{id}, the two written for the list pages
+    it appears on, and the sitemap handed to crawlers.
 
     It moves the column through admin.py because that is the only thing that
     can -- the operator's endpoints arrive with the admin router, and this is
@@ -1470,9 +1648,16 @@ def test_hidden_is_invisible():
             "history": c.get(f"/api/posts/{pid}/revisions").status_code == 200,
             "talk": c.get(f"/api/posts/{pid}/comments").status_code == 200,
             "head": "Kaprekar" in c.get(f"/p/{pid}").text,
+            # the list pages name their entries in the description and in the
+            # JSON-LD ItemList, which is a copy of the title outside the app
+            "n-head": "Kaprekar" in c.get("/n/6174").text,
+            "t-head": "Kaprekar" in c.get("/t/kaprekar").text,
+            # and the sitemap is a list of every address a crawler should ask
+            # for -- a hidden entry's is not one of them
+            "sitemap": f"/p/{pid}</loc>" in c.get("/sitemap.xml").text,
         }
 
-    assert len(seen()) == 9 + 1, "nine reads, and search is the second on /api/posts"
+    assert len(seen()) == 12 + 1, "twelve reads, and search is the second on /api/posts"
     assert all(seen().values()), seen()
 
     admin.set_status(pid, "HIDDEN")

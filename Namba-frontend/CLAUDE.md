@@ -598,9 +598,26 @@ that returns built assets by path and `index.html` for everything else, so no
 rewrite rule is needed for `/n/42`. Build before starting the backend, or that
 route 404s with a message saying so.
 
-That is also where `/p/:id` gets its Open Graph tags. Setting them from React is
-not an option and never was: a crawler does not run the JS that would do it, so
-the `<head>` has to arrive already written. Nothing in this app should try.
+That is also where the `<head>` comes from — all of it, for every route.
+Setting it from React is not an option and never was: a crawler does not run the
+JS that would do it, so the head has to arrive already written. **Nothing in this
+app should try**, and nothing in `src/` mentions `og:`, `canonical` or
+`ld+json` — grep and see.
+
+`main.py`'s `_index()` writes a title, description, canonical, `og:`/`twitter:`
+tags and JSON-LD for `/`, `/n/:value`, `/t/:tag` and `/p/:id`, and marks
+everything else `noindex` — `/search`, `/random`, `/new`, `/p/:id/edit` and the
+`*` route, which answers 200 with "Nothing here" and would otherwise be indexed
+as a copy of the front page. Two consequences for work in here:
+
+- **`index.html`'s `<title>` and `<meta name="description">` are rewritten by
+  regex.** Reorder an attribute on either, add a second `<title>`, or hardcode
+  an `og:` tag beside them and the substitution silently no-ops or duplicates.
+  They are also read back out as the site's own title and blurb, so they stay
+  the one place those words are written.
+- **A new route is `noindex` until somebody says otherwise**, which is the safe
+  way round. If a route added here deserves to be in a search result, it needs a
+  branch in `_index()` — adding the `<Route>` alone is not enough.
 
 `vite.config.ts`'s proxy is a development convenience only — in production there
 is one origin and nothing to proxy.

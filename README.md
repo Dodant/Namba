@@ -259,11 +259,25 @@ that saving an entry does not lock out everyone reading one, and any box with a
 real disk will do — a filesystem without shared-memory locks (NFS, SMB) will
 not.
 
-They are served together rather than split so that `/p/42` can carry its own
+They are served together rather than split so that every page can carry its own
 `<head>`. A share of an entry has to arrive with that entry's title, blurb and
 picture already in the markup — no crawler runs the JavaScript that would set
 them — so something has to write the `<head>` per request, and the only process
-holding the entry is this one. `NAMBA_DIST` overrides where it looks.
+holding the entry is this one. `/`, `/n/42` and `/t/book` get one too, with the
+entries filed there named in the description and in a JSON-LD `ItemList`;
+`/search`, `/new`, `/random`, an edit form and anything mistyped are marked
+`noindex`. `NAMBA_DIST` overrides where it looks.
+
+`/robots.txt` and `/sitemap.xml` come from the same process and name the address
+the request arrived at, so there is no domain configured anywhere in this repo.
+Behind a reverse proxy that does not pass `X-Forwarded-Proto`, either run
+uvicorn with `--proxy-headers` or set `NAMBA_BASE_URL=https://your.host`, or
+every canonical on an https site will say http.
+
+The sitemap is how the wiki is found at all: every link to `/n/42` is drawn by
+the router after the JavaScript runs, and most crawlers — every AI one — do not
+run it. `robots.txt` allows those crawlers deliberately, because everything here
+is CC0 and the footer already says so.
 
 In development nothing of that runs: `npm run dev` serves the app and proxies
 `/api` here, which is why the injection is covered by `test_share_card` rather

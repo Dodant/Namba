@@ -6,11 +6,15 @@ import re
 import time
 from collections import defaultdict
 from typing import ClassVar, List, Optional
+from urllib.parse import quote, unquote
 from uuid import uuid4
+from xml.sax.saxutils import escape as xml_escape
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import (
+    FileResponse, HTMLResponse, PlainTextResponse, Response,
+)
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
@@ -36,6 +40,12 @@ UPLOAD_DIR = os.environ.get("NAMBA_UPLOADS", os.path.join(db.DIR, "uploads"))
 # its own <head>. Absent in development -- npm run dev serves it and proxies
 # the API, so the routes below simply never match there.
 DIST = os.environ.get("NAMBA_DIST", os.path.join(db.DIR, os.pardir, "Namba-frontend", "dist"))
+# What every canonical, og:url and <loc> is built on. Normally the address the
+# request arrived at, which is what keeps this repo free of a hardcoded domain
+# and lets the same build answer on localhost and in production. Set
+# NAMBA_BASE_URL behind a reverse proxy that does not pass X-Forwarded-Proto:
+# without one of the two, every canonical on an https site says http.
+BASE = os.environ.get("NAMBA_BASE_URL")
 ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 MAX_UPLOAD = 5 * 1024 * 1024
 # What the uploads directory as a whole may reach. The per-file cap and the write
@@ -89,6 +99,15 @@ async def _nosniff(request, call_next):
 # ahead of @app.get("/{path:path}"). Included here rather than at the foot of
 # the file so that the ordering rule is stated once, where the app is built.
 app.include_router(admin_api.router)
+
+
+def site_base(request) -> str:
+    """The site's own origin, with a trailing slash.
+
+    One answer for the canonical tags, robots.txt and the sitemap, so the three
+    cannot disagree about what this site is called.
+    """
+    return (BASE or str(request.base_url)).rstrip("/") + "/"
 
 
 def uploads_bytes():
@@ -1036,6 +1055,23 @@ OG_STRIP = [
     (re.compile(r"\s+"), " "),
 ]
 OG_DESC = 200
+# How many entry titles a list page's description names before it counts the
+# rest. Four fit inside OG_DESC beside the number and still read as a sentence;
+# a description that lists forty is a keyword list, not an answer to anything.
+DESC_TITLES = 4
+# Schema.org asks for a headline of 110 characters or fewer; a title here may
+# be 200. Clipped rather than dropped, since the whole of it is in `name` and
+# in the <title> either way.
+HEADLINE = 110
+# The waiver the footer states and the form's Publish button repeats. In the
+# head as well now, because a machine reading this wiki should not have to
+# infer whether it may quote it.
+CC0 = "https://creativecommons.org/publicdomain/zero/1.0/"
+
+
+def clip(s: str, n: int = OG_DESC) -> str:
+    """A line of prose, no longer than n, ending in an ellipsis if it was."""
+    return s[: n - 1].rstrip() + "\u2026" if len(s) > n else s
 
 
 def og_summary(body: str) -> str:
@@ -1047,63 +1083,380 @@ def og_summary(body: str) -> str:
     """
     for rx, sub in OG_STRIP:
         body = rx.sub(sub, body)
-    body = body.strip()
-    return body[: OG_DESC - 1] + "…" if len(body) > OG_DESC else body
+    return clip(body.strip())
 
 
-def og_head(page: str, post: dict, base: str) -> str:
-    """Give this page the entry's own title, description and image.
+def enc(seg: str) -> str:
+    """One path segment, percent-encoded exactly as encodeURIComponent is.
+
+    numberPath() and tagPath() in api.ts build every /n/ and /t/ link that way.
+    A canonical or a <loc> encoding it differently is a second URL for one
+    page -- and on a wiki whose values include 11/22/63 and 9¾, that is most
+    of them. The safe set below is encodeURIComponent's, character for
+    character.
+    """
+    return quote(seg, safe="-_.!~*'()")
+
+
+def path_seg(request, prefix: str) -> Optional[str]:
+    """The one segment after /n/ or /t/, as the reader typed it.
+
+    Read off the raw path rather than the decoded one the router hands us,
+    because a value may contain a slash: 11/22/63 is a date and a number here,
+    and by the time ASGI has decoded the path, "n/11%2F22%2F63" and a
+    three-segment path are the same string. This is the same trap the front end
+    documents -- always pass a value to the API as a query param, never as a
+    path segment -- reached from the other side.
+
+    Exactly one segment, so /n/42/anything is not /n/42. The client's router
+    does not match that either, and a page which does not exist must not be
+    handed a canonical claiming it does.
+    """
+    raw = request.scope.get("raw_path") or request.scope["path"].encode()
+    rest = raw.decode("utf-8", "replace").split("?", 1)[0].lstrip("/")
+    if not rest.startswith(prefix) or "/" in rest[len(prefix):]:
+        return None
+    return unquote(rest[len(prefix):]) or None
+
+
+def page_bits(page: str):
+    """The site's own title and description, read back out of index.html.
+
+    Rather than a fourth hand-copy of them in here. index.html is where they
+    are written, this file already knows how to find both -- it rewrites them
+    below -- and a constant would drift the first time either was reworded.
+    """
+    t = re.search(r"<title>(.*?)</title>", page, re.S)
+    d = re.search(r'<meta name="description" content="(.*?)"\s*/?>', page, re.S)
+    return (html.unescape(t.group(1)) if t else "Namba",
+            html.unescape(d.group(1)) if d else "")
+
+
+def json_ld(data) -> str:
+    """JSON-LD as it may safely sit inside a <script> in this document.
+
+    Every "<" is escaped, not the closing tag alone: an entry title is written
+    by a stranger, and "</script>" inside a JSON string ends the block for the
+    HTML parser whatever the JSON makes of it. ensure_ascii off, so a Korean
+    title stays legible to anything reading the source.
+    """
+    return json.dumps(
+        data, ensure_ascii=False, separators=(",", ":")
+    ).replace("<", "\\u003c")
+
+
+def write_head(page: str, *, title=None, desc=None, canonical=None,
+               robots=None, og=(), ld=None) -> str:
+    """Put this page's own head into the built index.html.
+
+    One writer for all four routes. Title and description are *replaced* -- two
+    <title>s and the browser keeps the first -- and everything else is appended
+    before </head>.
+
+    Both substitutions pass a callable rather than a string, and that is not a
+    style choice: re.sub reads a *string* replacement for group references, so
+    a title carrying a backslash -- "C:\\1\\2" is a fine thing to write an entry
+    about -- raised `invalid group reference` and answered this page with a 500
+    for good. html.escape does not touch a backslash and should not; it is
+    escaping for HTML, and this was a regex problem wearing its clothes.
+    """
+    if title is not None:
+        esc = html.escape(title, quote=True)
+        page = re.sub(r"<title>.*?</title>", lambda _: f"<title>{esc}</title>",
+                      page, count=1, flags=re.S)
+    if desc is not None:
+        d = html.escape(desc, quote=True)
+        page = re.sub(
+            r'<meta name="description" content=".*?"\s*/?>',
+            lambda _: f'<meta name="description" content="{d}" />',
+            page, count=1, flags=re.S,
+        )
+    out = []
+    if canonical:
+        out.append(f'<link rel="canonical" href="{html.escape(canonical, quote=True)}" />')
+    if robots:
+        out.append(f'<meta name="robots" content="{robots}" />')
+    for k, v in og:
+        # og: is RDFa and wants property=; twitter: is not and wants name=. It
+        # was property= on both, which Twitter tolerates and a validator does
+        # not.
+        attr = "name" if k.startswith("twitter:") else "property"
+        out.append(f'<meta {attr}="{k}" content="{html.escape(v, quote=True)}" />')
+    if ld:
+        out.append(f'<script type="application/ld+json">{json_ld(ld)}</script>')
+    if not out:
+        return page
+    return page.replace("</head>", "  " + "\n    ".join(out) + "\n  </head>", 1)
+
+
+def og_tags(title, desc, url, kind, image=None):
+    """The share card.
+
+    twitter:card alone beside the og: tags: Twitter reads og:title,
+    og:description and og:image when its own are missing, so a second copy of
+    each would be three more lines saying the same thing.
+    """
+    tags = [("og:type", kind), ("og:site_name", "Namba"), ("og:locale", "en"),
+            ("og:title", title), ("og:description", desc), ("og:url", url),
+            ("twitter:card", "summary_large_image" if image else "summary")]
+    if image:
+        tags.append(("og:image", image))
+    return tags
+
+
+def site_ld(base):
+    """The wiki itself, as the thing every other page says it belongs to.
+
+    Given an @id so the four page types point at one node rather than each
+    describing a separate website that happens to share a name.
+    """
+    return {"@type": "WebSite", "@id": f"{base}#site", "name": "Namba",
+            "url": base, "inLanguage": "en", "license": CC0}
+
+
+def crumbs(base, trail):
+    """Namba, then the way down to here. The site is always the first crumb."""
+    items = [("Namba", base)] + list(trail)
+    return {"@context": "https://schema.org", "@type": "BreadcrumbList",
+            "itemListElement": [
+                {"@type": "ListItem", "position": i, "name": name, "item": url}
+                for i, (name, url) in enumerate(items, 1)]}
+
+
+def head_home(page, base):
+    """The front page: the wiki, and the fact that it can be searched."""
+    title, desc = page_bits(page)
+    ld = dict(site_ld(base), **{
+        "@context": "https://schema.org",
+        "description": desc,
+        "potentialAction": {
+            "@type": "SearchAction",
+            # a real route: the header's search form navigates to exactly this
+            "target": {"@type": "EntryPoint",
+                       "urlTemplate": f"{base}search?q={{search_term_string}}"},
+            "query-input": "required name=search_term_string",
+        },
+    })
+    # canonical is the bare base on purpose. ?view=feed, ?format= and ?tag= all
+    # re-sort or filter the same index, and ?tag=book is the page /t/book
+    # already is -- four addresses for one page, and this says which of them.
+    return write_head(page, canonical=base, ld=[ld],
+                      og=og_tags(title, desc, base, "website"))
+
+
+def head_list(page, base, *, kind, subject, url, rows, empty):
+    """A page that is a list of entries: /n/{value} or /t/{tag}.
+
+    One shape for both, because they are one component in the front end for the
+    same reason -- they differ only in which filter found the rows.
+
+    An empty one is noindex. It is a real page and it invites you to write the
+    first entry, but there is nothing on it to answer a search with, and /n/ is
+    an open set: indexing /n/999999 would put an unbounded number of blank
+    pages in front of the ones that say something.
+    """
+    if not rows:
+        return write_head(page, title=f"{subject} \u00b7 Namba", desc=empty,
+                          canonical=url, robots="noindex, follow")
+    n = len(rows)
+    count = "1 entry" if n == 1 else f"{n} entries"
+    titles = [r["title"] for r in rows[:DESC_TITLES]]
+    rest = n - len(titles)
+    lead = (f"What {subject} means" if kind == "number"
+            else f"Numbers tagged {subject}")
+    desc = clip(f"{lead} \u2014 {count} on Namba: " + "; ".join(titles)
+                + (f"; and {rest} more." if rest else "."))
+    title = f"{subject} \u2014 {count} \u00b7 Namba"
+    page_ld = {
+        "@context": "https://schema.org", "@type": "CollectionPage",
+        "name": title, "url": url, "description": desc, "inLanguage": "en",
+        "license": CC0, "isPartOf": site_ld(base),
+        "about": {"@type": "Thing", "name": subject},
+        # the list is the page. Names as well as urls, because anything that
+        # does not run the JavaScript has this and the description and nothing
+        # else to tell it what is filed here.
+        "mainEntity": {
+            "@type": "ItemList", "numberOfItems": n,
+            "itemListElement": [
+                {"@type": "ListItem", "position": i,
+                 "url": f"{base}p/{r['id']}", "name": r["title"]}
+                for i, r in enumerate(rows, 1)],
+        },
+    }
+    return write_head(page, title=title, desc=desc, canonical=url,
+                      og=og_tags(title, desc, url, "website"),
+                      ld=[page_ld, crumbs(base, [(subject, url)])])
+
+
+def head_number(con, page, value, base):
+    rows = [dict(r) for r in con.execute(
+        "SELECT id, title, grouped FROM posts WHERE value = ? AND status = ? "
+        "ORDER BY id", (value, LIVE))]
+    # the rule the hero draws by: separators are a per-entry display flag, so
+    # the page only groups when every entry filed under the number agrees
+    shown = grouped_value(value, bool(rows) and all(r["grouped"] for r in rows))
+    return head_list(page, base, kind="number", subject=shown,
+                     url=f"{base}n/{enc(value)}", rows=rows,
+                     empty=f"Nothing is filed under {shown} on Namba yet.")
+
+
+def head_tag(con, page, tag, base):
+    tag = tag.lower()  # tagLabel() folds these, and /t/BOOK is an old link
+    rows = [dict(r) for r in con.execute(
+        "SELECT p.id, p.title FROM posts p JOIN post_tags t ON t.post_id = p.id "
+        "WHERE t.tag = ? AND p.status = ? ORDER BY p.id", (tag, LIVE))]
+    return head_list(page, base, kind="tag", subject=tag,
+                     url=f"{base}t/{enc(tag)}", rows=rows,
+                     empty=f"Nothing on Namba is tagged {tag} yet.")
+
+
+def og_head(page: str, post: dict, base: str, tags=()) -> str:
+    """Give this page the entry's own title, description, dates and picture.
 
     Crawlers do not run the JavaScript that would set these client-side, so the
     <head> has to arrive already written -- which is the whole reason the API
     serves the front end at all.
+
+    The JSON-LD is where this entry's provenance lives. On screen the byline is
+    behind the Credits toggle and every date is relative by design ("2 days
+    ago"), so an exact ISO timestamp belongs in a machine's channel rather than
+    as a second date format nobody asked to read.
     """
     value = grouped_value(post["value"], post["grouped"])
-    title = f"{value} — {post['title']} · Namba"
+    title = f"{value} \u2014 {post['title']} \u00b7 Namba"
     desc = og_summary(post["body"]) or f"What {value} means, on Namba."
     img = f"{base}{post['image'].lstrip('/')}" if post["image"] else None
-    tags = [
-        ("og:type", "article"),
-        ("og:site_name", "Namba"),
-        ("og:title", title),
-        ("og:description", desc),
-        ("og:url", f"{base}p/{post['id']}"),
-        ("twitter:card", "summary_large_image" if img else "summary"),
-    ]
+    url = f"{base}p/{post['id']}"
+    article = {
+        "@context": "https://schema.org", "@type": "Article",
+        "headline": clip(post["title"], HEADLINE), "name": title,
+        "description": desc, "url": url, "mainEntityOfPage": url,
+        "datePublished": post["created_at"], "dateModified": post["updated_at"],
+        # author is the first writer and is never overwritten; an editor is a
+        # separate key here for the same reason it is a separate column.
+        "author": {"@type": "Person", "name": post["author"]},
+        "about": {"@type": "Thing", "name": value},
+        "isPartOf": site_ld(base), "license": CC0,
+    }
+    if post["edited_by"]:
+        article["editor"] = {"@type": "Person", "name": post["edited_by"]}
     if img:
-        tags.append(("og:image", img))
-    meta = "\n    ".join(
-        f'<meta property="{k}" content="{html.escape(v, quote=True)}" />' for k, v in tags
+        article["image"] = img
+    if tags:
+        article["keywords"] = list(tags)
+    if post["lang"]:
+        # a free-form endonym, not a code -- Language takes a name, and this is
+        # the name the wiki actually stored
+        article["inLanguage"] = {"@type": "Language", "name": post["lang"]}
+    return write_head(
+        page, title=title, desc=desc, canonical=url,
+        og=og_tags(title, desc, url, "article", img)
+           + [("article:published_time", post["created_at"]),
+              ("article:modified_time", post["updated_at"])],
+        ld=[article, crumbs(base, [(value, f"{base}n/{enc(post['value'])}"),
+                                   (post["title"], url)])],
     )
-    esc = html.escape(title, quote=True)
-    # Both replacements are callables rather than strings, and that is not a
-    # style choice: re.sub reads a *string* replacement for group references, so
-    # a title carrying a backslash -- "C:\1\2" is a fine thing to write an entry
-    # about -- raised `invalid group reference` and answered this page with a
-    # 500 for good. html.escape does not touch a backslash and should not; it is
-    # escaping for HTML, and this was a regex problem wearing its clothes. A
-    # callable is handed the match and its return value is used verbatim.
-    # replaced, not appended: two <title>s and the browser keeps the first
-    page = re.sub(r"<title>.*?</title>", lambda _: f"<title>{esc}</title>",
-                  page, count=1, flags=re.S)
-    page = re.sub(
-        r'<meta name="description" content=".*?"\s*/?>',
-        lambda _: f'<meta name="description" content="{html.escape(desc, quote=True)}" />',
-        page, count=1, flags=re.S,
-    )
-    return page.replace("</head>", f"  {meta}\n  </head>", 1)
 
 
-def _index(con, path: str, base: str) -> HTMLResponse:
+def _index(con, request, path: str, base: str) -> HTMLResponse:
     with open(os.path.join(DIST, "index.html"), encoding="utf-8") as fh:
         page = fh.read()
+    if path == "":
+        return HTMLResponse(head_home(page, base))
+    value = path_seg(request, "n/")
+    if value is not None:
+        return HTMLResponse(head_number(con, page, value, base))
+    tag = path_seg(request, "t/")
+    if tag is not None:
+        return HTMLResponse(head_tag(con, page, tag, base))
     hit = re.fullmatch(r"p/(\d+)", path)
     if hit:
         row = con.execute("SELECT * FROM posts WHERE id = ? AND status = ?",
                           (hit.group(1), LIVE)).fetchone()
         if row:
-            page = og_head(page, dict(row), base)
-    return HTMLResponse(page)
+            tags = [r["tag"] for r in con.execute(
+                "SELECT tag FROM post_tags WHERE post_id = ? ORDER BY tag",
+                (hit.group(1),))]
+            return HTMLResponse(og_head(page, dict(row), base, tags))
+    # Everything else: /search, /random, /new, /p/{id}/edit, an entry an
+    # operator took down, and every mistyped path -- which answers 200 with the
+    # app's "Nothing here" and would otherwise be indexed as a copy of the
+    # front page. None of them is a page to keep: three are controls, one is a
+    # form, and the rest do not exist.
+    #
+    # One default rather than a list of the routes, deliberately. A list would
+    # be a second copy of App.tsx's <Routes> living over here, and a route
+    # added there would arrive claiming to be indexable until somebody
+    # remembered this file. Being indexable is the thing that has to be spelled
+    # out; not being indexable is the safe answer to give a stranger.
+    return HTMLResponse(write_head(page, robots="noindex, follow"))
+
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+def robots(request: Request):
+    """What a crawler may have here, which is nearly everything.
+
+    No per-bot group, and GPTBot, ClaudeBot and PerplexityBot are as welcome as
+    Googlebot on purpose: everything readers write here is CC0, and the footer
+    already invites anyone to "take it, quote it, feed it to a machine".
+    Blocking the machines would contradict the licence the site states on every
+    page. If that is ever to change, it changes here and in the footer together.
+
+    Disallow is only for the two paths with nothing on them to index. The pages
+    that should stay out of a result -- /search, /new, /random, an edit form --
+    carry a robots meta instead, because a path disallowed here can never be
+    crawled to *find* that meta, and an old link to one would sit in an index
+    as a bare URL for good.
+    """
+    return (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /admin\n"
+        "Disallow: /api/\n"
+        f"\nSitemap: {site_base(request)}sitemap.xml\n"
+    )
+
+
+@app.get("/sitemap.xml")
+def sitemap(request: Request, con=Depends(get_db)):
+    """Every page on this wiki worth indexing, in one file.
+
+    The tenth public read, and it carries LIVE like the other nine: an entry an
+    operator hid keeps its row, and handing that row to a crawler in a list
+    leaks exactly what hiding it was for.
+
+    It is also the only way in. Every link to /n/42 and /t/book is a <Link> the
+    router draws after the JavaScript has run, and most crawlers -- every AI
+    one -- do not run it. Without this file the wiki is one page deep no matter
+    how much is written in it.
+
+    ponytail: one pass, no pagination. A sitemap holds 50,000 URLs, this wiki
+    has a few hundred, and past that ceiling this becomes a sitemap index over
+    /sitemap-posts.xml and friends.
+    """
+    base = site_base(request)
+    urls = [(base, None)]
+    urls += [(f"{base}p/{r['id']}", r["updated_at"]) for r in con.execute(
+        "SELECT id, updated_at FROM posts WHERE status = ? ORDER BY id", (LIVE,))]
+    urls += [(f"{base}n/{enc(r['value'])}", r["at"]) for r in con.execute(
+        "SELECT value, MAX(updated_at) AS at FROM posts WHERE status = ? "
+        "GROUP BY value ORDER BY value", (LIVE,))]
+    urls += [(f"{base}t/{enc(r['tag'])}", r["at"]) for r in con.execute(
+        "SELECT t.tag, MAX(p.updated_at) AS at FROM post_tags t "
+        "JOIN posts p ON p.id = t.post_id AND p.status = ? "
+        "GROUP BY t.tag ORDER BY t.tag", (LIVE,))]
+    body = "\n".join(
+        f"  <url><loc>{xml_escape(loc)}</loc>"
+        + (f"<lastmod>{at}</lastmod>" if at else "")
+        + "</url>"
+        for loc, at in urls
+    )
+    return Response(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{body}\n</urlset>\n",
+        media_type="application/xml",
+    )
 
 
 @app.get("/{path:path}")
@@ -1134,7 +1487,7 @@ def spa(path: str, request: Request, con=Depends(get_db)):
         target = os.path.realpath(os.path.join(DIST, path))
         if target.startswith(os.path.realpath(DIST) + os.sep) and os.path.isfile(target):
             return FileResponse(target)
-    res = _index(con, path, str(request.base_url))
+    res = _index(con, request, path, site_base(request))
     # The one place the client cookie is set: on the document, and only when
     # there is not one already. A middleware would set it on every asset of the
     # first page load and the last one to arrive would win; here a page load
