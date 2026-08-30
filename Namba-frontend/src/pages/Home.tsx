@@ -134,9 +134,9 @@ function Feed({ lang }: { lang: string }) {
           >
             {showValue(p.value, p.grouped)}
           </Link>
-          <h3>
+          <h2>
             <Link to={`/p/${p.id}`}>{p.title}</Link>
-          </h3>
+          </h2>
           <div className="fx-body">
             {p.body && <p>{plain(p.body)}</p>}
             <div className="meta">

@@ -94,6 +94,14 @@ function ScrollTop() {
   return null
 }
 
+/* One copy, because it is drawn as two different elements below and a second
+   copy is a wordmark that can be spelled two ways. */
+const WORDMARK = (
+  <>
+    Na<span>mb</span>a
+  </>
+)
+
 function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void }) {
   const nav = useNavigate()
   const [params] = useSearchParams()
@@ -125,9 +133,17 @@ function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void })
   return (
     <header className="top">
       <Link to="/" className="logo-block">
-        <span className="logo">
-          Na<span>mb</span>a
-        </span>
+        {/* The site's name is the front page's <h1>, and a <span> on every
+            other page. The index has no heading of its own -- it opens on a
+            row of format tabs and then straight into <h2> bands -- so without
+            this the one page a search engine is most likely to land on had no
+            h1 at all. Everywhere else the h1 belongs to the thing you came
+            for: the entry, the number, the tag, the form. */}
+        {pathname === '/' ? (
+          <h1 className="logo">{WORDMARK}</h1>
+        ) : (
+          <span className="logo">{WORDMARK}</span>
+        )}
         <span className="logo-sub">An open wiki about numbers</span>
       </Link>
       <div className="acts">

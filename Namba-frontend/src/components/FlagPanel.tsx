@@ -86,7 +86,7 @@ export default function FlagPanel({ id }: { id: number | string }) {
   return (
     <details>
       <summary className="ix-fold">
-        <h4 className="section">Flag a problem</h4>
+        <h2 className="section">Flag a problem</h2>
       </summary>
       {sent ? (
         /* No form to come back to. The API refuses a second open one from the

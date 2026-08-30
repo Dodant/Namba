@@ -61,9 +61,9 @@ export default function PostCard({
         </Link>
       )}
       <div className="main">
-        <h3>
+        <h2>
           <Link to={`/p/${post.id}`}>{post.title}</Link>
-        </h3>
+        </h2>
         {post.body && <p>{plain(post.body)}</p>}
         <div className="meta">
           {post.tags

@@ -69,7 +69,7 @@ export default function PostPage() {
         )}
         {revs.data?.length ? (
           <>
-            <h4 className="section">What it used to say</h4>
+            <h2 className="section">What it used to say</h2>
             <p className="quiet">
               Nothing here is lost. Restoring puts the entry back at this same
               address, so whatever linked to it still points at it.
@@ -235,7 +235,7 @@ export default function PostPage() {
             done in the edit form, so this is not a control anyone is missing */}
         {!!post.related?.length && (
           <>
-            <h4 className="section">Related entries</h4>
+            <h2 className="section">Related entries</h2>
             {post.related.map((r) => (
               <div className="rel" key={r.id}>
                 <Link className="rel-num" to={numberPath(r.value)}>
@@ -264,7 +264,7 @@ export default function PostPage() {
             outline and announced as one. */}
         <details>
           <summary className="ix-fold">
-            <h4 className="section">Edit history</h4>{' '}
+            <h2 className="section">Edit history</h2>{' '}
             {/* Only when there is something to count, and only once it has
                 arrived: "0 edits" before the fetch lands is an answer rather
                 than a wait, and the line under the list already says an entry
@@ -359,7 +359,7 @@ function Comments({ id }: { id: string }) {
   return (
     <details open>
       <summary className="ix-fold">
-        <h4 className="section">Comments</h4>{' '}
+        <h2 className="section">Comments</h2>{' '}
         {/* the figure alone -- "Comments 8 comments" was the word twice in a
             row. A band on the index says "12 entries" because its heading is
             "Under 100" and the noun is news there; here the heading is the
