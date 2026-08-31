@@ -351,9 +351,11 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 .chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .chip .n { opacity: 0.5; padding-left: 5px; font-variant-numeric: tabular-nums; }
 
-/* wraps rather than scrolls: the language tabs are user-supplied and there is
-   no bound on how many a post collects. A nowrap strip pushed the tabs off a
-   phone screen and made the whole page scroll sideways. */
+/* wraps rather than scrolls, and that is still right for the language tabs:
+   they are user-supplied and there is no bound on how many a post collects,
+   so a strip of them is a list to read rather than a row to move along --
+   wrapped, all of it is on screen. The format tabs are the other case and
+   scroll instead; see .tabs.fmts below. */
 .tabs {
   display: flex; flex-wrap: wrap; gap: 2px;
   border-bottom: 1px solid var(--line); margin: 14px 0;
@@ -420,20 +422,32 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
   .band-head h2 { white-space: nowrap; }
 }
 
-/* Every tab drops to its short form on a phone -- "Integer" to "Int",
-   "Abbreviation" to "Abbr". Five full labels are 420px and the narrowest
-   screen anyone brings is 288, so the strip wrapped to a second row -- a tab
-   strip that is two rows tall has stopped being a strip. The short labels are
-   128px of type; the padding is 150 more, which is why it is trimmed here too
-   rather than left at the 15px the strip wears with room to spare. It goes at
-   560 rather than at the ~430 where the wrap actually starts, because a fifth
-   breakpoint for five words is a worse trade than a phone reading Int. */
-.tabs .tab-dot { display: none; }
-@media (max-width: 560px) {
-  .tabs .tab-tail { display: none; }
-  .tabs .tab-dot { display: inline; }
-  .tabs a, .tabs button { padding-left: 12px; padding-right: 12px; }
+/* The five format tabs keep whole words and move sideways when they stop
+   fitting. Together they are 400px and the narrowest screen anyone brings is
+   288, and the labels were sliced down to "Int" and "Abbr." to close that --
+   which fit, and cost every one of them its name.
+
+   No breakpoint, deliberately: overflow-x is inert until something actually
+   overflows, so this is one rule that does nothing above about 430px and the
+   right thing below it, and it needs no re-measuring if a sixth format ever
+   arrives. `flex: none` because a nowrap flex row shrinks its children by
+   default, which compresses the labels instead of overflowing them.
+
+   The scrollbar is hidden and the tab half-cut at the edge is the cue in its
+   place -- which is the affordance every native tab strip uses, and there is
+   no pointer at these widths to want the bar. What there is instead is the
+   layout effect in Home.tsx: the strip is scrolled to the tab you are on, or
+   the underline saying which one that is starts off the end of it.
+
+   overscroll-behavior-x because iOS reads a swipe past the end of a
+   horizontal scroller as Back, and a reader flicking through five tabs must
+   not leave the page. */
+.tabs.fmts {
+  flex-wrap: nowrap; overflow-x: auto;
+  scrollbar-width: none; overscroll-behavior-x: contain;
 }
+.tabs.fmts::-webkit-scrollbar { display: none; }
+.tabs.fmts a { flex: none; }
 
 .index { list-style: none; margin: 0; padding: 0; }
 .ix {

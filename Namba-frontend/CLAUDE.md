@@ -243,10 +243,18 @@ at 320 CSS px — which makes it both the lowest floor worth declaring and the
 highest one allowed. It is not a phone measurement: 320 is what a 1280px
 desktop becomes at 400% zoom, and that reader is the reason for the rule.
 Measured, the layout holds at exactly 320 and comes apart below it one piece
-at a time — the tabs at 300, the band count at 280, the form's buttons at 220,
-the header into three rows at 200. `min-width` collapses those into one
-behaviour: under 320 nothing reflows further and the page scrolls sideways
-whole. **So 320 is the width to test at, and nothing needs to work under it.**
+at a time — the band count at 280, the form's buttons at 220, the header into
+three rows at 200. The format tabs used to be the first to go, at 300; they
+scroll now and so have no width they come apart at. `min-width` collapses the
+rest into one behaviour: under 320 nothing reflows further and the page scrolls
+sideways whole. **So 320 is the width to test at, and nothing needs to work
+under it.**
+
+The tab strip is a scroll port and 1.4.10 is about the *page*: `body` still
+never scrolls sideways at 320, and a strip you move along is the shape the
+success criterion contemplates rather than the one it forbids. What the
+criterion does ask for is that nothing is lost, which is why the strip is
+scrolled to the tab you are on rather than left at its start.
 
 What actually changes shape, rather than size:
 
@@ -265,23 +273,43 @@ What actually changes shape, rather than size:
   under them. It was a 90px column of three-character lines before.
 - **A `.panel-row`** puts its title on a line of its own below 560, whole,
   rather than an ellipsis at twelve characters.
-- **The format tabs shorten rather than wrap.** Five full labels are 420px of
-  type against the 288 a 320px screen has, so below 560 `.tabs .tab-tail` is
-  hidden and the strip reads `Int. Dec. Mix. Time Abbr.`. It is one label, not
-  two: a tab renders `FORMAT_SHORT[f]` and then the *remainder* of
-  `FORMAT_LABEL[f]` in the tail, sliced by length — so **every short label has
-  to stay a prefix of its long one**, or the tab says one word wide and a
-  different word narrow. Integer alone used to carry the tail; a fifth format
-  made it every label's. It goes at 560 and not at the ~430 where the strip
-  actually wraps, because a fifth breakpoint for five words is the worse trade.
+- **The format tabs scroll rather than shorten or wrap**, and they are the one
+  strip that does. Five full labels are 400px of type against the 288 a 320px
+  screen has. Wrapping made a strip two rows tall, which has stopped being a
+  strip; shortening them to `Int. Dec. Mix. Time Abbr.` fit, and cost every tab
+  its name. `.tabs.fmts` is `nowrap` + `overflow-x: auto` with **no media
+  query** — overflow is inert until something overflows, so one rule does
+  nothing above about 430px and the right thing below it, and a sixth format
+  would need no re-measuring. `flex: none` on the children is not optional: a
+  nowrap flex row shrinks them by default, which compresses the labels instead
+  of overflowing them.
 
-  The full stop is a third piece, `.tab-dot`, and it is CSS-toggled on the same
-  breakpoint in the opposite direction — hidden wide, shown narrow, so it
-  appears exactly where the tail goes. It is rendered only when the short form
-  differs from the label, which is what keeps `Time` unpunctuated: it is its own
-  name, not a word cut off. A new format whose short form is the whole label
-  gets that for free; one that is genuinely shortened must not be given a stop
-  inside `FORMAT_SHORT` itself, or the prefix-slice above puts it in the tail.
+  **The scroll is only half of it.** The tab you are on can start off the end
+  of the strip, and four tabs with no underline on any of them is a page that
+  looks like it belongs to none of them — which is what the first attempt at
+  this actually did on `/?format=ABBR`. `Index` in `Home.tsx` holds a ref on
+  the `<nav>` and a **layout** effect that calls `scrollIntoView({ inline:
+  'nearest', block: 'nearest' })` on `[aria-current="page"]`. Each half of that
+  is load-bearing: `inline: 'nearest'` moves the strip the least that will do,
+  so a tab you reached by tapping it does not slide under your finger;
+  `block: 'nearest'` keeps it off the *vertical* scroll, where it would fight
+  `ScrollTop` in `App` for where the page starts; and a layout effect rather
+  than an effect, or the first paint is at `scrollLeft` 0 and the strip visibly
+  jumps. Nothing in CSS can ask which tab is current, so this cannot be moved
+  into the stylesheet.
+
+  The scrollbar is hidden (`scrollbar-width: none` and the `-webkit`
+  pseudo-element) and the tab half-cut at the edge is the cue in its place —
+  the affordance every native tab strip uses, and there is no pointer at these
+  widths to want the bar. `overscroll-behavior-x: contain` because iOS reads a
+  swipe past the end of a horizontal scroller as Back, and flicking through
+  five tabs must not leave the page.
+
+  **The language tabs on `/p/:id` share `.tabs` and deliberately do not get
+  this.** They are `.tabs langs`, they wrap, and they should: they are
+  user-supplied with no bound on how many an entry collects, so a strip of them
+  is a list to read rather than a row to move along, and wrapped, all of it is
+  on screen. Scope anything you add here to `.fmts` or you will change both.
 - **`.spacer`** becomes a line break below 560 (`flex: 1 0 100%`), so the
   destructive button — Remove this language — is never beside Save, and the
   credits toggle and Edit take a line of their own rather than sitting beside
@@ -608,10 +636,10 @@ the entry form, an inner submit bubbles out and publishes the entry.
 ## Mirrors the backend
 
 `FORMATS` in `api.ts` is a hand-copy of `numfmt.py` — five of them now, four
-ways of reading digits and `ABBR` for letters. `FORMAT_LABEL`, `FORMAT_SHORT`
-and `numfmt.py`'s parser branch all have to gain a line together: the backend
-422s an unknown format, but a format missing from either label map renders as
-`undefined` in a tab and nothing errors. The five moderation
+ways of reading digits and `ABBR` for letters. `FORMAT_LABEL` and `numfmt.py`'s
+parser branch have to gain a line with it: the backend 422s an unknown format,
+but a format missing from the label map renders as `undefined` in a tab and
+nothing errors. The five moderation
 vocabularies — `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`,
 `REQUEST_STATUSES`, `REPORT_STATUSES` — are hand-copies of `db.py`. Changing any
 of them here alone gets a 422 from the API. `REASON_LABEL` is one map for both

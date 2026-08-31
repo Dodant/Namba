@@ -61,21 +61,6 @@ export const FORMAT_LABEL: Record<Format, string> = {
   ABBR: 'Abbreviation',
 }
 
-/* What each tab reads once there is no room for the whole word. Every one is a
-   *prefix* of its label and the tab renders the remainder in a .tab-tail the
-   narrow breakpoint hides, so the two can never say different words -- with a
-   full stop in place of the tail, because "Abbr." is a label cut short and
-   "Abbr" is a word nobody wrote. A short form equal to its label takes no stop:
-   Time is its own name. Five full labels are 420px against the 288 a 320px
-   screen has; these are 128 of it. */
-export const FORMAT_SHORT: Record<Format, string> = {
-  INTEGER: 'Int',
-  DECIMAL: 'Dec',
-  MIXED: 'Mix',
-  TIME: 'Time',
-  ABBR: 'Abbr',
-}
-
 /* An abbreviation is the one kind of entry that is not a number, so it reads
    in its own words wherever the app counts or describes what is on a page.
    One function for both nouns, or the band head and the hero drift apart. */

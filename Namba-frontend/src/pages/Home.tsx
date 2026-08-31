@@ -1,7 +1,7 @@
-import { Fragment } from 'react'
+import { Fragment, useLayoutEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  api, BUCKETS, BUCKET_LABEL, entryPath, fmtDate, FORMATS, FORMAT_LABEL, FORMAT_SHORT,
+  api, BUCKETS, BUCKET_LABEL, entryPath, fmtDate, FORMATS, FORMAT_LABEL,
   isAbbr, numSize, plain, showValue, subjectWord, tagLabel, tagPath,
   type Format, type NumberEntry, type Post,
 } from '../api'
@@ -193,6 +193,24 @@ function Index({ lang }: { lang: string }) {
   const format = (params.get('format') ?? 'INTEGER') as Format
   const tag = params.get('tag') ?? ''
 
+  /* The strip keeps whole words and scrolls, so the tab you are on can start
+     off the end of it -- and a strip showing four tabs with no underline on
+     any of them says the page belongs to none of them. Nothing in CSS can ask
+     "which one is current"; this is the smallest thing that can.
+
+     `inline: 'nearest'` moves it the least that will do, so a tab already on
+     screen -- which is every tab you reach by tapping one -- does not slide.
+     `block: 'nearest'` is what keeps it off the vertical scroll: without it
+     this fights ScrollTop in App for where the page starts. A layout effect
+     rather than an effect, or the first paint is at scrollLeft 0 and the
+     strip visibly jumps. */
+  const strip = useRef<HTMLElement>(null)
+  useLayoutEffect(() => {
+    strip.current
+      ?.querySelector('[aria-current="page"]')
+      ?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
+  }, [format])
+
   const tags = useAsync(() => api.tags(), [])
   const numbers = useAsync(() => api.numbers({ format, tag, lang }), [format, tag, lang], true)
 
@@ -217,7 +235,7 @@ function Index({ lang }: { lang: string }) {
 
   return (
     <>
-      <nav className="tabs" aria-label="What kind of entry">
+      <nav className="tabs fmts" ref={strip} aria-label="What kind of entry">
         {FORMATS.map((f) => (
           <Link
             key={f}
@@ -225,22 +243,14 @@ function Index({ lang }: { lang: string }) {
             aria-current={f === format ? 'page' : undefined}
             to={`/?${new URLSearchParams({ format: f, ...(tag ? { tag } : {}) })}`}
           >
-            {/* Five tabs want 420px and a 320px screen has 288, so the strip
-                wrapped to two rows -- and a tab strip that is two rows tall
-                has stopped being a strip. Every label now carries the tail
-                Integer used to carry alone: FORMAT_SHORT is what is left at
-                the narrow end, and it is sliced off the label rather than
-                written out, so the two cannot say different words.
-
-                The full stop is the other half of that: "Abbr" is a word
-                nobody wrote and "Abbr." is the label shortened, which is
-                what actually happened. It rides with the tail rather than
-                against it -- shown exactly when the tail is hidden, and only
-                on a label there was something to cut from, so Time keeps its
-                own name unpunctuated. */}
-            {FORMAT_SHORT[f]}
-            {FORMAT_SHORT[f] !== FORMAT_LABEL[f] && <span className="tab-dot">.</span>}
-            <span className="tab-tail">{FORMAT_LABEL[f].slice(FORMAT_SHORT[f].length)}</span>
+            {/* Whole words at every width. Five of them want 400px and a
+                320px screen has 288, so the strip scrolls -- see .tabs.fmts
+                in index.css, and the layout effect above, which is what keeps
+                the tab you are on from starting off the end of it. This used
+                to slice each label down to "Int" and "Abbr." to make them
+                fit; scrolling is what replaced that, and a label here is now
+                just its label. */}
+            {FORMAT_LABEL[f]}
           </Link>
         ))}
       </nav>
