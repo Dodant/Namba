@@ -70,8 +70,16 @@ every link in the panel is wrong in one of them.
 
 ```sh
 npm run dev
-npx tsc --noEmit && npx oxlint src && npm run build    # all three must be clean
+npx tsc -b --noEmit && npx oxlint src && npm run build  # all three must be clean
 ```
+
+**`-b` is not optional there.** `tsconfig.json` is a solution file — `"files":
+[]` and two `references` — so a bare `tsc --noEmit` has nothing in its own file
+list, ignores the references, checks not one line and exits 0. It passed
+`const x: number = "not a number"`. The typecheck was in fact still happening,
+because `npm run build` is `tsc -b && vite build`, but the first command in that
+line was theatre and anyone running it alone got a green that meant nothing.
+`-b --noEmit` builds the referenced projects' types without writing any.
 
 ## Deliberately absent
 
