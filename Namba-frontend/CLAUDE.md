@@ -10,11 +10,11 @@ proxies `/api`, `/uploads`, `/docs` and `/openapi.json` to `127.0.0.1:8000`
 ## Two documents, and why
 
 `/admin` is a second Vite entry, not a route in the wiki's bundle. The reason
-that decides it is `index.css`: 1300 lines of global rules in which every
+that decides it is `index.css`: 1400 lines of global rules in which every
 control is a `border-radius: 999px` capsule and the type is a serif meant for
 reading, none of which belongs on a table of hashes. A separate document cannot
 inherit it, and the build proves it — `main-*.css` is 26 kB and `admin-*.css` is
-8, with nothing shared. The wiki's JS did not grow either.
+12, with nothing shared. The wiki's JS did not grow either.
 
 `admin.css` keeps the identity and changes the register: same green, same
 terracotta for anything destructive, IBM Plex Mono on every numeral (a back
@@ -185,7 +185,10 @@ sanitiser config to get wrong.
   sort, not two — do not add a `sort=new` beside it.
 - `useAsync.ts` carries a file-level `oxlint-disable react-hooks/exhaustive-deps`
   because the hook forwards its caller's deps array, which the rule cannot verify
-  statically. That is the one suppression in the codebase; do not add more.
+  statically. There is one other in the whole codebase — a
+  `eslint-disable-next-line` on the same rule in `src/admin/pages/Log.tsx`, where
+  an effect drops a stale `offset` out of the query string and must not rerun
+  when the params it writes come back. Two is the count; do not add a third.
 - `useAsync`'s third argument, `keep`, holds the last answer on screen while
   the next loads. Only `Index` and `Feed` pass it: their deps re-filter one
   list. Do not pass it from a page whose deps name a *subject* — `Browse` and
@@ -203,12 +206,14 @@ sanitiser config to get wrong.
 - **Every date is relative.** `fmtDate` is "4 minutes ago", "2 days ago",
   "5 months ago" — the same scale a feed uses, because every date on this wiki
   is a byline in a list, an edit in a history or a remark under an entry, and
-  all three are read to answer how fresh a thing is. It is one function and ten
-  call sites, one of them inside a template literal, which is why it returns a
-  string and not a `<time>`. The exact timestamp is therefore nowhere on screen:
-  if it is ever wanted, it is a `title` on the elements that carry a date, not a
-  second format for lists to choose between. Months are 30 days and a year is
-  twelve of those, so "12 months ago" cannot happen.
+  all three are read to answer how fresh a thing is. It is one function and
+  eleven call sites in the wiki, one of them inside a template literal, which is
+  why it returns a string and not a `<time>`. The exact timestamp is therefore
+  nowhere on screen here, and where it is wanted it is a `title` on the element
+  that carries the date, not a second format for lists to choose between — which
+  is what the back office does, in `When` in `admin/ui.tsx` and in the nine
+  further call sites behind it. Months are 30 days and a year is twelve of
+  those, so "12 months ago" cannot happen.
 - Markdown renders on `/p/:id` only. Every list shows `plain(body)` — the source
   read back as prose, so `**bold**` and `## ` are not punctuation in a preview —
   clamped to three lines in CSS. `plain()` is a handful of regexes and is not a
