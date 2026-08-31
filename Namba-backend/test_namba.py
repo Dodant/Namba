@@ -344,6 +344,18 @@ def test_head_per_route():
     assert "noindex" in c.get("/n/UFO").text, "an abbreviation answered at /n/"
     assert "Unidentified" not in c.get("/n/UFO").text
 
+    # the same letters filed as a number on purpose -- which takes a poster
+    # choosing Mixed for UFO -- is a second entry at a second address. One
+    # each, and neither head names the other's, or the section condition is
+    # only being carried by the fact that nothing was filed under both.
+    c.post("/api/posts", json={"value": "UFO", "format": "MIXED",
+                               "title": "a ratio somebody wrote UFO"})
+    abbr, num = c.get("/a/UFO").text, c.get("/n/UFO").text
+    assert "<title>UFO — 1 entry · Namba</title>" in abbr, abbr[:400]
+    assert "a ratio" not in abbr, "the Mixed entry reached the abbreviation's page"
+    assert "<title>UFO — 1 entry · Namba</title>" in num, num[:400]
+    assert "Unidentified" not in num, "the abbreviation reached the number's page"
+
     # -- a tag page is the same shape, and folds case like tagLabel() does
     page = c.get("/t/BREAKBEAT").text
     assert "<title>breakbeat — 2 entries · Namba</title>" in page, page[:400]
@@ -381,6 +393,22 @@ def test_head_per_route():
     assert 'content="no body here — what 808 means, on Namba."' in page, page[:600]
     twin = c.post("/api/posts", json={"value": "808", "title": "nor here"}).json()
     assert 'content="nor here — what 808 means, on Namba."' in c.get(f"/p/{twin['id']}").text
+
+    # -- an abbreviation's entry says what it stands for rather than what it
+    # means, and the crumb above it points at the section it is read in. Both
+    # come off the row's own format: hardcode either back to the number's and
+    # the page still looks right, which is why they are asserted here.
+    dna = c.post("/api/posts", json={"value": "dna", "format": "ABBR",
+                                     "title": "Deoxyribonucleic acid"}).json()
+    page = c.get(f"/p/{dna['id']}").text
+    assert 'content="Deoxyribonucleic acid — what DNA stands for, on Namba."' in page, \
+        page[:600]
+    article, crumb = _ld(page)[0]
+    assert article["about"]["name"] == "DNA"
+    assert [i["item"] for i in crumb["itemListElement"]] == [
+        "http://testserver/", "http://testserver/a/DNA",
+        f"http://testserver/p/{dna['id']}"], crumb
+    admin.set_status(dna["id"], "HIDDEN")
 
     # -- and every one of them carries the site's card. An entry, a number, a
     # tag and the front page: four routes, no picture between them, and before
@@ -1365,7 +1393,10 @@ def test_bucket():
     # only integers get banded: 09:41 is 581 minutes, not a three-digit number
     assert bucket_of(581.0, "TIME") is None
     assert bucket_of(3.14, "DECIMAL") is None
-    assert bucket_of(None, "ABBR") is None, "an abbreviation has nothing to band"
+    # a key as well as a format, or this cannot fail: bucket_of(None) answers
+    # None whatever the format says, so passing one asserts nothing about ABBR
+    assert bucket_of(42.0, "ABBR") is None, "an abbreviation was banded"
+    assert bucket_of(None, "ABBR") is None
 
 
 def test_api_round_trip():
@@ -1415,6 +1446,10 @@ def test_api_round_trip():
             "/api/posts", params={"value": "UFO", "section": name}).json()}
     assert section("abbr") == {u["id"], again["id"]}, section("abbr")
     assert section("number") == {mixed["id"]}, section("number")
+    # ?format= is the narrower cut of the same column and had nothing on it
+    assert {x["id"] for x in c.get(
+        "/api/posts", params={"value": "UFO", "format": "abbr"}).json()
+    } == {u["id"], again["id"]}, "?format= is not filtering, or not upper-casing"
     # an unknown section filters nothing rather than 422ing, the same way an
     # unknown sort falls back: a typo either side of the wire shows too much,
     # it does not break the page
