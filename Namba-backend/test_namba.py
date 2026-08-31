@@ -31,7 +31,7 @@ import auth  # noqa: E402
 import db  # noqa: E402
 import events  # noqa: E402
 import main  # noqa: E402
-from numfmt import FORMATS, bucket_of, grouped_value, parse_number  # noqa: E402
+from numfmt import FORMATS, bucket_of, grouped_value, is_abbr, parse_number  # noqa: E402
 
 # The write limiter counts per IP, and the whole suite is one IP making a
 # hundred writes in a second. Lift it here rather than thin it out in main.py,
@@ -70,10 +70,23 @@ def test_parse():
         "X-ray": ("ABBR", None),
         "3M": ("MIXED", None),                 # a digit in it, so not a word
         "G7": ("MIXED", None),
+        "유에프오": ("MIXED", None),              # another alphabet is not this one
+        "УФО": ("MIXED", None),
     }
     for raw, want in cases.items():
         got = parse_number(raw)
         assert got == want, f"parse_number({raw!r}) = {got}, want {want}"
+
+    # What may be *filed* as one, which is the looser question: parse_number
+    # only ever guesses, and a poster picking ABBR is otherwise taken at their
+    # word. Digits pass here and not above -- MP3 and Y2K are abbreviations
+    # nothing can guess at -- but the alphabet is not negotiable.
+    for ok in ("UFO", "ufo", "CSI", "R&D", "Ph.D", "X-ray", "MP3", "Y2K",
+               "COVID-19", "3M", " UFO "):
+        assert is_abbr(ok), ok
+    for no in ("유에프오", "УФО", "宇宙", "café", "Ünicode", "42", "9.5", "9¾",
+               "", "   ", "-", "...", "UF O", "UFO!"):
+        assert not is_abbr(no), no
 
 
 def test_the_two_apps_still_agree():
@@ -1437,6 +1450,27 @@ def test_api_round_trip():
     again = c.post("/api/posts", json={"value": "UFO", "title": "the film"}).json()
     assert len(c.get("/api/posts", params={"value": "UFO"}).json()) == 2, \
         "the two spellings did not land on the same abbreviation"
+    # -- and this is the one format that is checked rather than taken at its
+    # word. Every other one is a way of reading what was typed and cannot be
+    # wrong about it; ABBR is a claim about the value, and with no login the
+    # claim is a stranger's. Latin letters or it is not this section.
+    for bad in ("유에프오", "УФО", "宇宙", "42", "9¾"):
+        r = c.post("/api/posts", json={"value": bad, "title": "x", "format": "ABBR"})
+        assert r.status_code == 422, (bad, r.status_code, r.text)
+        assert "Latin letters" in r.text, r.text
+        # ...and nothing of that value reached the section. Asked this way
+        # rather than "no entry exists": 42 is already up here as an integer,
+        # and what the refusal has to leave untouched is the other section.
+        assert c.get("/api/posts",
+                     params={"value": bad, "section": "abbr"}).json() == [], bad
+    # the same value is fine as what it actually is
+    assert c.post("/api/posts", json={"value": "유에프오", "title": "the letters, in Korean"}
+                  ).json()["format"] == "MIXED"
+    # digits are allowed even though the parser will never guess at them
+    mp3 = c.post("/api/posts", json={"value": "mp3", "title": "MPEG-1 Audio Layer III",
+                                     "format": "ABBR"}).json()
+    assert mp3["value"] == "MP3" and mp3["format"] == "ABBR", mp3
+
     # a poster who means the letters as a number says so, and it is still a
     # different page -- one value, two sections, one address each
     mixed = c.post("/api/posts", json={"value": "UFO", "format": "MIXED",
@@ -1465,7 +1499,19 @@ def test_api_round_trip():
     assert fixed["value"] == "CSI" and fixed["format"] == "ABBR", fixed
     assert fixed["author"] == later["author"], "re-filing took the byline over"
     assert fixed["edited_by"] == "scully"
-    for pid in (u["id"], again["id"], mixed["id"], fixed["id"]):
+    # re-filing an existing entry is the other way in, and the number field is
+    # read-only on an edit -- so the value the check reads is the stored one.
+    # The refusal happens inside the transaction that took the snapshot, so a
+    # rejected edit leaves no revision behind either.
+    ko = c.post("/api/posts", json={"value": "국정원", "title": "in Korean"}).json()
+    before = len(c.get(f"/api/posts/{ko['id']}/revisions").json())
+    r = c.patch(f"/api/posts/{ko['id']}", json={"format": "ABBR", "author": "x"})
+    assert r.status_code == 422 and "Latin letters" in r.text, r.text
+    assert c.get(f"/api/posts/{ko['id']}").json()["format"] == "MIXED"
+    assert len(c.get(f"/api/posts/{ko['id']}/revisions").json()) == before, \
+        "a refused edit left a snapshot behind"
+
+    for pid in (u["id"], again["id"], mixed["id"], fixed["id"], mp3["id"], ko["id"]):
         admin.set_status(pid, "HIDDEN")
 
     clock = c.post("/api/posts", json={"value": "09:41", "title": "iPhone keynote",

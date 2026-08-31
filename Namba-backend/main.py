@@ -25,7 +25,7 @@ from db import get_db, now
 from store import (
     LIVE, fetch_one, guard_public, shape, snapshot, write_tags, write_translations,
 )
-from numfmt import FORMATS, bucket_of, grouped_value, parse_number
+from numfmt import FORMATS, bucket_of, grouped_value, is_abbr, parse_number
 
 # A tag is whatever people call it, like a translation's language label. What
 # is checked is its shape, not its membership of a list -- the wiki's working
@@ -405,6 +405,13 @@ def resolve_format(value, given):
     are one abbreviation at one address. Same argument `ungroup` makes about
     commas -- the moment both spellings are storable, /a/UFO and /a/ufo are two
     pages about one word, and there is no login here to merge them afterwards.
+
+    It is also where ABBR is checked rather than taken at its word. Every other
+    format is a way of reading what was typed and cannot be wrong about it; this
+    one is a claim about the value, and with no login the claim is a stranger's.
+    Both writes settle the format here -- create with what was typed, edit with
+    what is stored, since the number field is read-only once the entry exists --
+    so this is the one place that catches both.
     """
     fmt, key = parse_number(value)
     if given and given != fmt:
@@ -416,7 +423,13 @@ def resolve_format(value, given):
         else:
             key = None  # MIXED, ABBR, or a TIME that is not actually a clock
         fmt = given
-    return (value.upper() if fmt == "ABBR" else value), fmt, key
+    if fmt == "ABBR":
+        if not is_abbr(value):
+            raise HTTPException(
+                422, "an abbreviation is Latin letters, and needs at least one "
+                     "-- UFO, CSI, R&D, MP3. Anything else is another format.")
+        value = value.upper()
+    return value, fmt, key
 
 
 def section_where(section, prefix=""):

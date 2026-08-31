@@ -7,10 +7,19 @@ _TIME_AMPM = re.compile(r"^(\d{1,2}):(\d{2})\s*([AaPp])[Mm]$")
 _TIME_24 = re.compile(r"^(\d{1,2}):(\d{2})$")
 _INT = re.compile(r"^\d+$")
 _DEC = re.compile(r"^\d+\.\d+$")
-# Letters, and the punctuation an abbreviation carries inside it -- R&D,
-# Ph.D, X-ray. No digits: "3M" and "G7" are a number doing the same work as
-# a word, and which of the two they are is the poster's call, not a regex's.
+# What parse_number will *guess* is an abbreviation: letters, and the
+# punctuation one carries inside it -- R&D, Ph.D, X-ray. No digits, because
+# "3M" and "G7" are a number doing the same work as a word and which of the
+# two they are is the poster's call, not a regex's.
 _ABBR = re.compile(r"^[A-Za-z][A-Za-z.&-]*$")
+# What may be *stored* as one, which is a different question and a looser
+# answer. This section is Latin script only -- 유에프오 and УФО are the same
+# abbreviation written in another alphabet, and one /a/ page per alphabet is
+# the split the upper-casing rule exists to avoid. Digits are allowed here
+# and not above: MP3, Y2K and COVID-19 are English abbreviations the parser
+# will never guess at, and refusing what a poster explicitly picked would be
+# the gate deciding something it was not asked to.
+_ABBR_OK = re.compile(r"^(?=.*[A-Za-z])[A-Za-z0-9.&-]+$")
 # 4+ digits, because "100" has no thousand to separate. The fraction is left
 # alone: 3.14159 groups nothing after the point.
 _GROUPABLE = re.compile(r"^(\d{4,})(\.\d+)?$")
@@ -66,6 +75,18 @@ def parse_number(s):
     if _ABBR.match(s):
         return ("ABBR", None)
     return ("MIXED", None)
+
+
+def is_abbr(value):
+    """Whether this may be filed as an abbreviation.
+
+    The public API has no login, so this is the whole of the rule: a format
+    the poster picks is otherwise taken at its word, and without this any
+    string at all could be filed under /a/. Latin letters, digits and the
+    punctuation an abbreviation carries, and at least one letter -- "42" is a
+    number however it is filed.
+    """
+    return bool(_ABBR_OK.match((value or "").strip()))
 
 
 def bucket_of(sort_key, fmt="INTEGER"):

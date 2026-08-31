@@ -17,7 +17,12 @@ import { useAsync } from '../useAsync'
 const KEEP: Record<string, RegExp> = {
   INTEGER: /[^\d,]/g,
   DECIMAL: /[^\d.,]/g,
-  ABBR: /[^A-Za-z.&-]/g,
+  /* Latin script only, which is the API's rule and not a keyboard
+     preference: 유에프오 and УФО are the same abbreviation in another
+     alphabet, and one /a/ page per alphabet is the split the upper-casing
+     avoids. Digits belong here even though parse_number will not guess at
+     them -- MP3 and Y2K are abbreviations somebody has to be able to file. */
+  ABBR: /[^A-Za-z0-9.&-]/g,
 }
 
 const EXAMPLES: Record<string, string> = {
@@ -26,7 +31,7 @@ const EXAMPLES: Record<string, string> = {
   DECIMAL: '3.14 · 42.195',
   MIXED: '11/22/63 · 9¾ · 80/20',
   TIME: '10:04PM · 09:41',
-  ABBR: 'UFO · CSI · R&D',
+  ABBR: 'UFO · R&D · MP3',
 }
 
 // there is no thousand in 10:04PM, in 9¾ or in UFO
