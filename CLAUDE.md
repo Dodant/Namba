@@ -77,7 +77,7 @@ branch and has to be agreed on; a tag never did.
   panel. If a feature needs a reader to log in, the answer is that the feature
   is wrong for this wiki.
 - **Nothing removes an entry.** `posts.status` is `ACTIVE` / `HIDDEN` /
-  `DELETED`, and a hidden entry drops out of all nine public reads and comes
+  `DELETED`, and a hidden entry drops out of all twelve public reads and comes
   back whole. There is no `DELETE /api/posts/{id}` — the path answers 405 — and
   no delete button anywhere in the front end. An open wiki where one click can
   take a page away has no defence at all, and the fix is not confirming harder:
@@ -120,7 +120,7 @@ branch and has to be agreed on; a tag never did.
 ## Working here
 
 Prefer editing what exists over adding files — this is deliberately a small
-codebase (~4,600 lines, tests and CSS included). Each app has its own
+codebase (~13,500 lines, tests and CSS included). Each app has its own
 `CLAUDE.md` with the details that bite.
 
 **Commit in logical units, without being asked.** One coherent change per

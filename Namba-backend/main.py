@@ -1455,9 +1455,9 @@ def robots(request: Request):
 def sitemap(request: Request, con=Depends(get_db)):
     """Every page on this wiki worth indexing, in one file.
 
-    The tenth public read, and it carries LIVE like the other nine: an entry an
-    operator hid keeps its row, and handing that row to a crawler in a list
-    leaks exactly what hiding it was for.
+    The twelfth public read, and it carries LIVE like the other eleven: an
+    entry an operator hid keeps its row, and handing that row to a crawler in a
+    list leaks exactly what hiding it was for.
 
     It is also the only way in. Every link to /n/42 and /t/book is a <Link> the
     router draws after the JavaScript has run, and most crawlers -- every AI

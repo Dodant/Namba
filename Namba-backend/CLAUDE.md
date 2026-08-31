@@ -380,10 +380,13 @@ No auth on the public half means the input validation *is* the security model
 there. The operator's half has a login, and the notes above are the whole of it.
 
 - Nothing the API offers removes a row. `posts.status` is the whole of
-  moderation and `LIVE` is the condition nine public reads carry; the list of
-  them is in `main.py` above the constant, and `test_hidden_is_invisible` walks
-  all nine. A new public read that touches `posts` joins that list, or it leaks
-  the body of something an operator took down.
+  moderation and `LIVE` is the condition twelve public reads carry; the list of
+  them is in `store.py` above the constant, and `test_hidden_is_invisible` walks
+  all twelve. It was nine until the crawler's half of the site arrived — the
+  three `<head>`s written server-side and the sitemap are four more places a
+  hidden row can reach somebody who never called the API. A new public read
+  that touches `posts` joins that list, or it leaks the body of something an
+  operator took down.
 
 - Uploads: extension allowlist, 5 MB per file, `UPLOAD_TOTAL_MAX` for the
   directory, and the filename is always `uuid4().hex + ext`. Never build a path
