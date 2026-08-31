@@ -1322,6 +1322,32 @@ def head_home(page, base):
                       og=og_tags(title, desc, base, "website", base=base))
 
 
+def head_guide(page, base):
+    """The rules page: the one route here that is prose rather than a query.
+
+    Indexable, which makes it the exception to _index()'s default and the
+    reason that default is spelled out down there. Everything else it declines
+    to index is a control (/random), a form (/new, /p/{id}/edit) or a path that
+    does not exist. This is a page, it is the same page for everybody, and it
+    is the one that says what the wiki will and will not keep -- which is what
+    somebody searching for whether their number belongs here is looking for.
+
+    Its own title and description rather than page_bits(): the site's blurb
+    describes the wiki, and a search result for this page that repeated it
+    would be indistinguishable from the front page.
+    """
+    url = base + "guide"
+    title = "What belongs here — Namba"
+    desc = ("What makes an entry on Namba: a number in a work, a number that "
+            "stands for something, a constant. Not a number that only counts "
+            "its own sequels.")
+    return write_head(
+        page, title=title, desc=desc, canonical=url,
+        og=og_tags(title, desc, url, "article", base=base),
+        ld=[crumbs(base, [("What belongs here", url)])],
+    )
+
+
 def head_list(page, base, *, kind, subject, url, rows, empty):
     """A page that is a list of entries: /n/{value}, /a/{value} or /t/{tag}.
 
@@ -1470,6 +1496,8 @@ def _index(con, request, path: str, base: str) -> HTMLResponse:
         page = fh.read()
     if path == "":
         return HTMLResponse(head_home(page, base))
+    if path == "guide":
+        return HTMLResponse(head_guide(page, base))
     value = path_seg(request, "n/")
     if value is not None:
         return HTMLResponse(head_number(con, page, value, base))
@@ -1545,7 +1573,7 @@ def sitemap(request: Request, con=Depends(get_db)):
     /sitemap-posts.xml and friends.
     """
     base = site_base(request)
-    urls = [(base, None)]
+    urls = [(base, None), (f"{base}guide", None)]
     urls += [(f"{base}p/{r['id']}", r["updated_at"]) for r in con.execute(
         "SELECT id, updated_at FROM posts WHERE status = ? ORDER BY id", (LIVE,))]
     # grouped by section as well as by value, because the two are two pages:

@@ -431,6 +431,22 @@ def test_head_per_route():
         assert 'property="og:image" content="http://testserver/og.png"' in page, path
         assert 'name="twitter:card" content="summary_large_image"' in page, path
 
+    # -- /guide is the second page here that is not a query, and the only
+    # route besides the front page that _index() indexes on purpose. It has to
+    # carry a title and a blurb of its own: page_bits() would give it the
+    # site's, and a search result for the rules would then be a duplicate of
+    # the front page's.
+    page = c.get("/guide").text
+    assert "<title>What belongs here — Namba</title>" in page, page[:400]
+    assert 'rel="canonical" href="http://testserver/guide"' in page
+    assert "noindex" not in page, "the one page that says what a wiki keeps"
+    assert "only counts its own sequels" in page, page[:800]
+    assert "a wiki of numbers" not in page, "the site's own blurb, on the rules"
+    crumb, = _ld(page)[0]
+    assert [i["item"] for i in crumb["itemListElement"]] == [
+        "http://testserver/", "http://testserver/guide"], crumb
+    assert 'property="og:image" content="http://testserver/og.png"' in page
+
     # -- and everything else stays out of an index. Three controls, one form,
     # an entry an operator took down, and a path that does not exist -- all of
     # which answer 200 with the app, and all of which used to answer with the
@@ -474,6 +490,10 @@ def test_robots_and_sitemap():
     ns = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
     locs = [u.findtext(f"{ns}loc") for u in root.findall(f"{ns}url")]
     assert "http://testserver/" in locs
+    # the rules page is reachable from the footer by a <Link> the router draws
+    # after the JavaScript runs, which most crawlers do not -- so this file is
+    # the only way in, the same as it is for every entry below it
+    assert "http://testserver/guide" in locs
     assert f"http://testserver/p/{p['id']}" in locs
     assert "http://testserver/n/23" in locs
     assert "http://testserver/t/conspiracy" in locs
