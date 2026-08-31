@@ -54,12 +54,13 @@ go stale the way a table here would.
 
 ## How it fits together
 
-`Namba-backend` — FastAPI over stdlib `sqlite3`, no ORM. Five files that matter:
+`Namba-backend` — FastAPI over stdlib `sqlite3`, no ORM. Ten files:
 
 | file | what it holds |
 |---|---|
 | `main.py` | every route, the Pydantic models, the upload and rate limits |
 | `db.py` | connection + schema |
+| `store.py` | reading and writing one entry — the pieces both APIs need |
 | `numfmt.py` | `parse_number()` — a display string to a format and a sort key |
 | `seed.py` + `seed_tags.py` | the markdown importer and its hand-written tags |
 | `admin_api.py` | the back office's routes, under `/api/admin` |
@@ -74,10 +75,12 @@ they differ only by which filter they pass. The home page has two views off a
 `?view=` param — the number index, and a feed of what was last written or
 rewritten.
 
-Every read page reads. The one control that changes an entry is the `Edit` pill
-on `/p/:id`; everything that writes — languages, history, links — is in the
-form behind it. Nothing there deletes: an entry can be hidden by whoever runs
-the wiki and is never removed by a visitor.
+Nothing on a read page rewrites the entry. The one control that does is `Edit`,
+quiet at the end of the meta row on `/p/:id`; everything that changes the entry
+— languages, history, links — is in the form behind it. What a read page does
+carry is the three things written *beside* an entry rather than to it: a like, a
+comment, and the "Flag a problem" fold. Nothing there deletes either: an entry
+can be hidden by whoever runs the wiki and is never removed by a visitor.
 
 ### Numbers
 
@@ -134,6 +137,16 @@ prose instead, clamped to three lines, since a preview with `**` in it is not a
 preview. Raw HTML in a post is escaped rather than rendered: anyone can write
 here, so nothing anyone writes becomes markup.
 
+People can also talk about an entry without touching it. Comments sit in the
+rail under the edit history, open by default, five of them and then a fold —
+plain text, not markdown, 300 characters, with the same typed nickname as
+everything else. A remark deliberately does not bump the entry up the Recent
+feed, because it is not a rewrite. There is no edit and no delete on one: with
+no accounts a Remove button belongs to nobody, and unlike an entry a comment has
+no revision behind it, so the button would be the loss rather than the guard
+against it. They hide with the entry and come back with it, and a purge takes
+them along.
+
 Writes are rate limited to 20/minute per IP, in memory — likes included, since
 they are writes too. Uploads are capped at
 5 MB each and 1 GB in total, restricted to jpg/png/gif/webp, and always renamed
@@ -156,10 +169,14 @@ not let you type one. Both language fields are menus over a list of endonyms in
 language, so a fixed menu is not a claim about what people may mean, the way a
 fixed tag list would be.
 
-The entry can say what it is itself written in, in the form's "Written in"
-field, and then the tab reads "Original (한국어)" rather than leaving the reader
-to work it out from the title. It is optional and blank on everything written
-before the field existed; nothing guesses on an entry's behalf.
+The entry says what it is itself written in, in the form's "Written in" field,
+and then the tab reads "Original (한국어)" rather than leaving the reader to work
+it out from the title. The menu has no empty choice: a new entry starts on
+English and an entry with nothing recorded picks it up the next time it is
+saved. It defaulted to "Not set" once, and the result was most entries
+recording no language at all. The column is still nullable and everything
+written before the field existed is still `NULL` until somebody saves it —
+nothing backfills on an entry's behalf.
 
 A picker in the header sets which language the **lists** are read in — the
 index, the feed, a number, a tag, a search. An entry that has been written in
@@ -205,7 +222,7 @@ A wiki anyone can edit is also a wiki anyone could empty, and the fix is not a
 confirmation dialog — it is that the button does not exist. There is no
 `DELETE /api/posts/{id}` (the path answers 405) and no delete control anywhere in
 the front end. `posts.status` is `ACTIVE`, `HIDDEN` or `DELETED`, and a hidden
-entry drops out of all nine public reads and comes back whole: its history, its
+entry drops out of all twelve public reads and comes back whole: its history, its
 comments, its translations, at the same address.
 
 So a reader who thinks an entry should go asks, in the "Flag a problem" fold
@@ -224,7 +241,7 @@ picture together.
 
 `/admin`, behind a login, and a second document rather than a route in the wiki's
 bundle — the reading pages should not carry a table UI nobody but an operator
-opens, and 1300 lines of the wiki's global CSS should not reach a dense table.
+opens, and 1400 lines of the wiki's global CSS should not reach a dense table.
 
 | | |
 |---|---|
