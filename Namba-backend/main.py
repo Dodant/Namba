@@ -1200,7 +1200,7 @@ def write_head(page: str, *, title=None, desc=None, canonical=None,
                robots=None, og=(), ld=None) -> str:
     """Put this page's own head into the built index.html.
 
-    One writer for all four routes. Title and description are *replaced* -- two
+    One writer for all five routes. Title and description are *replaced* -- two
     <title>s and the browser keeps the first -- and everything else is appended
     before </head>.
 

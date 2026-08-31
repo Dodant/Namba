@@ -1738,12 +1738,13 @@ def test_api_round_trip():
 def test_hidden_is_invisible():
     """Hiding an entry takes it off the wiki, not out of one view of it.
 
-    Twelve public reads carry the status condition and missing one leaks the
-    body of something an operator took down, so this walks all twelve: the
-    index, both list endpoints, the entry itself, the two vocabularies, its row
-    among another entry's related entries, its history, the talk beside it, the
-    <head> written server-side for /p/{id}, the two written for the list pages
-    it appears on, and the sitemap handed to crawlers.
+    Thirteen public reads carry the status condition and missing one leaks the
+    body of something an operator took down, so this walks all thirteen: the
+    index, the list endpoint the feed and the search share, the entry itself,
+    the two vocabularies, its row among another entry's related entries, its
+    history, the talk beside it, the <head> written server-side for /p/{id},
+    the three written for the list pages it appears on, and the sitemap handed
+    to crawlers.
 
     It moves the column through admin.py because that is the only thing that
     can -- the operator's endpoints arrive with the admin router, and this is

@@ -232,7 +232,7 @@ A wiki anyone can edit is also a wiki anyone could empty, and the fix is not a
 confirmation dialog — it is that the button does not exist. There is no
 `DELETE /api/posts/{id}` (the path answers 405) and no delete control anywhere in
 the front end. `posts.status` is `ACTIVE`, `HIDDEN` or `DELETED`, and a hidden
-entry drops out of all twelve public reads and comes back whole: its history, its
+entry drops out of all thirteen public reads and comes back whole: its history, its
 comments, its translations, at the same address.
 
 So a reader who thinks an entry should go asks, in the "Flag a problem" fold

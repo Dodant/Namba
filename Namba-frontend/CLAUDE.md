@@ -228,7 +228,7 @@ The breakpoints are places something stops fitting, not round numbers:
 | 1130 | the form and its History rail stop fitting side by side (680+40+340) |
 | 900 | the wordmark, search, language picker and three pills stop fitting one line |
 | 820 | the entry and its Edit history rail stop fitting side by side |
-| 560 | a phone: rows fold, the search takes a row, the numeral stops being a column |
+| 560 | a phone: rows fold, the search takes a row, the numeral stops being a column, the format tabs drop to their short labels |
 
 Between them everything is `clamp()` — the page gutter, the section rhythm,
 every heading and every numeral — so dragging a window from 1920 to 320 has
@@ -265,6 +265,15 @@ What actually changes shape, rather than size:
   under them. It was a 90px column of three-character lines before.
 - **A `.panel-row`** puts its title on a line of its own below 560, whole,
   rather than an ellipsis at twelve characters.
+- **The format tabs shorten rather than wrap.** Five full labels are 420px of
+  type against the 288 a 320px screen has, so below 560 `.tabs .tab-tail` is
+  hidden and the strip reads `Int Dec Mix Time Abbr`. It is one label, not two:
+  a tab renders `FORMAT_SHORT[f]` and then the *remainder* of `FORMAT_LABEL[f]`
+  in the tail, sliced by length — so **every short label has to stay a prefix
+  of its long one**, or the tab says one word wide and a different word narrow.
+  Integer alone used to carry the tail; a fifth format made it every label's.
+  It goes at 560 and not at the ~430 where the strip actually wraps, because a
+  fifth breakpoint for five words is the worse trade.
 - **`.spacer`** becomes a line break below 560 (`flex: 1 0 100%`), so the
   destructive button — Remove this language — is never beside Save, and the
   credits toggle and Edit take a line of their own rather than sitting beside
@@ -591,7 +600,10 @@ the entry form, an inner submit bubbles out and publishes the entry.
 ## Mirrors the backend
 
 `FORMATS` in `api.ts` is a hand-copy of `numfmt.py` — five of them now, four
-ways of reading digits and `ABBR` for letters — and the five moderation
+ways of reading digits and `ABBR` for letters. `FORMAT_LABEL`, `FORMAT_SHORT`
+and `numfmt.py`'s parser branch all have to gain a line together: the backend
+422s an unknown format, but a format missing from either label map renders as
+`undefined` in a tab and nothing errors. The five moderation
 vocabularies — `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`,
 `REQUEST_STATUSES`, `REPORT_STATUSES` — are hand-copies of `db.py`. Changing any
 of them here alone gets a 422 from the API. `REASON_LABEL` is one map for both
