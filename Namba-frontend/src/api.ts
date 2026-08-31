@@ -50,7 +50,7 @@ export const REASON_LABEL: Record<string, string> = {
   OTHER: 'Something else',
 }
 
-export const FORMATS = ['INTEGER', 'DECIMAL', 'MIXED', 'TIME'] as const
+export const FORMATS = ['INTEGER', 'DECIMAL', 'MIXED', 'TIME', 'ABBR'] as const
 export type Format = (typeof FORMATS)[number]
 
 export const FORMAT_LABEL: Record<Format, string> = {
@@ -58,7 +58,27 @@ export const FORMAT_LABEL: Record<Format, string> = {
   DECIMAL: 'Decimal',
   MIXED: 'Mixed',
   TIME: 'Time',
+  ABBR: 'Abbreviation',
 }
+
+/* What each tab reads once there is no room for the whole word. Every one is a
+   *prefix* of its label and the tab renders the remainder in a .tab-tail the
+   narrow breakpoint hides, so the two can never say different words. Five full
+   labels are 420px against the 288 a 320px screen has; these are 128 of it. */
+export const FORMAT_SHORT: Record<Format, string> = {
+  INTEGER: 'Int',
+  DECIMAL: 'Dec',
+  MIXED: 'Mix',
+  TIME: 'Time',
+  ABBR: 'Abbr',
+}
+
+/* An abbreviation is the one kind of entry that is not a number, so it reads
+   in its own words wherever the app counts or describes what is on a page.
+   One function for both nouns, or the band head and the hero drift apart. */
+export const isAbbr = (f: Format) => f === 'ABBR'
+export const subjectWord = (abbr: boolean, n = 1) =>
+  abbr ? (n === 1 ? 'abbreviation' : 'abbreviations') : n === 1 ? 'number' : 'numbers'
 
 export const BUCKETS = ['1', '10', '100', '1000', '10000+'] as const
 export const BUCKET_LABEL: Record<string, string> = {
@@ -121,7 +141,7 @@ export type Translation = {
 export const tagLabel = (t: string) => t.toLowerCase()
 
 /** A tag can hold a space now, and 한국어 is a fine tag. Same reason
-    numberPath() exists: the value goes in a path segment. */
+    entryPath() exists: the value goes in a path segment. */
 export const tagPath = (tag: string) => `/t/${encodeURIComponent(tag)}`
 
 export type NumberEntry = {
@@ -327,13 +347,19 @@ export const plain = (md: string) =>
 const GROUPABLE = /^(\d{4,})(\.\d+)?$/
 
 /** The value as it should read on screen. Never use it to build a link --
-    numberPath() takes the raw value, and /n/1,000 is a different page. */
+    entryPath() takes the raw value, and /n/1,000 is a different page. */
 export function showValue(value: string, grouped?: boolean) {
   const m = grouped ? GROUPABLE.exec(value) : null
   return m ? m[1].replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (m[2] ?? '') : value
 }
 
-export const numberPath = (value: string) => `/n/${encodeURIComponent(value)}`
+/** Where a value is read. Two sections over one column: /a/UFO is the
+    abbreviation, /n/42 is the number, and an entry has exactly one address.
+    The format decides which -- take it off the row, never guess it from the
+    characters, since a poster may file UFO as Mixed on purpose. The twin of
+    value_path() in main.py, which writes the same link into every canonical. */
+export const entryPath = (value: string, format: Format) =>
+  `/${isAbbr(format) ? 'a' : 'n'}/${encodeURIComponent(value)}`
 
 /** Which size class a numeral wears, from how much room the value needs. A
     value is a string a stranger typed -- "7" and "1960년 4월 16일 오후 3시" are

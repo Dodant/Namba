@@ -1,12 +1,16 @@
-"""Number parsing: a raw display string -> (format, sort_key)."""
+"""Value parsing: a raw display string -> (format, sort_key)."""
 import re
 
-FORMATS = ("INTEGER", "DECIMAL", "MIXED", "TIME")
+FORMATS = ("INTEGER", "DECIMAL", "MIXED", "TIME", "ABBR")
 
 _TIME_AMPM = re.compile(r"^(\d{1,2}):(\d{2})\s*([AaPp])[Mm]$")
 _TIME_24 = re.compile(r"^(\d{1,2}):(\d{2})$")
 _INT = re.compile(r"^\d+$")
 _DEC = re.compile(r"^\d+\.\d+$")
+# Letters, and the punctuation an abbreviation carries inside it -- R&D,
+# Ph.D, X-ray. No digits: "3M" and "G7" are a number doing the same work as
+# a word, and which of the two they are is the poster's call, not a regex's.
+_ABBR = re.compile(r"^[A-Za-z][A-Za-z.&-]*$")
 # 4+ digits, because "100" has no thousand to separate. The fraction is left
 # alone: 3.14159 groups nothing after the point.
 _GROUPABLE = re.compile(r"^(\d{4,})(\.\d+)?$")
@@ -34,7 +38,7 @@ def parse_number(s):
     those apart on its own, so the human gets the last word.
 
     sort_key is the value itself for INTEGER/DECIMAL, minutes-since-midnight
-    for TIME, and None for MIXED (which sorts by string instead).
+    for TIME, and None for MIXED and ABBR (which sort by string instead).
     """
     s = (s or "").strip()
     if not s:
@@ -59,6 +63,8 @@ def parse_number(s):
         return ("INTEGER", float(s))
     if _DEC.match(s):
         return ("DECIMAL", float(s))
+    if _ABBR.match(s):
+        return ("ABBR", None)
     return ("MIXED", None)
 
 
@@ -66,7 +72,8 @@ def bucket_of(sort_key, fmt="INTEGER"):
     """Magnitude band that sections the Integer index: 1 / 10 / 100 / 1000 / 10000+.
 
     Only integers get one. A TIME sort_key is minutes past midnight, so banding
-    it by magnitude would put 09:41 in the "100" band, which means nothing.
+    it by magnitude would put 09:41 in the "100" band, which means nothing, and
+    an ABBR has no sort key to band at all.
     """
     if sort_key is None or fmt != "INTEGER":
         return None

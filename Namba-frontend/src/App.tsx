@@ -330,6 +330,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home lang={lang} />} />
             <Route path="/n/:value" element={<Browse mode="number" lang={lang} />} />
+            <Route path="/a/:value" element={<Browse mode="abbr" lang={lang} />} />
             <Route path="/t/:tag" element={<Browse mode="tag" lang={lang} />} />
             <Route path="/search" element={<Browse mode="search" lang={lang} />} />
             <Route path="/random" element={<Random />} />

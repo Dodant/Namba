@@ -420,14 +420,17 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
   .band-head h2 { white-space: nowrap; }
 }
 
-/* "Integer" becomes "Int" on a phone. Four full labels are 299px and the
-   narrowest screen anyone brings is 288, so Time wrapped to a line of its
-   own -- a tab strip that is two rows tall has stopped being a strip. It
-   goes at 560 rather than at the ~330 where the wrap actually starts,
-   because a fifth breakpoint for one word is a worse trade than a phone
-   reading Int with room to spare. */
+/* Every tab drops to its short form on a phone -- "Integer" to "Int",
+   "Abbreviation" to "Abbr". Five full labels are 420px and the narrowest
+   screen anyone brings is 288, so the strip wrapped to a second row -- a tab
+   strip that is two rows tall has stopped being a strip. The short labels are
+   128px of type; the padding is 150 more, which is why it is trimmed here too
+   rather than left at the 15px the strip wears with room to spare. It goes at
+   560 rather than at the ~430 where the wrap actually starts, because a fifth
+   breakpoint for five words is a worse trade than a phone reading Int. */
 @media (max-width: 560px) {
   .tabs .tab-tail { display: none; }
+  .tabs a, .tabs button { padding-left: 12px; padding-right: 12px; }
 }
 
 .index { list-style: none; margin: 0; padding: 0; }

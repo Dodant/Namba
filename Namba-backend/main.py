@@ -397,16 +397,43 @@ def ungroup(value, grouped):
 
 
 def resolve_format(value, given):
-    """Parsed suggestion, unless the poster explicitly picked a format."""
+    """(value as stored, format, sort_key). The parsed suggestion, unless the
+    poster explicitly picked a format.
+
+    It hands the value back because settling the format is what settles how the
+    value is spelled: an ABBR is stored upper-case, so "ufo", "Ufo" and "UFO"
+    are one abbreviation at one address. Same argument `ungroup` makes about
+    commas -- the moment both spellings are storable, /a/UFO and /a/ufo are two
+    pages about one word, and there is no login here to merge them afterwards.
+    """
     fmt, key = parse_number(value)
-    if not given or given == fmt:
-        return fmt, key
-    if given in ("INTEGER", "DECIMAL"):
-        try:
-            return given, float(value)
-        except ValueError:
-            return given, None
-    return given, None  # MIXED, or a TIME that is not actually a clock
+    if given and given != fmt:
+        if given in ("INTEGER", "DECIMAL"):
+            try:
+                key = float(value)
+            except ValueError:
+                key = None
+        else:
+            key = None  # MIXED, ABBR, or a TIME that is not actually a clock
+        fmt = given
+    return (value.upper() if fmt == "ABBR" else value), fmt, key
+
+
+def section_where(section, prefix=""):
+    """SQL for "this is an abbreviation" / "this is a number", or None for both.
+
+    /n/ and /a/ are two sections over one column. An entry is one or the other
+    and has exactly one address, so a value filed under both -- somebody
+    choosing Mixed for UFO on purpose -- is two entries at two addresses rather
+    than one entry showing up twice. One function decides it, so the list
+    endpoint, the two <head>s and the sitemap cannot answer differently.
+
+    An unknown section filters nothing, the same way an unknown `sort` falls
+    back rather than 422ing: a typo either side of the wire is a page that
+    shows too much, not a page that breaks.
+    """
+    op = {"number": "!=", "abbr": "="}.get(section or "")
+    return f"{prefix}format {op} 'ABBR'" if op else None
 
 
 # --- read ---------------------------------------------------------------
@@ -543,6 +570,7 @@ def list_posts(
     value: Optional[str] = None,
     tag: Optional[str] = None,
     format: Optional[str] = None,
+    section: Optional[str] = None,
     q: Optional[str] = None,
     lang: Optional[str] = None,
     sort: str = "number",
@@ -566,6 +594,10 @@ def list_posts(
     if format:
         where.append("p.format = ?")
         args.append(format.upper())
+    # what tells /n/42 from /a/UFO -- see section_where()
+    in_section = section_where(section, "p.")
+    if in_section:
+        where.append(in_section)
     if q:
         # EXISTS rather than a join: a post with three translations must still
         # come back once. Without it, giving a Korean entry an English title
@@ -671,7 +703,7 @@ def list_comments(post_id: int, con=Depends(get_db)):
 @app.post("/api/posts", status_code=201)
 def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
     value, grouped = ungroup(p.value, p.grouped)
-    fmt, key = resolve_format(value, p.format)
+    value, fmt, key = resolve_format(value, p.format)
     ts = now()
     with con:
         cur = con.execute(
@@ -708,9 +740,9 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         if p.value is not None:
             value, grouped = ungroup(p.value, grouped)
         if p.format:
-            fmt, key = resolve_format(value, p.format)
+            value, fmt, key = resolve_format(value, p.format)
         elif p.value is not None:
-            fmt, key = resolve_format(value, None)  # number changed, re-derive
+            value, fmt, key = resolve_format(value, None)  # value changed, re-derive
         else:
             fmt, key = current["format"], current["sort_key"]
         # author is the first writer and stays put -- on an open wiki, an edit
@@ -1098,7 +1130,8 @@ def og_summary(body: str) -> str:
 def enc(seg: str) -> str:
     """One path segment, percent-encoded exactly as encodeURIComponent is.
 
-    numberPath() and tagPath() in api.ts build every /n/ and /t/ link that way.
+    entryPath() and tagPath() in api.ts build every /n/, /a/ and /t/ link that
+    way.
     A canonical or a <loc> encoding it differently is a second URL for one
     page -- and on a wiki whose values include 11/22/63 and 9¾, that is most
     of them. The safe set below is encodeURIComponent's, character for
@@ -1107,8 +1140,17 @@ def enc(seg: str) -> str:
     return quote(seg, safe="-_.!~*'()")
 
 
+def value_path(fmt: str, value: str) -> str:
+    """Where an entry's value is read: /a/UFO for an abbreviation, /n/42 for a
+    number. The twin of entryPath() in api.ts, and the reason both exist is
+    that a format decides an address -- get it from the row, never guess it
+    from the characters.
+    """
+    return f"{'a' if fmt == 'ABBR' else 'n'}/{enc(value)}"
+
+
 def path_seg(request, prefix: str) -> Optional[str]:
-    """The one segment after /n/ or /t/, as the reader typed it.
+    """The one segment after /n/, /a/ or /t/, as the reader typed it.
 
     Read off the raw path rather than the decoded one the router hands us,
     because a value may contain a slash: 11/22/63 is a date and a number here,
@@ -1268,7 +1310,7 @@ def head_home(page, base):
 
 
 def head_list(page, base, *, kind, subject, url, rows, empty):
-    """A page that is a list of entries: /n/{value} or /t/{tag}.
+    """A page that is a list of entries: /n/{value}, /a/{value} or /t/{tag}.
 
     One shape for both, because they are one component in the front end for the
     same reason -- they differ only in which filter found the rows.
@@ -1291,8 +1333,9 @@ def head_list(page, base, *, kind, subject, url, rows, empty):
     count = "1 entry" if n == 1 else f"{n} entries"
     titles = [r["title"] for r in rows[:DESC_TITLES]]
     rest = n - len(titles)
-    lead = (f"What {subject} means" if kind == "number"
-            else f"Numbers tagged {subject}")
+    lead = {"number": f"What {subject} means",
+            "abbreviation": f"What {subject} stands for"}.get(
+                kind, f"Numbers tagged {subject}")
     desc = clip(f"{lead} — {count} on Namba: " + "; ".join(titles)
                 + (f"; and {rest} more." if rest else "."))
     title = f"{subject} — {count} · Namba"
@@ -1320,13 +1363,28 @@ def head_list(page, base, *, kind, subject, url, rows, empty):
 def head_number(con, page, value, base):
     rows = [dict(r) for r in con.execute(
         "SELECT id, title, grouped FROM posts WHERE value = ? AND status = ? "
-        "ORDER BY id", (value, LIVE))]
+        f"AND {section_where('number')} ORDER BY id", (value, LIVE))]
     # the rule the hero draws by: separators are a per-entry display flag, so
     # the page only groups when every entry filed under the number agrees
     shown = grouped_value(value, bool(rows) and all(r["grouped"] for r in rows))
     return head_list(page, base, kind="number", subject=shown,
                      url=f"{base}n/{enc(value)}", rows=rows,
                      empty=f"Nothing is filed under {shown} on Namba yet.")
+
+
+def head_abbr(con, page, value, base):
+    """The same page for the other section. Separate from head_number because
+    the two say different words -- what a number means, what an abbreviation
+    stands for -- and because a value stored as one is not filed under the
+    other. No grouped_value: there is no thousand in UFO.
+    """
+    value = value.upper()  # /a/ufo is an old link to the one abbreviation
+    rows = [dict(r) for r in con.execute(
+        "SELECT id, title FROM posts WHERE value = ? AND status = ? "
+        f"AND {section_where('abbr')} ORDER BY id", (value, LIVE))]
+    return head_list(page, base, kind="abbreviation", subject=value,
+                     url=f"{base}a/{enc(value)}", rows=rows,
+                     empty=f"Nothing is filed under {value} on Namba yet.")
 
 
 def head_tag(con, page, tag, base):
@@ -1357,8 +1415,9 @@ def og_head(page: str, post: dict, base: str, tags=()) -> str:
     # body and "What 2 means, on Namba." was the description on all of them --
     # identical, word for word, on the 29 that share a number. A description
     # that cannot tell two pages apart is one a search engine drops.
+    means = "stands for" if post["format"] == "ABBR" else "means"
     desc = og_summary(post["body"]) or clip(
-        f"{post['title']} — what {value} means, on Namba.")
+        f"{post['title']} — what {value} {means}, on Namba.")
     img = f"{base}{post['image'].lstrip('/')}" if post["image"] else None
     url = f"{base}p/{post['id']}"
     article = {
@@ -1387,7 +1446,8 @@ def og_head(page: str, post: dict, base: str, tags=()) -> str:
         og=og_tags(title, desc, url, "article", base=base, image=img)
            + [("article:published_time", post["created_at"]),
               ("article:modified_time", post["updated_at"])],
-        ld=[article, crumbs(base, [(value, f"{base}n/{enc(post['value'])}"),
+        ld=[article, crumbs(base, [(value, base + value_path(post["format"],
+                                                              post["value"])),
                                    (post["title"], url)])],
     )
 
@@ -1400,6 +1460,9 @@ def _index(con, request, path: str, base: str) -> HTMLResponse:
     value = path_seg(request, "n/")
     if value is not None:
         return HTMLResponse(head_number(con, page, value, base))
+    abbr = path_seg(request, "a/")
+    if abbr is not None:
+        return HTMLResponse(head_abbr(con, page, abbr, base))
     tag = path_seg(request, "t/")
     if tag is not None:
         return HTMLResponse(head_tag(con, page, tag, base))
@@ -1455,7 +1518,7 @@ def robots(request: Request):
 def sitemap(request: Request, con=Depends(get_db)):
     """Every page on this wiki worth indexing, in one file.
 
-    The twelfth public read, and it carries LIVE like the other eleven: an
+    The thirteenth public read, and it carries LIVE like the other twelve: an
     entry an operator hid keeps its row, and handing that row to a crawler in a
     list leaks exactly what hiding it was for.
 
@@ -1472,9 +1535,15 @@ def sitemap(request: Request, con=Depends(get_db)):
     urls = [(base, None)]
     urls += [(f"{base}p/{r['id']}", r["updated_at"]) for r in con.execute(
         "SELECT id, updated_at FROM posts WHERE status = ? ORDER BY id", (LIVE,))]
-    urls += [(f"{base}n/{enc(r['value'])}", r["at"]) for r in con.execute(
-        "SELECT value, MAX(updated_at) AS at FROM posts WHERE status = ? "
-        "GROUP BY value ORDER BY value", (LIVE,))]
+    # grouped by section as well as by value, because the two are two pages:
+    # UFO filed as an abbreviation is /a/UFO and UFO filed as Mixed is /n/UFO,
+    # and value_path() is the one place that decides which.
+    urls += [(base + value_path(r["fmt"], r["value"]), r["at"])
+             for r in con.execute(
+        "SELECT value, MAX(updated_at) AS at, "
+        "       CASE WHEN format = 'ABBR' THEN 'ABBR' ELSE '' END AS fmt "
+        "FROM posts WHERE status = ? GROUP BY value, fmt ORDER BY value, fmt",
+        (LIVE,))]
     urls += [(f"{base}t/{enc(r['tag'])}", r["at"]) for r in con.execute(
         "SELECT t.tag, MAX(p.updated_at) AS at FROM post_tags t "
         "JOIN posts p ON p.id = t.post_id AND p.status = ? "

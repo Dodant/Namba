@@ -60,6 +60,16 @@ def test_parse():
         "24/7": ("MIXED", None),
         "25:99": ("MIXED", None),              # colon, but no such time
         "": ("MIXED", None),
+        # letters are the fifth kind, and the punctuation an abbreviation
+        # carries inside it comes with them
+        "UFO": ("ABBR", None),
+        "ufo": ("ABBR", None),                 # the case is settled on write
+        "CSI": ("ABBR", None),
+        "R&D": ("ABBR", None),
+        "Ph.D": ("ABBR", None),
+        "X-ray": ("ABBR", None),
+        "3M": ("MIXED", None),                 # a digit in it, so not a word
+        "G7": ("MIXED", None),
     }
     for raw, want in cases.items():
         got = parse_number(raw)
@@ -106,8 +116,8 @@ def test_the_two_apps_still_agree():
         assert m, f"{name} is not in api.ts at all"
         return int(m.group(1))
 
-    # the four number formats -- a format is a parser branch and both sides
-    # have to agree on the word
+    # the five formats -- a format is a parser branch, it decides which of the
+    # two sections a value is read in, and both sides have to agree on the word
     assert listed("FORMATS") == FORMATS, listed("FORMATS")
     # the five vocabularies the TEXT columns may hold, plus what the panel offers
     for name in ("DELETE_REASONS", "REPORT_REASONS", "POST_STATUSES",
@@ -316,6 +326,24 @@ def test_head_per_route():
     # ...and one segment only. /n/42/anything is not a page the client has.
     assert "noindex" in c.get("/n/808/x").text
 
+    # -- /a/{value} is the same page for the other section, in its own words.
+    # An abbreviation is not a number, so it does not answer at /n/ and the
+    # sentence under it does not say "means".
+    c.post("/api/posts", json={"value": "ufo", "format": "ABBR",
+                               "title": "Unidentified flying object"})
+    page = c.get("/a/UFO").text
+    assert "<title>UFO — 1 entry · Namba</title>" in page, page[:400]
+    assert 'content="What UFO stands for — 1 entry on Namba: ' in page, page[:600]
+    assert 'rel="canonical" href="http://testserver/a/UFO"' in page
+    coll, crumb = _ld(page)[0]
+    assert coll["about"]["name"] == "UFO"
+    assert crumb["itemListElement"][-1]["item"] == "http://testserver/a/UFO"
+    # the value is stored upper-case, so /a/ufo is the same page and says so
+    assert 'rel="canonical" href="http://testserver/a/UFO"' in c.get("/a/ufo").text
+    # ...and the two sections do not leak into each other
+    assert "noindex" in c.get("/n/UFO").text, "an abbreviation answered at /n/"
+    assert "Unidentified" not in c.get("/n/UFO").text
+
     # -- a tag page is the same shape, and folds case like tagLabel() does
     page = c.get("/t/BREAKBEAT").text
     assert "<title>breakbeat — 2 entries · Namba</title>" in page, page[:400]
@@ -367,7 +395,7 @@ def test_head_per_route():
     # which answer 200 with the app, and all of which used to answer with the
     # front page's head.
     for path in ("/search?q=x", "/random", "/new", f"/p/{a['id']}/edit",
-                 f"/p/{a['id']}999", "/nope", "/n/", "/t/"):
+                 f"/p/{a['id']}999", "/nope", "/n/", "/a/", "/t/"):
         assert 'content="noindex, follow"' in c.get(path).text, path
     # follow, not nofollow: /search and /new are full of links to entries that
     # should be crawled, and the page just should not be the one in the result.
@@ -421,6 +449,23 @@ def test_robots_and_sitemap():
             ElementTree.fromstring(c.get("/sitemap.xml").text).findall(f"{ns}url")]
     assert "http://testserver/n/9%C2%BE" in locs, [x for x in locs if "9" in x]
     assert c.get("/n/9%C2%BE").text.count("<title>9¾ — 1 entry · Namba</title>") == 1
+
+    # an abbreviation is listed at its own address and at no other. Grouped by
+    # section as well as by value, or the one page a crawler can reach would be
+    # the one it is not told about.
+    ab = c.post("/api/posts", json={"value": "CSI", "format": "ABBR",
+                                    "title": "Crime scene investigation"}).json()
+    c.post("/api/posts", json={"value": "CSI", "format": "MIXED",
+                               "title": "the same letters, filed as a number"})
+    locs = [u.findtext(f"{ns}loc") for u in
+            ElementTree.fromstring(c.get("/sitemap.xml").text).findall(f"{ns}url")]
+    assert "http://testserver/a/CSI" in locs, [x for x in locs if "CSI" in x]
+    assert "http://testserver/n/CSI" in locs, "the Mixed one has an address too"
+    assert len(locs) == len(set(locs)), "one address per page"
+    admin.set_status(ab["id"], "HIDDEN")
+    locs = [u.findtext(f"{ns}loc") for u in
+            ElementTree.fromstring(c.get("/sitemap.xml").text).findall(f"{ns}url")]
+    assert "http://testserver/a/CSI" not in locs, "a hidden abbreviation was listed"
 
     # a hidden entry keeps its row and must not be handed to a crawler anyway
     admin.set_status(gone["id"], "HIDDEN")
@@ -726,7 +771,7 @@ def test_grouping():
     assert grouped_value("100", True) == "100", "no thousand to separate"
     assert grouped_value("1234.5678", True) == "1,234.5678", "only the whole part"
     # nothing that is not a plain number is touched
-    for odd in ("10:04PM", "11/22/63", "9\u00be", "80/20"):
+    for odd in ("10:04PM", "11/22/63", "9\u00be", "80/20", "UFO"):
         assert grouped_value(odd, True) == odd, odd
 
     c = TestClient(main.app)
@@ -1320,6 +1365,7 @@ def test_bucket():
     # only integers get banded: 09:41 is 581 minutes, not a three-digit number
     assert bucket_of(581.0, "TIME") is None
     assert bucket_of(3.14, "DECIMAL") is None
+    assert bucket_of(None, "ABBR") is None, "an abbreviation has nothing to band"
 
 
 def test_api_round_trip():
@@ -1349,6 +1395,43 @@ def test_api_round_trip():
     t = c.post("/api/posts", json={"value": "11:11", "title": "Us (Jeremiah 11:11)",
                                    "format": "MIXED", "tags": ["MOVIE"]}).json()
     assert t["format"] == "MIXED" and t["sort_key"] is None and t["bucket"] is None
+
+    # -- the fifth kind. Letters are an abbreviation, they carry no sort key,
+    # and the value is folded to upper case on the way in so that ufo, Ufo and
+    # UFO are one word at one address -- the same argument the separators make.
+    u = c.post("/api/posts", json={"value": "ufo", "title": "Unidentified flying object",
+                                   "author": "mulder"}).json()
+    assert u["value"] == "UFO", u["value"]
+    assert u["format"] == "ABBR" and u["sort_key"] is None and u["bucket"] is None
+    again = c.post("/api/posts", json={"value": "UFO", "title": "the film"}).json()
+    assert len(c.get("/api/posts", params={"value": "UFO"}).json()) == 2, \
+        "the two spellings did not land on the same abbreviation"
+    # a poster who means the letters as a number says so, and it is still a
+    # different page -- one value, two sections, one address each
+    mixed = c.post("/api/posts", json={"value": "UFO", "format": "MIXED",
+                                       "title": "filed as a number on purpose"}).json()
+    def section(name):
+        return {x["id"] for x in c.get(
+            "/api/posts", params={"value": "UFO", "section": name}).json()}
+    assert section("abbr") == {u["id"], again["id"]}, section("abbr")
+    assert section("number") == {mixed["id"]}, section("number")
+    # an unknown section filters nothing rather than 422ing, the same way an
+    # unknown sort falls back: a typo either side of the wire shows too much,
+    # it does not break the page
+    assert len(section("banana")) == 3
+
+    # the format is what settles the spelling, so re-filing an entry folds it
+    # too -- the number field is read-only on an edit and sends no value at all
+    later = c.post("/api/posts", json={"value": "csi", "format": "MIXED",
+                                       "title": "not sure yet"}).json()
+    assert later["value"] == "csi", "MIXED keeps what was typed"
+    fixed = c.patch(f"/api/posts/{later['id']}",
+                    json={"format": "ABBR", "author": "scully"}).json()
+    assert fixed["value"] == "CSI" and fixed["format"] == "ABBR", fixed
+    assert fixed["author"] == later["author"], "re-filing took the byline over"
+    assert fixed["edited_by"] == "scully"
+    for pid in (u["id"], again["id"], mixed["id"], fixed["id"]):
+        admin.set_status(pid, "HIDDEN")
 
     clock = c.post("/api/posts", json={"value": "09:41", "title": "iPhone keynote",
                                        "tags": ["BRAND"]}).json()
@@ -1674,11 +1757,23 @@ def test_hidden_is_invisible():
     }).json()
     pid = p["id"]
     other = c.post("/api/posts", json={"value": "6175", "title": "one along"}).json()
+    # the other section, so that /a/{value} is walked too. No tag, no
+    # translation and a value of its own: anything it shared with the entry
+    # above would keep that row's read alive and the assertion would pass
+    # without the condition doing anything.
+    ab = c.post("/api/posts", json={"value": "KAP", "format": "ABBR",
+                                    "title": "Kaprekar, for short"}).json()
     c.put(f"/api/posts/{pid}/translations",
           json={"lang": "Klingon", "title": "loSmaH", "body": "loS", "author": "worf"})
     c.post(f"/api/posts/{pid}/comments", json={"body": "It really is every time."})
     c.post(f"/api/posts/{pid}/links", json={"other_id": other["id"]})
     c.patch(f"/api/posts/{pid}", json={"title": "Kaprekar constant", "author": "d.r."})
+
+    def move(status):
+        """Both entries at once. They are hidden together so that a read which
+        forgot LIVE has nowhere to keep the word alive from."""
+        admin.set_status(pid, status)
+        admin.set_status(ab["id"], status)
 
     def seen():
         """Every way a reader could reach this entry. Unique tag and language on
@@ -1701,20 +1796,21 @@ def test_hidden_is_invisible():
             # the list pages name their entries in the description and in the
             # JSON-LD ItemList, which is a copy of the title outside the app
             "n-head": "Kaprekar" in c.get("/n/6174").text,
+            "a-head": "Kaprekar" in c.get("/a/KAP").text,
             "t-head": "Kaprekar" in c.get("/t/kaprekar").text,
             # and the sitemap is a list of every address a crawler should ask
             # for -- a hidden entry's is not one of them
             "sitemap": f"/p/{pid}</loc>" in c.get("/sitemap.xml").text,
         }
 
-    assert len(seen()) == 12 + 1, "twelve reads, and search is the second on /api/posts"
+    assert len(seen()) == 13 + 1, "thirteen reads, and search is the second on /api/posts"
     assert all(seen().values()), seen()
 
-    admin.set_status(pid, "HIDDEN")
+    move("HIDDEN")
     assert not any(seen().values()), {k: v for k, v in seen().items() if v}
 
     # ...and it all comes back, because hiding changed one column and nothing else
-    admin.set_status(pid, "ACTIVE")
+    move("ACTIVE")
     assert all(seen().values()), {k: v for k, v in seen().items() if not v}
     revs = c.get(f"/api/posts/{pid}/revisions").json()
     assert len(revs) == 2, "the translation and the edit, both still there"
@@ -1722,9 +1818,9 @@ def test_hidden_is_invisible():
 
     # DELETED is as invisible as HIDDEN. The two are kept apart for the operator
     # -- "taken down" against "removed on request" -- not for the reader.
-    admin.set_status(pid, "DELETED")
+    move("DELETED")
     assert not any(seen().values()), {k: v for k, v in seen().items() if v}
-    admin.set_status(pid, "HIDDEN")
+    move("HIDDEN")
 
     # a write cannot reach a hidden entry either: every one of them asks
     # fetch_one first, and the three that used to ask it afterwards now do not

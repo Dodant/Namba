@@ -1,8 +1,9 @@
 import { Fragment } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  api, BUCKETS, BUCKET_LABEL, fmtDate, FORMATS, FORMAT_LABEL, numberPath, numSize,
-  plain, showValue, tagLabel, tagPath, type Format, type NumberEntry, type Post,
+  api, BUCKETS, BUCKET_LABEL, entryPath, fmtDate, FORMATS, FORMAT_LABEL, FORMAT_SHORT,
+  isAbbr, numSize, plain, showValue, subjectWord, tagLabel, tagPath,
+  type Format, type NumberEntry, type Post,
 } from '../api'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
@@ -130,7 +131,7 @@ function Feed({ lang }: { lang: string }) {
         <article className="fx" key={p.id}>
           <Link
             className={`fx-num ${numSize(showValue(p.value, p.grouped))}`}
-            to={numberPath(p.value)}
+            to={entryPath(p.value, p.format)}
           >
             {showValue(p.value, p.grouped)}
           </Link>
@@ -179,10 +180,11 @@ const FOLD_OVER = 10
    scrolls and nothing about how much is in it -- eight numbers is eight
    entries on a thin band and forty on a busy one, and the second figure is
    the one that moves as the wiki fills up. Both, because the band folds:
-   closed, this line is all it says about itself. */
-function bandCount(items: NumberEntry[]) {
+   closed, this line is all it says about itself. The first noun follows the
+   format: the Abbreviation band counts abbreviations, not numbers. */
+function bandCount(items: NumberEntry[], format: Format) {
   const entries = items.reduce((n, item) => n + item.entries.length, 0)
-  return `${items.length} ${items.length === 1 ? 'number' : 'numbers'} · ${
+  return `${items.length} ${subjectWord(isAbbr(format), items.length)} · ${
     entries} ${entries === 1 ? 'entry' : 'entries'}`
 }
 
@@ -215,7 +217,7 @@ function Index({ lang }: { lang: string }) {
 
   return (
     <>
-      <nav className="tabs" aria-label="Number format">
+      <nav className="tabs" aria-label="What kind of entry">
         {FORMATS.map((f) => (
           <Link
             key={f}
@@ -223,20 +225,14 @@ function Index({ lang }: { lang: string }) {
             aria-current={f === format ? 'page' : undefined}
             to={`/?${new URLSearchParams({ format: f, ...(tag ? { tag } : {}) })}`}
           >
-            {/* Four tabs want 299px and a 320px screen has 288, so Time went
-                to a line of its own -- and being the tab you are on, it took
-                the underline and the focus ring with it. Integer is the only
-                one of the four with a tail worth dropping, and dropping it is
-                30 of the 11 pixels needed. Sliced off the label rather than
+            {/* Five tabs want 420px and a 320px screen has 288, so the strip
+                wrapped to two rows -- and a tab strip that is two rows tall
+                has stopped being a strip. Every label now carries the tail
+                Integer used to carry alone: FORMAT_SHORT is what is left at
+                the narrow end, and it is sliced off the label rather than
                 written out, so the two cannot say different words. */}
-            {f === 'INTEGER' ? (
-              <>
-                {FORMAT_LABEL[f].slice(0, 3)}
-                <span className="tab-tail">{FORMAT_LABEL[f].slice(3)}</span>
-              </>
-            ) : (
-              FORMAT_LABEL[f]
-            )}
+            {FORMAT_SHORT[f]}
+            <span className="tab-tail">{FORMAT_LABEL[f].slice(FORMAT_SHORT[f].length)}</span>
           </Link>
         ))}
       </nav>
@@ -303,7 +299,7 @@ function Index({ lang }: { lang: string }) {
               <summary className="band-head">
                 <h2>{band.label}</h2>
                 <span className="rule" />
-                <span className="n">{bandCount(band.items)}</span>
+                <span className="n">{bandCount(band.items, shownFormat)}</span>
               </summary>
               <ol className="index">
                 {band.items.map((n: NumberEntry) => {
@@ -329,7 +325,7 @@ function Index({ lang }: { lang: string }) {
                   <li className="ix" key={`${n.format}-${n.value}`}>
                     <Link
                       className={`ix-num ${numSize(shown)}`}
-                      to={numberPath(n.value)}
+                      to={entryPath(n.value, n.format)}
                     >
                       {shown}
                     </Link>

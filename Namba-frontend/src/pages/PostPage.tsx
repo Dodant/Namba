@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import {
-  api, fmtDate, nickname, numberPath, numSize, originalLabel, plain, showValue,
+  api, entryPath, fmtDate, nickname, numSize, originalLabel, plain, showValue,
   tagLabel, tagPath, type Comment, type Revision,
 } from '../api'
 import FlagPanel from '../components/FlagPanel'
@@ -140,7 +140,7 @@ export default function PostPage() {
         <div className="hero">
           <Link
             className={`num ${numSize(showValue(post.value, post.grouped))}`}
-            to={numberPath(post.value)}
+            to={entryPath(post.value, post.format)}
           >
             {showValue(post.value, post.grouped)}
           </Link>
@@ -244,7 +244,7 @@ export default function PostPage() {
             <h2 className="section">Related entries</h2>
             {post.related.map((r) => (
               <div className="rel" key={r.id}>
-                <Link className="rel-num" to={numberPath(r.value)}>
+                <Link className="rel-num" to={entryPath(r.value, r.format)}>
                   {showValue(r.value, r.grouped)}
                 </Link>
                 <div className="rel-main">

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  api, fmtDate, liked, numberPath, numSize, plain, showValue, tagLabel, tagPath,
+  api, entryPath, fmtDate, liked, numSize, plain, showValue, tagLabel, tagPath,
   type Post,
 } from '../api'
 
@@ -55,7 +55,7 @@ export default function PostCard({
       {showNumber && (
         <Link
           className={`num ${numSize(showValue(post.value, post.grouped))}`}
-          to={numberPath(post.value)}
+          to={entryPath(post.value, post.format)}
         >
           {showValue(post.value, post.grouped)}
         </Link>

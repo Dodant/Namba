@@ -1,9 +1,11 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { api, FORMAT_LABEL, numSize, showValue, tagLabel, type Post } from '../api'
+import {
+  api, FORMAT_LABEL, numSize, showValue, subjectWord, tagLabel, type Post,
+} from '../api'
 import PostCard from '../components/PostCard'
 import { useAsync } from '../useAsync'
 
-type Mode = 'number' | 'tag' | 'search'
+type Mode = 'number' | 'abbr' | 'tag' | 'search'
 
 /* the hero counts people, not records, so it spells the number out -- a
    second numeral beside a 104px one is a fight nobody wins. Past twelve it
@@ -20,31 +22,45 @@ function kicker(p: Post) {
   return p.sort_key === null ? label : `${label} · sorts at ${p.sort_key}`
 }
 
-/** One list of posts, three ways in: a number, a tag, or a search. */
+/** One list of posts, four ways in: a number, an abbreviation, a tag, or a
+    search. The first two are one page about one value and differ only in which
+    section they read; the last two differ only in which filter found the rows. */
 export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
-  const { value = '', tag = '' } = useParams()
+  const { value: raw = '', tag = '' } = useParams()
   const [params] = useSearchParams()
   const q = params.get('q') ?? ''
+
+  const abbr = mode === 'abbr'
+  /* the value is stored upper-case, and /a/ufo is a link somebody typed or
+     pasted from before that was true -- fold it here rather than asking the
+     API to match loosely, so the page and its canonical say the one spelling */
+  const value = abbr ? raw.toUpperCase() : raw
+  /* one value, two sections: a page about a number never shows an entry filed
+     as an abbreviation, and the other way round. See section_where() in main.py */
+  const section = abbr ? 'abbr' : 'number'
 
   const posts = useAsync(
     () =>
       api.posts(
-        mode === 'number'
-          ? { value, sort: 'number', lang }
+        mode === 'number' || abbr
+          ? { value, section, sort: 'number', lang }
           : mode === 'tag'
             ? { tag, sort: 'number', lang }
             : { q, sort: 'number', lang },
       ),
-    [mode, value, tag, q, lang],
+    [mode, value, section, tag, q, lang],
   )
 
   const n = posts.data?.length ?? 0
   const count = `${n} ${n === 1 ? 'entry' : 'entries'}`
   const shownValue = showValue(value, !!posts.data?.length && posts.data.every((p) => p.grouped))
+  /* what /new needs to put the reader back in the section they came from --
+     without it, "UFO" typed into a form with Auto-detect is right by luck */
+  const addHref = `/new?value=${encodeURIComponent(value)}${abbr ? '&format=ABBR' : ''}`
 
   return (
     <>
-      {mode === 'number' ? (
+      {mode === 'number' || abbr ? (
         <div className="hero">
           {/* same rule as the index row: this page is one number shared by
               several entries, so separators need all of them to agree */}
@@ -69,7 +85,7 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
                     on the page was marked up as being the number. */}
                 <p>
                   {COUNTS[n] ?? n} {n === 1 ? 'person has' : 'people have'} written
-                  about this number.
+                  about this {subjectWord(abbr)}.
                 </p>
               </>
             ) : null}
@@ -80,7 +96,7 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
               of the two. The empty state keeps it; the pill comes back with
               the entry it is offering to sit beside. */}
           {n > 0 && (
-            <Link className="btn outline" to={`/new?value=${encodeURIComponent(value)}`}>
+            <Link className="btn outline" to={addHref}>
               + Add another meaning
             </Link>
           )}
@@ -114,7 +130,7 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
         <PostCard
           key={p.id}
           post={p}
-          showNumber={mode !== 'number'}
+          showNumber={mode !== 'number' && !abbr}
           except={mode === 'tag' ? tagLabel(tag) : undefined}
         />
       ))}
@@ -123,12 +139,10 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
         // an empty search is not an empty wiki, and saying "no entries yet" on
         // all three reads as though the place were deserted
         <p className="empty">
-          {mode === 'number' ? (
+          {mode === 'number' || abbr ? (
             <>
               Nothing filed under {value} yet.{' '}
-              <Link to={`/new?value=${encodeURIComponent(value)}`}>
-                Give it a meaning.
-              </Link>
+              <Link to={addHref}>Give it a meaning.</Link>
             </>
           ) : mode === 'tag' ? (
             <>

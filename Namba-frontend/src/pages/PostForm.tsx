@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
-  api, fmtDate, FORMAT_LABEL, FORMATS, nickname, originalLabel,
+  api, fmtDate, FORMAT_LABEL, FORMATS, nickname, originalLabel, subjectWord,
   showValue, TAG_MAX, tagLabel, TAGS_PER_POST,
   type Format, type Post, type Revision, type Tag, type Translation,
 } from '../api'
@@ -17,18 +17,20 @@ import { useAsync } from '../useAsync'
 const KEEP: Record<string, RegExp> = {
   INTEGER: /[^\d,]/g,
   DECIMAL: /[^\d.,]/g,
+  ABBR: /[^A-Za-z.&-]/g,
 }
 
 const EXAMPLES: Record<string, string> = {
-  '': '42 · 3.14 · 11/22/63 · 10:04PM',
+  '': '42 · 3.14 · 11/22/63 · 10:04PM · UFO',
   INTEGER: '42 · 1000 · 299792458',
   DECIMAL: '3.14 · 42.195',
   MIXED: '11/22/63 · 9¾ · 80/20',
   TIME: '10:04PM · 09:41',
+  ABBR: 'UFO · CSI · R&D',
 }
 
-// there is no thousand in 10:04PM or in 9¾
-const groupable = (f: string) => f !== 'MIXED' && f !== 'TIME'
+// there is no thousand in 10:04PM, in 9¾ or in UFO
+const groupable = (f: string) => f !== 'MIXED' && f !== 'TIME' && f !== 'ABBR'
 
 /* Normalised the same way the API will normalise it, so a tag typed as "Book"
    turns the existing book chip on instead of looking like a second one. The
@@ -88,13 +90,22 @@ export default function PostForm() {
   const editing = Boolean(id)
 
   const [value, setValue] = useState(params.get('value') ?? '')
-  const [format, setFormat] = useState<'' | Format>('')
+  /* ?format= comes from the "+ Add another meaning" pill on /a/UFO and /n/42.
+     Auto-detect would get an abbreviation right by luck and a number that
+     somebody filed as Mixed wrong every time. */
+  const [format, setFormat] = useState<'' | Format>(
+    (FORMATS as readonly string[]).includes(params.get('format') ?? '')
+      ? (params.get('format') as Format)
+      : '',
+  )
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [tags, setTags] = useState<Tag[]>([])
   const [image, setImage] = useState<string | null>(null)
   const [lang, setLang] = useState(LANGS[0])
   const [grouped, setGrouped] = useState(false)
+  // what this form is about right now: "number" until Abbreviation is picked
+  const noun = subjectWord(format === 'ABBR')
   const [coined, setCoined] = useState('')
   /* the chips are the wiki's working vocabulary, not a list in here. Capped so
      the form cannot grow without bound as people coin more, and unioned with
@@ -198,7 +209,7 @@ export default function PostForm() {
        it is where the read page already keeps it. */
     <div className="form-layout">
       <form className="form" onSubmit={submit}>
-        <h1>{editing ? 'Edit entry' : 'Add a number'}</h1>
+        <h1>{editing ? 'Edit entry' : 'Add an entry'}</h1>
         <p className="form-intro">
           {editing
             ? `Anyone can edit anything here${owner ? `, including entries written by ${owner}` : ''}. The version you replace is kept in the history, and ${owner || 'the original author'} stays credited.`
@@ -213,10 +224,15 @@ export default function PostForm() {
               the first thing you check before editing the rest, and disabled
               takes it out of the tab order and reads as "unavailable". */}
           <div className="field num-field">
+            {/* the label follows the format, the same way the filtering,
+                the keyboard and the separator box beside it do: with
+                Abbreviation picked, "Number" is the wrong word for the box
+                you are typing UFO into. Auto-detect keeps Number, because
+                that is what most of this wiki is. */}
             <label htmlFor={fid('value')}>
-              Number{' '}
+              {noun[0].toUpperCase() + noun.slice(1)}{' '}
               <span className="hint">
-                {editing ? 'fixed — another number is another entry' : EXAMPLES[format]}
+                {editing ? `fixed — another ${noun} is another entry` : EXAMPLES[format]}
               </span>
             </label>
             <input
@@ -227,9 +243,15 @@ export default function PostForm() {
               maxLength={32}
               value={value}
               inputMode={format === 'INTEGER' ? 'numeric' : format === 'DECIMAL' ? 'decimal' : undefined}
-              onChange={(e) =>
-                setValue(KEEP[format] ? e.target.value.replace(KEEP[format], '') : e.target.value)
-              }
+              onChange={(e) => {
+                const kept = KEEP[format]
+                  ? e.target.value.replace(KEEP[format], '')
+                  : e.target.value
+                /* the API stores an abbreviation upper-case so that ufo and
+                   UFO are one page, and a field that showed the other one
+                   would be lying about the address this is about to have */
+                setValue(format === 'ABBR' ? kept.toUpperCase() : kept)
+              }}
             />
             {/* under the number it rewrites, not a third column in the row:
                 the row is two fields wide, and a column that came and went as
@@ -288,7 +310,7 @@ export default function PostForm() {
         <div className="field">
           <label htmlFor={fid('title')}>
             Title{' '}
-            <span className="hint">what the number refers to</span>
+            <span className="hint">what it refers to</span>
           </label>
           <input
             id={fid('title')}

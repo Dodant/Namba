@@ -12,15 +12,15 @@ from fastapi import HTTPException
 from db import now
 from numfmt import bucket_of
 
-# The only status a visitor ever sees. Twelve reads in main.py carry it -- the
+# The only status a visitor ever sees. Thirteen reads in main.py carry it -- the
 # index, the two list endpoints, one entry, the two vocabularies, an entry's
-# related row, its history and its comments, the three <head>s written for
-# /p/{id}, /n/{value} and /t/{tag}, and the sitemap -- and missing one leaks the
-# body of something an operator took down. test_hidden_is_invisible walks all
-# twelve. It was nine until the crawler's half of the site arrived: a head that
-# names an entry and a sitemap that links to it are both places a row can leak
-# to somebody who never called the API at all. The writes need no equivalent: they
-# reach for fetch_one() below first and get the 404 from there.
+# related row, its history and its comments, the four <head>s written for
+# /p/{id}, /n/{value}, /a/{value} and /t/{tag}, and the sitemap -- and missing
+# one leaks the body of something an operator took down. test_hidden_is_invisible
+# walks all thirteen. It was nine until the crawler's half of the site arrived: a
+# head that names an entry and a sitemap that links to it are both places a row
+# can leak to somebody who never called the API at all. The writes need no
+# equivalent: they reach for fetch_one() below first and get the 404 from there.
 LIVE = "ACTIVE"
 
 
