@@ -202,7 +202,7 @@ sanitiser config to get wrong.
   exempt — Back is the reader's own position, and restoring it properly would
   mean storing an offset per history entry.
 - `PostCard.tsx` must export only components (fast refresh). Shared helpers like
-  `fmtDate` and `numberPath` live in `api.ts`.
+  `fmtDate` and `entryPath` live in `api.ts`.
 - **Every date is relative.** `fmtDate` is "4 minutes ago", "2 days ago",
   "5 months ago" — the same scale a feed uses, because every date on this wiki
   is a byline in a list, an edit in a history or a remark under an entry, and
@@ -387,8 +387,12 @@ than this list. Adding a language is one line here and no migration. Taking one
 out is safe too — `langsWith()` keeps an entry's existing language on the menu
 so the form cannot drop it on the next save.
 
-The Format select reshapes the Number field beside it: Integer and Decimal
-filter what can be typed and offer the separator checkbox — from the fourth
+The Format select reshapes the field beside it, down to that field's own label
+— with Abbreviation picked, "Number" is the wrong word for the box you are
+typing `UFO` into, so the label reads Abbreviation, the filter keeps letters and
+drops digits, and what is typed is folded to upper case because that is how the
+API will store it. Integer and Decimal filter what can be typed and offer the
+separator checkbox — from the fourth
 digit, because there is no thousand in `100` and a box that ticks with nothing
 on the page changing reads as broken rather than as inapplicable. It asks
 `showValue(value, true) !== value` rather than counting digits: that is the
@@ -402,44 +406,61 @@ with the format re-measured Number and Format underneath the choice, and the
 preview it carries belongs under the number it rewrites. The two controls in
 that row are given one height in `index.css` rather than each taking its own:
 24px of number against 15.5px of select is a pair that sits crooked. Mixed and Time are
-plain text with no checkbox, and Auto-detect constrains nothing because nothing
+plain text with no checkbox and Abbreviation is the third with none — there is
+no thousand in `UFO` — and Auto-detect constrains nothing because nothing
 has been decided yet. Filtering happens as you type and **never** rewrites what
 is already in the field — picking Integer by mistake with `11/22/63` in there
 must not turn it into `112263`.
 
-On an **edit** the Number field is `readOnly` and its hint says so. An entry is
-one meaning of one number and `/n/:value` is a query on that column, so
+On an **edit** the value field is `readOnly` and its hint says so. An entry is
+one meaning of one value and `/n/:value` is a query on that column, so
 retyping it there would not correct the entry — it would move it to a page
 about a different number and leave the old one short a meaning. Format and the
-separator checkbox stay editable either way: they change how the same digits
-are read, not which number the entry is about. `readOnly` and not `disabled` —
+separator checkbox stay editable either way: they change how the same
+characters are read, not which value the entry is about — though changing an
+entry to Abbreviation does fold its value to upper case and move it to `/a/`,
+which is the format deciding the spelling and the address, not the field being
+retyped. `readOnly` and not `disabled` —
 the number is the first thing you check before editing the rest, and `disabled`
 takes it out of the tab order and announces it as unavailable.
 
 `showValue(value, grouped)` is display only — **never build a link from it.**
-`numberPath()` takes the raw value, and `/n/1,000` is a different page from
+`entryPath()` takes the raw value, and `/n/1,000` is a different page from
 `/n/1000`. Index rows and the `/n/:value` hero use the all-entries-agree rule
 from the API; everywhere a single post is shown, its own flag wins.
 
-## Number values are not URL-safe
+## Values are not URL-safe
 
-`11/22/63`, `9¾`, `80/20` are all valid values. Always build number links with
-`numberPath()` from `api.ts` (it does `encodeURIComponent`), and always pass the
+`11/22/63`, `9¾`, `80/20` are all valid values. Always build a value's link with
+`entryPath()` from `api.ts` (it does `encodeURIComponent`), and always pass the
 value to the API as a **query param**, never a path segment — `%2F` in a path
 gets normalised by the ASGI layer before routing.
+
+`entryPath()` takes the format as well as the value, because the format is what
+decides the address: `/a/UFO` for an abbreviation, `/n/42` for a number. Take it
+off the row you are drawing — a poster may file `UFO` as Mixed on purpose, and
+that entry is at `/n/UFO`. It is the twin of `value_path()` in `main.py`, which
+writes the same link into every canonical and breadcrumb.
 
 Client-side routing decodes the segment correctly, which is why `/n/:value`
 works but `/api/numbers/{value}` would not.
 
 ## Routes
 
-`Browse.tsx` serves three of them — `/n/:value`, `/t/:tag`, `/search` — because
-they differ only in which filter reaches `api.posts()`. Add a fourth list view by
-extending its `mode`, not by copying the file.
+`Browse.tsx` serves four of them — `/n/:value`, `/a/:value`, `/t/:tag`,
+`/search` — because they differ only in which filter reaches `api.posts()`. Add
+a fifth list view by extending its `mode`, not by copying the file.
 
-All three heroes are one shape: a `.kicker` of metadata over an `<h1>` that is
-the subject and nothing else. On `/n/:value` the kicker is the format and the
-sort key; on the other two it is the kind of page and the count, and the count
+`/n/` and `/a/` are two sections over one column and the mode is what picks
+between them: it sends `section` to the API, folds the value to upper case for
+`/a/` so that an old `/a/ufo` link still lands, and chooses the noun the hero
+uses. An entry has exactly one address — an abbreviation never answers at `/n/`
+— and `section_where()` in `main.py` is the single condition that says so.
+
+All four heroes are one shape: a `.kicker` of metadata over an `<h1>` that is
+the subject and nothing else. On `/n/:value` and `/a/:value` the kicker is the
+format and the sort key, which for an abbreviation is the format alone; on the
+other two it is the kind of page and the count, and the count
 waits for `posts.data` because "0 entries" before the fetch lands is a result
 rather than a wait. `/t/:tag` passes its tag to `PostCard` as `except`, so a
 row does not carry a chip linking to the page it is already on — what is left
@@ -569,7 +590,8 @@ the entry form, an inner submit bubbles out and publishes the entry.
 
 ## Mirrors the backend
 
-`FORMATS` in `api.ts` is a hand-copy of `numfmt.py`, and the five moderation
+`FORMATS` in `api.ts` is a hand-copy of `numfmt.py` — five of them now, four
+ways of reading digits and `ABBR` for letters — and the five moderation
 vocabularies — `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`,
 `REQUEST_STATUSES`, `REPORT_STATUSES` — are hand-copies of `db.py`. Changing any
 of them here alone gets a 422 from the API. `REASON_LABEL` is one map for both

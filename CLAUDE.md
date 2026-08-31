@@ -30,7 +30,7 @@ package). **Change one, change the other:**
 
 | what | backend | frontend |
 |---|---|---|
-| the 4 number formats | `numfmt.py` `FORMATS` | `src/api.ts` `FORMATS` |
+| the 5 formats | `numfmt.py` `FORMATS` | `src/api.ts` `FORMATS` |
 | the two tag limits | `main.py` `TAG_MAX`, `TAGS_PER_POST` | `src/api.ts`, same names |
 | the moderation vocabularies | `db.py` `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`, `REQUEST_STATUSES`, `REPORT_STATUSES`, `BLOCK_TYPES`, `BLOCK_HOURS` | `src/api.ts`, same names |
 
@@ -59,6 +59,12 @@ free-form now: the backend checks a tag's shape, never its membership, and
 `/api/tags` reports the vocabulary actually in use. A format is a parser
 branch and has to be agreed on; a tag never did.
 
+Four of the five read digits. `ABBR` is the fifth and reads letters — `UFO`,
+`CSI`, `NASA` — and it is a format rather than a `kind` column because
+`posts.format` is already the one thing that decides how a value is read,
+sorted and addressed. A second column would have been a migration, a second
+hand-copied vocabulary and a branch beside every existing one.
+
 ## Design decisions that are not up for quiet revision
 
 - **No *reader* accounts, ever.** No signup, no ownership, no per-post
@@ -77,7 +83,7 @@ branch and has to be agreed on; a tag never did.
   panel. If a feature needs a reader to log in, the answer is that the feature
   is wrong for this wiki.
 - **Nothing removes an entry.** `posts.status` is `ACTIVE` / `HIDDEN` /
-  `DELETED`, and a hidden entry drops out of all twelve public reads and comes
+  `DELETED`, and a hidden entry drops out of all thirteen public reads and comes
   back whole. There is no `DELETE /api/posts/{id}` — the path answers 405 — and
   no delete button anywhere in the front end. An open wiki where one click can
   take a page away has no defence at all, and the fix is not confirming harder:
@@ -93,6 +99,21 @@ branch and has to be agreed on; a tag never did.
   separators are a display flag (`posts.grouped`) and never live in `value`:
   the moment `1,000` is storable, `/n/1000` and `/n/1%2C000` are two pages
   about one number.
+
+  **An `ABBR` value is stored upper-case for exactly that reason.** `ufo`,
+  `Ufo` and `UFO` are one word, and with no accounts there is nobody to merge
+  three pages about it afterwards. `resolve_format` folds it, because settling
+  the format is what settles the spelling. Digits have no case, which is why
+  this never came up for the other four.
+
+- **`/n/` and `/a/` are two sections over one column, and an entry has one
+  address.** `/a/UFO` is the abbreviation, `/n/42` is the number, and
+  `section_where()` in `main.py` is the single condition that tells them apart
+  — the list endpoint, both `<head>`s and the sitemap all ask it. So a value
+  filed under both, which takes somebody choosing Mixed for `UFO` on purpose,
+  is two entries at two addresses rather than one entry showing up twice. Do
+  not answer an abbreviation at `/n/`: it is the same mistake as storing the
+  comma, one page short of the number.
 - **A link in an entry stays a link.** No unfurling, no fetched thumbnails.
   Rendering a card means the server fetching a URL a stranger typed, and with
   no accounts there is nobody to rate-limit or ban — `http://169.254.169.254/`

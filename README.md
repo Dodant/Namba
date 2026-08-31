@@ -87,12 +87,13 @@ can be hidden by whoever runs the wiki and is never removed by a visitor.
 A number is a column on a post, not a table — `/n/42` is a query. Each carries a
 **format** and a **sort key**:
 
-| format | example | sort key |
-|---|---|---|
-| `INTEGER` | `42`, `299792458` | the value |
-| `DECIMAL` | `3.14`, `42.195` | the value |
-| `TIME` | `10:04PM`, `09:41` | minutes past midnight |
-| `MIXED` | `11/22/63`, `80/20`, `9¾` | none — sorts by string |
+| format | example | sort key | read at |
+|---|---|---|---|
+| `INTEGER` | `42`, `299792458` | the value | `/n/42` |
+| `DECIMAL` | `3.14`, `42.195` | the value | `/n/3.14` |
+| `TIME` | `10:04PM`, `09:41` | minutes past midnight | `/n/09:41` |
+| `MIXED` | `11/22/63`, `80/20`, `9¾` | none — sorts by string | `/n/80%2F20` |
+| `ABBR` | `UFO`, `CSI`, `R&D` | none — sorts by string | `/a/UFO` |
 
 A number can also be written with thousands separators. `1000` and `1,000` are
 the same number and answer at the same `/n/1000`, so no separator is ever
@@ -108,6 +109,15 @@ the string says which.
 
 Only integers get a magnitude band (`1`, `10`, `100`, `1000`, `10000+`), because
 banding a TIME by its sort key would file 09:41 under "100".
+
+**Abbreviations** are the fifth format and the one that is not digits — `UFO`,
+`CSI`, `NASA`. Everything else about them is a number's: one entry per meaning,
+anyone can edit, nothing removes one, all of it CC0. Two things are their own.
+They are read at `/a/UFO` rather than `/n/UFO`, so a value somebody files under
+both sections is two entries at two addresses instead of one showing up twice.
+And the value is stored upper case, because `ufo` and `UFO` are one word and
+with no accounts there is nobody to merge two pages about it afterwards — the
+same argument the thousands separator makes one paragraph up.
 
 ### Anyone can edit
 
@@ -280,8 +290,9 @@ They are served together rather than split so that every page can carry its own
 `<head>`. A share of an entry has to arrive with that entry's title, blurb and
 picture already in the markup — no crawler runs the JavaScript that would set
 them — so something has to write the `<head>` per request, and the only process
-holding the entry is this one. `/`, `/n/42` and `/t/book` get one too, with the
-entries filed there named in the description and in a JSON-LD `ItemList`;
+holding the entry is this one. `/`, `/n/42`, `/a/UFO` and `/t/book` get one too,
+with the entries filed there named in the description and in a JSON-LD
+`ItemList`;
 `/search`, `/new`, `/random`, an edit form and anything mistyped are marked
 `noindex`. `NAMBA_DIST` overrides where it looks.
 

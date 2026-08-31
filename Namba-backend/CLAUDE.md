@@ -10,7 +10,7 @@ FastAPI over stdlib `sqlite3`. Ten files:
 | `db.py` | schema, `connect()`, `get_db()`, `now()` |
 | `events.py` | who a request is from, as hashes, and the log of what they did |
 | `auth.py` | operator passwords, sessions and the `require_admin` dependency |
-| `numfmt.py` | number parsing |
+| `numfmt.py` | value parsing |
 | `seed.py` + `seed_tags.py` | the markdown importer |
 | `gc_uploads.py` | the uploads collector |
 | `admin.py` | the operator's shell commands |
@@ -286,13 +286,15 @@ it is unset, `secret.key` beside the database is generated and used instead).
   out of a result carries a `noindex` meta instead, because a path disallowed
   in `robots.txt` can never be crawled to *find* that meta — an old link to one
   sits in an index as a bare URL for good.
-- **Four routes get their `<head>` written server-side, and everything else is
+- **Five routes get their `<head>` written server-side, and everything else is
   told not to be indexed.** `_index()` is the one place that decides which:
-  `/` gets the site's own head, `/n/{value}` and `/t/{tag}` get a title,
-  description and `ItemList` naming the entries filed there, `/p/{id}` gets
-  `og_head()`. No crawler runs the JavaScript that would set any of it
-  client-side — that is the reason the API serves the front end at all, and
-  `Namba-frontend/CLAUDE.md` says nothing in that app should try.
+  `/` gets the site's own head, `/n/{value}`, `/a/{value}` and `/t/{tag}` get a
+  title, description and `ItemList` naming the entries filed there, `/p/{id}`
+  gets `og_head()`. The two value pages are one `head_list()` saying different
+  words — what a number means, what an abbreviation stands for. No crawler
+  runs the JavaScript that would set any of it client-side — that is the reason
+  the API serves the front end at all, and `Namba-frontend/CLAUDE.md` says
+  nothing in that app should try.
 
   **The last branch is a default, not a list of routes, and that is the
   design.** `/search`, `/random`, `/new`, `/p/{id}/edit`, an entry an operator
@@ -337,11 +339,11 @@ it is unset, `secret.key` beside the database is generated and used instead).
   from, and a resized card would be cut somewhere nobody chose with nothing
   else in the repo to notice.
 - **`path_seg()` reads the raw path, and `enc()` has to match
-  `encodeURIComponent`.** A number value may hold a slash — `11/22/63` — so by
+  `encodeURIComponent`.** A value may hold a slash — `11/22/63` — so by
   the time ASGI has decoded the path, `n/11%2F22%2F63` and a three-segment path
   are the same string; the value comes off `scope["raw_path"]` or `/n/` answers
   about the wrong number. Coming back the other way, `enc()`'s safe set is
-  `encodeURIComponent`'s character for character, because `numberPath()` and
+  `encodeURIComponent`'s character for character, because `entryPath()` and
   `tagPath()` in `api.ts` build every link that way and a canonical encoded
   differently is a second URL for one page. `test_head_per_route` and
   `test_robots_and_sitemap` both walk an awkward value.
@@ -363,10 +365,26 @@ it is unset, `secret.key` beside the database is generated and used instead).
 - **`post_links` always stores `a_id < b_id`** (there is a CHECK). Sort the pair
   before insert or delete; read it back with the `UNION` in `get_post`.
 - **`bucket_of` only bands INTEGER.** A TIME sort key is minutes past midnight,
-  so banding 09:41 by magnitude files it under "100".
+  so banding 09:41 by magnitude files it under "100", and an ABBR has no sort
+  key to band at all.
 - **`parse_number` is a suggestion.** `11:11` is a clock, `1:29:300` is
   Heinrich's law; nothing in the string distinguishes them, so the poster's
-  explicit `format` wins in `resolve_format`.
+  explicit `format` wins in `resolve_format`. Letters go to ABBR the same way,
+  and the same override applies: `GROSS` is a word, but somebody filing it as
+  Mixed is allowed to mean the number.
+- **`resolve_format` hands the value back, not just the format.** Settling
+  which of the five a value is settles how it is spelled: an ABBR is stored
+  upper-case, so `ufo` and `UFO` are one word at one address. That is
+  `ungroup`'s argument about separators reached from the other end, and it is
+  why both `create_post` and `edit_post` reassign `value` from it — an edit
+  arrives with the number field read-only and no value at all, so the fold has
+  to happen off the stored one.
+- **`section_where()` is the only thing that tells `/n/` from `/a/`.**
+  `list_posts`, `head_number`, `head_abbr` and the sitemap all ask it, so a
+  value filed under both sections is two entries at two addresses rather than
+  one entry on two pages. `value_path()` is the same rule going the other way
+  and is the twin of `entryPath()` in `api.ts`. An unknown section filters
+  nothing rather than 422ing, for the reason an unknown `sort` falls back.
 
 ## No ORM
 
@@ -380,13 +398,13 @@ No auth on the public half means the input validation *is* the security model
 there. The operator's half has a login, and the notes above are the whole of it.
 
 - Nothing the API offers removes a row. `posts.status` is the whole of
-  moderation and `LIVE` is the condition twelve public reads carry; the list of
-  them is in `store.py` above the constant, and `test_hidden_is_invisible` walks
-  all twelve. It was nine until the crawler's half of the site arrived — the
-  three `<head>`s written server-side and the sitemap are four more places a
+  moderation and `LIVE` is the condition thirteen public reads carry; the list
+  of them is in `store.py` above the constant, and `test_hidden_is_invisible`
+  walks all thirteen. It was nine until the crawler's half of the site arrived —
+  the four `<head>`s written server-side and the sitemap are five more places a
   hidden row can reach somebody who never called the API. A new public read
   that touches `posts` joins that list, or it leaks the body of something an
-  operator took down.
+  operator took down. `head_abbr` is the thirteenth, and it arrived with `/a/`.
 
 - Uploads: extension allowlist, 5 MB per file, `UPLOAD_TOTAL_MAX` for the
   directory, and the filename is always `uuid4().hex + ext`. Never build a path
