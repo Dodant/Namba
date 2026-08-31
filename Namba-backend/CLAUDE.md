@@ -379,6 +379,30 @@ it is unset, `secret.key` beside the database is generated and used instead).
   why both `create_post` and `edit_post` reassign `value` from it — an edit
   arrives with the number field read-only and no value at all, so the fold has
   to happen off the stored one.
+- **`ABBR` is the one format that is refused, and `is_abbr` is the rule.** The
+  other four describe how to *read* what was typed and cannot be wrong about
+  it — `resolve_format` takes an explicit `TIME` on `1:29:300` at its word and
+  files it with no sort key. `ABBR` is a claim *about* the value, so it is
+  checked: Latin letters, digits and `.&-`, and at least one letter. It is a
+  422 raised from `resolve_format` rather than a Pydantic validator, because
+  the validator cannot see both halves — an edit sends a `format` and no
+  `value` at all — and because that function is the one place both writes
+  settle the pair. In `edit_post` it is raised **inside** `with con`, so a
+  refused edit rolls back the snapshot it had already taken.
+
+  Two things the shape does *not* say. It is looser than `parse_number`'s
+  branch on purpose: `MP3`, `Y2K` and `COVID-19` carry digits and the parser
+  will never guess at them, and a gate refusing what a poster explicitly
+  picked would be deciding something it was not asked to. And it is not about
+  keyboards — `유에프오` and `УФО` are the same abbreviation in another
+  alphabet, and one `/a/` page per alphabet is the split the upper-casing
+  exists to prevent. The entry's own language is not touched: `lang` and the
+  translations are as free as anywhere else on this wiki.
+
+  `restore_revision` and `admin_restore` do **not** re-check it, the same way
+  `write_tags` normalises without validating. A snapshot has to be restorable
+  or the history is not a history, and nothing can be written into that state
+  any more anyway.
 - **`section_where()` is the only thing that tells `/n/` from `/a/`.**
   `list_posts`, `head_number`, `head_abbr` and the sitemap all ask it, so a
   value filed under both sections is two entries at two addresses rather than

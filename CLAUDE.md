@@ -106,6 +106,17 @@ hand-copied vocabulary and a branch beside every existing one.
   the format is what settles the spelling. Digits have no case, which is why
   this never came up for the other four.
 
+  **And `ABBR` is Latin script only — the one format that is checked rather
+  than taken at its word.** The other four are ways of *reading* what was
+  typed and cannot be wrong about it; this one is a claim *about* the value,
+  and on a wiki with no login the claim is a stranger's. `is_abbr` in
+  `numfmt.py` is the rule and `resolve_format` is where it bites, so both
+  writes hit it. It is not a keyboard preference: `유에프오` and `УФО` are the
+  same abbreviation in another alphabet, and one `/a/` page per alphabet is
+  the split the upper-casing exists to prevent. An entry still says what it
+  means in any language — `lang` and the translations are untouched by this;
+  it is the value that is one spelling.
+
 - **`/n/` and `/a/` are two sections over one column, and an entry has one
   address.** `/a/UFO` is the abbreviation, `/n/42` is the number, and
   `section_where()` in `main.py` is the single condition that tells them apart

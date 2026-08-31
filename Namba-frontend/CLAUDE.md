@@ -442,9 +442,14 @@ so the form cannot drop it on the next save.
 
 The Format select reshapes the field beside it, down to that field's own label
 — with Abbreviation picked, "Number" is the wrong word for the box you are
-typing `UFO` into, so the label reads Abbreviation, the filter keeps letters and
-drops digits, and what is typed is folded to upper case because that is how the
-API will store it. Integer and Decimal filter what can be typed and offer the
+typing `UFO` into, so the label reads Abbreviation, the filter keeps Latin
+letters, digits and `.&-`, and what is typed is folded to upper case because
+that is how the API will store it. That filter is a copy of `is_abbr` in
+`numfmt.py`, which **refuses** anything else with a 422 — unlike the other four
+formats, which are ways of reading what was typed and take it as given. It is
+not in the root `CLAUDE.md`'s hand-synced table for the same reason a tag's
+shape is not: the API is the one that decides and says so out loud. Keeping the
+filter in step only spares the reader a rejection they can see coming. Integer and Decimal filter what can be typed and offer the
 separator checkbox — from the fourth
 digit, because there is no thousand in `100` and a box that ticks with nothing
 on the page changing reads as broken rather than as inapplicable. It asks

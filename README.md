@@ -112,12 +112,18 @@ banding a TIME by its sort key would file 09:41 under "100".
 
 **Abbreviations** are the fifth format and the one that is not digits — `UFO`,
 `CSI`, `NASA`. Everything else about them is a number's: one entry per meaning,
-anyone can edit, nothing removes one, all of it CC0. Two things are their own.
+anyone can edit, nothing removes one, all of it CC0. Three things are their own.
 They are read at `/a/UFO` rather than `/n/UFO`, so a value somebody files under
 both sections is two entries at two addresses instead of one showing up twice.
-And the value is stored upper case, because `ufo` and `UFO` are one word and
+The value is stored upper case, because `ufo` and `UFO` are one word and
 with no accounts there is nobody to merge two pages about it afterwards — the
-same argument the thousands separator makes one paragraph up.
+same argument the thousands separator makes one paragraph up. And the value is
+Latin letters: `R&D`, `Ph.D` and `MP3` are fine, `유에프오` and `УФО` are the same
+abbreviation in another alphabet and would be a second page about one word.
+
+That is the only place on this wiki with an alphabet rule, and it is about the
+*value*, which is the address. What an entry says is as free as anywhere else —
+`/a/UFO` can be titled and written in Korean, and translated into six more.
 
 ### Anyone can edit
 
