@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   api, fmtDate, FORMAT_LABEL, FORMATS, nickname, originalLabel, subjectWord,
   showValue, TAG_MAX, tagLabel, TAGS_PER_POST,
@@ -218,7 +218,13 @@ export default function PostForm() {
         <p className="form-intro">
           {editing
             ? `Anyone can edit anything here${owner ? `, including entries written by ${owner}` : ''}. The version you replace is kept in the history, and ${owner || 'the original author'} stays credited.`
-            : 'One entry per meaning. If 42 already exists, this joins it rather than replacing it.'}
+            : 'One entry per meaning. If 42 already exists, this joins it rather than replacing it.'}{' '}
+          {/* Outside the ternary: both branches want it. The rule this form
+              cannot enforce is which numbers are worth an entry -- 3 is a
+              valid value whether it is the Trinity or the third GTA -- so the
+              one place it can be said is next to the person about to type
+              one. */}
+          <Link to="/guide">What belongs here</Link>.
         </p>
 
         <div className="row">

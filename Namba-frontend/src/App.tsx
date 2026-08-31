@@ -8,6 +8,7 @@ import Home from './pages/Home'
 import Browse from './pages/Browse'
 import PostPage from './pages/PostPage'
 import PostForm from './pages/PostForm'
+import Guide from './pages/Guide'
 import { useAsync } from './useAsync'
 
 /* A wiki's "show me anything". A route rather than an onClick, so it can be
@@ -301,6 +302,11 @@ function Footer() {
       <p>
         {/* Absolute, not a Link: FastAPI serves these, not the router. Both are
             in the dev proxy beside /api for the same reason. */}
+        {/* Before the API and the source: this is the one of the three a
+            reader who has not written anything yet has a use for. A Link and
+            not an <a> -- unlike its two neighbours it is a route in this
+            bundle, and a full document load here would throw the app away. */}
+        <Link to="/guide">What belongs here</Link>{' · '}
         <a href="/docs">API</a> — open, no key.{' · '}
         <a href="https://github.com/MIIRAIII/Namba">Source</a>
       </p>
@@ -337,6 +343,7 @@ export default function App() {
             <Route path="/p/:id" element={<PostPage />} />
             <Route path="/p/:id/edit" element={<PostForm />} />
             <Route path="/new" element={<PostForm />} />
+            <Route path="/guide" element={<Guide />} />
             <Route
               path="*"
               element={
