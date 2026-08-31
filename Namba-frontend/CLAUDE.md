@@ -509,6 +509,26 @@ works but `/api/numbers/{value}` would not.
 `/search` — because they differ only in which filter reaches `api.posts()`. Add
 a fifth list view by extending its `mode`, not by copying the file.
 
+`/guide` is the odd one and the only page here that is prose rather than a
+query — `Guide.tsx`, no fetch, no state, no props. It is where the one rule
+this app cannot enforce is written down: `3` is a valid value whether it is
+the Trinity or the third GTA, so nothing in `numfmt.py` or in a Pydantic model
+can tell an entry from a serial number, and the only place the difference can
+be said is to the person about to type one. Two links reach it — the footer and
+`PostForm`'s intro — and there is no third. **Not the header**: the navigation
+is a search box and three pills, and a fourth is the 900px row's fifth
+breakpoint.
+
+It writes no CSS of its own worth the name. `.body` is the class `/p/:id`'s
+markdown renders into and carries the whole prose rhythm; `.guide` rides on
+`.form`'s rules for the measure and the `h1`, plus one declaration for the
+standfirst. And it is **deliberately absent from the `:is()` no-select list**
+that every other sentence the app says about itself is in — that rule is there
+so a drag across an entry does not come away with band labels sitting on top
+of it, this page has no entry on it to contaminate, and a page of rules is the
+one thing in this app somebody has a reason to quote at somebody else. Do not
+"finish" the list by adding it.
+
 `/n/` and `/a/` are two sections over one column and the mode is what picks
 between them: it sends `section` to the API, folds the value to upper case for
 `/a/` so that an old `/a/ufo` link still lands, and chooses the noun the hero
@@ -714,7 +734,12 @@ as a copy of the front page. Two consequences for work in here:
   behind: it is a flat PNG and cannot follow a theme, let alone dark mode.
 - **A new route is `noindex` until somebody says otherwise**, which is the safe
   way round. If a route added here deserves to be in a search result, it needs a
-  branch in `_index()` — adding the `<Route>` alone is not enough.
+  branch in `_index()` — adding the `<Route>` alone is not enough. `/guide` is
+  the only route that has ever asked: `head_guide()` gives it a title and blurb
+  of its own rather than `page_bits()`, which would hand it the site's and put
+  a copy of the front page in the result. It is in `sitemap()` for the reason
+  every entry is — the footer's link to it is a `<Link>` no crawler runs the
+  JavaScript to see.
 - **`SiteTitle` in `App.tsx` is the one thing in here that touches the head, and
   it only ever puts it back.** A client-side navigation fetches no document, so
   the tab kept the last server-written title — "book — 17 entries" while you
