@@ -267,13 +267,21 @@ What actually changes shape, rather than size:
   rather than an ellipsis at twelve characters.
 - **The format tabs shorten rather than wrap.** Five full labels are 420px of
   type against the 288 a 320px screen has, so below 560 `.tabs .tab-tail` is
-  hidden and the strip reads `Int Dec Mix Time Abbr`. It is one label, not two:
-  a tab renders `FORMAT_SHORT[f]` and then the *remainder* of `FORMAT_LABEL[f]`
-  in the tail, sliced by length — so **every short label has to stay a prefix
-  of its long one**, or the tab says one word wide and a different word narrow.
-  Integer alone used to carry the tail; a fifth format made it every label's.
-  It goes at 560 and not at the ~430 where the strip actually wraps, because a
-  fifth breakpoint for five words is the worse trade.
+  hidden and the strip reads `Int. Dec. Mix. Time Abbr.`. It is one label, not
+  two: a tab renders `FORMAT_SHORT[f]` and then the *remainder* of
+  `FORMAT_LABEL[f]` in the tail, sliced by length — so **every short label has
+  to stay a prefix of its long one**, or the tab says one word wide and a
+  different word narrow. Integer alone used to carry the tail; a fifth format
+  made it every label's. It goes at 560 and not at the ~430 where the strip
+  actually wraps, because a fifth breakpoint for five words is the worse trade.
+
+  The full stop is a third piece, `.tab-dot`, and it is CSS-toggled on the same
+  breakpoint in the opposite direction — hidden wide, shown narrow, so it
+  appears exactly where the tail goes. It is rendered only when the short form
+  differs from the label, which is what keeps `Time` unpunctuated: it is its own
+  name, not a word cut off. A new format whose short form is the whole label
+  gets that for free; one that is genuinely shortened must not be given a stop
+  inside `FORMAT_SHORT` itself, or the prefix-slice above puts it in the tail.
 - **`.spacer`** becomes a line break below 560 (`flex: 1 0 100%`), so the
   destructive button — Remove this language — is never beside Save, and the
   credits toggle and Edit take a line of their own rather than sitting beside
