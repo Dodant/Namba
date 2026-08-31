@@ -230,8 +230,16 @@ function Index({ lang }: { lang: string }) {
                 has stopped being a strip. Every label now carries the tail
                 Integer used to carry alone: FORMAT_SHORT is what is left at
                 the narrow end, and it is sliced off the label rather than
-                written out, so the two cannot say different words. */}
+                written out, so the two cannot say different words.
+
+                The full stop is the other half of that: "Abbr" is a word
+                nobody wrote and "Abbr." is the label shortened, which is
+                what actually happened. It rides with the tail rather than
+                against it -- shown exactly when the tail is hidden, and only
+                on a label there was something to cut from, so Time keeps its
+                own name unpunctuated. */}
             {FORMAT_SHORT[f]}
+            {FORMAT_SHORT[f] !== FORMAT_LABEL[f] && <span className="tab-dot">.</span>}
             <span className="tab-tail">{FORMAT_LABEL[f].slice(FORMAT_SHORT[f].length)}</span>
           </Link>
         ))}

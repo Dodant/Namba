@@ -428,8 +428,10 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
    rather than left at the 15px the strip wears with room to spare. It goes at
    560 rather than at the ~430 where the wrap actually starts, because a fifth
    breakpoint for five words is a worse trade than a phone reading Int. */
+.tabs .tab-dot { display: none; }
 @media (max-width: 560px) {
   .tabs .tab-tail { display: none; }
+  .tabs .tab-dot { display: inline; }
   .tabs a, .tabs button { padding-left: 12px; padding-right: 12px; }
 }
 
