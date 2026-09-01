@@ -552,6 +552,12 @@ than the half a poster does. **Every heading carries an `id` for that**:
 `/guide#mining` is a link that goes in a delete request, and the `ScrollTop`
 hash effect exists because of these.
 
+**Section headings are noun phrases — "3. Number mining", not "One work is not
+a quarry" — and that is the citation design, not a house style.** The point of
+the ids is that a delete request links to a rule; "see §Number mining" reads
+and "see §One work is not a quarry" does not. Anything added here is named the
+way a reference work names a section, in both languages.
+
 **The words are in `src/guide/`, not in the component, and the shape is in
 `outline.ts`, not in either language file.** `OUTLINE` is the document's
 sections in the order they read; a language file is a `Record<SectionId,

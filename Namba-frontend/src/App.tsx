@@ -345,7 +345,7 @@ function Footer() {
             reader who has not written anything yet has a use for. A Link and
             not an <a> -- unlike its two neighbours it is a route in this
             bundle, and a full document load here would throw the app away. */}
-        <Link to="/guide">What belongs here</Link>{' · '}
+        <Link to="/guide">Entry guidelines</Link>{' · '}
         <a href="/docs">API</a> — open, no key.{' · '}
         <a href="https://github.com/MIIRAIII/Namba">Source</a>
       </p>

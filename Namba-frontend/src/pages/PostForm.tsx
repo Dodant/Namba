@@ -216,7 +216,7 @@ export default function PostForm() {
               valid value whether it is the Trinity or the third GTA -- so the
               one place it can be said is next to the person about to type
               one. */}
-          <Link to="/guide">What belongs here</Link>.
+          <Link to="/guide">Entry guidelines</Link>.
         </p>
 
         <div className="row">

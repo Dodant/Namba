@@ -1337,14 +1337,14 @@ def head_guide(page, base):
     would be indistinguishable from the front page.
     """
     url = base + "guide"
-    title = "What belongs here — Namba"
+    title = "Entry guidelines — Namba"
     desc = ("What makes an entry on Namba: a number in a work, a number that "
             "stands for something, a constant. Not a number that only counts "
             "its own sequels.")
     return write_head(
         page, title=title, desc=desc, canonical=url,
         og=og_tags(title, desc, url, "article", base=base),
-        ld=[crumbs(base, [("What belongs here", url)])],
+        ld=[crumbs(base, [("Entry guidelines", url)])],
     )
 
 

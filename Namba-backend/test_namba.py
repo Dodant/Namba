@@ -437,12 +437,14 @@ def test_head_per_route():
     # site's, and a search result for the rules would then be a duplicate of
     # the front page's.
     page = c.get("/guide").text
-    assert "<title>What belongs here — Namba</title>" in page, page[:400]
+    assert "<title>Entry guidelines — Namba</title>" in page, page[:400]
     assert 'rel="canonical" href="http://testserver/guide"' in page
     assert "noindex" not in page, "the one page that says what a wiki keeps"
     assert "only counts its own sequels" in page, page[:800]
     assert "a wiki of numbers" not in page, "the site's own blurb, on the rules"
     crumb, = _ld(page)[0]
+    assert [i["name"] for i in crumb["itemListElement"]] == [
+        "Namba", "Entry guidelines"], crumb
     assert [i["item"] for i in crumb["itemListElement"]] == [
         "http://testserver/", "http://testserver/guide"], crumb
     assert 'property="og:image" content="http://testserver/og.png"' in page

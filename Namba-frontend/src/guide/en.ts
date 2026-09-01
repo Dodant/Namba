@@ -6,7 +6,7 @@ import type { GuideDoc } from './outline'
 const en: GuideDoc = {
   version: '0.2',
   updated: '2026-09-01',
-  title: 'What belongs here',
+  title: 'Entry guidelines',
   lede:
     'Namba is a wiki of what numbers mean — not a list of every place a number ' +
     'turns up. An entry is one meaning of one number, and the meaning has to ' +
@@ -18,7 +18,7 @@ const en: GuideDoc = {
     'the two differ, the English one is the rule.',
   sections: {
     test: {
-      heading: 'The test',
+      heading: 'Inclusion test',
       body: `**Could the same rule produce a hundred more entries?** If it could, what
 you have is a series rather than a meaning. Every rule under this one is that
 question asked about a particular kind of thing.
@@ -30,7 +30,7 @@ kind of number.`,
     },
 
     'the-point': {
-      heading: '1. The number has to be the point',
+      heading: '1. Numbers that carry the meaning',
       body: `A number belongs when it is part of what the thing is — printed in its title,
 spoken in its text, or standing for something people already recognise.
 
@@ -49,7 +49,7 @@ background of a scene is not an entry; 10:04 PM is.`,
     },
 
     sequences: {
-      heading: '2. Not a number that only counts its own sequels',
+      heading: '2. Sequence and edition numbers',
       body: `Season 2. *GTA 3*. The 2022 World Cup. iPhone 15. Super Bowl 52. Episode 4. The
 number is an index, an edition or a year, and it carries no meaning the one
 before it did not.
@@ -72,7 +72,7 @@ and \`/n/1\` through \`/n/30\` would be nothing but "Season N of —".`,
     },
 
     mining: {
-      heading: '3. One work is not a quarry',
+      heading: '3. Number mining',
       body: `A film has hundreds of numbers in it. Do not read one and file them.
 
 A number taken out of a work should be at least one of these: a plot device,
@@ -87,7 +87,7 @@ numbers in it.`,
     },
 
     why: {
-      heading: '4. Say why the number matters',
+      heading: '4. Explanation and accuracy',
       body: `\`33 — Santal 33\` matches a number to a name. \`33 — Santal 33, for the
 thirty-three ingredients in the formula\` is an entry. The wiki is not an index
 of numbers against names; it is what is attached to them.
@@ -99,7 +99,7 @@ longer by accident.`,
     },
 
     never: {
-      heading: 'Never',
+      heading: 'Never eligible',
       body: `- **Somebody's private number.** A phone number, an account, an ID, a home
   address, a living person's date of birth. There are no accounts here, so
   there is nobody to take it back afterwards — and making a number findable is
@@ -117,7 +117,7 @@ longer by accident.`,
     },
 
     'what-happens': {
-      heading: 'Nothing here is deleted by a click',
+      heading: 'Enforcement',
       body: `An entry that breaks one of these is not removed by whoever noticed. There is no
 delete button anywhere in this wiki and the API refuses the request if you go
 looking for one: on a wiki anyone can write to, a wiki anyone can empty is no
@@ -142,7 +142,7 @@ requires. It is not a moderation tool and it does not come back.`,
     },
 
     'by-subject': {
-      heading: 'The same four questions, by subject',
+      heading: 'Criteria by subject',
       body: `Nothing new below this line — it is the rules above applied one kind of thing at
 a time, for when the answer is not obvious or when somebody needs a row to point
 at.`,
@@ -240,10 +240,10 @@ say the number instead of describing it, and that is a thing you can check
 rather than feel.`,
     },
 
-    writing: { heading: 'Writing the entry' },
+    writing: { heading: 'Writing an entry' },
 
     many: {
-      heading: 'One number, many meanings',
+      heading: 'Multiple meanings',
       body: `A number is not spoken for. 42 holds *The Hitchhiker's Guide*, Jackie Robinson
 and whatever else is filed under it, and each is its own entry — the page at
 \`/n/42\` is the list of them. If 42 is already here, a new entry joins it rather
@@ -251,7 +251,7 @@ than replacing it.`,
     },
 
     duplicates: {
-      heading: 'Do not file one fact twice',
+      heading: 'Duplicate entries',
       body: `\`42 — Jackie Robinson\`, \`42 — Jackie Robinson's jersey number\` and
 \`42 — retired across MLB\` are one fact worded three ways. One entry says all of
 it: *Jackie Robinson wore 42, and it was later retired across Major League
@@ -261,7 +261,7 @@ duplicate.`,
     },
 
     boxes: {
-      heading: 'What goes in which box',
+      heading: 'Form fields',
       body: `The form has fewer fields than you might expect, and that is deliberate. The
 **number** and its **format** decide the address — \`/n/42\` for a number,
 \`/a/UFO\` for an abbreviation. The **title** is what it refers to, in a few
@@ -274,7 +274,7 @@ account.`,
     },
 
     four: {
-      heading: 'What the strongest entries have',
+      heading: 'Summary',
       body: `- **A meaning.** There is something to explain, and the number is what is being
   explained.
 - **Recognition.** The tie between the number and the subject is established
