@@ -94,6 +94,13 @@ jobs:
           cache-to: type=gha,mode=max
 
       # ── deploy ────────────────────────────────────────────────────────────
+      # The role's trust policy accepts two spellings of the OIDC subject,
+      # `repo:MIIRAIII/Namba:...` and `repo:MIIRAIII@<org id>/Namba@<repo id>:...`,
+      # because GitHub is mid-rollout of the id-suffixed one and which arrives is
+      # not ours to pick -- chiral-backend sent the old form and this repo the new
+      # one five hours apart. A mismatch reads only as `Not authorized to perform
+      # sts:AssumeRoleWithWebIdentity`, which names neither claim; CloudTrail's
+      # AssumeRoleWithWebIdentity event carries the subject actually sent.
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v6
         with:
