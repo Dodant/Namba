@@ -61,9 +61,23 @@ const WORDS: Record<number, string[]> = {
   1000000: ['million', 'mega'],
 }
 
-/* the number as written and the number as spelled, in one pass. The raw value
-   is escaped because "3.14" and "11/22/63" are regex if you let them be; only
-   INTEGER rows get words, since a TIME sort_key of 100 is 01:40, not a hundred.
+/* Escaped, because "3.14" and "11/22/63" are regex if you let them be, and
+   bounded, because a value lights up where it is the whole number and nowhere
+   else: the 2 in "The Two Popes (2019)" is the first digit of a year, and
+   "Catch-22" is not two of this entry's twos. \b is what says so -- it falls
+   between a word character and anything else, so it finds no seam inside a run
+   of digits, and none is exactly what should match there.
+
+   Conditional, because \b needs a word character on our side of it to be a
+   boundary at all: a value ending in punctuation would be asking for a seam
+   that cannot exist and would never match anything again. */
+const whole = (s: string) =>
+  (/^\w/.test(s) ? '\\b' : '') +
+  s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+  (/\w$/.test(s) ? '\\b' : '')
+
+/* the number as written and the number as spelled, in one pass. Only INTEGER
+   rows get words, since a TIME sort_key of 100 is 01:40, not a hundred.
    The optional "th" swallows the regular ordinals -- sixth, tenth, hundredth --
    so they light up whole; the irregular ones are spelled out in WORDS, and the
    longest form goes first so "eighth" wins over "eight". */
@@ -71,8 +85,8 @@ function marker({ value, format }: NumberEntry) {
   const words = format === 'INTEGER' ? (WORDS[Number(value)] ?? []) : []
   const grouped = showValue(value, true)
   const alts = [
-    value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-    ...(grouped === value ? [] : [grouped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')]),
+    whole(value),
+    ...(grouped === value ? [] : [whole(grouped)]),
     ...[...words]
       .sort((a, b) => b.length - a.length)
       .map((w) => `\\b${w}(?:th)?(?!teen|ty)`),
