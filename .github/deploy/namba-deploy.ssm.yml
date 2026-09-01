@@ -19,6 +19,9 @@ mainSteps:
       timeoutSeconds: '600'
       runCommand:
         - |
+          #!/bin/bash
+          # aws:runShellScript 는 sh(dash) 로 실행한다. pipefail 은 bash 전용이라
+          # 이 줄이 없으면 문서가 바로 아래 set 에서 매번 죽는다.
           set -euo pipefail
           IMAGE='{{ Image }}'
           cd /home/ubuntu/chiral-root
