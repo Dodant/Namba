@@ -520,7 +520,7 @@ works but `/api/numbers/{value}` would not.
 a fifth list view by extending its `mode`, not by copying the file.
 
 `/guide` is the odd one and the only page here that is prose rather than a
-query — `Guide.tsx`, no fetch, no state, no props. It is where the one rule
+query — `Guide.tsx`, no fetch, no state. It is where the one rule
 this app cannot enforce is written down: `3` is a valid value whether it is
 the Trinity or the third GTA, so nothing in `numfmt.py` or in a Pydantic model
 can tell an entry from a serial number, and the only place the difference can
@@ -532,12 +532,48 @@ breakpoint.
 **It is two layers over one `<hr>`, and the split is what keeps it usable.**
 Above it is what somebody about to type a value reads — one test, four rules,
 four things that are never entries, and what happens when an entry breaks one.
-Below it the same questions are asked one subject at a time, as nine `Cases`
-tables of *An entry* against *Not an entry*, which is the half an operator
-reads rather than the half a poster does. **Every heading carries an `id` for
-that**: `/guide#mining` is a link that goes in a delete request, and the
-`ScrollTop` hash effect exists because of these. A new section needs one, and
-`Cases` takes it as a prop so it cannot be forgotten.
+Below it the same questions are asked one subject at a time, as nine tables of
+*An entry* against *Not an entry*, which is the half an operator reads rather
+than the half a poster does. **Every heading carries an `id` for that**:
+`/guide#mining` is a link that goes in a delete request, and the `ScrollTop`
+hash effect exists because of these.
+
+**The words are in `src/guide/`, not in the component, and the shape is in
+`outline.ts`, not in either language file.** `OUTLINE` is the document's
+sections in the order they read; a language file is a `Record<SectionId,
+Section>` of words for them. That is what makes a translation the same document
+rather than another one — it cannot reorder a section, drop one or invent one,
+and **a language missing a section does not compile**, which is the check
+instead of a test this app has no runner for. It is also why the ids are stable
+across languages: `/guide?lang=ko#mining` is the rule `/guide#mining` is, so an
+operator can quote it to a poster in either.
+
+`GUIDES` in `src/guide/index.ts` is every translation, keyed by the same
+endonym `LANG_CODE` uses — which is why `LANG_CODE` and `langLabel` moved from
+`PostForm.tsx` into `api.ts`. **This is not the header's picker and not
+`/api/languages`**, which counts what readers translated *entries* into and is
+empty on a fresh wiki; this is what the project translated *this document*
+into, and the two sets are different. Adding a language is a file and a line in
+`GUIDES`.
+
+English is `BASE_LANG` and the one the others are measured against. A rule
+changes there first and `version` goes up, so a translation can be left behind
+— which is the live hazard of a policy page in two languages, and is therefore
+**said on the page**, in that language, above the lede. `stale` is a required
+field for exactly that reason: a new translation cannot ship without the
+sentence that admits it may be out of date.
+
+The version's date is the **only absolute date in this app**. `fmtDate` is
+right everywhere else because every other date here is a byline or an edit,
+read to answer how fresh a thing is; a version is read to answer *which* rules,
+and "changed 5 months ago" cannot answer that. It is not somebody forgetting
+`fmtDate`.
+
+`?lang=ko`, not state and not `displayLang`: a rule an operator is quoting has
+to travel. The picker navigates with `useNavigate` rather than
+`setSearchParams` because a partial path defaults every field it does not name
+— `setSearchParams` drops the fragment, and switching language while parked on
+`#mining` has to keep you on `#mining`.
 
 The tables wrap in `.tbl` — the same scroll port `PostPage` hands
 `react-markdown`, and the wrapper rather than the `<table>` for the reason
@@ -545,10 +581,19 @@ The tables wrap in `.tbl` — the same scroll port `PostPage` hands
 have it in every one, which is the right way round for a page anybody can add
 a row to.
 
-It writes no CSS of its own worth the name. `.body` is the class `/p/:id`'s
-markdown renders into and carries the whole prose rhythm; `.guide` rides on
-`.form`'s rules for the measure and the `h1`, plus one declaration for the
-standfirst. And it is **deliberately absent from the `:is()` no-select list**
+Prose is markdown rendered by `react-markdown` with `remarkGfm` **and not
+`remarkBreaks`** — the one difference from an entry body's dialect. That plugin
+is there because a reader types into a textarea and expects Enter to break a
+line; these are files in the repository, where a wrapped source line is a
+wrapped source line.
+
+It writes almost no CSS of its own. `.body` is the class `/p/:id`'s markdown
+renders into and carries the whole prose rhythm; `.guide` rides on `.form`'s
+rules for the measure and the `h1`. Three small rules are its own: the
+standfirst (a class, not `:first-of-type`, since the version row became the
+first `<p>`), `.guide-meta`, and `margin: 0` on a paragraph inside a table cell
+— react-markdown renders a cell as one, and `.body p`'s bottom margin pushed
+every table open. And it is **deliberately absent from the `:is()` no-select list**
 that every other sentence the app says about itself is in — that rule is there
 so a drag across an entry does not come away with band labels sitting on top
 of it, this page has no entry on it to contaminate, and a page of rules is the
