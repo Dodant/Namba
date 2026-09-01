@@ -1,0 +1,83 @@
+schemaVersion: '2.2'
+description: >
+  Namba deploy -- a fixed procedure rather than a shell. The CI role may run this
+  document and nothing else on the box, so what a compromised Namba workflow can
+  do to the chiral stack it shares an EC2 with is bounded by what is written
+  here. That is the whole reason this file exists instead of AWS-RunShellScript.
+
+  Image is pattern-locked. The parameter is substituted into the script as text,
+  so the pattern is the only thing standing between a tag and a shell injection.
+parameters:
+  Image:
+    type: String
+    description: GHCR tag to run. This repo's images only, full 40-hex sha only.
+    allowedPattern: '^ghcr\.io/miiraiii/namba:[0-9a-f]{40}$'
+mainSteps:
+  - action: aws:runShellScript
+    name: deploy
+    inputs:
+      timeoutSeconds: '600'
+      runCommand:
+        - |
+          set -euo pipefail
+          IMAGE='{{ Image }}'
+          cd /home/ubuntu/chiral-root
+
+          # 이전 이미지는 .env 에서 읽는다. docker inspect --format 은 Go 템플릿의
+          # 중괄호가 SSM 파라미터 문법과 충돌해서 쓸 수 없다.
+          PREV="$(grep -E '^NAMBA_IMAGE=' .env 2>/dev/null | tail -1 | cut -d= -f2- || true)"
+          echo "[namba] prev=${PREV:-none} new=$IMAGE"
+
+          # GHCR 인증 갱신 — 토큰 회전이 자동 반영되도록 chiral 의 remote-deploy 와
+          # 같은 방식(config.json 직접 기록). docker login --password-stdin 은 SSM
+          # 컨텍스트에서 stdin 전달이 실패한다.
+          R=ap-northeast-2
+          U="$(aws ssm get-parameter --region $R --name /chiral/prod/GHCR_USER  --with-decryption --query Parameter.Value --output text)"
+          T="$(aws ssm get-parameter --region $R --name /chiral/prod/GHCR_TOKEN --with-decryption --query Parameter.Value --output text)"
+          install -d -m 700 -o ubuntu -g ubuntu /home/ubuntu/.docker
+          printf '{"auths":{"ghcr.io":{"auth":"%s"}}}' "$(printf '%s:%s' "$U" "$T" | base64 -w0)" \
+              > /home/ubuntu/.docker/config.json
+          chown ubuntu:ubuntu /home/ubuntu/.docker/config.json
+          chmod 600 /home/ubuntu/.docker/config.json
+          unset U T
+
+          DOCKER_CONFIG=/home/ubuntu/.docker docker pull "$IMAGE"
+
+          # .env 에 적어두면 이후 어떤 compose 명령이 와도 같은 이미지를 쓴다.
+          touch .env && chown ubuntu:ubuntu .env
+          sed -i '/^NAMBA_IMAGE=/d' .env
+          echo "NAMBA_IMAGE=$IMAGE" >> .env
+
+          # 여기부터는 실패해도 즉시 죽지 않는다. 아래 검증 루프가 모든 실패를 한
+          # 자리에서 잡고 롤백해야 하기 때문 -- set -e 로 여기서 끝나면 새 컨테이너가
+          # 안 뜬 상태로 배포가 끝나고 되돌리는 코드에 닿지 못한다.
+          docker compose --profile prod up -d namba || echo "[namba] compose up 실패"
+
+          # nginx 는 upstream 이름을 reload 시점에만 해석한다. recreate 된 컨테이너의
+          # 새 IP 를 잡으려면 reload 가 필요하고, -t 가 먼저 통과해야 chiral 이 안전하다.
+          if docker exec chiral-root-nginx-1 nginx -t >/dev/null 2>&1; then
+            docker exec chiral-root-nginx-1 nginx -s reload
+          else
+            echo "[namba] nginx -t 실패 -- reload 하지 않는다"
+          fi
+
+          CODE=000
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 https://namba.chiral.kr/api/posts || true)"
+            [ "$CODE" = "200" ] && break
+            sleep 2
+          done
+
+          if [ "$CODE" != "200" ]; then
+            echo "[namba] 검증 실패(code=$CODE)"
+            if [ -n "${PREV:-}" ]; then
+              echo "[namba] 되돌린다 → $PREV"
+              sed -i '/^NAMBA_IMAGE=/d' .env
+              echo "NAMBA_IMAGE=$PREV" >> .env
+              docker compose --profile prod up -d namba
+              docker exec chiral-root-nginx-1 nginx -s reload
+            fi
+            exit 1
+          fi
+
+          echo "[namba] deployed $IMAGE (verified 200)"
