@@ -1,8 +1,8 @@
 import { useEffect, useId, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
-  api, fmtDate, FORMAT_LABEL, FORMATS, nickname, originalLabel, subjectWord,
-  showValue, TAG_MAX, tagLabel, TAGS_PER_POST,
+  api, fmtDate, FORMAT_LABEL, FORMATS, LANG_CODE, langLabel, nickname,
+  originalLabel, subjectWord, showValue, TAG_MAX, tagLabel, TAGS_PER_POST,
   type Format, type Post, type Revision, type Tag, type Translation,
 } from '../api'
 import { useAsync } from '../useAsync'
@@ -63,18 +63,10 @@ function toggleTag(tags: Tag[], raw: Tag, keep = false) {
    it, so adding a language stays one line and there is nothing to keep in
    step. Display only: lang is stored as the name and /api/languages counts
    the names, so a code never reaches the wire. */
-const LANG_CODE: Record<string, string> = {
-  'English': 'en', '한국어': 'ko', '日本語': 'ja', '中文': 'zh',
-  'Español': 'es', 'Français': 'fr', 'Deutsch': 'de', 'Português': 'pt',
-  'Русский': 'ru', 'Italiano': 'it', 'Nederlands': 'nl', 'Polski': 'pl',
-  'Türkçe': 'tr', 'Tiếng Việt': 'vi', 'ไทย': 'th', 'Bahasa Indonesia': 'id',
-  'हिन्दी': 'hi', 'العربية': 'ar',
-}
 /* The first key is also the default: "Written in" has no empty choice, so a
    new entry starts English and an old one with nothing recorded picks it up on
    the next save. Nothing on this wiki reads better for not knowing. */
 const LANGS = Object.keys(LANG_CODE)
-const langLabel = (l: string) => (LANG_CODE[l] ? `${l} (${LANG_CODE[l]})` : l)
 
 /* An entry written before this list, or before a line was taken out of it,
    keeps what it has: a form that loaded a language it cannot show would drop

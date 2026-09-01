@@ -50,6 +50,28 @@ export const REASON_LABEL: Record<string, string> = {
   OTHER: 'Something else',
 }
 
+/* The languages this app offers, as endonyms -- the name a language calls
+   itself is the one a reader of it recognises -- each with its ISO 639-1 code,
+   because an endonym only recognises the reader back. `ไทย` says nothing to
+   everyone else and `(th)` does.
+
+   Here rather than in PostForm because the guide's language picker wants the
+   same labels, and a second copy is a language spelled two ways. It is still
+   mirrored nowhere on the server: the API takes any 40-character string and
+   /api/languages reports what the wiki actually says. The code is display
+   only -- `lang` is stored as the name.
+
+   langLabel falls back to the bare name, for a language an entry kept after a
+   line was taken out of this list. */
+export const LANG_CODE: Record<string, string> = {
+  'English': 'en', '한국어': 'ko', '日本語': 'ja', '中文': 'zh',
+  'Español': 'es', 'Français': 'fr', 'Deutsch': 'de', 'Português': 'pt',
+  'Русский': 'ru', 'Italiano': 'it', 'Nederlands': 'nl', 'Polski': 'pl',
+  'Türkçe': 'tr', 'Tiếng Việt': 'vi', 'ไทย': 'th', 'Bahasa Indonesia': 'id',
+  'हिन्दी': 'hi', 'العربية': 'ar',
+}
+export const langLabel = (l: string) => (LANG_CODE[l] ? `${l} (${LANG_CODE[l]})` : l)
+
 export const FORMATS = ['INTEGER', 'DECIMAL', 'MIXED', 'TIME', 'ABBR'] as const
 export type Format = (typeof FORMATS)[number]
 
