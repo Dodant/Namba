@@ -352,11 +352,21 @@ export default function PostForm() {
           <label htmlFor={fid('lang')}>Written in</label>
           <div className="select narrow">
             <select id={fid('lang')} value={lang} onChange={(e) => setLang(e.target.value)}>
-              {langsWith(lang).map((l) => (
-                <option key={l} value={l}>
-                  {langLabel(l)}
-                </option>
-              ))}
+              {/* minus whatever is already a tab below: the Languages panel has
+                  always kept the entry's own language off its menu, and this is
+                  the same rule from the other side -- picking 한국어 here on an
+                  entry that already has a 한국어 version is the entry twice, and
+                  the tab bar cannot say which of the two it is offering. The
+                  backend answers 422 either way round. */}
+              {langsWith(lang)
+                .filter(
+                  (l) => l === lang || !(post?.translations ?? []).some((t) => t.lang === l),
+                )
+                .map((l) => (
+                  <option key={l} value={l}>
+                    {langLabel(l)}
+                  </option>
+                ))}
             </select>
           </div>
         </div>

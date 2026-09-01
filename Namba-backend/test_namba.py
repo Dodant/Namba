@@ -1723,6 +1723,25 @@ def test_api_round_trip():
     titles = [e["title"] for x in nums if x["value"] == "42" for e in x["entries"]]
     assert "재키 로빈슨 (야구)" in titles, titles
 
+    # one language, one tab. A translation into the language the entry is
+    # already written in is the entry twice, and so is the entry's own language
+    # moving onto a tab that already exists -- 422 from both sides, and folded
+    # for case the way the translations table itself is. The form has kept both
+    # off its menus for longer; this is the half an open API can be told.
+    dup = c.post("/api/posts", json={"value": "99", "title": "twice over",
+                                     "lang": "English"}).json()
+    assert c.put(f"/api/posts/{dup['id']}/translations",
+                 json={"lang": "english", "title": "x"}).status_code == 422
+    assert c.get(f"/api/posts/{dup['id']}").json()["translations"] == []
+    assert c.get(f"/api/posts/{dup['id']}/revisions").json() == [], \
+        "a refused write left a revision saying somebody replaced the entry"
+    c.put(f"/api/posts/{dup['id']}/translations", json={"lang": "한국어", "title": "두 번"})
+    assert c.patch(f"/api/posts/{dup['id']}", json={"lang": " 한국어 "}).status_code == 422
+    assert c.get(f"/api/posts/{dup['id']}").json()["lang"] == "English", \
+        "the entry moved onto its own translation's language anyway"
+    # a language nothing is written in yet is still free
+    assert c.patch(f"/api/posts/{dup['id']}", json={"lang": "Español"}).status_code == 200
+
     # a removed translation is recoverable, same as any other edit
     gone = c.delete(f"/api/posts/{tid}/translations/{same['translations'][0]['id']}",
                     params={"author": "zaphod"}).json()

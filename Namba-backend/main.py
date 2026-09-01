@@ -744,6 +744,10 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
     # is how the form removes one -- and defaulting it to None made "unchanged"
     # and "clear this" the same request, so Remove quietly did nothing.
     sent = p.model_dump(exclude_unset=True)
+    # the same rule from the other side -- "Written in" is a menu of every
+    # language, and one of them may already be a tab on this entry
+    if "lang" in sent and says_it_twice(p.lang, [t["lang"] for t in current["translations"]]):
+        raise HTTPException(422, "the entry already has a version in that language")
     with con:
         rev = snapshot(con, post_id, p.author.strip() or "anonymous")
         # the box has to be settled before the value is, since it decides
@@ -848,12 +852,34 @@ def restore_revision(
     return fetch_one(con, post_id)
 
 
+def says_it_twice(lang, others) -> bool:
+    """Whether `lang` is already how this entry reads somewhere else.
+
+    One language, one tab. The entry's own language and a translation into it
+    are the entry twice, and the tab bar has no way to tell the reader which of
+    the two it is offering -- PostForm has kept a translation off that menu
+    since the panel existed, and this is the same rule where the API can see
+    it: the wiki's API is open and no key, so a rule that lives only in a form
+    is a rule for the one client that happens to use the form.
+
+    Case-folded, because translations.lang is COLLATE NOCASE and "korean" and
+    "Korean" are already one row there. posts.lang is not, and it is not going
+    to be the way around it.
+    """
+    a = (lang or "").strip().casefold()
+    return bool(a) and any(a == (o or "").strip().casefold() for o in others)
+
+
 @app.put("/api/posts/{post_id}/translations")
 def put_translation(
     post_id: int, t: TranslationIn, client=Depends(guard), con=Depends(get_db)
 ):
     """Add this entry in another language, or rewrite the one already there."""
-    fetch_one(con, post_id)  # 404 if the post is gone
+    post = fetch_one(con, post_id)  # 404 if the post is gone
+    # before the snapshot, not inside it: a request that changes nothing must
+    # not leave a revision behind saying somebody replaced the entry
+    if says_it_twice(t.lang, [post["lang"]]):
+        raise HTTPException(422, "the entry is already written in that language")
     who = t.author.strip() or "anonymous"
     ts = now()
     with con:
