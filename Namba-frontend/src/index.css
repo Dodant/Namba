@@ -1062,7 +1062,10 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    .wrap's 1160 and no more. It reads wider than a measure wants -- the nine
    two-column tables are what the width is for, and they were the narrow thing
    in a 680px column while half the screen sat empty beside them. */
-.guide { padding-bottom: 28px; }
+/* padding rather than a margin on the row inside, because .body > :first-child
+   zeroes a first child's top margin and .guide-meta is one -- the space above
+   the page belongs to the page. The same clamp every other page opens on. */
+.guide { padding: clamp(20px, 3vw, 26px) 0 28px; }
 /* ...and the tables take it with it. Two columns of the same kind of thing,
    so they split the width evenly rather than sizing to their longest cell --
    nine content-sized tables down a full-width page came out nine different
@@ -1074,18 +1077,28 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    form says about itself, and on four lines it pulls the paragraph in
    narrower than every line under it. A class and not :first-of-type, which
    it was until the version row above it became the first <p> on the page. */
-.guide .lede { font-size: 16.5px; color: var(--ink-soft); }
+.guide .lede { font-size: 16.5px; color: var(--ink-soft); }  /* two classes: .body p would win a tie */
 /* The version and the language it is being read in, over the h1: the shape
    every hero here has, a mono kicker over the subject. .hero-said .kicker is
    scoped to the hero and this is not one, so it takes the same three
    declarations rather than a shared class that would have to mean two things. */
-.guide-meta {
+/* Scoped to .guide rather than left bare, and that is not tidiness: .body p
+   sets `margin: 0 0 1em` at (0,1,1) and this row is a <p>, so a bare
+   .guide-meta lost its own bottom margin to it -- 1em of 10px mono, 10px,
+   silently. Two classes beat a class and an element. */
+.guide .guide-meta {
   display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px;
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--muted);
-  margin: clamp(20px, 3vw, 26px) 0 6px;
+  margin: 0 0 4px;
 }
-.guide-meta select { font-size: 11px; padding: 5px 30px 5px 12px; }
+/* 4px under the row against 26 above it, which is the hero's own spacing
+   (.hero-said is a column with gap: 4px) and the point of a kicker: it belongs
+   to the title under it, not to the rule over it. Without this the h1's own
+   top margin collapses the pair back to 26 and the row floats between the two.
+   It was 0 above and 26 below, which is this the wrong way round. */
+.guide .guide-meta + h1 { margin-top: 0; }
+.guide .guide-meta select { font-size: 11px; padding: 5px 30px 5px 12px; }
 /* react-markdown renders a cell's text as a paragraph, and .body p carries a
    bottom margin meant for prose. Two rows of it pushed every table open. */
 .body :is(th, td) > p { margin: 0; }

@@ -610,13 +610,32 @@ is there because a reader types into a textarea and expects Enter to break a
 line; these are files in the repository, where a wrapped source line is a
 wrapped source line.
 
-It writes almost no CSS of its own. `.body` is the class `/p/:id`'s markdown
-renders into and carries the whole prose rhythm; `.guide` rides on `.form`'s
-rule for the `h1`. Four small rules are its own: the
+**Everything `.guide` adds is scoped to `.guide`, and that is specificity
+rather than tidiness.** `.body` is a stylesheet written for a stranger's
+markdown and it is thorough — `.body p` sets `margin: 0 0 1em` at (0,1,1) and
+`.body > :first-child` zeroes a top margin at (0,2,0). A bare `.guide-meta` at
+(0,1,0) lost its bottom margin to the first and got 1em of 10px mono instead of
+the 4 it asked for; a bare `.guide-meta + h1` tied with `.guide h1` and lost on
+source order, since the `.guide` rules were inserted above it. Neither failed
+loudly. **Write two classes here, or measure what you got.** The space above
+the page is a `padding` on `.guide` for the same reason — a margin on the first
+child inside it is the one thing `.body` is guaranteed to erase.
+
+`.body` is the class `/p/:id`'s markdown renders into and carries the whole
+prose rhythm; `.guide` rides on `.form`'s rule for the `h1`. Its own rules are
+few: the
 standfirst (a class, not `:first-of-type`, since the version row became the
 first `<p>`), `.guide-meta`, and `margin: 0` on a paragraph inside a table cell
 — react-markdown renders a cell as one, and `.body p`'s bottom margin pushed
-every table open. And it is **deliberately absent from the `:is()` no-select list**
+every table open.
+
+The version row is a kicker and is spaced like one: the page's `clamp(20px,
+3vw, 26px)` above it — the gap every other page opens on, measured against
+`/new` — and 4px below, which is `.hero-said`'s own column gap. It arrived 0
+above and 26 below, so the capsule sat *on* the header's rule and the row read
+as the header's rather than the title's. A kicker belongs to what is under it.
+
+And it is **deliberately absent from the `:is()` no-select list**
 that every other sentence the app says about itself is in — that rule is there
 so a drag across an entry does not come away with band labels sitting on top
 of it, this page has no entry on it to contaminate, and a page of rules is the
