@@ -1092,14 +1092,15 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   gap: 4px 10px;
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--muted);
-  margin: 0 0 4px;
+  margin: 0 0 12px;
 }
-/* 4px under the row against 26 above it. Across the page from the title
-   rather than over it, the row still has to sit in the title's band and not
-   the header's -- and without this the h1's own top margin collapses the pair
-   back to 26 and it floats exactly between the two. It arrived 0 above and 26
-   below, which is this the wrong way round: the capsule sat on the header's
-   rule. */
+/* 12px under the row against 26 above it. Still nearer the title than the
+   rule, so the row belongs to the title's band -- but not the 4px a kicker
+   over its own subject would take: across the page from the title, a capsule
+   that close reads as sitting on the h1 rather than beside it. Without this
+   the h1's own top margin collapses the pair back to 26 and the row floats
+   exactly between the two. It arrived 0 above and 26 below, which is this the
+   wrong way round: the capsule sat on the header's rule. */
 .guide .guide-meta + h1 { margin-top: 0; }
 .guide .guide-meta select { font-size: 11px; padding: 5px 30px 5px 12px; }
 /* react-markdown renders a cell's text as a paragraph, and .body p carries a

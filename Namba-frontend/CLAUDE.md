@@ -653,9 +653,11 @@ The version row sits on the line above the `h1` and is pushed to the far edge:
 the title anchors the left, what is true *about* the document answers on the
 right, and the picker's edge lands on the text column's. Spacing is the page's
 `clamp(20px, 3vw, 26px)` above — the gap every other page opens on, measured
-against `/new` — and 4px below. Across the page from the title rather than over
-it, the row still belongs to the title's band and not the header's; it arrived
-0 above and 26 below, which put the capsule *on* the header's rule.
+against `/new` — and 12px below. Still nearer the title than the rule, so the
+row belongs to the title's band and not the header's, but not the 4px a kicker
+sitting over its own subject would take: across the page from the title, a
+capsule that close reads as resting on the `h1` rather than beside it. It
+arrived 0 above and 26 below, which put the capsule *on* the header's rule.
 
 And it is **deliberately absent from the `:is()` no-select list**
 that every other sentence the app says about itself is in — that rule is there
