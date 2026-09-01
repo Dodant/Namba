@@ -208,7 +208,17 @@ sanitiser config to get wrong.
   not decoration: before it, the only thing resetting the scroll was the lists
   blanking out on load, and the two changes had to land together. `POP` is
   exempt — Back is the reader's own position, and restoring it properly would
-  mean storing an offset per history entry.
+  mean storing an offset per history entry. **A hash is exempt
+  too, and carries a second effect of its own.** A fragment names a place in
+  the page and the top is not it; more than that, the browser cannot reach that
+  place unaided — `/guide#mining` arrives as a document whose body is an empty
+  `<div id="root">`, so the element is looked for before React draws it, is not
+  found, and nothing retries. Measured on `/guide#works`, the reader landed
+  1931px past the heading. The fix is a `useLayoutEffect` keyed on the hash,
+  which runs after React paints and before the browser does, and which needs no
+  `exhaustive-deps` disable to say so — the count of those is still two. It
+  cannot exempt `POP` the way the effect above does: a document *opened* at a
+  fragment is a `POP`, and that is the case it exists for.
 - `PostCard.tsx` must export only components (fast refresh). Shared helpers like
   `fmtDate` and `entryPath` live in `api.ts`.
 - **Every date is relative.** `fmtDate` is "4 minutes ago", "2 days ago",
@@ -518,6 +528,22 @@ be said is to the person about to type one. Two links reach it — the footer an
 `PostForm`'s intro — and there is no third. **Not the header**: the navigation
 is a search box and three pills, and a fourth is the 900px row's fifth
 breakpoint.
+
+**It is two layers over one `<hr>`, and the split is what keeps it usable.**
+Above it is what somebody about to type a value reads — one test, four rules,
+four things that are never entries, and what happens when an entry breaks one.
+Below it the same questions are asked one subject at a time, as nine `Cases`
+tables of *An entry* against *Not an entry*, which is the half an operator
+reads rather than the half a poster does. **Every heading carries an `id` for
+that**: `/guide#mining` is a link that goes in a delete request, and the
+`ScrollTop` hash effect exists because of these. A new section needs one, and
+`Cases` takes it as a prop so it cannot be forgotten.
+
+The tables wrap in `.tbl` — the same scroll port `PostPage` hands
+`react-markdown`, and the wrapper rather than the `<table>` for the reason
+`index.css` gives beside it. Measured at 320px they need it in no case and
+have it in every one, which is the right way round for a page anybody can add
+a row to.
 
 It writes no CSS of its own worth the name. `.body` is the class `/p/:id`'s
 markdown renders into and carries the whole prose rhythm; `.guide` rides on
