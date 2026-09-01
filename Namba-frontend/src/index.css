@@ -1479,3 +1479,35 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    become the loudest thing under the fold */
 .foot a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .foot a:hover { color: var(--accent); }
+
+/* --- back to top -------------------------------------------------- */
+/* A .btn turned into a circle and parked in the page's own gutter: the same
+   clamp and the same safe-area inset .wrap pads with, so it sits over the
+   margin on a desktop and lines its right edge up with the text column
+   instead of hovering somewhere in it.
+
+   visibility, not display or an unmount, because it is what makes the fade
+   possible in both directions -- and it is what keeps a control nobody can
+   see out of the tab order and out of reach of a click, which opacity alone
+   would not. It transitions in steps rather than continuously, which is
+   exactly right here: visible for the whole fade out, hidden the moment it
+   would be a target you cannot see.
+
+   Last in .wrap and positioned, so it paints over the page without a z-index
+   -- there is not one anywhere else in this file and this is not the rule to
+   start with. */
+.to-top {
+  position: fixed;
+  right: max(clamp(16px, 4vw, 34px), env(safe-area-inset-right));
+  bottom: max(clamp(16px, 4vw, 34px), env(safe-area-inset-bottom));
+  width: 40px; height: 40px; padding: 0;
+  justify-content: center;
+  /* the panel fill is not decoration: a page's worth of text runs under this
+     thing, and a translucent one would be unreadable over every line of it.
+     No shadow to lift it off them either -- .btn's own border does that in
+     both themes, where a black shadow only does it in one. */
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.18s ease, visibility 0.18s ease,
+              border-color 0.12s ease, color 0.12s ease;
+}
+.to-top.shown { opacity: 1; visibility: visible; }

@@ -315,6 +315,62 @@ function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void })
   )
 }
 
+/* Up, drawn to the die and the clock's spec -- the same 16px box, 1.3 stroke,
+   no fill, currentColor. */
+const UP = (
+  <svg className="ico" viewBox="0 0 16 16" aria-hidden="true">
+    <path d="M8 13.1V3.7M3.9 7.8 8 3.6l4.1 4.2" fill="none" stroke="currentColor"
+          strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/* The way back from the bottom of a long one -- /guide is twenty-two headings,
+   an index band runs to a few hundred rows. Appears a screenful down, which is
+   the point where the header has been gone long enough to be missed, rather
+   than at a pixel count that means something different on a phone and a
+   monitor.
+
+   scrollTo carries its behaviour rather than html { scroll-behavior: smooth },
+   which would have been fewer lines and would also have taken ScrollTop's
+   scrollIntoView with it: a fragment load would animate down the page, and the
+   scrollY guard in there -- the one that stands down if the reader has started
+   scrolling -- would be reading a position mid-flight. Reduced motion is asked
+   here for the same reason; the CSS rule that answers it only reaches
+   transitions.
+
+   Hidden with visibility rather than unmounted, so it fades on both edges and
+   cannot be tabbed to or clicked while it is invisible. */
+function ToTop() {
+  const [show, setShow] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setShow(window.scrollY > window.innerHeight)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  return (
+    <button
+      type="button"
+      /* not .btn.on -- that class is "this is the view you are in" and
+         arrives painted accent; this one is only whether the control is
+         there at all */
+      className={`btn to-top ${show ? 'shown' : ''}`}
+      aria-label="Back to top"
+      onClick={() =>
+        window.scrollTo({
+          top: 0,
+          behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
+            ? 'auto'
+            : 'smooth',
+        })
+      }
+    >
+      {UP}
+    </button>
+  )
+}
+
 /* Four things that belong on every page and nowhere else.
 
    Not five. The takedown path was going to live here until it turned out
@@ -394,6 +450,7 @@ export default function App() {
           </Routes>
         </main>
         <Footer />
+        <ToTop />
       </div>
     </BrowserRouter>
   )
