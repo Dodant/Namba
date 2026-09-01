@@ -219,6 +219,16 @@ sanitiser config to get wrong.
   `exhaustive-deps` disable to say so — the count of those is still two. It
   cannot exempt `POP` the way the effect above does: a document *opened* at a
   fragment is a `POP`, and that is the case it exists for.
+
+  **It scrolls twice, and the second one is not belt-and-braces.** The two
+  faces come from Google with `display=swap`, so a cold visit paints in a
+  fallback, scrolls to the right place, and is then pushed off it as every line
+  above re-measures in Newsreader — 310px on `/guide#stats`, most of a section,
+  and invisible in testing because the second visit has the fonts cached. So it
+  goes again on `document.fonts.ready`. Not *only* then: on a repeat visit the
+  fonts are already there and awaiting the promise would paint at the top and
+  jump. And only if `scrollY` has not moved since — past that point the reader
+  is scrolling and the position is theirs.
 - `PostCard.tsx` must export only components (fast refresh). Shared helpers like
   `fmtDate` and `entryPath` live in `api.ts`.
 - **Every date is relative.** `fmtDate` is "4 minutes ago", "2 days ago",
@@ -363,6 +373,10 @@ Deliberately not done, so nobody re-derives them:
 - **The container stays 1160px on a 1920 screen.** An index of numbers is a
   book index and a 1800px title row is unreadable. What a wide screen buys goes
   into the rails instead — `.detail-layout`'s is `clamp(200px, 22vw, 280px)`.
+  `/guide` is the one page that spends the whole 1160 on prose, which is past
+  the measure a paragraph wants; it is a page of tables as much as of sentences
+  and was asked for that way. If it is ever pulled back, the number to reach
+  for is a `max-width` on `.guide`, not a narrower `.wrap`.
 
 ## Every control has a name
 
@@ -575,11 +589,20 @@ to travel. The picker navigates with `useNavigate` rather than
 — `setSearchParams` drops the fragment, and switching language while parked on
 `#mining` has to keep you on `#mining`.
 
-The tables wrap in `.tbl` — the same scroll port `PostPage` hands
-`react-markdown`, and the wrapper rather than the `<table>` for the reason
-`index.css` gives beside it. Measured at 320px they need it in no case and
-have it in every one, which is the right way round for a page anybody can add
-a row to.
+**This page takes the container's whole width**, unlike the form beside it in
+the stylesheet — it is wider than a reading measure wants, and that is the
+call: the nine two-column tables are what the width is for, and at 680px they
+sat narrow with half the screen empty. `.wrap`'s 1160 still caps it, so the
+1160 rule below is untouched.
+
+The tables take it with the prose (`width: 100%`, `table-layout: fixed`),
+**scoped to `.guide`** — nine content-sized tables down a full-width page came
+out at nine different widths and read as nine accidents, while a table in an
+*entry* is a stranger's and stays sized by what is in it. They wrap in `.tbl`
+all the same — the same scroll port `PostPage` hands `react-markdown`, and the
+wrapper rather than the `<table>` for the reason `index.css` gives beside it.
+Measured at 320px they need it in no case and have it in every one, which is
+the right way round for a page anybody can add a row to.
 
 Prose is markdown rendered by `react-markdown` with `remarkGfm` **and not
 `remarkBreaks`** — the one difference from an entry body's dialect. That plugin
@@ -589,7 +612,7 @@ wrapped source line.
 
 It writes almost no CSS of its own. `.body` is the class `/p/:id`'s markdown
 renders into and carries the whole prose rhythm; `.guide` rides on `.form`'s
-rules for the measure and the `h1`. Three small rules are its own: the
+rule for the `h1`. Four small rules are its own: the
 standfirst (a class, not `:first-of-type`, since the version row became the
 first `<p>`), `.guide-meta`, and `margin: 0` on a paragraph inside a table cell
 — react-markdown renders a cell as one, and `.body p`'s bottom margin pushed
