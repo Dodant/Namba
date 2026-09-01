@@ -62,8 +62,8 @@
    round number off a chart:
 
      1130  the form and its History rail stop fitting side by side (680+40+340)
-      900  the wordmark, the search, the language picker and the three pills
-            stop fitting one line, so the pills take the line under them
+      900  the wordmark, the search and the three pills stop fitting one
+            line, so the pills take the line under them
       820  the entry and its Edit history rail stop fitting side by side
       560  a phone: the search takes a row of its own, the numeral columns stop
             being columns, and the rows that were [number | text | image] fold
@@ -326,10 +326,13 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 .search:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
 .search input::placeholder { color: var(--muted); }
 
-/* The header is five controls and a wordmark, and it stops fitting one line at
-   about 900px -- 762 without the language picker, and with it whatever the
-   longest language name it has to draw comes to: 882 for "한국어 · 1", past
-   900 for "Bahasa Indonesia · 12". Left to wrap on its own it broke
+/* The header is four controls and a wordmark, and it stops fitting one line at
+   about 762px. The breakpoint is 900 rather than 780 because it is also the
+   sticky bar's, and 104px of scroll-padding-top is that bar measured at this
+   width -- the two numbers move together or not at all. 900 was where the
+   language picker put it, and the picker is in the footer now: the header
+   wraps a little earlier than it has to, and nothing about it looks wrong at
+   the widths in between. Left to wrap on its own it broke
    wherever the search box happened to end: [search][picker][Recent] over
    [Random][+ Add], a different pair on each line at each width, which is the
    same ragged split the phone rules were written to stop. So it breaks in one
@@ -629,9 +632,8 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
      width: 100% here did nothing at all, and the search came back up onto the
      masthead's line at 560. */
   .acts { flex: 1 1 100%; margin-left: 0; }
-  /* basis auto and no cap, not the 900 band's 180/460: the picker -- when the
-     wiki has one -- belongs beside the search rather than among the actions,
-     and this is the width where the search is entitled to the whole row. */
+  /* basis auto and no cap, not the 900 band's 180/460: this is the width
+     where the search is entitled to the whole row. */
   .search { flex: 1 1 auto; max-width: none; }
   /* space-between, not the 900 band's flush right: on a phone the group has
      the row to itself under a full-width search box, and clumped at one end
@@ -1317,8 +1319,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   .select option::checkmark { order: 2; margin-left: auto; font-size: 11px; }
 }
 
-/* the same select in the header, wearing the pill the buttons beside it wear.
-   Lives here rather than up with .top so it sits next to the rules it extends */
+/* the same select in the footer, wearing the pill the header's buttons wear --
+   it was up there once and the shape is what it kept. Lives here rather than
+   down with .foot so it sits next to the rules it extends */
 .lang-pick select {
   width: auto; border: 1px solid var(--line); border-radius: 999px;
   background: var(--panel); color: var(--ink-soft); cursor: pointer;
@@ -1563,8 +1566,15 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    of this file's four widths and does not need to be. */
 .foot p { margin: 0; flex: 1 1 380px; max-width: 68ch; }
 /* the links, always their own line: they are the footer's only controls and
-   a row of four is not a third sentence */
-.foot p:last-child { flex-basis: 100%; }
+   a row of four is not a third sentence. of-type, not last-child -- the
+   language picker is the footer's last child when there is one to draw. */
+.foot p:last-of-type { flex-basis: 100%; }
+/* and the picker under them, in the corner: alone on its line, auto margin
+   takes the whole of it and parks the pill against the right edge of the
+   text column. Nothing else in the footer is right-aligned, which is the
+   point -- it is the one thing down here that is a control rather than a
+   sentence. */
+.foot .lang-pick { margin-left: auto; }
 /* inherit, not --accent: four links in three short lines, and coloured they
    become the loudest thing under the fold */
 .foot a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }

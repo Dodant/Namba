@@ -178,11 +178,10 @@ const WORDMARK = (
   </>
 )
 
-function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void }) {
+function Header() {
   const nav = useNavigate()
   const [params] = useSearchParams()
   const { pathname } = useLocation()
-  const langs = useAsync(() => api.languages(), [])
   const box = useRef<HTMLInputElement>(null)
 
   /* the pill has always drawn a "/" and nothing has ever listened for one.
@@ -254,42 +253,11 @@ function Header({ lang, onLang }: { lang: string; onLang: (v: string) => void })
             defaultValue={params.get('q') ?? ''}
           />
         </form>
-        {/* the options come from the wiki, not a list in here: the labels are
-            free-form, so a fixed one would offer "Japanese" to a wiki that
-            says "日本語". The count is how much of it you will actually read
-            in that language -- everything else falls back to as-written.
-            Absent until something is translated, rather than a menu of one:
-            with nothing written in another language the only entries are
-            Original and the stored default reading "English · 0", they do
-            the same nothing, and picking Original drops the other one for
-            good. It comes back with the first translation. */}
-        {!!langs.data?.length && (
-          <div className="select lang-pick">
-            <select
-              value={lang}
-              aria-label="Show lists in"
-              onChange={(e) => onLang(e.target.value)}
-            >
-              <option value="">Original</option>
-              {(langs.data ?? []).map((l) => (
-                <option key={l.lang} value={l.lang}>
-                  {l.lang} · {l.count}
-                </option>
-              ))}
-              {/* the stored choice may be a language nobody has written yet --
-                  keep it selectable rather than showing an empty box */}
-              {lang && !(langs.data ?? []).some((l) => l.lang === lang) && (
-                <option value={lang}>{lang} · 0</option>
-              )}
-            </select>
-          </div>
-        )}
-        {/* The three that act, in a group of their own so the phone layout is
-            the same whether or not the language picker is there: the search
-            takes a row, these take the row under it. Left to wrap on their
-            own widths, the picker's arrival pushed "+ Add" onto a third row
-            by itself. On a wide screen the wrapper is a flex row inside a
-            flex row with the same gap, so it draws exactly as before. */}
+        {/* The three that act, in a group of their own: the search takes a
+            row, these take the row under it. Left to wrap on their own widths
+            they broke wherever the search box happened to end. On a wide
+            screen the wrapper is a flex row inside a flex row with the same
+            gap, so it draws exactly as before. */}
         <div className="acts-main">
           {/* "Recent", not "Feed": the label is a promise about the order,
               and this one is last-touched. The view is still the feed --
@@ -371,7 +339,7 @@ function ToTop() {
   )
 }
 
-/* Four things that belong on every page and nowhere else.
+/* Five things that belong on every page and nowhere else.
 
    Not five. The takedown path was going to live here until it turned out
    /api/posts/{id}/report and /delete-request both want an id -- you report an
@@ -381,7 +349,8 @@ function ToTop() {
    Sentences rather than a row of policy pages. With no reader accounts there is
    nothing to disclose that does not fit in one, and a sentence carried by every
    page is read more than a page nobody clicks. */
-function Footer() {
+function Footer({ lang, onLang }: { lang: string; onLang: (v: string) => void }) {
+  const langs = useAsync(() => api.languages(), [])
   return (
     <footer className="foot">
       <p>
@@ -405,6 +374,41 @@ function Footer() {
         <a href="/docs">API</a> — open, no key.{' · '}
         <a href="https://github.com/MIIRAIII/Namba">Source</a>
       </p>
+      {/* It reads the whole page and it is set once, which is a footer control
+          and not a header one -- up there it was a fifth thing competing with
+          the four you press on the way in, and on a phone it was the pill that
+          made the bar three rows tall.
+
+          The options come from the wiki, not a list in here: the labels are
+          free-form, so a fixed one would offer "Japanese" to a wiki that says
+          "日本語". The count is how much of it you will actually read in that
+          language -- everything else falls back to as-written. Absent until
+          something is translated, rather than a menu of one: with nothing
+          written in another language the only entries are Original and the
+          stored default reading "English · 0", they do the same nothing, and
+          picking Original drops the other one for good. It comes back with
+          the first translation. */}
+      {!!langs.data?.length && (
+        <div className="select lang-pick">
+          <select
+            value={lang}
+            aria-label="Show lists in"
+            onChange={(e) => onLang(e.target.value)}
+          >
+            <option value="">Original</option>
+            {(langs.data ?? []).map((l) => (
+              <option key={l.lang} value={l.lang}>
+                {l.lang} · {l.count}
+              </option>
+            ))}
+            {/* the stored choice may be a language nobody has written yet --
+                keep it selectable rather than showing an empty box */}
+            {lang && !(langs.data ?? []).some((l) => l.lang === lang) && (
+              <option value={lang}>{lang} · 0</option>
+            )}
+          </select>
+        </div>
+      )}
     </footer>
   )
 }
@@ -426,7 +430,7 @@ export default function App() {
       <div className="wrap">
         <ScrollTop />
         <SiteTitle />
-        <Header lang={lang} onLang={pickLang} />
+        <Header />
         <main>
           <Routes>
             <Route path="/" element={<Home lang={lang} />} />
@@ -449,7 +453,7 @@ export default function App() {
             />
           </Routes>
         </main>
-        <Footer />
+        <Footer lang={lang} onLang={pickLang} />
         <ToTop />
       </div>
     </BrowserRouter>
