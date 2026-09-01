@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   BrowserRouter, Link, Route, Routes, useLocation, useNavigate, useNavigationType,
   useSearchParams,
@@ -87,11 +87,33 @@ const CLOCK = (
    means remembering an offset per history entry, which is a good deal more
    machinery than this. */
 function ScrollTop() {
-  const { pathname, search } = useLocation()
+  const { pathname, search, hash } = useLocation()
   const how = useNavigationType()
   useEffect(() => {
-    if (how !== 'POP') window.scrollTo(0, 0)
-  }, [pathname, search, how])
+    if (how !== 'POP' && !hash) window.scrollTo(0, 0)
+  }, [pathname, search, hash, how])
+  /* A fragment is a place in the page and the top is not it, which is why the
+     effect above stands down for one.
+
+     This one is here because the browser cannot do it alone. /guide#mining
+     arrives as a document whose body is an empty <div id="root">: the element
+     is looked for before React has drawn it, is not found, and nothing tries
+     again -- so the reader lands wherever the page happened to reach as it
+     grew. Measured on /guide#works, that was 1931px past the heading.
+
+     A layout effect, so the scroll happens after React paints and before the
+     browser does, and the first frame is already in the right place. Keyed on
+     the hash, which covers both the load and a later in-page link and needs no
+     deps rule turned off to say so.
+
+     POP is not exempt here, unlike above, and cannot be: a document opened at
+     a fragment *is* a POP as far as the router is concerned, and that is the
+     case this exists for. The price is that Back to an address carrying a
+     fragment returns to the fragment rather than to where you had scrolled --
+     which is what the address says, so it is a trade rather than a defeat. */
+  useLayoutEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView()
+  }, [hash])
   return null
 }
 
