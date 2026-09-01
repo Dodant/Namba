@@ -13,6 +13,7 @@ const en: GuideDoc = {
     'belong to the number rather than sit next to it. Anyone may write one and ' +
     'anyone may correct it, and nothing is reviewed before it goes up, so this ' +
     'page is what stands where a review would.',
+  columns: ['An entry', 'Not an entry'],
   stale:
     'This translation is at v{mine}; the English guide is at v{base}. Where ' +
     'the two differ, the English one is the rule.',

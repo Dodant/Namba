@@ -4,7 +4,7 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { langLabel } from '../api'
 import { BASE_LANG, byCode, codeOf, GUIDES } from '../guide'
-import { OUTLINE, type Section } from '../guide/outline'
+import { OUTLINE, type GuideDoc, type Section } from '../guide/outline'
 
 /* The wiki's one page of rules, in two layers and in whatever language it has
    been written in.
@@ -50,14 +50,17 @@ const Prose = ({ children }: { children: string }) => (
    The wrapper is the scroll port rather than the <table>, for the reason
    index.css gives beside .tbl: a table that is not a table box can stop being
    announced as rows and columns. */
-function Rows({ rows }: { rows: NonNullable<Section['rows']> }) {
+function Rows({ rows, heads }: {
+  rows: NonNullable<Section['rows']>
+  heads: GuideDoc['columns']
+}) {
   return (
     <div className="tbl">
       <table>
         <thead>
           <tr>
-            <th>An entry</th>
-            <th>Not an entry</th>
+            <th>{heads[0]}</th>
+            <th>{heads[1]}</th>
           </tr>
         </thead>
         <tbody>
@@ -153,7 +156,10 @@ export default function Guide() {
         </p>
       )}
 
-      <p className="lede">{doc.lede}</p>
+      {/* a div and not a p: the lede is markdown and runs to three
+          paragraphs in Korean, and a <p> cannot hold one. .guide .lede sets
+          the size on the box and the paragraphs inherit it. */}
+      <div className="lede"><Prose>{doc.lede}</Prose></div>
 
       {OUTLINE.map(([id, level], i) => {
         if (id === '--') return <hr key={i} />
@@ -166,7 +172,7 @@ export default function Guide() {
           <Fragment key={id}>
             <H id={id}>{s.heading}</H>
             {s.body && <Prose>{s.body}</Prose>}
-            {s.rows && <Rows rows={s.rows} />}
+            {s.rows && <Rows rows={s.rows} heads={doc.columns} />}
             {s.note && <Prose>{s.note}</Prose>}
           </Fragment>
         )

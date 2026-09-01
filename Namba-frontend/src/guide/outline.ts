@@ -72,7 +72,18 @@ export type GuideDoc = {
      a rule somebody is quoting at you answers a question nobody asked. */
   updated: string
   title: string
+  /* Markdown, and rendered as prose rather than as one <p>: a guide's opening
+     is what the wiki is, what an entry is and what happens before publishing,
+     which is three paragraphs in any language that has tried to say it in
+     one. A single-paragraph lede renders exactly as it did. */
   lede: string
+  /* The two column heads every subject table wears. They used to be spelled
+     in Guide.tsx, which was fine while English was the only language and a
+     bug the moment it was not: eight Korean tables under "An entry / Not an
+     entry" are eight tables half in the wrong language. Two words, and they
+     are the page's own words rather than the wiki's, so they belong in the
+     file that supplies the rest of them. */
+  columns: readonly [string, string]
   /* Shown only on a translation the English guide has moved past, so it is
      the one sentence a reader of it most needs and the one most likely to be
      the reason they cannot rely on the page. In their language, therefore --
