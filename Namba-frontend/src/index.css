@@ -1134,8 +1134,8 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .guide { padding: clamp(20px, 3vw, 26px) 0 28px; }
 /* ...and the tables take it with it. Two columns of the same kind of thing,
    so they split the width evenly rather than sizing to their longest cell --
-   nine content-sized tables down a full-width page came out nine different
-   widths and read as nine accidents. Scoped to .guide on purpose: a table in
+   eight content-sized tables down a full-width page came out eight different
+   widths and read as eight accidents. Scoped to .guide on purpose: a table in
    an entry is a stranger's, and that one is still sized by what is in it. */
 .guide .tbl table { width: 100%; table-layout: fixed; }
 /* The rules page opens on a standfirst. .form-intro's size and colour,
@@ -1580,8 +1580,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    would be a target you cannot see.
 
    Last in .wrap and positioned, so it paints over the page without a z-index
-   -- there is not one anywhere else in this file and this is not the rule to
-   start with. */
+   of its own. The file's one z-index is the sticky header's and it is above
+   this -- which costs nothing, because the two never share a pixel: that bar
+   is at the top of the viewport and this sits in the bottom corner. */
 .to-top {
   position: fixed;
   right: max(clamp(16px, 4vw, 34px), env(safe-area-inset-right));

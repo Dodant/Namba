@@ -41,11 +41,11 @@ const Prose = ({ children }: { children: string }) => (
 )
 
 /* Eight tables below the rule, always the same two columns, so the shape is
-   written once. The header cells are the page's own words and so are the only
-   thing in here a language file does not supply -- which is a bug the day a
-   third language lands, and a row in the language file the day somebody
-   notices. Left as it is on purpose: two words are not worth a field that
-   every translation then has to fill in.
+   written once. The heads are `columns` off the language file and are no
+   longer spelled in here: that was fine while English was the only language
+   and a bug the moment it was not -- eight Korean tables under "An entry /
+   Not an entry" are eight tables half in the wrong language. Two words, and
+   a translation cannot ship without its own pair.
 
    The wrapper is the scroll port rather than the <table>, for the reason
    index.css gives beside .tbl: a table that is not a table box can stop being

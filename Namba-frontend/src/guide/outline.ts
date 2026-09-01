@@ -48,9 +48,9 @@ export const OUTLINE = [
 
 export type SectionId = Exclude<(typeof OUTLINE)[number][0], '--'>
 
-/* `body` is markdown and renders above the table, `note` below it. Only two
-   sections want a note and both are places where the table needs a sentence
-   afterwards rather than a row. Standard markdown, not the entry body's
+/* `body` is markdown and renders above the table, `note` below it. One
+   section wants a note -- works, where a number in a title is argued and the
+   table needs a sentence afterwards rather than a row. Standard markdown, not the entry body's
    dialect: remark-breaks is there because a reader typing into a textarea
    expects Enter to break a line, and this is a file in the repository where a
    blank line means what it means everywhere else. */

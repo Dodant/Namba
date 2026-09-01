@@ -220,15 +220,41 @@ sanitiser config to get wrong.
   cannot exempt `POP` the way the effect above does: a document *opened* at a
   fragment is a `POP`, and that is the case it exists for.
 
+  **`scrollIntoView` lands the target at the very top of the viewport, which
+  above 900 is underneath the sticky header.** The answer is not in this
+  effect: `html { scroll-padding-top: 104px }` — the bar plus a little air —
+  sits in `index.css` in the same media block as the `position: sticky`, so
+  the effect never has to know the header exists and the two cannot be changed
+  apart. It reaches one other `scrollIntoView`, the format strip's in
+  `Home.tsx`, and does nothing to it.
+
   **It scrolls twice, and the second one is not belt-and-braces.** The two
   faces come from Google with `display=swap`, so a cold visit paints in a
   fallback, scrolls to the right place, and is then pushed off it as every line
-  above re-measures in Newsreader — 310px on `/guide#stats`, most of a section,
-  and invisible in testing because the second visit has the fonts cached. So it
+  above re-measures in Newsreader — 310px measured near the foot of `/guide`,
+  most of a section, and invisible in testing because the second visit has the
+  fonts cached. So it
   goes again on `document.fonts.ready`. Not *only* then: on a repeat visit the
   fonts are already there and awaiting the promise would paint at the top and
   jump. And only if `scrollY` has not moved since — past that point the reader
   is scrolling and the position is theirs.
+- **`ToTop` is the way back from the bottom of a long one** — `/guide` is
+  twenty-two headings and an index band runs to a few hundred rows. Fixed in
+  the bottom corner of `.wrap`, in the page's own gutter (the same clamp and
+  the same `env(safe-area-inset-*)` `.wrap` pads with), and shown once
+  `scrollY` passes `innerHeight`: a screenful is the point where the header
+  has been gone long enough to be missed, and it means the same thing on a
+  phone and on a monitor where a pixel count does not. Hidden with
+  `visibility` rather than unmounted, which is what lets it fade on both edges
+  *and* what keeps a control nobody can see out of the tab order and out of
+  reach of a click — `opacity` alone does neither. The smooth scroll rides on
+  the `scrollTo` call, which asks `prefers-reduced-motion` through
+  `matchMedia` itself. **Not `html { scroll-behavior: smooth }`**, which would
+  have been
+  fewer lines and would also have taken the hash effect's `scrollIntoView`
+  with it: a fragment load would animate down the page, and the `scrollY`
+  guard in there — the one that stands down once the reader starts scrolling —
+  would be reading a position mid-flight.
 - `PostCard.tsx` must export only components (fast refresh). Shared helpers like
   `fmtDate` and `entryPath` live in `api.ts`.
 - **Every date is relative.** `fmtDate` is "4 minutes ago", "2 days ago",
@@ -296,6 +322,29 @@ What actually changes shape, rather than size:
   there is nothing underneath to line up with. `.acts` carries an explicit flex basis in
   both bands, so set `flex`, never `width` — an explicit basis beats `width`
   outright, and `width: 100%` on it did nothing at all.
+
+  **And above 900 it sticks.** `position: sticky; top: 0` with an opaque
+  `var(--bg)` and then `backdrop-filter: blur(18px) saturate(160%)` on top of
+  it behind an `@supports` — that way round, or a browser without the filter
+  gets a translucent bar with the page legible through it. The bar spans the
+  content column and not the window, which is not half a job: every child of
+  `.wrap` is in that column, so the glass is exactly as wide as the things
+  that pass under it and there is no edge to see. The whole block lives inside
+  `@media (min-width: 901px)`, and that media query is the entire mechanism
+  for keeping it off a phone — below 900 the header wraps to two rows and then
+  three, 172px of a 667px screen, a quarter of the device given permanently to
+  chrome. Same 900 the header already wraps at, because it is the same fact:
+  this is a bar while it is one line and a block once it is not.
+
+  `html { scroll-padding-top: 104px }` is in that same block and is the other
+  half of the rule — see the hash effect above. Keep the two together; a
+  sticky bar without it swallows every fragment on `/guide`.
+
+  The header carries the **only `z-index` in `index.css`** (10), because
+  `.select` is `position: relative` and the guide's language picker comes
+  after the header in source: two positioned boxes at `auto` and the later one
+  wins. That is the point of putting it on the one element that has to be over
+  everything — do not answer a stacking problem elsewhere with a second one.
 - **A `.card` row** is `[number][title and blurb][thumbnail]` until 560, where
   it folds: number and thumbnail keep the top line, the prose takes the width
   under them. It was a 90px column of three-character lines before.
@@ -324,7 +373,23 @@ What actually changes shape, rather than size:
   `ScrollTop` in `App` for where the page starts; and a layout effect rather
   than an effect, or the first paint is at `scrollLeft` 0 and the strip visibly
   jumps. Nothing in CSS can ask which tab is current, so this cannot be moved
-  into the stylesheet.
+  into the stylesheet. `scroll-padding-top` reaches this call and does nothing
+  to it — it is `block: 'nearest'` and the strip rests at 106, two clear of
+  the 104. Worth knowing if either number moves: the strip would twitch down
+  by the difference on a tab press.
+
+  **Abbreviation sits at the far end of the strip.** `.apart` from `Home.tsx`
+  off `isAbbr(f)`, spent by `margin-left: auto` in `index.css`. Four of these
+  tabs read digits and the fifth reads letters — `UFO`, `CSI`, `NASA` — which
+  is the one division in `FORMATS` that decides how a value is read, sorted
+  and addressed, and five evenly spaced tabs say there is no such division.
+  The class goes on the format that reads letters and **not** on the fifth
+  item, so reordering `FORMATS` moves the tab and leaves the gap where it
+  belongs. An auto margin and not a gap or a separator, because it is the one
+  rule that does nothing when there is nothing to spend: below about 460 the
+  strip overflows, free space goes negative, the margin resolves to 0, and the
+  tab falls back in beside the others and scrolls with them rather than
+  opening a gap nobody can see the far side of.
 
   The scrollbar is hidden (`scrollbar-width: none` and the `-webkit`
   pseudo-element) and the tab half-cut at the edge is the cue in its place —
@@ -342,6 +407,18 @@ What actually changes shape, rather than size:
   destructive button — Remove this language — is never beside Save, and the
   credits toggle and Edit take a line of their own rather than sitting beside
   the tags under a thumb.
+- **The footer** is a wrapping row rather than a stack: the two paragraphs
+  side by side and the links on a line of their own (`flex-basis: 100%` on the
+  last, because a row of four links is not a third sentence). The measure was
+  never the problem — the 68ch cap stays on the paragraphs and must never go
+  on `.foot`, where it took the `border-top` with it and left a rule ending at
+  524px of a 1092px page, which reads as one more separator in a list rather
+  than as the page stopping. What was wrong was the empty half of the band
+  beside it. `flex: 1 1 380px` is the whole breakpoint and it is a measure and
+  not a width: two columns hold until one would be under about 55 characters,
+  which lands near 860 — **not one of the four widths above, and it does not
+  need to be.** This is what the paragraph before this list means by reaching
+  for a clamp, or here a basis, before a fifth media query.
 - **The rails** stop being rails and become the end of the page — and the
   Edit history stops being a 60dvh scroll port inside a scrolling page. That
   cap lives on `.side .revs`, not `.revs`: the same list is the recovery view
@@ -368,8 +445,12 @@ Deliberately not done, so nobody re-derives them:
 - **No hamburger, drawer or bottom bar.** The whole navigation is a search box
   and three pills; on a phone they are two rows that need no state, no focus
   trap and no scrim. A drawer for three links is more machinery than links.
-- **No sticky header.** It is two rows tall on a phone, and this is a page you
-  scroll a long index down.
+- **No sticky header below 900.** It is two rows tall there and three on the
+  narrowest phone, and this is a page you scroll a long index down. Above 900
+  it is one 92px row and it does stick — the rule, its `@supports` and its
+  `scroll-padding-top` are in the header bullet above, and the reason it is
+  written as a `min-width` query rather than a `max-width` one is that the
+  sticky behaviour is the exception and the phone is the default.
 - **The container stays 1160px on a 1920 screen.** An index of numbers is a
   book index and a 1800px title row is unreadable. What a wide screen buys goes
   into the rails instead — `.detail-layout`'s is `clamp(200px, 22vw, 280px)`.
@@ -550,9 +631,16 @@ what happens when an entry breaks one. The definitions come first because
 *entry* and *number page* are not the same thing here and everything under them
 depends on the difference: `/n/42` is not an entry, it is every entry filed
 under 42.
-Below it the same questions are asked one subject at a time, as nine tables of
-*An entry* against *Not an entry*, which is the half an operator reads rather
-than the half a poster does. **Every heading carries an `id` for that**:
+Below it the same questions are asked one subject at a time, as eight tables
+of *An entry* against *Not an entry*, which is the half an operator reads
+rather than the half a poster does. **A table can leave**, and one has:
+"Statistics and records" went because a record crossing over into a meaning is
+already answered by the first rule and by the works, science and people
+tables, and what was left over was figures that are not entries — the general
+case, not a subject. Eight answer more clearly than nine, one of which said it
+depends on whether people say the number. A section going is the rules moving,
+so it takes `version` with it (0.2 to 0.3) and it has to leave `OUTLINE` and
+every language file in one commit, which is what the outline is for. **Every heading carries an `id` for that**:
 `/guide#mining` is a link that goes in a delete request, and the `ScrollTop`
 hash effect exists because of these.
 
@@ -616,9 +704,9 @@ sat narrow with half the screen empty. `.wrap`'s 1160 still caps it, so the
 1160 rule below is untouched.
 
 The tables take it with the prose (`width: 100%`, `table-layout: fixed`),
-**scoped to `.guide`** — nine content-sized tables down a full-width page came
-out at nine different widths and read as nine accidents, while a table in an
-*entry* is a stranger's and stays sized by what is in it. They wrap in `.tbl`
+**scoped to `.guide`** — eight content-sized tables down a full-width page
+came out at eight different widths and read as eight accidents, while a table
+in an *entry* is a stranger's and stays sized by what is in it. They wrap in `.tbl`
 all the same — the same scroll port `PostPage` hands `react-markdown`, and the
 wrapper rather than the `<table>` for the reason `index.css` gives beside it.
 Measured at 320px they need it in no case and have it in every one, which is
