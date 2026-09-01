@@ -1460,21 +1460,41 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    rule under the last row of content reads as one more separator in the
    list rather than the end of it.
 
-   Capped at 68ch and left where it is: these are three sentences, and a
-   sentence set the full 1160px is a sentence nobody finishes. */
+   A row rather than a stack, which is a layout change and not a width one.
+   The measure was never the problem: three sentences capped at 68ch is a
+   readable column, and a footer set the full 1160px is a footer nobody
+   finishes. What read as cramped was where the cap left the box -- 523px of
+   text under a 1092px rule, so half the band was empty and the paragraphs
+   looked cut off at a width somebody had picked for them.
+
+   Side by side they fill it and the cap stops showing. Same measure, and the
+   footer is three lines shorter.
+
+   The row gap goes 7 to 10 with it. 7 was the space between three sentences
+   of the same kind; the links are now a row on their own under a row of
+   prose, and a boundary between two kinds of thing wants more than a line
+   break's worth. */
 .foot {
   border-top: 1px solid var(--rule);
   margin-top: clamp(40px, 6vw, 64px);
   padding-top: 16px;
-  display: flex; flex-direction: column; gap: 7px;
+  display: flex; flex-wrap: wrap; gap: 10px clamp(24px, 4vw, 56px);
   font-size: 13px; line-height: 1.55; color: var(--faint);
   text-wrap: pretty;
 }
-/* 68ch on the paragraphs, not on .foot: the cap is there because a sentence
-   set the full 1160px is a sentence nobody finishes, and on the box it took
-   the border-top with it -- a rule ending at 524px of a 1092px page reads as
-   one more separator in a list rather than as the page stopping. */
-.foot p { margin: 0; max-width: 68ch; }
+/* The cap is on the paragraphs and not on .foot: on the box it took the
+   border-top with it, and a rule ending at 524px of a 1092px page reads as
+   one more separator in a list rather than as the page stopping.
+
+   flex-basis is the whole breakpoint, and it is a measure rather than a
+   width: two columns hold until one would be under 380px, which is about 55
+   characters and the point where a sentence starts reading as a newspaper
+   column. Below that they stack on their own -- around 860, which is not one
+   of this file's four widths and does not need to be. */
+.foot p { margin: 0; flex: 1 1 380px; max-width: 68ch; }
+/* the links, always their own line: they are the footer's only controls and
+   a row of four is not a third sentence */
+.foot p:last-child { flex-basis: 100%; }
 /* inherit, not --accent: four links in three short lines, and coloured they
    become the loudest thing under the fold */
 .foot a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
