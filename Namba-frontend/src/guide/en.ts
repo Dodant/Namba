@@ -79,8 +79,8 @@ is in the film. In *GTA 3* the three is on the box, counting the ones before it;
 nothing in the game is three.
 
 **The exception is a number that outgrew its series.** Apollo 11 is the moon
-landing and Apollo 13 is the one that came back — two of thirteen missions, each
-for its own reason, which is precisely why the other eleven are not entries.
+landing and Apollo 13 is the one that came back — two of eleven crewed missions,
+each for its own reason, which is precisely why the other nine are not entries.
 Area 51, AK-47, Experiment 626 and Earth-616 are the same shape: the number
 started as an index and stopped being one.
 
@@ -144,7 +144,7 @@ looking for one: on a wiki anyone can write to, a wiki anyone can empty is no
 wiki at all. Nothing above is a submission being turned down, because nothing
 here is submitted — what you write is live the moment you press Publish.
 
-What happens instead, in that order:
+What happens instead, in this order:
 
 - **Fix it.** Most of this page describes an entry that is wrong rather than
   one that is unwelcome, and an edit costs one person one click. The first
@@ -158,7 +158,7 @@ What happens instead, in that order:
   somebody decides.
 
 The one hard delete happens in a shell, by hand, for a removal the law
-requires. It is not a moderation tool and it does not come back.`,
+requires. It is not a moderation tool, and what it takes does not come back.`,
     },
 
     'by-subject': {
@@ -285,7 +285,7 @@ duplicate.`,
       body: `The form has fewer fields than you might expect, and that is deliberate. The
 **number** and its **format** decide the address — \`/n/42\` for a number,
 \`/a/UFO\` for an abbreviation. The **title** is what it refers to, in a few
-words. The **details** box is everything else, markdown, and it is where the
+words. The **details** box is everything else, Markdown, and it is where the
 story, the working and the link to a source all go: there is no separate source
 field, and an entry with nothing to back it up can be flagged for exactly that.
 **Tags** are free-form and lower-case — pick an existing chip where one fits
