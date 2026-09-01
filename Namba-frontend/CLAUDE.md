@@ -649,11 +649,13 @@ first `<p>`), `.guide-meta`, and `margin: 0` on a paragraph inside a table cell
 — react-markdown renders a cell as one, and `.body p`'s bottom margin pushed
 every table open.
 
-The version row is a kicker and is spaced like one: the page's `clamp(20px,
-3vw, 26px)` above it — the gap every other page opens on, measured against
-`/new` — and 4px below, which is `.hero-said`'s own column gap. It arrived 0
-above and 26 below, so the capsule sat *on* the header's rule and the row read
-as the header's rather than the title's. A kicker belongs to what is under it.
+The version row sits on the line above the `h1` and is pushed to the far edge:
+the title anchors the left, what is true *about* the document answers on the
+right, and the picker's edge lands on the text column's. Spacing is the page's
+`clamp(20px, 3vw, 26px)` above — the gap every other page opens on, measured
+against `/new` — and 4px below. Across the page from the title rather than over
+it, the row still belongs to the title's band and not the header's; it arrived
+0 above and 26 below, which put the capsule *on* the header's rule.
 
 And it is **deliberately absent from the `:is()` no-select list**
 that every other sentence the app says about itself is in — that rule is there

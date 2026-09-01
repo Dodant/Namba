@@ -1078,25 +1078,28 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    narrower than every line under it. A class and not :first-of-type, which
    it was until the version row above it became the first <p> on the page. */
 .guide .lede { font-size: 16.5px; color: var(--ink-soft); }  /* two classes: .body p would win a tie */
-/* The version and the language it is being read in, over the h1: the shape
-   every hero here has, a mono kicker over the subject. .hero-said .kicker is
-   scoped to the hero and this is not one, so it takes the same three
-   declarations rather than a shared class that would have to mean two things. */
+/* The version and the language it is being read in, on the line above the h1
+   and pushed to the far edge -- the title anchors the left, the metadata about
+   it answers on the right, and the picker's edge lands on the text column's.
+   Mono, 10px and uppercase are .hero-said .kicker's three declarations, taken
+   rather than shared: that class is scoped to the hero and this is not one. */
 /* Scoped to .guide rather than left bare, and that is not tidiness: .body p
    sets `margin: 0 0 1em` at (0,1,1) and this row is a <p>, so a bare
    .guide-meta lost its own bottom margin to it -- 1em of 10px mono, 10px,
    silently. Two classes beat a class and an element. */
 .guide .guide-meta {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px;
+  display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end;
+  gap: 4px 10px;
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--muted);
   margin: 0 0 4px;
 }
-/* 4px under the row against 26 above it, which is the hero's own spacing
-   (.hero-said is a column with gap: 4px) and the point of a kicker: it belongs
-   to the title under it, not to the rule over it. Without this the h1's own
-   top margin collapses the pair back to 26 and the row floats between the two.
-   It was 0 above and 26 below, which is this the wrong way round. */
+/* 4px under the row against 26 above it. Across the page from the title
+   rather than over it, the row still has to sit in the title's band and not
+   the header's -- and without this the h1's own top margin collapses the pair
+   back to 26 and it floats exactly between the two. It arrived 0 above and 26
+   below, which is this the wrong way round: the capsule sat on the header's
+   rule. */
 .guide .guide-meta + h1 { margin-top: 0; }
 .guide .guide-meta select { font-size: 11px; padding: 5px 30px 5px 12px; }
 /* react-markdown renders a cell's text as a paragraph, and .body p carries a
