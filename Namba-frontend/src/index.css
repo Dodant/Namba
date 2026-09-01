@@ -1056,9 +1056,19 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    breaking wherever it runs out */
 .form-side .field :is(label, .field-label) { flex-wrap: wrap; }
 .form-side .field .hint { flex-basis: 100%; }
-/* One measure for both. 680px is a line of prose you can read; the wrap is
-   1160 and a rule set across all of it is a rule nobody finishes. */
-.form, .guide { max-width: 680px; padding-bottom: 28px; }
+/* 680px is a line you can read, and a form is a column of fields anyway. */
+.form { max-width: 680px; padding-bottom: 28px; }
+/* The rules page takes the container's whole width instead, which is the
+   .wrap's 1160 and no more. It reads wider than a measure wants -- the nine
+   two-column tables are what the width is for, and they were the narrow thing
+   in a 680px column while half the screen sat empty beside them. */
+.guide { padding-bottom: 28px; }
+/* ...and the tables take it with it. Two columns of the same kind of thing,
+   so they split the width evenly rather than sizing to their longest cell --
+   nine content-sized tables down a full-width page came out nine different
+   widths and read as nine accidents. Scoped to .guide on purpose: a table in
+   an entry is a stranger's, and that one is still sized by what is in it. */
+.guide .tbl table { width: 100%; table-layout: fixed; }
 /* The rules page opens on a standfirst. .form-intro's size and colour,
    without its text-wrap: balance -- that is written for the one line the
    form says about itself, and on four lines it pulls the paragraph in
