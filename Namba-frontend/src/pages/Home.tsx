@@ -239,7 +239,11 @@ function Index({ lang }: { lang: string }) {
         {FORMATS.map((f) => (
           <Link
             key={f}
-            className={f === format ? 'on' : ''}
+            /* .apart on the one that reads letters, not on the fifth: the
+               gap before it is the digits/letters line and not a position
+               in FORMATS, so reordering that array moves the tab and leaves
+               the gap where it belongs. index.css spends the free space. */
+            className={`${isAbbr(f) ? 'apart ' : ''}${f === format ? 'on' : ''}`}
             aria-current={f === format ? 'page' : undefined}
             to={`/?${new URLSearchParams({ format: f, ...(tag ? { tag } : {}) })}`}
           >
