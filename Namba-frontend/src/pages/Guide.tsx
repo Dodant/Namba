@@ -40,7 +40,7 @@ const Prose = ({ children }: { children: string }) => (
   <Markdown remarkPlugins={[remarkGfm]}>{children}</Markdown>
 )
 
-/* Nine tables below the rule, always the same two columns, so the shape is
+/* Eight tables below the rule, always the same two columns, so the shape is
    written once. The header cells are the page's own words and so are the only
    thing in here a language file does not supply -- which is a bug the day a
    third language lands, and a row in the language file the day somebody

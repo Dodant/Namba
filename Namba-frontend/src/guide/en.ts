@@ -4,7 +4,7 @@ import type { GuideDoc } from './outline'
    When a rule changes it changes here first and the version goes up; a
    translation still on the old number says so at the top of itself. */
 const en: GuideDoc = {
-  version: '0.2',
+  version: '0.3',
   updated: '2026-09-01',
   title: 'Entry guidelines',
   lede:
@@ -248,17 +248,6 @@ the second.`,
       ],
     },
 
-    stats: {
-      heading: 'Statistics and records',
-      rows: [
-        ["9.58 — Bolt's hundred metres, quoted as a number", "a film's budget, or its runtime"],
-        ["56 — DiMaggio's hitting streak", "a season's points, a song's BPM"],
-        ['—', "a building's floors, a headcount, a view count"],
-      ],
-      note: `Most figures are facts without being meanings. A record crosses over when people
-say the number instead of describing it, and that is a thing you can check
-rather than feel.`,
-    },
 
     writing: { heading: 'Writing an entry' },
 

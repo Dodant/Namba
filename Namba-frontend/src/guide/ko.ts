@@ -11,7 +11,7 @@ import type { GuideDoc } from './outline'
    4 and 13, and the row about a number a movement flies -- both were written
    for a reader who already had the reference. */
 const ko: GuideDoc = {
-  version: '0.2',
+  version: '0.3',
   updated: '2026-09-01',
   title: '엔트리 가이드라인',
   lede:
@@ -242,17 +242,6 @@ const ko: GuideDoc = {
       ],
     },
 
-    stats: {
-      heading: '통계와 기록',
-      rows: [
-        ['9.58 — 볼트의 100미터, 숫자 그대로 인용되는', '영화의 제작비나 상영 시간'],
-        ['56 — 디마지오의 연속 안타', '시즌 득점, 노래의 BPM'],
-        ['—', '건물의 층수, 임직원 수, 조회수'],
-      ],
-      note: `대부분의 수치는 사실이되 뜻은 아닙니다. 기록이 뜻으로 넘어오는 때는 사람들이 그것을
-설명하는 대신 숫자로 부르기 시작할 때이고, 그건 느끼는 게 아니라 확인할 수 있는
-것입니다.`,
-    },
 
     writing: { heading: '엔트리 작성' },
 

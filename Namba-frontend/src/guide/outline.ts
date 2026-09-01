@@ -38,7 +38,6 @@ export const OUTLINE = [
   ['people', 3],
   ['places', 3],
   ['internet', 3],
-  ['stats', 3],
   ['writing', 2],
   ['many', 3],
   ['duplicates', 3],
