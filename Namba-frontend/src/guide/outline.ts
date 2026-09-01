@@ -16,6 +16,10 @@
    half a poster reads from the half an operator does, and the third the
    reference from the summary. */
 export const OUTLINE = [
+  /* Definitions first, because everything under them leans on the difference
+     between an entry and a number page and a reader arriving from the footer
+     has no reason to know it. */
+  ['terms', 2],
   ['test', 2],
   ['--', 0],
   ['the-point', 2],

@@ -17,6 +17,26 @@ const en: GuideDoc = {
     'This translation is at v{mine}; the English guide is at v{base}. Where ' +
     'the two differ, the English one is the rule.',
   sections: {
+    terms: {
+      heading: 'Terms',
+      body: `**Entry.** One meaning of one number, written by one person and open to
+everyone after that. It is what Add makes, and it is what the rest of this page
+is about.
+
+**Number page.** \`/n/42\` is not an entry — it is every entry filed under 42,
+listed together. A number here is a column and not a page somebody owns, so a
+new entry for 42 joins that page rather than replacing what is on it.
+
+**Value.** The number itself, as stored: \`42\`, \`3.14\`, \`11:11\`,
+\`11/22/63\`, \`UFO\`. It settles the address and cannot be retyped
+afterwards — a different value is a different page, and so a different entry.
+
+**Format.** How the value is read: integer, decimal, mixed, time or
+abbreviation. It is the one thing that decides how a value is sorted and where
+it is answered, which is why an abbreviation is read at \`/a/UFO\` and a number
+at \`/n/42\`.`,
+    },
+
     test: {
       heading: 'Inclusion test',
       body: `**Could the same rule produce a hundred more entries?** If it could, what

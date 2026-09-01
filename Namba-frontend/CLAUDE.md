@@ -544,13 +544,27 @@ is a search box and three pills, and a fourth is the 900px row's fifth
 breakpoint.
 
 **It is two layers over one `<hr>`, and the split is what keeps it usable.**
-Above it is what somebody about to type a value reads — one test, four rules,
-four things that are never entries, and what happens when an entry breaks one.
+Above it is what somebody about to type a value reads — the four words the rest
+of it leans on, one test, four rules, four things that are never entries, and
+what happens when an entry breaks one. The definitions come first because
+*entry* and *number page* are not the same thing here and everything under them
+depends on the difference: `/n/42` is not an entry, it is every entry filed
+under 42.
 Below it the same questions are asked one subject at a time, as nine tables of
 *An entry* against *Not an entry*, which is the half an operator reads rather
 than the half a poster does. **Every heading carries an `id` for that**:
 `/guide#mining` is a link that goes in a delete request, and the `ScrollTop`
 hash effect exists because of these.
+
+**A term is not translated word by word, it is chosen per language.** Entry is
+`엔트리` in the Korean guide and not `항목`, because that is the word this
+product uses; `번역` decisions like it belong to the language file and nowhere
+else. **Renaming one is not a find-and-replace**: Korean particles agree with
+the final consonant of the word before them, so swapping `항목` (which ends in
+one) for `엔트리` (which does not) silently turned every `항목이` into
+`엔트리이` and every `항목은` into `엔트리은` — fifteen of them, all wrong, none
+of which any build step can see. If a term changes, grep the new word with its
+next character and read the list.
 
 **Section headings are noun phrases — "3. Number mining", not "One work is not
 a quarry" — and that is the citation design, not a house style.** The point of
