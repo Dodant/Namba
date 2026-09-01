@@ -112,7 +112,24 @@ function ScrollTop() {
      fragment returns to the fragment rather than to where you had scrolled --
      which is what the address says, so it is a trade rather than a defeat. */
   useLayoutEffect(() => {
-    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView()
+    if (!hash) return
+    const target = () => document.getElementById(hash.slice(1))
+    target()?.scrollIntoView()
+    /* ...and once more when the fonts land. Newsreader and IBM Plex arrive
+       from Google with display=swap, so a cold visit paints in a fallback
+       face, scrolls to the right place, and is then pushed off it as every
+       line above re-measures in the real one. Measured on /guide#stats: 310px,
+       which is most of a section.
+
+       Twice rather than only after the fonts, because on a repeat visit they
+       are already there and waiting on the promise would paint at the top of
+       the page first and jump. And only if nothing has moved since -- if the
+       reader started scrolling in the meantime, that is now their position and
+       not ours to take back. */
+    const was = window.scrollY
+    document.fonts?.ready.then(() => {
+      if (window.scrollY === was) target()?.scrollIntoView()
+    })
   }, [hash])
   return null
 }
