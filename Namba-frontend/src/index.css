@@ -931,9 +931,13 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 }
 
 /* the entry's own hero is the same shape one size down, and sits on air
-   rather than on a rule -- the meta row below it draws the line instead */
+   rather than on a rule -- the meta row below it draws the line instead.
+   It keeps .hero's top padding, though: at 0 a 64px numeral started a pixel
+   under the header's rule and read as hanging off it, and this is the same
+   air the number page opens with, so both pages start at the same height. */
 .detail .hero {
-  align-items: baseline; gap: clamp(10px, 1.8vw, 18px); padding: 0;
+  align-items: baseline; gap: clamp(10px, 1.8vw, 18px);
+  padding: clamp(20px, 3.4vw, 30px) 0 0;
   border: 0; margin-bottom: 10px;
 }
 /* one size down from the number page's hero, and the same three bands. 64px
