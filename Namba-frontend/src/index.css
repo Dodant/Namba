@@ -222,6 +222,61 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
   flex-wrap: wrap;
   border-bottom: 1px solid var(--ink);
 }
+
+/* The header follows you down, but only while it is one row.
+
+   Above 900 it is 92px and every clamp in it has hit its ceiling, so the
+   height is a constant and the two rules below can be written in one number.
+   Under 900 it wraps to two rows and then three, and by a phone it is 172px
+   of a 667px screen -- a quarter of the page given to chrome permanently, on
+   the device with the least page to give. So it stays put there, and that
+   takes no rule to say: the whole block is inside a min-width query and
+   simply does not reach a phone. Same 900 the header already wraps at,
+   because it is the same fact -- this is a bar while it is one line and a
+   block once it is not.
+
+   scroll-padding-top is the half that is easy to forget. Every heading in
+   /guide carries an id and an operator quoting one sends /guide#mining, and
+   scrollIntoView puts the target at the very top of the viewport -- which is
+   now under the bar. The rule moves the resting place down by the bar plus a
+   little air, and it reaches the layout effect in App.tsx without that effect
+   having to know the header exists. It lives in here with the sticky rule so
+   the two cannot be changed apart. It reaches one other scrollIntoView, the
+   format strip's in Home.tsx, and does nothing to it: that call is
+   block: 'nearest' and the strip rests at 106, two clear of the 104. Worth
+   knowing if either number ever moves -- the strip would twitch down by the
+   difference on a tab press.
+
+   The bar spans the content column rather than the window, which sounds like
+   half a job and is not: every child of .wrap is inside the same column, so
+   the glass is exactly as wide as the things that pass under it. There is no
+   edge to see, because outside it there is never anything to blur.
+
+   z-index because .select is position: relative, and the guide's language
+   picker is after the header in the source: two positioned boxes at auto, and
+   the later one wins. It is the only z-index in this file, which is the point
+   of putting it on the one element that has to be over everything. */
+@media (min-width: 901px) {
+  html { scroll-padding-top: 104px; }
+  .top {
+    position: sticky; top: 0; z-index: 10;
+    /* opaque, and then glass on top of it where there is glass to be had. Not
+       the other way round: a translucent bar in a browser without
+       backdrop-filter is a bar with the page legible through it. */
+    background: var(--bg);
+  }
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .top {
+      /* 80/20 and an 18px radius, tuned rather than picked: at 72% and 14px
+         a numeral passing under the wordmark was still legible as a numeral,
+         which is a second thing to read in the one place the page says its
+         own name. This is glass you can tell is glass and not a window. */
+      background: color-mix(in srgb, var(--bg) 80%, transparent);
+      -webkit-backdrop-filter: blur(18px) saturate(160%);
+      backdrop-filter: blur(18px) saturate(160%);
+    }
+  }
+}
 /* The wordmark is the one place the page speaks in its own voice, so it
    takes the prose face and leaves mono to the chrome and the numerals --
    a serif masthead over a mono strapline, which is where that pairing comes
