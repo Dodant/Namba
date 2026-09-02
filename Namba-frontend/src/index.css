@@ -333,7 +333,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
    language picker put it, and the picker is in the footer now: the header
    wraps a little earlier than it has to, and nothing about it looks wrong at
    the widths in between. Left to wrap on its own it broke
-   wherever the search box happened to end: [search][picker][Explore] over
+   wherever the search box happened to end: [search][picker][Recent] over
    [Random][+ Add], a different pair on each line at each width, which is the
    same ragged split the phone rules were written to stop. So it breaks in one
    named place instead. The search keeps the wordmark's line and grows into
@@ -621,7 +621,7 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
   .acts { gap: 6px; }
 
   /* Left to wrap on their natural widths the five controls came out as
-     [search][Explore] over [Random][+ Add] -- two ragged rows, split at
+     [search][Recent] over [Random][+ Add] -- two ragged rows, split at
      whatever width the search box happened to be, with a different pair on
      each. Give the search the row and the three pills the row under it:
      the box gets the width it always wanted on a phone, and the actions
@@ -641,7 +641,7 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
      actions. Spread, they answer the box above them edge to edge -- 38px
      apart at 390, where the floor below would have given them 6.
 
-     6px and not 8: with the clock on Explore the three want 273px, and 320
+     6px and not 8: with the clock on Recent the three want 273px, and 320
      leaves the row 288 -- two 8px gaps are one pixel more than that. The gap
      is a floor nothing reaches until the row is narrower than any phone, and
      wrap is what happens after that rather than three squeezed pills. */
@@ -880,7 +880,7 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
 .cmt-form .field textarea { min-height: 60px; }
 
 /* The two sides of the flag panel. .btn.on is the treatment the header's
-   Explore pill already wears, so "this is the one that is on" looks the same
+   Recent pill already wears, so "this is the one that is on" looks the same
    wherever it happens; flex: 1 1 auto lets them share a line in a wide rail
    and take one each in a narrow one, with no width to guess. The lead
    sentence under them says what the chosen side will actually do, which is

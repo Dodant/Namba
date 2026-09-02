@@ -11,7 +11,7 @@ export type UiLocale = 'en' | 'ko' | 'ja' | 'zh-Hans' | 'es' | 'fr' | 'de'
    borrow these words because the outcome of those actions matters. */
 const GLOBAL_NAV = {
   searchPlaceholder: 'Search…',
-  recent: 'Explore',
+  recent: 'Recent',
   random: 'Random',
   add: '+ Add',
 } as const

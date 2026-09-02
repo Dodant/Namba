@@ -59,7 +59,7 @@ const DIE = (
   </svg>
 )
 
-/* A clock because Explore opens the last-touched-first view. Drawn to the
+/* A clock because Recent opens the last-touched-first view. Drawn to the
    die's spec -- the same 16px box, the same
    1.3 stroke, no fill, currentColor -- so the two pills side by side read as
    one set rather than as two icons that happened to turn up together. Hands
@@ -263,9 +263,9 @@ function Header() {
             screen the wrapper is a flex row inside a flex row with the same
             gap, so it draws exactly as before. */}
         <div className="acts-main">
-          {/* Explore is shared product vocabulary in every locale. The clock
-              carries the last-touched ordering; ?view=feed still names the
-              shape, a card list rather than the index. */}
+          {/* Recent is shared product vocabulary in every locale and names
+              the last-touched ordering; ?view=feed still names the shape, a
+              card list rather than the index. */}
           <Link
             className={`btn ${feed ? 'on' : ''}`}
             aria-current={feed ? 'page' : undefined}
