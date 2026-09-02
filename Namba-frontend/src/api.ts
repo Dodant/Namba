@@ -411,7 +411,7 @@ const SPANS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['day', 86400], ['hour', 3600], ['minute', 60],
 ]
 const JUST_NOW: Record<string, string> = {
-  ko: '방금 전', ja: 'たった今', 'zh-Hans': '刚刚', es: 'ahora mismo', fr: 'à l’instant',
+  ko: '방금 전', ja: 'たった今', 'zh-Hans': '刚刚', es: 'ahora mismo', fr: 'à l’instant', de: 'gerade eben',
 }
 
 export function fmtDate(s: string, locale = 'en') {
