@@ -20,12 +20,64 @@ _ABBR = re.compile(r"^[A-Za-z][A-Za-z.&-]*$")
 # will never guess at, and refusing what a poster explicitly picked would be
 # the gate deciding something it was not asked to.
 _ABBR_OK = re.compile(r"^(?=.*[A-Za-z])[A-Za-z0-9.&-]+$")
-# 4+ digits, because "100" has no thousand to separate. The fraction is left
-# alone: 3.14159 groups nothing after the point.
-_GROUPABLE = re.compile(r"^(\d{4,})(\.\d+)?$")
+_LOCALIZABLE = re.compile(r"^(\d+)(?:\.(\d+))?$")
+
+# Stored values use no grouping and a dot decimal. These are display/input
+# punctuation only; a locale never becomes part of a number's identity.
+_NUMBER_PUNCTUATION = {
+    "en": (",", "."),
+    "ko": (",", "."),
+    "ja": (",", "."),
+    "zh-hans": (",", "."),
+    "es": (".", ","),
+    "fr": ("\u202f", ","),
+    "de": (".", ","),
+}
 
 
-def grouped_value(value, grouped):
+def number_punctuation(locale="en"):
+    """(group, decimal, accepted group marks) for a supported UI locale."""
+    code = (locale or "en").lower()
+    if code.startswith("zh"):
+        code = "zh-hans"
+    else:
+        code = code.split("-", 1)[0]
+    group, decimal = _NUMBER_PUNCTUATION.get(code, _NUMBER_PUNCTUATION["en"])
+    # French text arrives with normal, no-break and narrow no-break spaces.
+    accepted = (group, " ", "\u00a0", "\u202f") if code == "fr" else (group,)
+    return group, decimal, tuple(dict.fromkeys(accepted))
+
+
+def canonical_value(value, locale="en"):
+    """Normalise one strictly grouped localized number without touching prose.
+
+    Invalid grouping is returned verbatim: 1,2,3 and Apollo,11 are mixed
+    notation/content, not malformed thousands separators we may delete.
+    """
+    raw = (value or "").strip()
+    _, decimal, group_marks = number_punctuation(locale)
+    decimal_parts = raw.split(decimal)
+    if len(decimal_parts) > 2:
+        return raw, False
+    integer = decimal_parts[0]
+    fraction = decimal_parts[1] if len(decimal_parts) == 2 else None
+    if not integer or (fraction is not None and not fraction.isdigit()):
+        return raw, False
+    split = "[" + "".join(re.escape(mark) for mark in group_marks) + "]"
+    groups = re.split(split, integer)
+    grouped = len(groups) > 1
+    valid = (
+        groups[0].isdigit()
+        and (not grouped or 1 <= len(groups[0]) <= 3)
+        and all(part.isdigit() and len(part) == 3 for part in groups[1:])
+    )
+    if not valid:
+        return raw, False
+    canonical = "".join(groups) + (("." + fraction) if fraction is not None else "")
+    return canonical, grouped
+
+
+def grouped_value(value, grouped, locale="en"):
     """The value as it should read on screen, given the poster's preference.
 
     Display only. The stored value never carries separators -- "1000" and
@@ -33,10 +85,14 @@ def grouped_value(value, grouped):
     pages and a number stops being a column. Anything that is not a plain
     integer or decimal comes back untouched: there is no thousand in 10:04PM.
     """
-    if not grouped:
+    m = _LOCALIZABLE.match(value or "")
+    if not m:
         return value
-    m = _GROUPABLE.match(value or "")
-    return f"{int(m.group(1)):,}{m.group(2) or ''}" if m else value
+    group, decimal, _ = number_punctuation(locale)
+    integer = m.group(1)
+    if grouped and len(integer) >= 4:
+        integer = re.sub(r"(?<!^)(?=(\d{3})+$)", group, integer)
+    return integer + ((decimal + m.group(2)) if m.group(2) is not None else "")
 
 
 def parse_number(s):

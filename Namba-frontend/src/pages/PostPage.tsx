@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import {
-  api, entryPath, fmtDate, nickname, numSize, plain, showValue,
+  api, entryPath, fmtCount, fmtDate, nickname, numSize, plain, showValue,
   tagLabel, tagPath, type Comment, type Revision,
 } from '../api'
 import FlagPanel from '../components/FlagPanel'
@@ -82,7 +82,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
                 <li className="rev" key={r.id}>
                   <b>{r.snapshot.title}</b>
                   <span>
-                    {r.snapshot.value} · {byline(r, m)} · {fmtDate(r.at, locale)}
+                    {showValue(r.snapshot.value, r.snapshot.grouped, locale)} · {byline(r, m)} · {fmtDate(r.at, locale)}
                   </span>
                   <button className="btn small" onClick={() => resurrect(r)}>
                     {m.common.restore}
@@ -143,10 +143,10 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
 
         <div className="hero">
           <Link
-            className={`num ${numSize(showValue(post.value, post.grouped))}`}
+            className={`num ${numSize(showValue(post.value, post.grouped, locale))}`}
             to={entryPath(post.value, post.format)}
           >
-            {showValue(post.value, post.grouped)}
+            {showValue(post.value, post.grouped, locale)}
           </Link>
           <h1>{shown.title}</h1>
         </div>
@@ -249,7 +249,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
             {post.related.map((r) => (
               <div className="rel" key={r.id}>
                 <Link className="rel-num" to={entryPath(r.value, r.format)}>
-                  {showValue(r.value, r.grouped)}
+                  {showValue(r.value, r.grouped, locale)}
                 </Link>
                 <div className="rel-main">
                   <Link className="rel-t" to={`/p/${r.id}`}>
@@ -284,7 +284,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
                 The figure alone here, unlike the index's bands: the heading a
                 rail count sits beside is the noun already, and "Edit history
                 3 edits" says edit twice in four words. */}
-            {!!revs.data?.length && <span className="n">{revs.data.length}</span>}
+            {!!revs.data?.length && <span className="n">{fmtCount(revs.data.length, locale)}</span>}
           </summary>
           <ol className="revs">
             <li className="rev now">
@@ -375,7 +375,7 @@ function Comments({ id }: { id: string }) {
             row. A band on the index says "12 entries" because its heading is
             "Under 100" and the noun is news there; here the heading is the
             noun, and what is left to say is how many. */}
-        {!!said?.length && <span className="n">{said.length}</span>}
+        {!!said?.length && <span className="n">{fmtCount(said.length, locale)}</span>}
       </summary>
       <div className="cmt-form">
         <div className="field">

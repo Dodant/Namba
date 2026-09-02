@@ -25,7 +25,9 @@ from db import get_db, now
 from store import (
     LIVE, fetch_one, guard_public, shape, snapshot, write_tags, write_translations,
 )
-from numfmt import FORMATS, bucket_of, grouped_value, is_abbr, parse_number
+from numfmt import (
+    FORMATS, bucket_of, canonical_value, grouped_value, is_abbr, parse_number,
+)
 
 # A tag is whatever people call it, like a translation's language label. What
 # is checked is its shape, not its membership of a list -- the wiki's working
@@ -108,6 +110,49 @@ def site_base(request) -> str:
     cannot disagree about what this site is called.
     """
     return (BASE or str(request.base_url)).rstrip("/") + "/"
+
+
+UI_LOCALES = {"en", "ko", "ja", "zh-Hans", "es", "fr", "de"}
+UI_LOCALE_COOKIE = "namba_ui_locale"
+
+
+def _ui_locale(raw):
+    """One supported UI locale from a cookie or Accept-Language token."""
+    code = (raw or "").strip().lower()
+    if code.startswith("zh"):
+        return "zh-Hans"
+    base = code.split("-", 1)[0]
+    return base if base in UI_LOCALES else None
+
+
+def request_ui_locale(request):
+    """The punctuation to use in server-written titles and share cards.
+
+    The explicit interface choice is mirrored to a small cookie by the client.
+    Before that exists, the browser's ordered Accept-Language list is the only
+    preference available to a server or link-preview crawler.
+    """
+    chosen = _ui_locale(request.cookies.get(UI_LOCALE_COOKIE))
+    if chosen:
+        return chosen
+    weighted = []
+    for position, part in enumerate(request.headers.get("accept-language", "").split(",")):
+        token, *params = part.strip().split(";")
+        quality = 1.0
+        for param in params:
+            if param.strip().startswith("q="):
+                try:
+                    quality = float(param.strip()[2:])
+                except ValueError:
+                    quality = 0
+        weighted.append((-quality, position, token))
+    for quality, _, token in sorted(weighted):
+        if quality == 0:
+            continue
+        chosen = _ui_locale(token)
+        if chosen:
+            return chosen
+    return "en"
 
 
 def uploads_bytes():
@@ -220,6 +265,7 @@ def _clean_tags(v):
 
 class PostIn(BaseModel):
     value: str = Field(min_length=1, max_length=32)
+    number_locale: Optional[str] = Field(default=None, max_length=16)
     format: Optional[str] = None
     title: str = Field(min_length=1, max_length=200)
     body: str = Field(default="", max_length=5000)
@@ -263,6 +309,7 @@ class PostIn(BaseModel):
 
 class PostPatch(BaseModel):
     value: Optional[str] = Field(default=None, min_length=1, max_length=32)
+    number_locale: Optional[str] = Field(default=None, max_length=16)
     format: Optional[str] = None
     title: Optional[str] = Field(default=None, min_length=1, max_length=200)
     body: Optional[str] = Field(default=None, max_length=5000)
@@ -373,27 +420,18 @@ class LinkIn(BaseModel):
 
 
 # --- helpers ------------------------------------------------------------
-# 1,000 and 299,792,458 and 1,234.5678 -- but not 1,2,3 or 12,34, which are
-# not thousands separators and are left alone.
-_GROUPED_IN = re.compile(r"^(\d{1,3}(?:,\d{3})+)(\.\d+)?$")
-
-
-def ungroup(value, grouped):
+def ungroup(value, grouped, locale="en"):
     """(value as stored, whether to draw it grouped).
 
-    A separator never reaches the database, whatever the box says. 1000 and
-    1,000 are one number and have to answer at one address, and the moment a
-    comma is storable /n/1000 and /n/1%2C000 are two pages about it.
+    A separator never reaches the database, whatever the box says. 1000,
+    English 1,000, German 1.000 and French 1 000 are one number and have to
+    answer at one address.
 
-    Typing the commas is also how you ask for them. Stripping them and leaving
-    the box off would swallow what the poster plainly meant, and the field
-    always shows the stored value, so commas only ever appear by being typed.
+    Typing the grouping mark is also how you ask for it. Stripping it and
+    leaving the box off would swallow what the poster plainly meant.
     """
-    value = (value or "").strip()
-    m = _GROUPED_IN.match(value)
-    if m:
-        return m.group(1).replace(",", "") + (m.group(2) or ""), True
-    return value, bool(grouped)
+    value, typed_grouping = canonical_value(value, locale)
+    return value, bool(grouped or typed_grouping)
 
 
 def resolve_format(value, given):
@@ -715,7 +753,7 @@ def list_comments(post_id: int, con=Depends(get_db)):
 # --- write --------------------------------------------------------------
 @app.post("/api/posts", status_code=201)
 def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
-    value, grouped = ungroup(p.value, p.grouped)
+    value, grouped = ungroup(p.value, p.grouped, p.number_locale)
     value, fmt, key = resolve_format(value, p.format)
     ts = now()
     with con:
@@ -744,6 +782,9 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
     # is how the form removes one -- and defaulting it to None made "unchanged"
     # and "clear this" the same request, so Remove quietly did nothing.
     sent = p.model_dump(exclude_unset=True)
+    # Input grammar, not entry content: it must not appear as a changed field
+    # in the audit log or a revision diff.
+    sent.pop("number_locale", None)
     # the same rule from the other side -- "Written in" is a menu of every
     # language, and one of them may already be a tab on this entry
     if "lang" in sent and says_it_twice(p.lang, [t["lang"] for t in current["translations"]]):
@@ -755,7 +796,7 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         grouped = p.grouped if "grouped" in sent else bool(current["grouped"])
         value = current["value"]
         if p.value is not None:
-            value, grouped = ungroup(p.value, grouped)
+            value, grouped = ungroup(p.value, grouped, p.number_locale)
         if p.format:
             value, fmt, key = resolve_format(value, p.format)
         elif p.value is not None:
@@ -1425,13 +1466,15 @@ def head_list(page, base, *, kind, subject, url, rows, empty):
                       ld=[page_ld, crumbs(base, [(subject, url)])])
 
 
-def head_number(con, page, value, base):
+def head_number(con, page, value, base, locale="en"):
     rows = [dict(r) for r in con.execute(
         "SELECT id, title, grouped FROM posts WHERE value = ? AND status = ? "
         f"AND {section_where('number')} ORDER BY id", (value, LIVE))]
     # the rule the hero draws by: separators are a per-entry display flag, so
     # the page only groups when every entry filed under the number agrees
-    shown = grouped_value(value, bool(rows) and all(r["grouped"] for r in rows))
+    shown = grouped_value(
+        value, bool(rows) and all(r["grouped"] for r in rows), locale,
+    )
     return head_list(page, base, kind="number", subject=shown,
                      url=f"{base}n/{enc(value)}", rows=rows,
                      empty=f"Nothing is filed under {shown} on Namba yet.")
@@ -1462,7 +1505,7 @@ def head_tag(con, page, tag, base):
                      empty=f"Nothing on Namba is tagged {tag} yet.")
 
 
-def og_head(page: str, post: dict, base: str, tags=()) -> str:
+def og_head(page: str, post: dict, base: str, tags=(), locale="en") -> str:
     """Give this page the entry's own title, description, dates and picture.
 
     Crawlers do not run the JavaScript that would set these client-side, so the
@@ -1474,7 +1517,7 @@ def og_head(page: str, post: dict, base: str, tags=()) -> str:
     ago"), so an exact ISO timestamp belongs in a machine's channel rather than
     as a second date format nobody asked to read.
     """
-    value = grouped_value(post["value"], post["grouped"])
+    value = grouped_value(post["value"], post["grouped"], locale)
     title = f"{value} — {post['title']} · Namba"
     # The fallback names the entry, because 84% of this wiki is a title and no
     # body and "What 2 means, on Namba." was the description on all of them --
@@ -1520,19 +1563,29 @@ def og_head(page: str, post: dict, base: str, tags=()) -> str:
 def _index(con, request, path: str, base: str) -> HTMLResponse:
     with open(os.path.join(DIST, "index.html"), encoding="utf-8") as fh:
         page = fh.read()
+    locale = request_ui_locale(request)
+
+    def answer(body):
+        res = HTMLResponse(body)
+        # The number in a title varies by explicit UI preference first and
+        # Accept-Language second. A cache must not hand the German spelling to
+        # a French request (or the reverse).
+        res.headers["Vary"] = "Accept-Language, Cookie"
+        return res
+
     if path == "":
-        return HTMLResponse(head_home(page, base))
+        return answer(head_home(page, base))
     if path == "guide":
-        return HTMLResponse(head_guide(page, base))
+        return answer(head_guide(page, base))
     value = path_seg(request, "n/")
     if value is not None:
-        return HTMLResponse(head_number(con, page, value, base))
+        return answer(head_number(con, page, value, base, locale))
     abbr = path_seg(request, "a/")
     if abbr is not None:
-        return HTMLResponse(head_abbr(con, page, abbr, base))
+        return answer(head_abbr(con, page, abbr, base))
     tag = path_seg(request, "t/")
     if tag is not None:
-        return HTMLResponse(head_tag(con, page, tag, base))
+        return answer(head_tag(con, page, tag, base))
     hit = re.fullmatch(r"p/(\d+)", path)
     if hit:
         row = con.execute("SELECT * FROM posts WHERE id = ? AND status = ?",
@@ -1541,7 +1594,7 @@ def _index(con, request, path: str, base: str) -> HTMLResponse:
             tags = [r["tag"] for r in con.execute(
                 "SELECT tag FROM post_tags WHERE post_id = ? ORDER BY tag",
                 (hit.group(1),))]
-            return HTMLResponse(og_head(page, dict(row), base, tags))
+            return answer(og_head(page, dict(row), base, tags, locale))
     # Everything else: /search, /random, /new, /p/{id}/edit, an entry an
     # operator took down, and every mistyped path -- which answers 200 with the
     # app's "Nothing here" and would otherwise be indexed as a copy of the
@@ -1553,7 +1606,7 @@ def _index(con, request, path: str, base: str) -> HTMLResponse:
     # added there would arrive claiming to be indexable until somebody
     # remembered this file. Being indexable is the thing that has to be spelled
     # out; not being indexable is the safe answer to give a stranger.
-    return HTMLResponse(write_head(page, robots="noindex, follow"))
+    return answer(write_head(page, robots="noindex, follow"))
 
 
 @app.get("/robots.txt", response_class=PlainTextResponse)

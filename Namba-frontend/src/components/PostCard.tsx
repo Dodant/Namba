@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  api, entryPath, fmtDate, liked, numSize, plain, showValue, tagLabel, tagPath,
+  api, entryPath, fmtCount, fmtDate, liked, numSize, plain, showValue, tagLabel, tagPath,
   type Post,
 } from '../api'
 import { useUi } from '../uiLocale'
@@ -27,8 +27,8 @@ export function Like({ post }: { post: { id: number; likes: number } }) {
   }
 
   const says = locale === 'ko'
-    ? `${on ? '좋아요 취소' : '좋아요'} — ${n}개`
-    : `${on ? 'Unlike' : 'Like'} — ${n} ${n === 1 ? 'like' : 'likes'}`
+    ? `${on ? '좋아요 취소' : '좋아요'} — ${fmtCount(n, locale)}개`
+    : `${on ? 'Unlike' : 'Like'} — ${fmtCount(n, locale)} ${n === 1 ? 'like' : 'likes'}`
 
   return (
     <button
@@ -38,7 +38,7 @@ export function Like({ post }: { post: { id: number; likes: number } }) {
       aria-label={says}
       title={says}
     >
-      ♥ {n}
+      ♥ {fmtCount(n, locale)}
     </button>
   )
 }
@@ -59,10 +59,10 @@ export default function PostCard({
     <article className="card">
       {showNumber && (
         <Link
-          className={`num ${numSize(showValue(post.value, post.grouped))}`}
+          className={`num ${numSize(showValue(post.value, post.grouped, locale))}`}
           to={entryPath(post.value, post.format)}
         >
-          {showValue(post.value, post.grouped)}
+          {showValue(post.value, post.grouped, locale)}
         </Link>
       )}
       <div className="main">

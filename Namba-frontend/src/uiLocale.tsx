@@ -1,6 +1,7 @@
 /* oxlint-disable react/only-export-components -- the provider and its hook share
    one private context; splitting them would export that implementation detail. */
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { fmtCount } from './api'
 
 export type UiLocale = 'en' | 'ko' | 'ja' | 'zh-Hans' | 'es' | 'fr' | 'de'
 
@@ -19,8 +20,8 @@ const EN = {
     by: (name: string) => `by ${name}`,
     edited: (when: string, name?: string | null) =>
       `edited ${when}${name ? ` by ${name}` : ''}`,
-    entries: (n: number) => `${n} ${n === 1 ? 'entry' : 'entries'}`,
-    tags: (n: number) => `${n} ${n === 1 ? 'tag' : 'tags'}`,
+    entries: (n: number) => `${fmtCount(n, 'en')} ${n === 1 ? 'entry' : 'entries'}`,
+    tags: (n: number) => `${fmtCount(n, 'en')} ${n === 1 ? 'tag' : 'tags'}`,
     subject: (abbr: boolean, n = 1): string =>
       abbr ? (n === 1 ? 'abbreviation' : 'abbreviations') : n === 1 ? 'number' : 'numbers',
   },
@@ -47,21 +48,21 @@ const EN = {
     guidelines: 'Entry guidelines', source: 'Source', apiOpen: 'open, no key.',
     interfaceLanguage: 'Interface', contentLanguage: 'Entry text',
     interfaceAria: 'Interface language', contentAria: 'Preferred entry language',
-    asWritten: 'As written', translatedCount: (lang: string, n: number) => `${lang} · ${n}`,
+    asWritten: 'As written', translatedCount: (lang: string, n: number) => `${lang} · ${fmtCount(n, 'en')}`,
   },
   home: {
     hasImage: 'has an image',
     feedIntro: 'Recent entries and edits, newest first.',
     empty: 'Nothing written yet.',
     entryKinds: 'Entry format', categories: 'Categories', all: 'All',
-    foldedEntries: (n: number) => `${n} entries`,
+    foldedEntries: (n: number) => `${fmtCount(n, 'en')} entries`,
     bandCount: (subjects: number, subject: string, entries: number) =>
-      `${subjects} ${subject} · ${entries} ${entries === 1 ? 'entry' : 'entries'}`,
+      `${fmtCount(subjects, 'en')} ${subject} · ${fmtCount(entries, 'en')} ${entries === 1 ? 'entry' : 'entries'}`,
   },
   browse: {
     category: 'Category', search: 'Search',
     summary: (n: number, abbr: boolean) =>
-      `${n === 1 ? 'One entry explains' : `${n} entries explain`} this ${abbr ? 'abbreviation' : 'number'}.`,
+      `${n === 1 ? 'One entry explains' : `${fmtCount(n, 'en')} entries explain`} this ${abbr ? 'abbreviation' : 'number'}.`,
     addMeaning: '+ Add another meaning',
     emptyValue: (value: string) => `Nothing filed under ${value} yet.`,
     giveMeaning: 'Give it a meaning.',
@@ -85,7 +86,7 @@ const EN = {
     editHistory: 'Edit history', current: 'current', noEdits: 'No edit history yet.',
     comments: 'Comments', nickname: 'Your nickname', saySomething: 'Say something',
     commentLimit: 'at most 300 characters', commentPlaceholder: 'What do you think?',
-    posting: 'Posting…', postComment: 'Post', more: (n: number) => `${n} more`,
+    posting: 'Posting…', postComment: 'Post', more: (n: number) => `${fmtCount(n, 'en')} more`,
     noComments: 'No comments yet.', deleted: 'deleted', editedBy: (name: string) => `edited by ${name}`,
   },
   form: {
@@ -100,7 +101,7 @@ const EN = {
     detailsPlaceholder: 'The Answer to the Ultimate Question of Life, the Universe, and Everything.',
     markdown: 'Markdown works — **bold**, *italic*, [links](https://…), lists, headings and tables. A single Enter is a line break.',
     writtenIn: 'Written in', categories: 'Categories',
-    categoryHint: (n: number) => `up to ${n} — a film adapted from a book can use both`,
+    categoryHint: (n: number) => `up to ${fmtCount(n, 'en')} — a film adapted from a book can use both`,
     newCategoryAria: 'Name a new category', newCategory: 'or name your own', add: 'Add',
     image: 'Image', imageHint: 'optional — jpg, png, gif or webp, up to 5 MB', remove: 'Remove',
     uploading: 'Uploading…', nickname: 'Your nickname', editorHint: 'recorded as the editor, not the author',
@@ -147,7 +148,7 @@ const KO: typeof EN = {
     anonymous: '익명', cancel: '취소', save: '저장', edit: '수정', restore: '복원',
     by: (name: string) => `${name === 'anonymous' ? '익명' : name} 작성`,
     edited: (when: string, name?: string | null) => `${when} 수정${name ? ` · ${name === 'anonymous' ? '익명' : name}` : ''}`,
-    entries: (n: number) => `항목 ${n}개`, tags: (n: number) => `태그 ${n}개`,
+    entries: (n: number) => `항목 ${fmtCount(n, 'ko')}개`, tags: (n: number) => `태그 ${fmtCount(n, 'ko')}개`,
     subject: (abbr: boolean) => abbr ? '약어' : '숫자',
   },
   format: { INTEGER: '정수', DECIMAL: '소수', MIXED: '혼합형', TIME: '시각', ABBR: '약어' },
@@ -170,18 +171,18 @@ const KO: typeof EN = {
     guidelines: '항목 작성 지침', source: '소스 코드', apiOpen: '키 없이 공개.',
     interfaceLanguage: '화면 언어', contentLanguage: '항목 내용',
     interfaceAria: '화면 언어', contentAria: '선호하는 항목 언어', asWritten: '원문 그대로',
-    translatedCount: (lang: string, n: number) => `${lang} · 번역 ${n}개`,
+    translatedCount: (lang: string, n: number) => `${lang} · 번역 ${fmtCount(n, 'ko')}개`,
   },
   home: {
     hasImage: '이미지 있음', feedIntro: '최근 작성·수정된 항목부터 보여줍니다.',
     empty: '아직 작성된 항목이 없습니다.', entryKinds: '항목 형식', categories: '분류', all: '전체',
-    foldedEntries: (n: number) => `항목 ${n}개`,
+    foldedEntries: (n: number) => `항목 ${fmtCount(n, 'ko')}개`,
     bandCount: (subjects: number, subject: string, entries: number) =>
-      `${subject} ${subjects}개 · 항목 ${entries}개`,
+      `${subject} ${fmtCount(subjects, 'ko')}개 · 항목 ${fmtCount(entries, 'ko')}개`,
   },
   browse: {
     category: '분류', search: '검색',
-    summary: (n: number, abbr: boolean) => `${abbr ? '이 약어' : '이 숫자'}를 설명하는 항목이 ${n}개 있습니다.`,
+    summary: (n: number, abbr: boolean) => `${abbr ? '이 약어' : '이 숫자'}를 설명하는 항목이 ${fmtCount(n, 'ko')}개 있습니다.`,
     addMeaning: '+ 다른 의미 추가', emptyValue: (value: string) => `${value}에 등록된 항목이 아직 없습니다.`,
     giveMeaning: '의미 추가하기.', emptyTag: (tag: string) => `${tag} 태그가 붙은 항목이 아직 없습니다.`,
     noMatches: (q: string) => `“${q}” 검색 결과가 없습니다. 다른 단어로 검색하거나`,
@@ -201,7 +202,7 @@ const KO: typeof EN = {
     sayMeaning: '의미 설명하기.', related: '관련 항목', editHistory: '수정 기록', current: '현재',
     noEdits: '아직 수정 기록이 없습니다.', comments: '댓글', nickname: '닉네임',
     saySomething: '댓글 작성', commentLimit: '최대 300자', commentPlaceholder: '어떻게 생각하시나요?',
-    posting: '게시 중…', postComment: '게시', more: (n: number) => `${n}개 더 보기`,
+    posting: '게시 중…', postComment: '게시', more: (n: number) => `${fmtCount(n, 'ko')}개 더 보기`,
     noComments: '아직 댓글이 없습니다.', deleted: '삭제됨', editedBy: (name: string) => `${name} 수정`,
   },
   form: {
@@ -216,7 +217,7 @@ const KO: typeof EN = {
     detailsPlaceholder: '삶, 우주, 그리고 모든 것에 대한 궁극적인 질문의 답.',
     markdown: 'Markdown을 사용할 수 있습니다 — **굵게**, *기울임*, [링크](https://…), 목록, 제목, 표. Enter 한 번은 줄바꿈으로 표시됩니다.',
     writtenIn: '작성 언어', categories: '분류',
-    categoryHint: (n: number) => `최대 ${n}개 — 책을 원작으로 한 영화라면 둘 다 선택 가능`,
+    categoryHint: (n: number) => `최대 ${fmtCount(n, 'ko')}개 — 책을 원작으로 한 영화라면 둘 다 선택 가능`,
     newCategoryAria: '새 분류 이름', newCategory: '새 분류 직접 입력', add: '추가', image: '이미지',
     imageHint: '선택 — jpg, png, gif, webp, 최대 5 MB', remove: '제거', uploading: '업로드 중…',
     nickname: '닉네임', editorHint: '작성자가 아닌 수정자로 기록', noAccountHint: '계정과 비밀번호 없음',
@@ -262,7 +263,7 @@ const JA: typeof EN = {
     edited: (when: string, name?: string | null) => name
       ? `${name === 'anonymous' ? '匿名' : name}が${when}に編集`
       : `${when}に編集`,
-    entries: (n: number) => `${n}件`, tags: (n: number) => `${n}個のタグ`,
+    entries: (n: number) => `${fmtCount(n, 'ja')}件`, tags: (n: number) => `${fmtCount(n, 'ja')}個のタグ`,
     subject: (abbr: boolean) => abbr ? '略語' : '数字',
   },
   format: { INTEGER: '整数', DECIMAL: '小数', MIXED: '混合', TIME: '時刻', ABBR: '略語' },
@@ -285,18 +286,18 @@ const JA: typeof EN = {
     guidelines: '項目ガイドライン', source: 'ソースコード', apiOpen: 'キー不要で公開中。',
     interfaceLanguage: '表示言語', contentLanguage: '項目の本文',
     interfaceAria: '表示言語', contentAria: '項目の優先言語', asWritten: '原文のまま',
-    translatedCount: (lang: string, n: number) => `${lang} · 翻訳${n}件`,
+    translatedCount: (lang: string, n: number) => `${lang} · 翻訳${fmtCount(n, 'ja')}件`,
   },
   home: {
     hasImage: '画像あり', feedIntro: '最近作成・編集された項目から表示します。',
     empty: 'まだ項目がありません。', entryKinds: '項目の形式', categories: 'カテゴリ', all: 'すべて',
-    foldedEntries: (n: number) => `${n}件の項目`,
+    foldedEntries: (n: number) => `${fmtCount(n, 'ja')}件の項目`,
     bandCount: (subjects: number, subject: string, entries: number) =>
-      `${subject}${subjects}個 · 項目${entries}件`,
+      `${subject}${fmtCount(subjects, 'ja')}個 · 項目${fmtCount(entries, 'ja')}件`,
   },
   browse: {
     category: 'カテゴリ', search: '検索',
-    summary: (n: number, abbr: boolean) => `${abbr ? 'この略語' : 'この数字'}を説明する項目が${n}件あります。`,
+    summary: (n: number, abbr: boolean) => `${abbr ? 'この略語' : 'この数字'}を説明する項目が${fmtCount(n, 'ja')}件あります。`,
     addMeaning: '+ 別の意味を追加', emptyValue: (value: string) => `${value}の項目はまだありません。`,
     giveMeaning: '意味を追加する。', emptyTag: (tag: string) => `${tag}タグの項目はまだありません。`,
     noMatches: (q: string) => `「${q}」に一致する項目はありません。別の言葉で検索するか、`,
@@ -316,7 +317,7 @@ const JA: typeof EN = {
     sayMeaning: '意味を説明する。', related: '関連項目', editHistory: '編集履歴', current: '現在',
     noEdits: '編集履歴はまだありません。', comments: 'コメント', nickname: 'ニックネーム',
     saySomething: 'コメントを書く', commentLimit: '300文字まで', commentPlaceholder: 'どう思いますか？',
-    posting: '投稿中…', postComment: '投稿', more: (n: number) => `さらに${n}件`,
+    posting: '投稿中…', postComment: '投稿', more: (n: number) => `さらに${fmtCount(n, 'ja')}件`,
     noComments: 'コメントはまだありません。', deleted: '削除済み', editedBy: (name: string) => `${name}が編集`,
   },
   form: {
@@ -331,7 +332,7 @@ const JA: typeof EN = {
     detailsPlaceholder: '生命、宇宙、そして万物についての究極の疑問の答え。',
     markdown: 'Markdownが使えます — **太字**、*斜体*、[リンク](https://…)、リスト、見出し、表。Enterを1回押すと改行されます。',
     writtenIn: '記述言語', categories: 'カテゴリ',
-    categoryHint: (n: number) => `${n}個まで — 本を原作とする映画なら両方を選択可能`,
+    categoryHint: (n: number) => `${fmtCount(n, 'ja')}個まで — 本を原作とする映画なら両方を選択可能`,
     newCategoryAria: '新しいカテゴリ名', newCategory: '新しいカテゴリを入力', add: '追加',
     image: '画像', imageHint: '任意 — jpg、png、gif、webp、5 MBまで', remove: '削除',
     uploading: 'アップロード中…', nickname: 'ニックネーム', editorHint: '作成者ではなく編集者として記録',
@@ -378,7 +379,7 @@ const ZH_HANS: typeof EN = {
     by: (name: string) => `${name === 'anonymous' ? '匿名用户' : name}创建`,
     edited: (when: string, name?: string | null) =>
       `${when}编辑${name ? ` · ${name === 'anonymous' ? '匿名用户' : name}` : ''}`,
-    entries: (n: number) => `${n}个条目`, tags: (n: number) => `${n}个标签`,
+    entries: (n: number) => `${fmtCount(n, 'zh-Hans')}个条目`, tags: (n: number) => `${fmtCount(n, 'zh-Hans')}个标签`,
     subject: (abbr: boolean) => abbr ? '缩写' : '数字',
   },
   format: { INTEGER: '整数', DECIMAL: '小数', MIXED: '混合', TIME: '时间', ABBR: '缩写' },
@@ -401,18 +402,18 @@ const ZH_HANS: typeof EN = {
     guidelines: '条目指南', source: '源代码', apiOpen: '开放使用，无需密钥。',
     interfaceLanguage: '界面语言', contentLanguage: '条目内容',
     interfaceAria: '界面语言', contentAria: '条目内容的首选语言', asWritten: '按原文显示',
-    translatedCount: (lang: string, n: number) => `${lang} · ${n}篇译文`,
+    translatedCount: (lang: string, n: number) => `${lang} · ${fmtCount(n, 'zh-Hans')}篇译文`,
   },
   home: {
     hasImage: '包含图片', feedIntro: '按最近创建或编辑的时间排序。',
     empty: '还没有任何条目。', entryKinds: '条目格式', categories: '分类', all: '全部',
-    foldedEntries: (n: number) => `${n}个条目`,
+    foldedEntries: (n: number) => `${fmtCount(n, 'zh-Hans')}个条目`,
     bandCount: (subjects: number, subject: string, entries: number) =>
-      `${subjects}个${subject} · ${entries}个条目`,
+      `${fmtCount(subjects, 'zh-Hans')}个${subject} · ${fmtCount(entries, 'zh-Hans')}个条目`,
   },
   browse: {
     category: '分类', search: '搜索',
-    summary: (n: number, abbr: boolean) => `共有${n}个条目解释${abbr ? '这个缩写' : '这个数字'}。`,
+    summary: (n: number, abbr: boolean) => `共有${fmtCount(n, 'zh-Hans')}个条目解释${abbr ? '这个缩写' : '这个数字'}。`,
     addMeaning: '+ 添加另一种含义', emptyValue: (value: string) => `${value}下还没有条目。`,
     giveMeaning: '添加一种含义。', emptyTag: (tag: string) => `还没有带有${tag}标签的条目。`,
     noMatches: (q: string) => `没有与“${q}”匹配的结果。请尝试其他关键词，或`,
@@ -432,7 +433,7 @@ const ZH_HANS: typeof EN = {
     sayMeaning: '说明它的含义。', related: '相关条目', editHistory: '编辑历史', current: '当前',
     noEdits: '还没有编辑记录。', comments: '评论', nickname: '昵称',
     saySomething: '发表评论', commentLimit: '最多300个字符', commentPlaceholder: '你有什么看法？',
-    posting: '发布中…', postComment: '发布', more: (n: number) => `再显示${n}条`,
+    posting: '发布中…', postComment: '发布', more: (n: number) => `再显示${fmtCount(n, 'zh-Hans')}条`,
     noComments: '还没有评论。', deleted: '已删除', editedBy: (name: string) => `${name}编辑`,
   },
   form: {
@@ -447,7 +448,7 @@ const ZH_HANS: typeof EN = {
     detailsPlaceholder: '生命、宇宙以及一切终极问题的答案。',
     markdown: '支持Markdown — **粗体**、*斜体*、[链接](https://…)、列表、标题和表格。按一次Enter即可换行。',
     writtenIn: '写作语言', categories: '分类',
-    categoryHint: (n: number) => `最多${n}个 — 由图书改编的电影可以同时选择两者`,
+    categoryHint: (n: number) => `最多${fmtCount(n, 'zh-Hans')}个 — 由图书改编的电影可以同时选择两者`,
     newCategoryAria: '新分类名称', newCategory: '输入新分类', add: '添加',
     image: '图片', imageHint: '可选 — jpg、png、gif或webp，最大5 MB', remove: '移除',
     uploading: '上传中…', nickname: '昵称', editorHint: '记录为编辑者，而非原作者',
@@ -493,8 +494,8 @@ const ES: typeof EN = {
     by: (name: string) => `por ${name === 'anonymous' ? 'anónimo' : name}`,
     edited: (when: string, name?: string | null) =>
       `editado ${when}${name ? ` por ${name === 'anonymous' ? 'anónimo' : name}` : ''}`,
-    entries: (n: number) => `${n} ${n === 1 ? 'entrada' : 'entradas'}`,
-    tags: (n: number) => `${n} ${n === 1 ? 'etiqueta' : 'etiquetas'}`,
+    entries: (n: number) => `${fmtCount(n, 'es')} ${n === 1 ? 'entrada' : 'entradas'}`,
+    tags: (n: number) => `${fmtCount(n, 'es')} ${n === 1 ? 'etiqueta' : 'etiquetas'}`,
     subject: (abbr: boolean, n = 1) => abbr
       ? (n === 1 ? 'abreviatura' : 'abreviaturas')
       : n === 1 ? 'número' : 'números',
@@ -522,19 +523,19 @@ const ES: typeof EN = {
     interfaceLanguage: 'Idioma de la interfaz', contentLanguage: 'Contenido de las entradas',
     interfaceAria: 'Idioma de la interfaz', contentAria: 'Idioma preferido de las entradas',
     asWritten: 'Texto original',
-    translatedCount: (lang: string, n: number) => `${lang} · ${n} ${n === 1 ? 'traducción' : 'traducciones'}`,
+    translatedCount: (lang: string, n: number) => `${lang} · ${fmtCount(n, 'es')} ${n === 1 ? 'traducción' : 'traducciones'}`,
   },
   home: {
     hasImage: 'con imagen', feedIntro: 'Entradas y ediciones recientes, de más nuevas a más antiguas.',
     empty: 'Aún no hay entradas.', entryKinds: 'Formato de la entrada', categories: 'Categorías', all: 'Todas',
-    foldedEntries: (n: number) => `${n} ${n === 1 ? 'entrada' : 'entradas'}`,
+    foldedEntries: (n: number) => `${fmtCount(n, 'es')} ${n === 1 ? 'entrada' : 'entradas'}`,
     bandCount: (subjects: number, subject: string, entries: number) =>
-      `${subjects} ${subject} · ${entries} ${entries === 1 ? 'entrada' : 'entradas'}`,
+      `${fmtCount(subjects, 'es')} ${subject} · ${fmtCount(entries, 'es')} ${entries === 1 ? 'entrada' : 'entradas'}`,
   },
   browse: {
     category: 'Categoría', search: 'Búsqueda',
     summary: (n: number, abbr: boolean) =>
-      `${n === 1 ? 'Una entrada explica' : `${n} entradas explican`} ${abbr ? 'esta abreviatura' : 'este número'}.`,
+      `${n === 1 ? 'Una entrada explica' : `${fmtCount(n, 'es')} entradas explican`} ${abbr ? 'esta abreviatura' : 'este número'}.`,
     addMeaning: '+ Añadir otro significado',
     emptyValue: (value: string) => `Aún no hay entradas para ${value}.`,
     giveMeaning: 'Añade un significado.', emptyTag: (tag: string) => `Aún no hay entradas con la etiqueta ${tag}.`,
@@ -557,7 +558,7 @@ const ES: typeof EN = {
     editHistory: 'Historial de ediciones', current: 'actual', noEdits: 'Aún no hay ediciones.',
     comments: 'Comentarios', nickname: 'Tu alias', saySomething: 'Escribe un comentario',
     commentLimit: 'máximo 300 caracteres', commentPlaceholder: '¿Qué opinas?',
-    posting: 'Publicando…', postComment: 'Publicar', more: (n: number) => `${n} más`,
+    posting: 'Publicando…', postComment: 'Publicar', more: (n: number) => `${fmtCount(n, 'es')} más`,
     noComments: 'Aún no hay comentarios.', deleted: 'eliminado', editedBy: (name: string) => `editado por ${name}`,
   },
   form: {
@@ -572,7 +573,7 @@ const ES: typeof EN = {
     detailsPlaceholder: 'La respuesta a la pregunta definitiva sobre la vida, el universo y todo lo demás.',
     markdown: 'Puedes usar Markdown: **negrita**, *cursiva*, [enlaces](https://…), listas, títulos y tablas. Una sola pulsación de Enter crea un salto de línea.',
     writtenIn: 'Escrito en', categories: 'Categorías',
-    categoryHint: (n: number) => `hasta ${n} — una película basada en un libro puede usar ambas`,
+    categoryHint: (n: number) => `hasta ${fmtCount(n, 'es')} — una película basada en un libro puede usar ambas`,
     newCategoryAria: 'Nombre de una categoría nueva', newCategory: 'o crea una categoría', add: 'Añadir',
     image: 'Imagen', imageHint: 'opcional — jpg, png, gif o webp, hasta 5 MB', remove: 'Eliminar',
     uploading: 'Subiendo…', nickname: 'Tu alias', editorHint: 'constará como editor, no como autor',
@@ -620,8 +621,8 @@ const FR: typeof EN = {
     by: (name: string) => `par ${name === 'anonymous' ? 'anonyme' : name}`,
     edited: (when: string, name?: string | null) =>
       `modifié ${when}${name ? ` par ${name === 'anonymous' ? 'anonyme' : name}` : ''}`,
-    entries: (n: number) => `${n} ${n === 1 ? 'entrée' : 'entrées'}`,
-    tags: (n: number) => `${n} ${n === 1 ? 'étiquette' : 'étiquettes'}`,
+    entries: (n: number) => `${fmtCount(n, 'fr')} ${n === 1 ? 'entrée' : 'entrées'}`,
+    tags: (n: number) => `${fmtCount(n, 'fr')} ${n === 1 ? 'étiquette' : 'étiquettes'}`,
     subject: (abbr: boolean, n = 1) => abbr
       ? (n === 1 ? 'abréviation' : 'abréviations')
       : n === 1 ? 'nombre' : 'nombres',
@@ -650,20 +651,20 @@ const FR: typeof EN = {
     interfaceLanguage: 'Langue de l’interface', contentLanguage: 'Contenu des entrées',
     interfaceAria: 'Langue de l’interface', contentAria: 'Langue préférée des entrées',
     asWritten: 'Texte d’origine',
-    translatedCount: (lang: string, n: number) => `${lang} · ${n} ${n === 1 ? 'traduction' : 'traductions'}`,
+    translatedCount: (lang: string, n: number) => `${lang} · ${fmtCount(n, 'fr')} ${n === 1 ? 'traduction' : 'traductions'}`,
   },
   home: {
     hasImage: 'avec une image',
     feedIntro: 'Entrées et modifications récentes, des plus nouvelles aux plus anciennes.',
     empty: 'Aucune entrée pour le moment.', entryKinds: 'Format de l’entrée', categories: 'Catégories', all: 'Toutes',
-    foldedEntries: (n: number) => `${n} ${n === 1 ? 'entrée' : 'entrées'}`,
+    foldedEntries: (n: number) => `${fmtCount(n, 'fr')} ${n === 1 ? 'entrée' : 'entrées'}`,
     bandCount: (subjects: number, subject: string, entries: number) =>
-      `${subjects} ${subject} · ${entries} ${entries === 1 ? 'entrée' : 'entrées'}`,
+      `${fmtCount(subjects, 'fr')} ${subject} · ${fmtCount(entries, 'fr')} ${entries === 1 ? 'entrée' : 'entrées'}`,
   },
   browse: {
     category: 'Catégorie', search: 'Recherche',
     summary: (n: number, abbr: boolean) =>
-      `${n === 1 ? 'Une entrée explique' : `${n} entrées expliquent`} ${abbr ? 'cette abréviation' : 'ce nombre'}.`,
+      `${n === 1 ? 'Une entrée explique' : `${fmtCount(n, 'fr')} entrées expliquent`} ${abbr ? 'cette abréviation' : 'ce nombre'}.`,
     addMeaning: '+ Ajouter une autre signification',
     emptyValue: (value: string) => `Aucune entrée n’est encore associée à ${value}.`,
     giveMeaning: 'Ajoutez une signification.',
@@ -688,7 +689,7 @@ const FR: typeof EN = {
     noEdits: 'Aucune modification pour le moment.', comments: 'Commentaires', nickname: 'Votre pseudonyme',
     saySomething: 'Écrire un commentaire', commentLimit: '300 caractères maximum',
     commentPlaceholder: 'Qu’en pensez-vous ?', posting: 'Publication…', postComment: 'Publier',
-    more: (n: number) => `${n} de plus`, noComments: 'Aucun commentaire pour le moment.',
+    more: (n: number) => `${fmtCount(n, 'fr')} de plus`, noComments: 'Aucun commentaire pour le moment.',
     deleted: 'supprimé', editedBy: (name: string) => `modifié par ${name}`,
   },
   form: {
@@ -703,7 +704,7 @@ const FR: typeof EN = {
     detailsPlaceholder: 'La réponse à la grande question sur la vie, l’univers et le reste.',
     markdown: 'Vous pouvez utiliser Markdown : **gras**, *italique*, [liens](https://…), listes, titres et tableaux. Une seule pression sur Entrée crée un saut de ligne.',
     writtenIn: 'Langue du texte', categories: 'Catégories',
-    categoryHint: (n: number) => `jusqu’à ${n} — un film adapté d’un livre peut utiliser les deux`,
+    categoryHint: (n: number) => `jusqu’à ${fmtCount(n, 'fr')} — un film adapté d’un livre peut utiliser les deux`,
     newCategoryAria: 'Nom d’une nouvelle catégorie', newCategory: 'ou créez une catégorie', add: 'Ajouter',
     image: 'Image', imageHint: 'facultatif — jpg, png, gif ou webp, jusqu’à 5 Mo', remove: 'Supprimer',
     uploading: 'Téléversement…', nickname: 'Votre pseudonyme',
@@ -757,8 +758,8 @@ const DE: typeof EN = {
     by: (name: string) => `von ${name === 'anonymous' ? 'anonym' : name}`,
     edited: (when: string, name?: string | null) =>
       `bearbeitet ${when}${name ? ` von ${name === 'anonymous' ? 'anonym' : name}` : ''}`,
-    entries: (n: number) => `${n} ${n === 1 ? 'Eintrag' : 'Einträge'}`,
-    tags: (n: number) => `${n} ${n === 1 ? 'Tag' : 'Tags'}`,
+    entries: (n: number) => `${fmtCount(n, 'de')} ${n === 1 ? 'Eintrag' : 'Einträge'}`,
+    tags: (n: number) => `${fmtCount(n, 'de')} ${n === 1 ? 'Tag' : 'Tags'}`,
     subject: (abbr: boolean, n = 1) => abbr
       ? (n === 1 ? 'Abkürzung' : 'Abkürzungen')
       : n === 1 ? 'Zahl' : 'Zahlen',
@@ -786,19 +787,19 @@ const DE: typeof EN = {
     interfaceLanguage: 'Sprache der Benutzeroberfläche', contentLanguage: 'Eintragsinhalte',
     interfaceAria: 'Sprache der Benutzeroberfläche', contentAria: 'Bevorzugte Sprache der Einträge',
     asWritten: 'Wie verfasst',
-    translatedCount: (lang: string, n: number) => `${lang} · ${n} ${n === 1 ? 'Übersetzung' : 'Übersetzungen'}`,
+    translatedCount: (lang: string, n: number) => `${lang} · ${fmtCount(n, 'de')} ${n === 1 ? 'Übersetzung' : 'Übersetzungen'}`,
   },
   home: {
     hasImage: 'mit Bild', feedIntro: 'Neueste Einträge und Änderungen zuerst.',
     empty: 'Noch wurde nichts eingetragen.', entryKinds: 'Eintragsformat', categories: 'Kategorien', all: 'Alle',
-    foldedEntries: (n: number) => `${n} ${n === 1 ? 'Eintrag' : 'Einträge'}`,
+    foldedEntries: (n: number) => `${fmtCount(n, 'de')} ${n === 1 ? 'Eintrag' : 'Einträge'}`,
     bandCount: (subjects: number, subject: string, entries: number) =>
-      `${subjects} ${subject} · ${entries} ${entries === 1 ? 'Eintrag' : 'Einträge'}`,
+      `${fmtCount(subjects, 'de')} ${subject} · ${fmtCount(entries, 'de')} ${entries === 1 ? 'Eintrag' : 'Einträge'}`,
   },
   browse: {
     category: 'Kategorie', search: 'Suche',
     summary: (n: number, abbr: boolean) =>
-      `${n === 1 ? 'Ein Eintrag erklärt' : `${n} Einträge erklären`} ${abbr ? 'diese Abkürzung' : 'diese Zahl'}.`,
+      `${n === 1 ? 'Ein Eintrag erklärt' : `${fmtCount(n, 'de')} Einträge erklären`} ${abbr ? 'diese Abkürzung' : 'diese Zahl'}.`,
     addMeaning: '+ Weitere Bedeutung hinzufügen',
     emptyValue: (value: string) => `Unter ${value} ist noch nichts eingetragen.`,
     giveMeaning: 'Eine Bedeutung hinzufügen.',
@@ -822,7 +823,7 @@ const DE: typeof EN = {
     editHistory: 'Versionsgeschichte', current: 'aktuell', noEdits: 'Noch keine Bearbeitungen.',
     comments: 'Kommentare', nickname: 'Anzeigename', saySomething: 'Kommentar schreiben',
     commentLimit: 'höchstens 300 Zeichen', commentPlaceholder: 'Was denkst du?',
-    posting: 'Wird veröffentlicht…', postComment: 'Veröffentlichen', more: (n: number) => `${n} weitere`,
+    posting: 'Wird veröffentlicht…', postComment: 'Veröffentlichen', more: (n: number) => `${fmtCount(n, 'de')} weitere`,
     noComments: 'Noch keine Kommentare.', deleted: 'gelöscht', editedBy: (name: string) => `bearbeitet von ${name}`,
   },
   form: {
@@ -837,7 +838,7 @@ const DE: typeof EN = {
     detailsPlaceholder: 'Die Antwort auf die endgültige Frage nach dem Leben, dem Universum und dem ganzen Rest.',
     markdown: 'Markdown ist möglich: **fett**, *kursiv*, [Links](https://…), Listen, Überschriften und Tabellen. Einmal Enter erzeugt einen Zeilenumbruch.',
     writtenIn: 'Sprache des Textes', categories: 'Kategorien',
-    categoryHint: (n: number) => `bis zu ${n} — eine Buchverfilmung kann beiden Kategorien angehören`,
+    categoryHint: (n: number) => `bis zu ${fmtCount(n, 'de')} — eine Buchverfilmung kann beiden Kategorien angehören`,
     newCategoryAria: 'Name einer neuen Kategorie', newCategory: 'oder eigene Kategorie anlegen', add: 'Hinzufügen',
     image: 'Bild', imageHint: 'optional — jpg, png, gif oder webp, bis zu 5 MB', remove: 'Entfernen',
     uploading: 'Wird hochgeladen…', nickname: 'Anzeigename',
@@ -884,6 +885,7 @@ const DE: typeof EN = {
 const MESSAGES = { en: EN, ko: KO, ja: JA, 'zh-Hans': ZH_HANS, es: ES, fr: FR, de: DE }
 
 const UI_KEY = 'namba.uiLocale'
+const UI_COOKIE = 'namba_ui_locale'
 export const uiLocale = {
   get: (): UiLocale => {
     const saved = localStorage.getItem(UI_KEY)
@@ -914,6 +916,10 @@ export function UiProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.lang = locale
     document.documentElement.dir = 'ltr'
+    /* The server cannot read localStorage when it writes share-card and SEO
+       titles. Mirror only this non-sensitive preference so a refreshed page's
+       number punctuation agrees with the interface the reader selected. */
+    document.cookie = `${UI_COOKIE}=${locale}; Max-Age=31536000; Path=/; SameSite=Lax`
   }, [locale])
 
   function setLocale(next: UiLocale) {

@@ -827,12 +827,16 @@ def test_client_secret_is_durable():
 
 
 def test_grouping():
-    """Separators are a way of writing the number, never part of it."""
+    """Localized separators are a way of writing the number, never part of it."""
     assert grouped_value("1000", True) == "1,000"
     assert grouped_value("1000", False) == "1000"
     assert grouped_value("299792458", True) == "299,792,458"
     assert grouped_value("100", True) == "100", "no thousand to separate"
     assert grouped_value("1234.5678", True) == "1,234.5678", "only the whole part"
+    assert grouped_value("1000.5", True, "de") == "1.000,5"
+    assert grouped_value("1000.5", False, "de") == "1000,5"
+    assert grouped_value("1000.5", True, "fr") == "1\u202f000,5"
+    assert grouped_value("1000.5", False, "fr") == "1000,5"
     # nothing that is not a plain number is touched
     for odd in ("10:04PM", "11/22/63", "9\u00be", "80/20", "UFO"):
         assert grouped_value(odd, True) == odd, odd
@@ -854,6 +858,21 @@ def test_grouping():
     assert off["grouped"] is True, "the typed separators were thrown away"
     assert len(c.get("/api/posts", params={"value": "1000"}).json()) == 2, \
         "the two spellings did not land on the same number"
+
+    # German and French UI punctuation reaches the same canonical value too.
+    # The locale is input grammar only and never comes back as entry content.
+    german = c.post("/api/posts", json={
+        "value": "1.000,5", "number_locale": "de", "title": "de spelling",
+    }).json()
+    assert german["value"] == "1000.5" and german["grouped"] is True, german
+    french = c.post("/api/posts", json={
+        "value": "1\u202f000,5", "number_locale": "fr", "title": "fr spelling",
+    }).json()
+    assert french["value"] == "1000.5" and french["grouped"] is True, french
+    ungrouped_de = c.post("/api/posts", json={
+        "value": "1000,5", "number_locale": "de", "title": "decimal comma",
+    }).json()
+    assert ungrouped_de["value"] == "1000.5" and ungrouped_de["grouped"] is False
 
     # a comma that is not a thousands separator is left alone
     for odd in ("1,2,3", "12,34", "Apollo,11"):
@@ -889,6 +908,18 @@ def test_grouping():
 
     # and the share card reads the number the way the entry asks for it
     assert "<title>1,000 — " in c.get(f"/p/{typed['id']}").text
+    de_page = c.get(
+        f"/p/{german['id']}", headers={"Accept-Language": "de-DE,de;q=0.9"},
+    )
+    assert "<title>1.000,5 — de spelling · Namba</title>" in de_page.text
+    assert de_page.headers["vary"] == "Accept-Language, Cookie"
+    # An explicit UI choice wins over a browser default on a later refresh.
+    c.cookies.set("namba_ui_locale", "fr")
+    fr_page = c.get(
+        f"/p/{french['id']}", headers={"Accept-Language": "de-DE"},
+    ).text
+    assert "<title>1\u202f000,5 — fr spelling · Namba</title>" in fr_page
+    c.cookies.delete("namba_ui_locale")
 
 
 def test_password_hashing():

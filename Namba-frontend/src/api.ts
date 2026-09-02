@@ -185,6 +185,9 @@ export type Comment = {
 
 export type PostInput = {
   value: string
+  /** How a value typed in the public form spells its decimal and grouping
+      separators. The API stores one locale-neutral value either way. */
+  number_locale?: string
   format?: Format | null
   title: string
   body?: string
@@ -353,15 +356,97 @@ export const plain = (md: string) =>
     .replace(/\s+/g, ' ')
     .trim()
 
-/* 4+ digits, because "100" has no thousand to separate. Grouped by regex
-   rather than toLocaleString: a 20-digit value is past what a Number holds. */
-const GROUPABLE = /^(\d{4,})(\.\d+)?$/
+/* String arithmetic, not Number or parseFloat: an entry may be 20 digits long,
+   past the point where JavaScript can round-trip every integer. Intl is asked
+   only which punctuation a locale uses; the entry itself never becomes a
+   floating-point value. */
+const LOCALIZABLE = /^(\d+)(?:\.(\d+))?$/
+type NumberPunctuation = { group: string; decimal: string; groupChars: string[] }
+const NUMBER_PUNCTUATION = new Map<string, NumberPunctuation>()
+const INTEGER_FORMATTERS = new Map<string, Intl.NumberFormat>()
+
+export function fmtCount(value: number, locale = 'en') {
+  let formatter = INTEGER_FORMATTERS.get(locale)
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 })
+    INTEGER_FORMATTERS.set(locale, formatter)
+  }
+  return formatter.format(value)
+}
+
+function numberPunctuation(locale: string): NumberPunctuation {
+  const cached = NUMBER_PUNCTUATION.get(locale)
+  if (cached) return cached
+  const parts = new Intl.NumberFormat(locale).formatToParts(12345.6)
+  const group = parts.find((p) => p.type === 'group')?.value ?? ','
+  const decimal = parts.find((p) => p.type === 'decimal')?.value ?? '.'
+  /* French keyboards and pasted prose use three visually similar spaces for
+     grouping. Accept all three, but always display Intl's narrow no-break one. */
+  const groupChars = locale.toLowerCase().startsWith('fr')
+    ? [...new Set([group, ' ', '\u00a0', '\u202f'])]
+    : [group]
+  const punctuation = { group, decimal, groupChars }
+  NUMBER_PUNCTUATION.set(locale, punctuation)
+  return punctuation
+}
+
+/** Turn a value typed in one interface locale into the one spelling stored by
+    the API. An invalid grouping pattern is content, not a typo we may erase:
+    1,2,3 and Apollo,11 therefore come back untouched. */
+export function canonicalNumber(value: string, locale = 'en') {
+  const raw = value.trim()
+  const { decimal, groupChars } = numberPunctuation(locale)
+  const decimalParts = raw.split(decimal)
+  if (decimalParts.length > 2) return { value: raw, grouped: false }
+  const [integer, fraction] = decimalParts
+  if (!integer || (fraction !== undefined && !/^\d+$/.test(fraction))) {
+    return { value: raw, grouped: false }
+  }
+  const groups = [integer]
+  for (const char of groupChars) {
+    for (let i = groups.length - 1; i >= 0; i -= 1) {
+      groups.splice(i, 1, ...groups[i].split(char))
+    }
+  }
+  const grouped = groups.length > 1
+  const validInteger = grouped
+    ? /^\d{1,3}$/.test(groups[0]) && groups.slice(1).every((part) => /^\d{3}$/.test(part))
+    : /^\d+$/.test(integer)
+  if (!validInteger) return { value: raw, grouped: false }
+  return {
+    value: groups.join('') + (fraction === undefined ? '' : `.${fraction}`),
+    grouped,
+  }
+}
+
+/** Keep an explicitly numeric field honest while still accepting the
+    punctuation printed by its interface locale. Auto-detect and Mixed are not
+    filtered; they must remain able to hold dates, ratios and other notation. */
+export function cleanNumberInput(value: string, locale: string, decimal: boolean) {
+  const punctuation = numberPunctuation(locale)
+  const allowed = new Set([
+    ...'0123456789',
+    ...punctuation.groupChars,
+    ...(decimal ? [punctuation.decimal] : []),
+  ])
+  return [...value].filter((char) => allowed.has(char)).join('')
+}
+
+export const canGroupValue = (value: string) => {
+  const match = LOCALIZABLE.exec(value)
+  return Boolean(match && match[1].length >= 4)
+}
 
 /** The value as it should read on screen. Never use it to build a link --
     entryPath() takes the raw value, and /n/1,000 is a different page. */
-export function showValue(value: string, grouped?: boolean) {
-  const m = grouped ? GROUPABLE.exec(value) : null
-  return m ? m[1].replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (m[2] ?? '') : value
+export function showValue(value: string, grouped?: boolean, locale = 'en') {
+  const match = LOCALIZABLE.exec(value)
+  if (!match) return value
+  const punctuation = numberPunctuation(locale)
+  const integer = grouped && match[1].length >= 4
+    ? match[1].replace(/\B(?=(\d{3})+(?!\d))/g, punctuation.group)
+    : match[1]
+  return integer + (match[2] === undefined ? '' : punctuation.decimal + match[2])
 }
 
 /** Where a value is read. Two sections over one column: /a/UFO is the

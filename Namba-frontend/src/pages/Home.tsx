@@ -1,7 +1,7 @@
 import { Fragment, useLayoutEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  api, BUCKETS, entryPath, fmtDate, FORMATS,
+  api, BUCKETS, entryPath, fmtCount, fmtDate, FORMATS,
   isAbbr, numSize, plain, showValue, tagLabel, tagPath,
   type Format, type NumberEntry, type Post,
 } from '../api'
@@ -82,9 +82,9 @@ const whole = (s: string) =>
    The optional "th" swallows the regular ordinals -- sixth, tenth, hundredth --
    so they light up whole; the irregular ones are spelled out in WORDS, and the
    longest form goes first so "eighth" wins over "eight". */
-function marker({ value, format }: NumberEntry) {
+function marker({ value, format }: NumberEntry, locale: string) {
   const words = format === 'INTEGER' ? (WORDS[Number(value)] ?? []) : []
-  const grouped = showValue(value, true)
+  const grouped = showValue(value, true, locale)
   const alts = [
     whole(value),
     ...(grouped === value ? [] : [whole(grouped)]),
@@ -146,10 +146,10 @@ function Feed({ lang }: { lang: string }) {
       {posts.data?.map((p: Post) => (
         <article className="fx" key={p.id}>
           <Link
-            className={`fx-num ${numSize(showValue(p.value, p.grouped))}`}
+            className={`fx-num ${numSize(showValue(p.value, p.grouped, locale))}`}
             to={entryPath(p.value, p.format)}
           >
-            {showValue(p.value, p.grouped)}
+            {showValue(p.value, p.grouped, locale)}
           </Link>
           <h2>
             <Link to={`/p/${p.id}`}>{p.title}</Link>
@@ -170,7 +170,7 @@ function Feed({ lang }: { lang: string }) {
                   · {m.common.edited(fmtDate(p.updated_at, locale), p.edited_by)}
                 </span>
               )}
-              <span className="likes">♥ {p.likes}</span>
+              <span className="likes">♥ {fmtCount(p.likes, locale)}</span>
             </div>
           </div>
         </article>
@@ -207,7 +207,7 @@ function bandCount(items: NumberEntry[], format: Format, m: ReturnType<typeof us
 }
 
 function Index({ lang }: { lang: string }) {
-  const { m } = useUi()
+  const { locale, m } = useUi()
   const [params, setParams] = useSearchParams()
   const format = (params.get('format') ?? 'INTEGER') as Format
   const tag = params.get('tag') ?? ''
@@ -309,7 +309,7 @@ function Index({ lang }: { lang: string }) {
               onClick={() => setParam('tag', t.tag === tag ? '' : t.tag)}
             >
               {tagLabel(t.tag)}
-              <span className="n">{t.count}</span>
+              <span className="n">{fmtCount(t.count, locale)}</span>
             </button>
           ))}
         </div>
@@ -344,8 +344,8 @@ function Index({ lang }: { lang: string }) {
               </summary>
               <ol className="index">
                 {band.items.map((n: NumberEntry) => {
-                  const rx = marker(n)
-                  const shown = showValue(n.value, n.grouped)
+                  const rx = marker(n, locale)
+                  const shown = showValue(n.value, n.grouped, locale)
                   const rows = n.entries.map((e) => (
                     // the like sits outside the link: a button inside an
                     // anchor is invalid, and both want the same click

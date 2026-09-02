@@ -1,5 +1,5 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { api, numSize, showValue, tagLabel } from '../api'
+import { api, canonicalNumber, numSize, showValue, tagLabel } from '../api'
 import PostCard from '../components/PostCard'
 import { useAsync } from '../useAsync'
 import { useUi } from '../uiLocale'
@@ -10,10 +10,11 @@ type Mode = 'number' | 'abbr' | 'tag' | 'search'
     search. The first two are one page about one value and differ only in which
     section they read; the last two differ only in which filter found the rows. */
 export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
-  const { m } = useUi()
+  const { locale, m } = useUi()
   const { value: raw = '', tag = '' } = useParams()
   const [params] = useSearchParams()
   const q = params.get('q') ?? ''
+  const query = canonicalNumber(q, locale).value
 
   const abbr = mode === 'abbr'
   /* the value is stored upper-case, and /a/ufo is a link somebody typed or
@@ -31,14 +32,18 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
           ? { value, section, sort: 'number', lang }
           : mode === 'tag'
             ? { tag, sort: 'number', lang }
-            : { q, sort: 'number', lang },
+            : { q: query, sort: 'number', lang },
       ),
-    [mode, value, section, tag, q, lang],
+    [mode, value, section, tag, query, lang],
   )
 
   const n = posts.data?.length ?? 0
   const count = m.common.entries(n)
-  const shownValue = showValue(value, !!posts.data?.length && posts.data.every((p) => p.grouped))
+  const shownValue = showValue(
+    value,
+    !!posts.data?.length && posts.data.every((p) => p.grouped),
+    locale,
+  )
   /* what /new needs to put the reader back in the section they came from --
      without it, "UFO" typed into a form with Auto-detect is right by luck */
   const addHref = `/new?value=${encodeURIComponent(value)}${abbr ? '&format=ABBR' : ''}`

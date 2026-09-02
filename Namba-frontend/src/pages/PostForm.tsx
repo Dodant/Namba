@@ -1,8 +1,8 @@
 import { useEffect, useId, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
-  api, fmtDate, FORMATS, LANG_CODE, langLabel, nickname,
-  showValue, TAG_MAX, tagLabel, TAGS_PER_POST,
+  api, canGroupValue, canonicalNumber, cleanNumberInput, fmtDate, FORMATS,
+  LANG_CODE, langLabel, nickname, showValue, TAG_MAX, tagLabel, TAGS_PER_POST,
   type Format, type Post, type Revision, type Tag, type Translation,
 } from '../api'
 import { useAsync } from '../useAsync'
@@ -16,8 +16,6 @@ import { useUi } from '../uiLocale'
    is already in the field when the format changes -- picking INTEGER by
    mistake with 11/22/63 in there should not silently turn it into 112263. */
 const KEEP: Record<string, RegExp> = {
-  INTEGER: /[^\d,]/g,
-  DECIMAL: /[^\d.,]/g,
   /* Latin script only, which is the API's rule and not a keyboard
      preference: 유에프오 and УФО are the same abbreviation in another
      alphabet, and one /a/ page per alphabet is the split the upper-casing
@@ -34,6 +32,11 @@ const EXAMPLES: Record<string, string> = {
   TIME: '10:04PM · 09:41',
   ABBR: 'UFO · R&D · MP3',
 }
+
+const examples = (format: string, locale: string) => EXAMPLES[format]
+  .split(' · ')
+  .map((value) => showValue(value, false, locale))
+  .join(' · ')
 
 // there is no thousand in 10:04PM, in 9¾ or in UFO
 const groupable = (f: string) => f !== 'MIXED' && f !== 'TIME' && f !== 'ABBR'
@@ -88,7 +91,7 @@ export default function PostForm() {
   const nav = useNavigate()
   const editing = Boolean(id)
 
-  const [value, setValue] = useState(params.get('value') ?? '')
+  const [value, setValue] = useState(() => showValue(params.get('value') ?? '', false, locale))
   /* ?format= comes from the "+ Add another meaning" pill on /a/UFO and /n/42.
      Auto-detect would get an abbreviation right by luck and a number that
      somebody filed as Mixed wrong every time. */
@@ -122,6 +125,8 @@ export default function PostForm() {
   const [revBump, setRevBump] = useState(0)
   const [revs, setRevs] = useState<Revision[]>([])
   const owner = post?.author ?? ''
+  const canonical = canonicalNumber(value, locale)
+  const groupedPreview = showValue(canonical.value, true, locale)
 
   /* the fields follow the entry only when the entry itself is replaced -- an
      initial load or a restore. Linking or translating must not walk over a
@@ -155,6 +160,7 @@ export default function PostForm() {
     nickname.set(author)
     const payload = {
       value,
+      ...(!editing ? { number_locale: locale } : {}),
       format: format || null,
       title,
       body,
@@ -237,7 +243,7 @@ export default function PostForm() {
             <label htmlFor={fid('value')}>
               {format === 'ABBR' ? m.form.abbreviation : m.form.number}{' '}
               <span className="hint">
-                {editing ? m.form.fixedValue(noun) : EXAMPLES[format]}
+                {editing ? m.form.fixedValue(noun) : examples(format, locale)}
               </span>
             </label>
             <input
@@ -246,16 +252,24 @@ export default function PostForm() {
               required
               readOnly={editing}
               maxLength={32}
-              value={value}
+              value={editing ? showValue(value, grouped, locale) : value}
               inputMode={format === 'INTEGER' ? 'numeric' : format === 'DECIMAL' ? 'decimal' : undefined}
               onChange={(e) => {
-                const kept = KEEP[format]
-                  ? e.target.value.replace(KEEP[format], '')
-                  : e.target.value
+                const kept = format === 'INTEGER' || format === 'DECIMAL'
+                  ? cleanNumberInput(e.target.value, locale, format === 'DECIMAL')
+                  : KEEP[format]
+                    ? e.target.value.replace(KEEP[format], '')
+                    : e.target.value
                 /* the API stores an abbreviation upper-case so that ufo and
                    UFO are one page, and a field that showed the other one
                    would be lying about the address this is about to have */
-                setValue(format === 'ABBR' ? kept.toUpperCase() : kept)
+                const next = format === 'ABBR' ? kept.toUpperCase() : kept
+                setValue(next)
+                /* Typing the locale's grouping marks is itself a request to
+                   keep displaying them, just as typing 1,000 always was. */
+                if (format !== 'ABBR' && canonicalNumber(next, locale).grouped) {
+                  setGrouped(true)
+                }
               }}
             />
             {/* under the number it rewrites, not a third column in the row:
@@ -274,7 +288,7 @@ export default function PostForm() {
                 The tick survives a value that drops back under four digits.
                 grouped is display only and showValue ignores it there, so
                 nothing shows and nothing is lost when the digit comes back. */}
-            {groupable(format) && showValue(value, true) !== value && (
+            {groupable(format) && canGroupValue(canonical.value) && (
               <label className="field check">
                 <input
                   type="checkbox"
@@ -282,7 +296,7 @@ export default function PostForm() {
                   onChange={(e) => setGrouped(e.target.checked)}
                 />
                 {m.form.groupThousands}
-                <span className="hint">{showValue(value, true)}</span>
+                <span className="hint">{groupedPreview}</span>
               </label>
             )}
           </div>
@@ -796,7 +810,7 @@ function LinkPanel({
   onLinked: (p: Post) => void
   onError: (m: string) => void
 }) {
-  const { m } = useUi()
+  const { locale, m } = useUi()
   const [q, setQ] = useState('')
   const [hits, setHits] = useState<Post[] | null>(null)
   const [finding, setFinding] = useState(false)
@@ -836,7 +850,7 @@ function LinkPanel({
       <div className="panel">
         {post.related?.map((r) => (
           <div className="panel-row" key={r.id}>
-            <span className="panel-num">{showValue(r.value, r.grouped)}</span>
+            <span className="panel-num">{showValue(r.value, r.grouped, locale)}</span>
             <span className="panel-title ink">{r.title}</span>
             <button type="button" className="pill" onClick={() => act(() => api.unlink(post.id, r.id))}>
               {m.form.unlink}
@@ -867,7 +881,7 @@ function LinkPanel({
         </div>
         {hits?.map((h) => (
           <div className="panel-row" key={h.id}>
-            <span className="panel-num">{showValue(h.value, h.grouped)}</span>
+            <span className="panel-num">{showValue(h.value, h.grouped, locale)}</span>
             <span className="panel-title ink">{h.title}</span>
             <button
               type="button"

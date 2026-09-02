@@ -3,7 +3,7 @@ import {
   BrowserRouter, Link, Route, Routes, useLocation, useNavigate, useNavigationType,
   useSearchParams,
 } from 'react-router-dom'
-import { api, contentLanguage } from './api'
+import { api, canonicalNumber, contentLanguage, showValue } from './api'
 import Home from './pages/Home'
 import Browse from './pages/Browse'
 import PostPage from './pages/PostPage'
@@ -182,7 +182,7 @@ const WORDMARK = (
 )
 
 function Header() {
-  const { m } = useUi()
+  const { locale, m } = useUi()
   const nav = useNavigate()
   const [params] = useSearchParams()
   const { pathname } = useLocation()
@@ -235,7 +235,7 @@ function Header() {
                q and hands back the whole wiki, which arrived under the
                heading Search: "" and read as a bug. */
             if (!q) return
-            nav(`/search?q=${encodeURIComponent(q)}`)
+            nav(`/search?q=${encodeURIComponent(canonicalNumber(q, locale).value)}`)
           }}
         >
           <span className="slash">/</span>
@@ -254,7 +254,7 @@ function Header() {
             name="q"
             aria-label={m.header.searchLabel}
             placeholder={m.header.searchPlaceholder}
-            defaultValue={params.get('q') ?? ''}
+            defaultValue={showValue(params.get('q') ?? '', false, locale)}
           />
         </form>
         {/* The three that act, in a group of their own: the search takes a
