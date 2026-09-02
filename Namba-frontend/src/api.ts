@@ -410,6 +410,9 @@ const SPANS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['year', 12 * MONTH], ['month', MONTH], ['week', 604800],
   ['day', 86400], ['hour', 3600], ['minute', 60],
 ]
+const JUST_NOW: Record<string, string> = {
+  ko: '방금 전', ja: 'たった今', 'zh-Hans': '刚刚', es: 'ahora mismo', fr: 'à l’instant',
+}
 
 export function fmtDate(s: string, locale = 'en') {
   const d = new Date(s)
@@ -425,13 +428,5 @@ export function fmtDate(s: string, locale = 'en') {
   }
   /* under the minute, and also anything stamped by a clock ahead of this one:
      a comment posted "in 6 seconds" is a skew, not news. */
-  return locale === 'ko'
-    ? '방금 전'
-    : locale === 'ja'
-      ? 'たった今'
-      : locale === 'zh-Hans'
-        ? '刚刚'
-        : locale === 'es'
-          ? 'ahora mismo'
-          : 'just now'
+  return JUST_NOW[locale] ?? 'just now'
 }
