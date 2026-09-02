@@ -2,7 +2,7 @@
    one private context; splitting them would export that implementation detail. */
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
-export type UiLocale = 'en' | 'ko' | 'ja'
+export type UiLocale = 'en' | 'ko' | 'ja' | 'zh-Hans'
 
 const EN = {
   siteTitle: 'Namba — a wiki of numbers',
@@ -369,16 +369,132 @@ const JA: typeof EN = {
   notFound: 'ページが見つかりません。',
 }
 
-const MESSAGES = { en: EN, ko: KO, ja: JA }
+const ZH_HANS: typeof EN = {
+  siteTitle: 'Namba — 汇集数字含义的维基',
+  tagline: '汇集数字含义的开放维基',
+  common: {
+    loading: '加载中…', backToIndex: '返回索引。', addFirst: '添加第一个条目。',
+    anonymous: '匿名', cancel: '取消', save: '保存', edit: '编辑', restore: '恢复',
+    by: (name: string) => `${name === 'anonymous' ? '匿名用户' : name}创建`,
+    edited: (when: string, name?: string | null) =>
+      `${when}编辑${name ? ` · ${name === 'anonymous' ? '匿名用户' : name}` : ''}`,
+    entries: (n: number) => `${n}个条目`, tags: (n: number) => `${n}个标签`,
+    subject: (abbr: boolean) => abbr ? '缩写' : '数字',
+  },
+  format: { INTEGER: '整数', DECIMAL: '小数', MIXED: '混合', TIME: '时间', ABBR: '缩写' },
+  buckets: {
+    '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',
+    '1000': '1,000 – 9,999', '10000+': '10,000以上',
+  },
+  header: {
+    searchLabel: '按数字、标题或正文搜索维基', searchPlaceholder: '搜索维基…',
+    recent: '最近', random: '随机', add: '+ 添加条目', backToTop: '返回顶部',
+  },
+  random: {
+    failed: (error: string) => `无法选择条目 — ${error}。`,
+    empty: '暂时没有可供选择的条目。',
+  },
+  footer: {
+    cc0Before: '本站所有内容均依据',
+    cc0After: '作为公共领域内容发布，无需许可或署名即可引用和再利用。作者署名仍会保留，用于记录最初的创作者。',
+    privacy: '无需注册账号。我们不会存储原始IP地址或用户代理字符串，仅保留加盐哈希，用于防止滥用和执行封禁。',
+    guidelines: '条目指南', source: '源代码', apiOpen: '开放使用，无需密钥。',
+    interfaceLanguage: '界面语言', contentLanguage: '条目内容',
+    interfaceAria: '界面语言', contentAria: '条目内容的首选语言', asWritten: '按原文显示',
+    translatedCount: (lang: string, n: number) => `${lang} · ${n}篇译文`,
+  },
+  home: {
+    hasImage: '包含图片', feedIntro: '按最近创建或编辑的时间排序。',
+    empty: '还没有任何条目。', entryKinds: '条目格式', categories: '分类', all: '全部',
+    foldedEntries: (n: number) => `${n}个条目`,
+    bandCount: (subjects: number, subject: string, entries: number) =>
+      `${subjects}个${subject} · ${entries}个条目`,
+  },
+  browse: {
+    category: '分类', search: '搜索',
+    summary: (n: number, abbr: boolean) => `共有${n}个条目解释${abbr ? '这个缩写' : '这个数字'}。`,
+    addMeaning: '+ 添加另一种含义', emptyValue: (value: string) => `${value}下还没有条目。`,
+    giveMeaning: '添加一种含义。', emptyTag: (tag: string) => `还没有带有${tag}标签的条目。`,
+    noMatches: (q: string) => `没有与“${q}”匹配的结果。请尝试其他关键词，或`,
+    addNewEntry: '添加一个新条目。',
+  },
+  post: {
+    openFailed: (error: string) => `无法打开此条目 — ${error}。`, usedToSay: '以前的内容',
+    restoreHelp: '内容并未丢失。恢复后，条目会重新出现在同一地址，原有链接仍然有效。',
+    language: '语言', original: (lang?: string | null) => lang ? `原文（${lang}）` : '原文',
+    showCredits: '显示创作信息', hideCredits: '隐藏创作信息', edit: '编辑',
+    writtenBy: (name: string, when: string) => `${name}创建 · ${when}`,
+    lastEditedBy: (name: string, when: string) => `${name}最后编辑 · ${when}`,
+    translationCredit: (lang: string, author: string, editor: string | null, when: string) =>
+      `${lang}翻译：${author}${editor ? ` · 最后编辑 ${editor}` : ''} · ${when}`,
+    originalCredit: (lang?: string | null) => lang ? `最初以${lang}写成` : '初始版本',
+    editPromise: '任何人都可以编辑，所有版本都会保留在历史记录中。', noDetails: '还没有详细说明。',
+    sayMeaning: '说明它的含义。', related: '相关条目', editHistory: '编辑历史', current: '当前',
+    noEdits: '还没有编辑记录。', comments: '评论', nickname: '昵称',
+    saySomething: '发表评论', commentLimit: '最多300个字符', commentPlaceholder: '你有什么看法？',
+    posting: '发布中…', postComment: '发布', more: (n: number) => `再显示${n}条`,
+    noComments: '还没有评论。', deleted: '已删除', editedBy: (name: string) => `${name}编辑`,
+  },
+  form: {
+    editTitle: '编辑条目', addTitle: '添加条目',
+    editIntro: (owner: string) => `任何人都可以编辑此条目${owner ? `。最初的创建者是${owner}` : ''}。被替换的版本会保留在历史记录中，${owner || '最初创建者'}的署名也会保留。`,
+    addIntro: '每个条目只记录一个含义。即使42已经存在，新内容也会作为另一种含义加入，而不会替换原条目。',
+    guidelines: '条目指南', fixedValue: (noun: string) => `不可更改 — 另一个${noun}应创建为单独条目`,
+    number: '数字', abbreviation: '缩写', groupThousands: '使用千位分隔符', format: '格式',
+    autoDetect: '自动检测', title: '标题', titleHint: '它指的是什么',
+    titlePlaceholder: '银河系漫游指南', details: '详细说明',
+    detailsHint: '可选 — 为什么是这个值，它代表什么',
+    detailsPlaceholder: '生命、宇宙以及一切终极问题的答案。',
+    markdown: '支持Markdown — **粗体**、*斜体*、[链接](https://…)、列表、标题和表格。按一次Enter即可换行。',
+    writtenIn: '写作语言', categories: '分类',
+    categoryHint: (n: number) => `最多${n}个 — 由图书改编的电影可以同时选择两者`,
+    newCategoryAria: '新分类名称', newCategory: '输入新分类', add: '添加',
+    image: '图片', imageHint: '可选 — jpg、png、gif或webp，最大5 MB', remove: '移除',
+    uploading: '上传中…', nickname: '昵称', editorHint: '记录为编辑者，而非原作者',
+    noAccountHint: '无需账号和密码', saving: '保存中…', publishing: '发布中…',
+    saveChanges: '保存更改', publish: '发布',
+    cc0: (editing: boolean) => `${editing ? '保存后' : '发布后'}，这份贡献将以CC0发布。任何人都可以不经许可将其用于任何用途。`,
+    history: '历史记录', historyHint: '恢复此地址下的早期版本', current: '当前',
+    translations: '翻译', translationsHint: '使用其他语言编写此条目',
+    editTranslation: '编辑翻译', addTranslation: '+ 添加翻译',
+    requiredTranslation: '请选择语言并填写标题。',
+    removeTranslationConfirm: (lang: string) => `要移除${lang}翻译吗？它仍会保留在条目历史记录中。`,
+    language: '语言', languageHint: '此翻译所使用的语言', pickOne: '请选择…',
+    translationTitleHint: '使用该语言填写条目标题', optionalMarkdown: '可选 — 此处也支持Markdown',
+    addThisTranslation: '添加翻译', removeTranslation: '移除翻译', related: '相关条目',
+    relatedHint: '适合与此条目一同查看的其他数字', unlink: '取消关联',
+    linkSearchAria: '搜索要关联的条目', linkSearchPlaceholder: '搜索维基 — 例如：Back to the Future',
+    searching: '搜索中…', search: '搜索', link: '关联', noMatches: '没有匹配的结果。',
+  },
+  flag: {
+    heading: '报告问题', kindAria: '问题类型', report: '内容有误', remove: '应当移除',
+    reportLead: '将内容问题报告给管理员。此条目会继续保持公开。',
+    removeLead: '请求管理员移除此条目。批准后条目会被隐藏，并且可以恢复。',
+    reported: '报告已发送，管理员会进行审核。', requested: '移除请求已发送，管理员会进行审核。',
+    whatWrong: '问题原因', pickOne: '请选择…', details: '详细说明', detailHint: '可选，最多1000个字符',
+    removePlaceholder: '为什么应当移除此条目？', reportPlaceholder: '应当如何修改？',
+    nickname: '昵称', sending: '发送中…', askRemoval: '请求移除', reportIt: '提交报告',
+  },
+  reasons: {
+    DUPLICATE: '与其他条目重复', INCORRECT: '信息有误', NO_SOURCE: '没有可靠来源',
+    SOURCE: '来源错误或缺失', SPAM: '垃圾内容', AD: '广告', ABUSE: '攻击性或仇恨内容',
+    COPYRIGHT: '版权问题', VANDALISM: '恶意破坏', OTHER: '其他问题',
+  },
+  guide: { readIn: '指南语言', addEntry: '添加条目。' },
+  notFound: '找不到此页面。',
+}
+
+const MESSAGES = { en: EN, ko: KO, ja: JA, 'zh-Hans': ZH_HANS }
 
 const UI_KEY = 'namba.uiLocale'
 export const uiLocale = {
   get: (): UiLocale => {
     const saved = localStorage.getItem(UI_KEY)
-    if (saved === 'en' || saved === 'ko' || saved === 'ja') return saved
+    if (saved === 'en' || saved === 'ko' || saved === 'ja' || saved === 'zh-Hans') return saved
     const browser = navigator.language.toLowerCase()
     if (browser.startsWith('ko')) return 'ko'
     if (browser.startsWith('ja')) return 'ja'
+    if (browser.startsWith('zh')) return 'zh-Hans'
     return 'en'
   },
   set: (locale: UiLocale) => localStorage.setItem(UI_KEY, locale),

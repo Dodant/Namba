@@ -395,6 +395,7 @@ function Footer({ lang, onLang }: { lang: string; onLang: (v: string) => void })
               <option value="en">English</option>
               <option value="ko">한국어</option>
               <option value="ja">日本語</option>
+              <option value="zh-Hans">简体中文</option>
             </select>
           </span>
         </label>
