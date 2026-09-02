@@ -104,6 +104,14 @@ describes what contributors have translated. Add interface copy to every map in
 `src/uiLocale.tsx`; adding a content language remains data, not a frontend
 release.
 
+`Explore`, `Random`, `+ Add` and the visible `Search…` placeholder are one
+compact English product vocabulary in every locale. They only help a reader
+move around: Add opens the form and Search submits a query. The detailed search
+`aria-label` stays localized, as do actions whose outcome matters — Publish,
+Save, Delete, Restore, reporting and every confirmation. `GLOBAL_NAV` is the
+one copy of that boundary. There is no About control today; if one is added, it
+belongs with this global vocabulary rather than in seven translation maps.
+
 The guide's prose is a third, explicit document choice under `src/guide/`.
 An interface locale does not promise a guide translation: Japanese UI may
 therefore offer the English and Korean guide documents until `ja.ts` exists.
@@ -215,8 +223,8 @@ sanitiser config to get wrong.
   box, so the column's `gap` lands between the summary and that box rather
   than between the rows in it. `Feed` is
   `sort=recent` off `/api/posts` — `updated_at DESC`, so a rewrite brings an old
-  entry back up. It is labelled `Recent` in the header and the component is
-  still `Feed`: the label names the order, `?view=feed` names the shape. One
+  entry back up. It is labelled `Explore` in the header and the component is
+  still `Feed`: the clock names the order, `?view=feed` names the shape. One
   sort, not two — do not add a `sort=new` beside it.
 - `useAsync.ts` carries a file-level `oxlint-disable react-hooks/exhaustive-deps`
   because the hook forwards its caller's deps array, which the rule cannot verify
@@ -508,7 +516,7 @@ and `--fainter` are pinned by contrast and are not free to spend here.
 
 Where a control is a toggle it says so — `aria-pressed` on the likes and the
 category chips, `aria-current` on the format tabs, the language tabs and the
-Recent pill. Every `Loading…` is a `role="status"` and every error a
+Explore pill. Every `Loading…` is a `role="status"` and every error a
 `role="alert"`, which is what the three pages that blank their list on
 navigation depend on.
 

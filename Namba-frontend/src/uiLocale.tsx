@@ -5,6 +5,17 @@ import { fmtCount } from './api'
 
 export type UiLocale = 'en' | 'ko' | 'ja' | 'zh-Hans' | 'es' | 'fr' | 'de'
 
+/* These are wayfinding, not consequential actions. They stay in the compact
+   English product vocabulary in every interface locale; the descriptive
+   search aria-label remains localized, and Publish/Save/Delete/Restore never
+   borrow these words because the outcome of those actions matters. */
+const GLOBAL_NAV = {
+  searchPlaceholder: 'Search…',
+  recent: 'Explore',
+  random: 'Random',
+  add: '+ Add',
+} as const
+
 const EN = {
   siteTitle: 'Namba — a wiki of numbers',
   tagline: 'An open wiki about numbers',
@@ -34,8 +45,7 @@ const EN = {
   },
   header: {
     searchLabel: 'Search the wiki by number, title or text',
-    searchPlaceholder: 'Search the wiki…',
-    recent: 'Recent', random: 'Random', add: '+ Add entry', backToTop: 'Back to top',
+    ...GLOBAL_NAV, backToTop: 'Back to top',
   },
   random: {
     failed: (error: string) => `Couldn’t pick one — ${error}.`,
@@ -157,8 +167,8 @@ const KO: typeof EN = {
     '1000': '1,000 – 9,999', '10000+': '10,000 이상',
   },
   header: {
-    searchLabel: '숫자, 제목 또는 내용으로 위키 검색', searchPlaceholder: '위키 검색…',
-    recent: '최근', random: '무작위', add: '+ 항목 추가', backToTop: '맨 위로',
+    searchLabel: '숫자, 제목 또는 내용으로 위키 검색',
+    ...GLOBAL_NAV, backToTop: '맨 위로',
   },
   random: {
     failed: (error: string) => `무작위 항목을 고르지 못했습니다 — ${error}.`,
@@ -272,8 +282,8 @@ const JA: typeof EN = {
     '1000': '1,000 – 9,999', '10000+': '10,000以上',
   },
   header: {
-    searchLabel: '数字、タイトル、本文からウィキを検索', searchPlaceholder: 'ウィキを検索…',
-    recent: '最近', random: 'ランダム', add: '+ 項目を追加', backToTop: 'ページ上部へ',
+    searchLabel: '数字、タイトル、本文からウィキを検索',
+    ...GLOBAL_NAV, backToTop: 'ページ上部へ',
   },
   random: {
     failed: (error: string) => `項目を選べませんでした — ${error}。`,
@@ -388,8 +398,8 @@ const ZH_HANS: typeof EN = {
     '1000': '1,000 – 9,999', '10000+': '10,000以上',
   },
   header: {
-    searchLabel: '按数字、标题或正文搜索维基', searchPlaceholder: '搜索维基…',
-    recent: '最近', random: '随机', add: '+ 添加条目', backToTop: '返回顶部',
+    searchLabel: '按数字、标题或正文搜索维基',
+    ...GLOBAL_NAV, backToTop: '返回顶部',
   },
   random: {
     failed: (error: string) => `无法选择条目 — ${error}。`,
@@ -508,8 +518,8 @@ const ES: typeof EN = {
     '1000': '1.000 – 9.999', '10000+': '10.000 o más',
   },
   header: {
-    searchLabel: 'Buscar en la wiki por número, título o texto', searchPlaceholder: 'Buscar en la wiki…',
-    recent: 'Recientes', random: 'Al azar', add: '+ Añadir entrada', backToTop: 'Volver arriba',
+    searchLabel: 'Buscar en la wiki por número, título o texto',
+    ...GLOBAL_NAV, backToTop: 'Volver arriba',
   },
   random: {
     failed: (error: string) => `No se pudo elegir una entrada — ${error}.`,
@@ -636,8 +646,7 @@ const FR: typeof EN = {
   },
   header: {
     searchLabel: 'Rechercher dans le wiki par nombre, titre ou texte',
-    searchPlaceholder: 'Rechercher dans le wiki…',
-    recent: 'Récent', random: 'Au hasard', add: '+ Ajouter une entrée', backToTop: 'Haut de page',
+    ...GLOBAL_NAV, backToTop: 'Haut de page',
   },
   random: {
     failed: (error: string) => `Impossible de choisir une entrée — ${error}.`,
@@ -772,8 +781,8 @@ const DE: typeof EN = {
     '1000': '1.000 – 9.999', '10000+': '10.000 und mehr',
   },
   header: {
-    searchLabel: 'Wiki nach Zahl, Titel oder Text durchsuchen', searchPlaceholder: 'Wiki durchsuchen…',
-    recent: 'Neueste', random: 'Zufällig', add: '+ Eintrag hinzufügen', backToTop: 'Nach oben',
+    searchLabel: 'Wiki nach Zahl, Titel oder Text durchsuchen',
+    ...GLOBAL_NAV, backToTop: 'Nach oben',
   },
   random: {
     failed: (error: string) => `Es konnte kein Eintrag ausgewählt werden — ${error}.`,
