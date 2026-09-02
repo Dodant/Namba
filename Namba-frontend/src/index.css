@@ -1574,7 +1574,15 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    text column. Nothing else in the footer is right-aligned, which is the
    point -- it is the one thing down here that is a control rather than a
    sentence. */
-.foot .lang-pick { margin-left: auto; }
+.locale-picks {
+  flex-basis: 100%; margin-left: auto;
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px 16px;
+}
+.locale-pick { display: flex; align-items: center; gap: 8px; }
+.locale-pick > span:first-child {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fainter);
+}
 /* inherit, not --accent: four links in three short lines, and coloured they
    become the loudest thing under the fold */
 .foot a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }

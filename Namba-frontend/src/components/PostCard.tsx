@@ -4,10 +4,12 @@ import {
   api, entryPath, fmtDate, liked, numSize, plain, showValue, tagLabel, tagPath,
   type Post,
 } from '../api'
+import { useUi } from '../uiLocale'
 
 /* Takes the two fields it uses rather than a whole Post, so the number index
    can hand it a bare entry. */
 export function Like({ post }: { post: { id: number; likes: number } }) {
+  const { locale } = useUi()
   const [n, setN] = useState(post.likes)
   const [on, setOn] = useState(() => liked.has(post.id))
 
@@ -24,7 +26,9 @@ export function Like({ post }: { post: { id: number; likes: number } }) {
     }
   }
 
-  const says = `${on ? 'Unlike' : 'Like'} — ${n} ${n === 1 ? 'like' : 'likes'}`
+  const says = locale === 'ko'
+    ? `${on ? '좋아요 취소' : '좋아요'} — ${n}개`
+    : `${on ? 'Unlike' : 'Like'} — ${n} ${n === 1 ? 'like' : 'likes'}`
 
   return (
     <button
@@ -50,6 +54,7 @@ export default function PostCard({
       chip linking to the page it is on. */
   except?: string
 }) {
+  const { locale, m } = useUi()
   return (
     <article className="card">
       {showNumber && (
@@ -74,17 +79,16 @@ export default function PostCard({
               </Link>
             ))}
           <span>
-            by {post.author} · {fmtDate(post.created_at)}
+            {m.common.by(post.author)} · {fmtDate(post.created_at, locale)}
           </span>
           {post.updated_at !== post.created_at && (
             <span>
-              · edited {fmtDate(post.updated_at)}
-              {post.edited_by && ` by ${post.edited_by}`}
+              · {m.common.edited(fmtDate(post.updated_at, locale), post.edited_by)}
             </span>
           )}
           <Like post={post} />
           <Link className="quiet" to={`/p/${post.id}/edit`}>
-            edit
+            {m.common.edit}
           </Link>
         </div>
       </div>

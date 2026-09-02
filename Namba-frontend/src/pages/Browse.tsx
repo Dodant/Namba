@@ -1,31 +1,16 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import {
-  api, FORMAT_LABEL, numSize, showValue, subjectWord, tagLabel, type Post,
-} from '../api'
+import { api, numSize, showValue, tagLabel } from '../api'
 import PostCard from '../components/PostCard'
 import { useAsync } from '../useAsync'
+import { useUi } from '../uiLocale'
 
 type Mode = 'number' | 'abbr' | 'tag' | 'search'
-
-/* the hero counts people, not records, so it spells the number out -- a
-   second numeral beside a 104px one is a fight nobody wins. Past twelve it
-   goes back to digits, which is roughly where the words stop being shorter */
-const COUNTS = [
-  'No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six',
-  'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve',
-]
-
-/* MIXED has no sort key -- "9¾" sorts by its string -- so it gets the format
-   and nothing else rather than "sorts at null" */
-function kicker(p: Post) {
-  const label = FORMAT_LABEL[p.format]
-  return p.sort_key === null ? label : `${label} · sorts at ${p.sort_key}`
-}
 
 /** One list of posts, four ways in: a number, an abbreviation, a tag, or a
     search. The first two are one page about one value and differ only in which
     section they read; the last two differ only in which filter found the rows. */
 export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
+  const { m } = useUi()
   const { value: raw = '', tag = '' } = useParams()
   const [params] = useSearchParams()
   const q = params.get('q') ?? ''
@@ -52,7 +37,7 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
   )
 
   const n = posts.data?.length ?? 0
-  const count = `${n} ${n === 1 ? 'entry' : 'entries'}`
+  const count = m.common.entries(n)
   const shownValue = showValue(value, !!posts.data?.length && posts.data.every((p) => p.grouped))
   /* what /new needs to put the reader back in the section they came from --
      without it, "UFO" typed into a form with Auto-detect is right by luck */
@@ -79,13 +64,12 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
           <div className="hero-said">
             {posts.data?.length ? (
               <>
-                <span className="kicker">{kicker(posts.data[0])}</span>
+                <span className="kicker">{m.format[posts.data[0].format]}</span>
                 {/* a <p> now that the numeral above is the heading. The words
                     are unchanged: "this number" was only vague while nothing
                     on the page was marked up as being the number. */}
                 <p>
-                  {COUNTS[n] ?? n} {n === 1 ? 'person has' : 'people have'} written
-                  about this {subjectWord(abbr)}.
+                  {m.browse.summary(n, abbr)}
                 </p>
               </>
             ) : null}
@@ -97,7 +81,7 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
               the entry it is offering to sit beside. */}
           {n > 0 && (
             <Link className="btn outline" to={addHref}>
-              + Add another meaning
+              {m.browse.addMeaning}
             </Link>
           )}
         </div>
@@ -107,7 +91,7 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
             {/* the count waits for the answer: before it arrives the list is
                 empty and "0 entries" is a result, not a wait */}
             <span className="kicker">
-              {mode === 'tag' ? 'Category' : 'Search'}
+              {mode === 'tag' ? m.browse.category : m.browse.search}
               {posts.data ? ` · ${count}` : ''}
             </span>
             <h1>{mode === 'tag' ? tagLabel(tag) : `“${q}”`}</h1>
@@ -122,7 +106,7 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
       )}
       {posts.loading && (
         <p className="empty" role="status">
-          Loading…
+          {m.common.loading}
         </p>
       )}
 
@@ -141,17 +125,17 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
         <p className="empty">
           {mode === 'number' || abbr ? (
             <>
-              Nothing filed under {value} yet.{' '}
-              <Link to={addHref}>Give it a meaning.</Link>
+              {m.browse.emptyValue(value)}{' '}
+              <Link to={addHref}>{m.browse.giveMeaning}</Link>
             </>
           ) : mode === 'tag' ? (
             <>
-              Nothing tagged {tagLabel(tag)} yet. <Link to="/new">Add the first one.</Link>
+              {m.browse.emptyTag(tagLabel(tag))} <Link to="/new">{m.common.addFirst}</Link>
             </>
           ) : (
             <>
-              No matches for “{q}”. Try another word, or{' '}
-              <Link to="/new">add what it means.</Link>
+              {m.browse.noMatches(q)}{' '}
+              <Link to="/new">{m.browse.addNewEntry}</Link>
             </>
           )}
         </p>

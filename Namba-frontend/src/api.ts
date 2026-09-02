@@ -308,14 +308,15 @@ export const nickname = {
   set: (v: string) => localStorage.setItem('namba.nick', v),
 }
 
-/** Which language the reader wants lists in. '' is "as written". Defaults to
-    English rather than '': the index used to substitute English server-side
-    because the seeded Korean titles were unreadable to an English reader, and
-    that stays true -- it is just answerable now. */
-const LANG = 'namba.lang'
-export const displayLang = {
-  get: () => localStorage.getItem(LANG) ?? 'English',
-  set: (v: string) => localStorage.setItem(LANG, v),
+/** Which translation the reader prefers for entry text. This is deliberately
+    separate from the interface locale: changing buttons to Korean must not
+    silently replace what somebody chose to read. The old key is read once as
+    a compatibility fallback; new choices only use the explicit content key. */
+const CONTENT_LANG = 'namba.contentLang'
+const LEGACY_LANG = 'namba.lang'
+export const contentLanguage = {
+  get: () => localStorage.getItem(CONTENT_LANG) ?? localStorage.getItem(LEGACY_LANG) ?? '',
+  set: (v: string) => localStorage.setItem(CONTENT_LANG, v),
 }
 
 const LIKED = 'namba.liked'
@@ -403,21 +404,26 @@ export const originalLabel = (lang: string | null | undefined) =>
    reads as 5 weeks or 1 month. The year is twelve of those months rather than
    365 days, so that the five days between them cannot come out as "12 months
    ago" -- the months stop at 11 and hand over. */
-const RTF = new Intl.RelativeTimeFormat('en', { numeric: 'always' })
+const RTF = new Map<string, Intl.RelativeTimeFormat>()
 const MONTH = 30 * 86400
 const SPANS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['year', 12 * MONTH], ['month', MONTH], ['week', 604800],
   ['day', 86400], ['hour', 3600], ['minute', 60],
 ]
 
-export function fmtDate(s: string) {
+export function fmtDate(s: string, locale = 'en') {
   const d = new Date(s)
   if (isNaN(+d)) return s   // whatever the API said, unchanged -- as before
   const secs = (Date.now() - +d) / 1000
+  let formatter = RTF.get(locale)
+  if (!formatter) {
+    formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'always' })
+    RTF.set(locale, formatter)
+  }
   for (const [unit, per] of SPANS) {
-    if (secs >= per) return RTF.format(-Math.floor(secs / per), unit)
+    if (secs >= per) return formatter.format(-Math.floor(secs / per), unit)
   }
   /* under the minute, and also anything stamped by a clock ahead of this one:
      a comment posted "in 6 seconds" is a skew, not news. */
-  return 'just now'
+  return locale === 'ko' ? '방금 전' : 'just now'
 }

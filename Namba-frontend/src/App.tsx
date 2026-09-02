@@ -3,13 +3,14 @@ import {
   BrowserRouter, Link, Route, Routes, useLocation, useNavigate, useNavigationType,
   useSearchParams,
 } from 'react-router-dom'
-import { api, displayLang } from './api'
+import { api, contentLanguage } from './api'
 import Home from './pages/Home'
 import Browse from './pages/Browse'
 import PostPage from './pages/PostPage'
 import PostForm from './pages/PostForm'
 import Guide from './pages/Guide'
 import { useAsync } from './useAsync'
+import { UiProvider, useUi, type UiLocale } from './uiLocale'
 
 /* A wiki's "show me anything". A route rather than an onClick, so it can be
    linked, bookmarked and opened in a new tab -- and so the wait and the
@@ -17,6 +18,7 @@ import { useAsync } from './useAsync'
    Replaces rather than pushes: otherwise Back from the entry lands here and
    rolls again, and there is no way out of the loop. */
 function Random() {
+  const { m } = useUi()
   const nav = useNavigate()
   const got = useAsync(() => api.posts({ sort: 'random', limit: 1 }), [])
   const hit = got.data?.[0]
@@ -28,18 +30,18 @@ function Random() {
   if (got.err)
     return (
       <p className="empty" role="alert">
-        Couldn’t pick one — {got.err}. <Link to="/">Back to the index.</Link>
+        {m.random.failed(got.err)} <Link to="/">{m.common.backToIndex}</Link>
       </p>
     )
   if (!got.loading && !hit)
     return (
       <p className="empty" role="status">
-        Nothing to pick from yet. <Link to="/new">Add the first one.</Link>
+        {m.random.empty} <Link to="/new">{m.common.addFirst}</Link>
       </p>
     )
   return (
     <p className="empty" role="status">
-      Loading…
+      {m.common.loading}
     </p>
   )
 }
@@ -154,6 +156,7 @@ function ScrollTop() {
    wrote is the correct one, and resetting it on mount would throw it away
    before anybody read the tab. */
 function SiteTitle() {
+  const { locale, m } = useUi()
   const { pathname, search } = useLocation()
   const first = useRef(true)
   useEffect(() => {
@@ -161,13 +164,13 @@ function SiteTitle() {
       first.current = false
       return
     }
-    document.title = SITE_TITLE
-  }, [pathname, search])
+    document.title = locale === 'en' ? SITE_TITLE : m.siteTitle
+  }, [pathname, search, locale, m.siteTitle])
   return null
 }
 
-/* index.html's <title>, which is also what main.py reads back out of it as the
-   site's own name. Here so a navigation can put it back; see SiteTitle. */
+/* The server reads the same English default from index.html. Localized titles
+   are client-side UI state; this constant remains the canonical site name. */
 const SITE_TITLE = 'Namba — a wiki of numbers'
 
 /* One copy, because it is drawn as two different elements below and a second
@@ -179,6 +182,7 @@ const WORDMARK = (
 )
 
 function Header() {
+  const { m } = useUi()
   const nav = useNavigate()
   const [params] = useSearchParams()
   const { pathname } = useLocation()
@@ -219,7 +223,7 @@ function Header() {
         ) : (
           <span className="logo">{WORDMARK}</span>
         )}
-        <span className="logo-sub">An open wiki about numbers</span>
+        <span className="logo-sub">{m.tagline}</span>
       </Link>
       <div className="acts">
         <form
@@ -248,8 +252,8 @@ function Header() {
             ref={box}
             type="search"
             name="q"
-            aria-label="Search the wiki by number, title or text"
-            placeholder="Search the wiki…"
+            aria-label={m.header.searchLabel}
+            placeholder={m.header.searchPlaceholder}
             defaultValue={params.get('q') ?? ''}
           />
         </form>
@@ -268,14 +272,14 @@ function Header() {
             to={feed ? '/' : '/?view=feed'}
           >
             {CLOCK}
-            Recent
+            {m.header.recent}
           </Link>
           <Link className="btn" to="/random">
             {DIE}
-            Random
+            {m.header.random}
           </Link>
           <Link className="btn primary" to="/new">
-            + Add
+            {m.header.add}
           </Link>
         </div>
       </div>
@@ -309,6 +313,7 @@ const UP = (
    Hidden with visibility rather than unmounted, so it fades on both edges and
    cannot be tabbed to or clicked while it is invisible. */
 function ToTop() {
+  const { m } = useUi()
   const [show, setShow] = useState(false)
   useEffect(() => {
     const onScroll = () => setShow(window.scrollY > window.innerHeight)
@@ -324,7 +329,7 @@ function ToTop() {
          arrives painted accent; this one is only whether the control is
          there at all */
       className={`btn to-top ${show ? 'shown' : ''}`}
-      aria-label="Back to top"
+      aria-label={m.header.backToTop}
       onClick={() =>
         window.scrollTo({
           top: 0,
@@ -350,18 +355,17 @@ function ToTop() {
    nothing to disclose that does not fit in one, and a sentence carried by every
    page is read more than a page nobody clicks. */
 function Footer({ lang, onLang }: { lang: string; onLang: (v: string) => void }) {
+  const { locale, setLocale, m } = useUi()
   const langs = useAsync(() => api.languages(), [])
   return (
     <footer className="foot">
       <p>
-        Everything written here is{' '}
-        <a href="https://creativecommons.org/publicdomain/zero/1.0/">CC0</a> — public
-        domain. Take it, quote it, feed it to a machine; no permission and no credit
-        needed. The byline stays anyway, because it says who got there first.
+        {m.footer.cc0Before}{' '}
+        <a href="https://creativecommons.org/publicdomain/zero/1.0/">CC0</a>
+        {locale === 'ko' ? '' : ' '}{m.footer.cc0After}
       </p>
       <p>
-        No accounts and no addresses. A salted hash of yours is kept to slow a flood
-        and to make a block mean something, and nothing else about you is stored.
+        {m.footer.privacy}
       </p>
       <p>
         {/* Absolute, not a Link: FastAPI serves these, not the router. Both are
@@ -370,58 +374,63 @@ function Footer({ lang, onLang }: { lang: string; onLang: (v: string) => void })
             reader who has not written anything yet has a use for. A Link and
             not an <a> -- unlike its two neighbours it is a route in this
             bundle, and a full document load here would throw the app away. */}
-        <Link to="/guide">Entry guidelines</Link>{' · '}
-        <a href="/docs">API</a> — open, no key.{' · '}
-        <a href="https://github.com/MIIRAIII/Namba">Source</a>
+        <Link to="/guide">{m.footer.guidelines}</Link>{' · '}
+        <a href="/docs">API</a> — {m.footer.apiOpen}{' · '}
+        <a href="https://github.com/MIIRAIII/Namba">{m.footer.source}</a>
       </p>
-      {/* It reads the whole page and it is set once, which is a footer control
-          and not a header one -- up there it was a fifth thing competing with
-          the four you press on the way in, and on a phone it was the pill that
-          made the bar three rows tall.
-
-          The options come from the wiki, not a list in here: the labels are
-          free-form, so a fixed one would offer "Japanese" to a wiki that says
-          "日本語". The count is how much of it you will actually read in that
-          language -- everything else falls back to as-written. Absent until
-          something is translated, rather than a menu of one: with nothing
-          written in another language the only entries are Original and the
-          stored default reading "English · 0", they do the same nothing, and
-          picking Original drops the other one for good. It comes back with
-          the first translation. */}
-      {!!langs.data?.length && (
-        <div className="select lang-pick">
+      {/* Two independent choices. Interface changes Namba's own controls and
+          dates; entry text asks the API for a preferred translation and falls
+          back to what was written. The latter's options still come from the
+          translations in use, while the interface locales are versions this
+          bundle can actually render end to end. */}
+      <div className="locale-picks">
+        <label className="locale-pick">
+          <span>{m.footer.interfaceLanguage}</span>
+          <span className="select lang-pick">
+            <select
+              value={locale}
+              aria-label={m.footer.interfaceAria}
+              onChange={(e) => setLocale(e.target.value as UiLocale)}
+            >
+              <option value="en">English</option>
+              <option value="ko">한국어</option>
+            </select>
+          </span>
+        </label>
+        <label className="locale-pick">
+          <span>{m.footer.contentLanguage}</span>
+          <span className="select lang-pick">
           <select
             value={lang}
-            aria-label="Show lists in"
+            aria-label={m.footer.contentAria}
             onChange={(e) => onLang(e.target.value)}
           >
-            <option value="">Original</option>
+            <option value="">{m.footer.asWritten}</option>
             {(langs.data ?? []).map((l) => (
               <option key={l.lang} value={l.lang}>
-                {l.lang} · {l.count}
+                {m.footer.translatedCount(l.lang, l.count)}
               </option>
             ))}
             {/* the stored choice may be a language nobody has written yet --
                 keep it selectable rather than showing an empty box */}
             {lang && !(langs.data ?? []).some((l) => l.lang === lang) && (
-              <option value={lang}>{lang} · 0</option>
+              <option value={lang}>{m.footer.translatedCount(lang, 0)}</option>
             )}
           </select>
-        </div>
-      )}
+          </span>
+        </label>
+      </div>
     </footer>
   )
 }
 
-export default function App() {
-  /* Held here and handed down rather than read from localStorage in each page:
-     the pages have to refetch when it changes, and only a value they render
-     with does that. Four props is less machinery than a context for one
-     string. */
-  const [lang, setLang] = useState(displayLang.get)
+function Wiki() {
+  /* Content preference is held here because list pages refetch when it changes.
+     Interface locale lives in UiProvider and never enters an API request. */
+  const [lang, setLang] = useState(contentLanguage.get)
 
   function pickLang(v: string) {
-    displayLang.set(v)
+    contentLanguage.set(v)
     setLang(v)
   }
 
@@ -439,7 +448,7 @@ export default function App() {
             <Route path="/t/:tag" element={<Browse mode="tag" lang={lang} />} />
             <Route path="/search" element={<Browse mode="search" lang={lang} />} />
             <Route path="/random" element={<Random />} />
-            <Route path="/p/:id" element={<PostPage />} />
+            <Route path="/p/:id" element={<PostPage contentLang={lang} />} />
             <Route path="/p/:id/edit" element={<PostForm />} />
             <Route path="/new" element={<PostForm />} />
             <Route path="/guide" element={<Guide />} />
@@ -447,7 +456,7 @@ export default function App() {
               path="*"
               element={
                 <p className="empty">
-                  Nothing here. <Link to="/">Back to the index.</Link>
+                  <NotFound />
                 </p>
               }
             />
@@ -457,5 +466,18 @@ export default function App() {
         <ToTop />
       </div>
     </BrowserRouter>
+  )
+}
+
+function NotFound() {
+  const { m } = useUi()
+  return <>{m.notFound} <Link to="/">{m.common.backToIndex}</Link></>
+}
+
+export default function App() {
+  return (
+    <UiProvider>
+      <Wiki />
+    </UiProvider>
   )
 }

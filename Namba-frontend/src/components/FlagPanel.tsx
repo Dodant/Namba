@@ -1,7 +1,8 @@
 import { useId, useState } from 'react'
 import {
-  api, DELETE_REASONS, nickname, REASON_LABEL, REPORT_REASONS,
+  api, DELETE_REASONS, nickname, REPORT_REASONS,
 } from '../api'
+import { useUi } from '../uiLocale'
 
 /* Two things a reader can do about an entry they think is wrong, and they are
    different things: one says "this is wrong", the other says "this should not be
@@ -16,18 +17,11 @@ import {
 const KINDS = [
   {
     key: 'report' as const,
-    pill: 'Something is wrong',
     reasons: REPORT_REASONS,
-    lead: 'Tells whoever runs the wiki. The entry stays where it is.',
-    done: 'Reported. Whoever runs the wiki will see it.',
   },
   {
     key: 'remove' as const,
-    pill: 'It should be removed',
     reasons: DELETE_REASONS,
-    lead: 'Nobody can delete an entry here, so this asks a person to decide. '
-      + 'If they agree, the entry comes off the wiki and can still be put back.',
-    done: 'Asked. A person will read it and decide.',
   },
 ]
 
@@ -41,6 +35,7 @@ const KINDS = [
     stranger's click and became a request, which is a thing that needs somewhere
     to be typed. */
 export default function FlagPanel({ id }: { id: number | string }) {
+  const { m } = useUi()
   const uid = useId()
   const fid = (name: string) => `${uid}-${name}`
   const [kind, setKind] = useState<'report' | 'remove'>('report')
@@ -75,7 +70,7 @@ export default function FlagPanel({ id }: { id: number | string }) {
       } else {
         await api.report(id, { reason, detail })
       }
-      setSent(mode.done)
+      setSent(kind === 'remove' ? m.flag.requested : m.flag.reported)
     } catch (e) {
       setErr((e as Error).message)
     } finally {
@@ -86,7 +81,7 @@ export default function FlagPanel({ id }: { id: number | string }) {
   return (
     <details>
       <summary className="ix-fold">
-        <h2 className="section">Flag a problem</h2>
+        <h2 className="section">{m.flag.heading}</h2>
       </summary>
       {sent ? (
         /* No form to come back to. The API refuses a second open one from the
@@ -97,7 +92,7 @@ export default function FlagPanel({ id }: { id: number | string }) {
         </p>
       ) : (
         <div className="cmt-form">
-          <div className="flag-kind" role="group" aria-label="What kind of problem">
+          <div className="flag-kind" role="group" aria-label={m.flag.kindAria}>
             {KINDS.map((k) => (
               <button
                 key={k.key}
@@ -106,23 +101,23 @@ export default function FlagPanel({ id }: { id: number | string }) {
                 aria-pressed={k.key === kind}
                 onClick={() => pick(k.key)}
               >
-                {k.pill}
+                {k.key === 'remove' ? m.flag.remove : m.flag.report}
               </button>
             ))}
           </div>
-          <p className="quiet">{mode.lead}</p>
+          <p className="quiet">{kind === 'remove' ? m.flag.removeLead : m.flag.reportLead}</p>
           <div className="field">
-            <label htmlFor={fid('why')}>What is wrong</label>
+            <label htmlFor={fid('why')}>{m.flag.whatWrong}</label>
             <div className="select">
               <select
                 id={fid('why')}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
               >
-                <option value="">Pick one…</option>
+                <option value="">{m.flag.pickOne}</option>
                 {mode.reasons.map((r) => (
                   <option key={r} value={r}>
-                    {REASON_LABEL[r]}
+                    {m.reasons[r]}
                   </option>
                 ))}
               </select>
@@ -130,7 +125,7 @@ export default function FlagPanel({ id }: { id: number | string }) {
           </div>
           <div className="field">
             <label htmlFor={fid('more')}>
-              Details{' '}
+              {m.flag.details}{' '}
               {/* 1000 is the detail cap in main.py, hand-copied the way every
                   other field cap is. Longer than a comment's 300 on purpose:
                   this is an argument addressed to one person, and the one thing
@@ -139,15 +134,15 @@ export default function FlagPanel({ id }: { id: number | string }) {
                   One word, because the label and this hint share a line and the
                   rail is 280px: "Anything else" plus the sentence wrapped into
                   four lines that read as one sentence broken in half. */}
-              <span className="hint">optional, up to 1000</span>
+              <span className="hint">{m.flag.detailHint}</span>
             </label>
             <textarea
               id={fid('more')}
               value={detail}
               onChange={(e) => setDetail(e.target.value)}
               placeholder={kind === 'remove'
-                ? 'Why should this go?'
-                : 'What should it say instead?'}
+                ? m.flag.removePlaceholder
+                : m.flag.reportPlaceholder}
               maxLength={1000}
             />
           </div>
@@ -155,12 +150,12 @@ export default function FlagPanel({ id }: { id: number | string }) {
               the API. A report is read once by one person. */}
           {kind === 'remove' && (
             <div className="field">
-              <label htmlFor={fid('nick')}>Your nickname</label>
+              <label htmlFor={fid('nick')}>{m.flag.nickname}</label>
               <input
                 id={fid('nick')}
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
-                placeholder="anonymous"
+                placeholder={m.common.anonymous}
                 maxLength={40}
               />
             </div>
@@ -171,7 +166,7 @@ export default function FlagPanel({ id }: { id: number | string }) {
             disabled={busy || !reason}
             onClick={send}
           >
-            {busy ? 'Sending…' : kind === 'remove' ? 'Ask for removal' : 'Report it'}
+            {busy ? m.flag.sending : kind === 'remove' ? m.flag.askRemoval : m.flag.reportIt}
           </button>
         </div>
       )}

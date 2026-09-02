@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm'
 import { langLabel } from '../api'
 import { BASE_LANG, byCode, codeOf, GUIDES } from '../guide'
 import { OUTLINE, type GuideDoc, type Section } from '../guide/outline'
+import { useUi } from '../uiLocale'
 
 /* The wiki's one page of rules, in two layers and in whatever language it has
    been written in.
@@ -82,12 +83,13 @@ function Rows({ rows, heads }: {
    rules, and "changed 5 months ago" cannot answer that -- it needs a fixed
    point you can compare two documents at. en-GB so the month is a word: 09/01
    is two dates depending on the reader. */
-const stamp = (iso: string) =>
-  new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', {
+const stamp = (iso: string, locale: string) =>
+  new Date(iso + 'T00:00:00Z').toLocaleDateString(locale, {
     day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
   })
 
 export default function Guide() {
+  const { locale, m } = useUi()
   const [params] = useSearchParams()
   const nav = useNavigate()
   const { hash } = useLocation()
@@ -107,12 +109,12 @@ export default function Guide() {
       {/* The house shape for a page's head: a .kicker of metadata over an h1
           that is the subject and nothing else. */}
       <p className="guide-meta">
-        <span>v{doc.version} · {stamp(doc.updated)}</span>
+        <span>v{doc.version} · {stamp(doc.updated, locale)}</span>
         {Object.keys(GUIDES).length > 1 && (
           <span className="select">
               <select
                 value={codeOf(lang)}
-                aria-label="Read these rules in"
+                aria-label={m.guide.readIn}
                 onChange={(e) => {
                   /* replace, not push: the language is which copy of one page
                      you are reading, and Back through four of them is not a
@@ -179,7 +181,7 @@ export default function Guide() {
       })}
 
       <p>
-        <Link to="/new">Add an entry.</Link>
+        <Link to="/new">{m.guide.addEntry}</Link>
       </p>
     </article>
   )

@@ -4,12 +4,13 @@ import { Link, useParams } from 'react-router-dom'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import {
-  api, entryPath, fmtDate, nickname, numSize, originalLabel, plain, showValue,
+  api, entryPath, fmtDate, nickname, numSize, plain, showValue,
   tagLabel, tagPath, type Comment, type Revision,
 } from '../api'
 import FlagPanel from '../components/FlagPanel'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
+import { useUi } from '../uiLocale'
 
 /* A table in an entry is written by a stranger and can be any width, so it
    scrolls inside its own box rather than scrolling the page. The box has to
@@ -34,15 +35,18 @@ const MD: Components = {
    the like, the comment box, and the flag panel. And the recovery view below,
    which is a write to the entry -- but when the entry is gone there is no edit
    form to reach, so Restore stays. */
-export default function PostPage() {
+export default function PostPage({ contentLang }: { contentLang: string }) {
+  const { locale, m } = useUi()
   const { id = '' } = useParams()
   const loaded = useAsync(() => api.post(id), [id])
   const revs = useAsync(() => api.revisions(id), [id])
   const [err, setErr] = useState('')
-  const [lang, setLang] = useState('')                       // '' is the entry itself
+  const [lang, setLang] = useState(contentLang)              // '' is the entry itself
   const [credits, setCredits] = useState(false)              // closed on mount, not persisted
 
   const post = loaded.data
+
+  useEffect(() => setLang(contentLang), [contentLang, id])
 
   /* The entry is gone, but its snapshots are not -- revisions have no foreign
      key precisely so a delete stays undoable. Show them here, or the wiki keeps
@@ -60,7 +64,7 @@ export default function PostPage() {
     return (
       <>
         <p className="empty" role="alert">
-          Couldn’t open this entry — {loaded.err}. <Link to="/">Back to the index.</Link>
+          {m.post.openFailed(loaded.err)} <Link to="/">{m.common.backToIndex}</Link>
         </p>
         {err && (
           <p className="err" role="alert">
@@ -69,20 +73,19 @@ export default function PostPage() {
         )}
         {revs.data?.length ? (
           <>
-            <h2 className="section">What it used to say</h2>
+            <h2 className="section">{m.post.usedToSay}</h2>
             <p className="quiet">
-              Nothing here is lost. Restoring puts the entry back at this same
-              address, so whatever linked to it still points at it.
+              {m.post.restoreHelp}
             </p>
             <ol className="revs">
               {revs.data.map((r) => (
                 <li className="rev" key={r.id}>
                   <b>{r.snapshot.title}</b>
                   <span>
-                    {r.snapshot.value} · {byline(r)} · {fmtDate(r.at)}
+                    {r.snapshot.value} · {byline(r, m)} · {fmtDate(r.at, locale)}
                   </span>
                   <button className="btn small" onClick={() => resurrect(r)}>
-                    Restore
+                    {m.common.restore}
                   </button>
                 </li>
               ))}
@@ -94,7 +97,7 @@ export default function PostPage() {
   if (!post)
     return (
       <p className="empty" role="status">
-        Loading…
+        {m.common.loading}
       </p>
     )
 
@@ -102,6 +105,7 @@ export default function PostPage() {
   // reads off it -- the number, tags, image and links belong to the entry.
   const tr = post.translations?.find((t) => t.lang === lang) ?? null
   const shown = tr ?? post
+  const shownLang = tr?.lang ?? ''
 
   return (
     <div className="detail-layout">
@@ -116,19 +120,19 @@ export default function PostPage() {
             the page to say the entry is written in the language you are
             already reading. It returns with the first translation. */}
         {!!post.translations?.length && (
-          <nav className="tabs langs" aria-label="Language">
+          <nav className="tabs langs" aria-label={m.post.language}>
             <button
-              className={lang ? '' : 'on'}
-              aria-current={lang ? undefined : 'true'}
+              className={shownLang ? '' : 'on'}
+              aria-current={shownLang ? undefined : 'true'}
               onClick={() => setLang('')}
             >
-              {originalLabel(post.lang)}
+              {m.post.original(post.lang)}
             </button>
             {post.translations.map((t) => (
               <button
                 key={t.id}
-                className={t.lang === lang ? 'on' : ''}
-                aria-current={t.lang === lang ? 'true' : undefined}
+                className={t.lang === shownLang ? 'on' : ''}
+                aria-current={t.lang === shownLang ? 'true' : undefined}
                 onClick={() => setLang(t.lang)}
               >
                 {t.lang}
@@ -168,11 +172,11 @@ export default function PostPage() {
             aria-expanded={credits}
             onClick={() => setCredits((v) => !v)}
           >
-            {credits ? 'Hide Credits' : 'Show Credits'}
+            {credits ? m.post.hideCredits : m.post.showCredits}
           </button>
           <span className="meta-sep" aria-hidden="true">/</span>
           <Link className="meta-btn" to={`/p/${post.id}/edit`}>
-            Edit
+            {m.post.edit}
           </Link>
         </div>
 
@@ -182,22 +186,22 @@ export default function PostPage() {
         {credits && (
           <div className="credits">
             <span>
-              Written by {post.author} · {fmtDate(post.created_at)}
+              {m.post.writtenBy(post.author, fmtDate(post.created_at, locale))}
             </span>
             {post.edited_by && (
               <span>
-                Last edited by {post.edited_by} · {fmtDate(post.updated_at)}
+                {m.post.lastEditedBy(post.edited_by, fmtDate(post.updated_at, locale))}
               </span>
             )}
             <span>
               {tr
-                ? `${tr.lang} added by ${tr.author}${tr.edited_by ? `, last edited by ${tr.edited_by}` : ''} · ${fmtDate(tr.updated_at)}`
-                : post.lang
-                  ? `Written in ${post.lang}, as first entered`
-                  : 'As first entered'}
+                ? m.post.translationCredit(
+                    tr.lang, tr.author, tr.edited_by, fmtDate(tr.updated_at, locale),
+                  )
+                : m.post.originalCredit(post.lang)}
             </span>
             <span className="last">
-              Anyone can edit — every version is kept, so nothing is lost.
+              {m.post.editPromise}
             </span>
           </div>
         )}
@@ -229,8 +233,8 @@ export default function PostPage() {
              version, so a translated tab with no text says the same thing. */
           <div className="body body-none">
             <p>
-              No details on this one yet.{' '}
-              <Link to={`/p/${post.id}/edit`}>Say what it means.</Link>
+              {m.post.noDetails}{' '}
+              <Link to={`/p/${post.id}/edit`}>{m.post.sayMeaning}</Link>
             </p>
           </div>
         )}
@@ -241,7 +245,7 @@ export default function PostPage() {
             done in the edit form, so this is not a control anyone is missing */}
         {!!post.related?.length && (
           <>
-            <h2 className="section">Related entries</h2>
+            <h2 className="section">{m.post.related}</h2>
             {post.related.map((r) => (
               <div className="rel" key={r.id}>
                 <Link className="rel-num" to={entryPath(r.value, r.format)}>
@@ -270,7 +274,7 @@ export default function PostPage() {
             outline and announced as one. */}
         <details>
           <summary className="ix-fold">
-            <h2 className="section">Edit history</h2>{' '}
+            <h2 className="section">{m.post.editHistory}</h2>{' '}
             {/* Only when there is something to count, and only once it has
                 arrived: "0 edits" before the fetch lands is an answer rather
                 than a wait, and the line under the list already says an entry
@@ -286,20 +290,20 @@ export default function PostPage() {
             <li className="rev now">
               <b>{post.title}</b>
               <span>
-                current · {post.edited_by ? `edited by ${post.edited_by}` : `by ${post.author}`}
+                {m.post.current} · {post.edited_by ? m.post.editedBy(post.edited_by) : m.common.by(post.author)}
               </span>
             </li>
             {revs.data?.map((r) => (
               <li className="rev" key={r.id}>
                 <b>{r.snapshot.title}</b>
                 <span>
-                  {byline(r)} · {fmtDate(r.at)}
+                  {byline(r, m)} · {fmtDate(r.at, locale)}
                 </span>
               </li>
             ))}
           </ol>
           {!revs.loading && !revs.data?.length && (
-            <p className="quiet">No edits yet — as first written.</p>
+            <p className="quiet">{m.post.noEdits}</p>
           )}
         </details>
         <Comments id={id} />
@@ -329,6 +333,7 @@ const COMMENTS_SHOWN = 5
     belongs to nobody, and unlike an entry a comment has no revision behind it,
     so the button would be the loss rather than the guard against it. */
 function Comments({ id }: { id: string }) {
+  const { locale, m } = useUi()
   const uid = useId()
   const fid = (name: string) => `${uid}-${name}`
   const [said, setSaid] = useState<Comment[] | null>(null)   // null is "loading"
@@ -365,7 +370,7 @@ function Comments({ id }: { id: string }) {
   return (
     <details open>
       <summary className="ix-fold">
-        <h2 className="section">Comments</h2>{' '}
+        <h2 className="section">{m.post.comments}</h2>{' '}
         {/* the figure alone -- "Comments 8 comments" was the word twice in a
             row. A band on the index says "12 entries" because its heading is
             "Under 100" and the noun is news there; here the heading is the
@@ -374,27 +379,27 @@ function Comments({ id }: { id: string }) {
       </summary>
       <div className="cmt-form">
         <div className="field">
-          <label htmlFor={fid('nick')}>Your nickname</label>
+          <label htmlFor={fid('nick')}>{m.post.nickname}</label>
           <input
             id={fid('nick')}
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
-            placeholder="anonymous"
+            placeholder={m.common.anonymous}
             maxLength={40}
           />
         </div>
         <div className="field">
           <label htmlFor={fid('say')}>
-            Say something{' '}
+            {m.post.saySomething}{' '}
             {/* 300 is COMMENT_MAX in main.py, hand-copied the way every other
                 field cap is -- past it the API answers 422 rather than trimming */}
-            <span className="hint">at most 300 characters</span>
+            <span className="hint">{m.post.commentLimit}</span>
           </label>
           <textarea
             id={fid('say')}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="What do you make of it?"
+            placeholder={m.post.commentPlaceholder}
             maxLength={300}
           />
         </div>
@@ -404,7 +409,7 @@ function Comments({ id }: { id: string }) {
           disabled={busy || !body.trim()}
           onClick={say}
         >
-          {busy ? 'Posting…' : 'Post'}
+          {busy ? m.post.posting : m.post.postComment}
         </button>
       </div>
       {err && (
@@ -415,21 +420,21 @@ function Comments({ id }: { id: string }) {
       {!said ? (
         !err && (
           <p className="quiet" role="status">
-            Loading…
+            {m.common.loading}
           </p>
         )
       ) : said.length ? (
         <>
-          {said.slice(0, COMMENTS_SHOWN).map(cmt)}
+          {said.slice(0, COMMENTS_SHOWN).map((c) => cmt(c, locale))}
           {!!rest.length && (
             <details>
-              <summary className="ix-fold">{rest.length} more</summary>
-              {rest.map(cmt)}
+              <summary className="ix-fold">{m.post.more(rest.length)}</summary>
+              {rest.map((c) => cmt(c, locale))}
             </details>
           )}
         </>
       ) : (
-        <p className="quiet">Nothing said yet.</p>
+        <p className="quiet">{m.post.noComments}</p>
       )}
     </details>
   )
@@ -438,11 +443,11 @@ function Comments({ id }: { id: string }) {
 /* Plain text, not markdown: a remark is a remark, and the entry below the
    number is where the formatting belongs. React escapes it, so there is nothing
    to sanitise either. */
-const cmt = (c: Comment) => (
+const cmt = (c: Comment, locale = 'en') => (
   <div className="cmt" key={c.id}>
     <p>{c.body}</p>
     <span>
-      {c.author} · {fmtDate(c.created_at)}
+      {c.author} · {fmtDate(c.created_at, locale)}
     </span>
   </div>
 )
@@ -450,5 +455,5 @@ const cmt = (c: Comment) => (
 /* A delete snapshots under the author "deleted", which reads badly inside a
    sentence that already says "edited by". If the backend ever words it
    differently this just falls back to the normal phrasing. */
-const byline = (r: Revision) =>
-  r.author === 'deleted' ? 'deleted' : `edited by ${r.author}`
+const byline = (r: Revision, m: ReturnType<typeof useUi>['m']) =>
+  r.author === 'deleted' ? m.post.deleted : m.post.editedBy(r.author)

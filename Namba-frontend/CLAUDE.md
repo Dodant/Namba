@@ -81,6 +81,20 @@ because `npm run build` is `tsc -b && vite build`, but the first command in that
 line was theatre and anyone running it alone got a green that meant nothing.
 `-b --noEmit` builds the referenced projects' types without writing any.
 
+## Two kinds of language
+
+Interface locale and entry language are separate state. `UiProvider` owns
+`namba.uiLocale` and changes only Namba's controls, explanatory copy, document
+language and dates. `contentLanguage` owns `namba.contentLang` and changes only
+which entry translation list APIs prefer, falling back to the original text.
+Changing one must never change the other.
+
+The interface picker is always present because it describes what this bundle
+can render. The entry-text picker is populated from `/api/languages` because it
+describes what contributors have translated. Add interface copy to both maps in
+`src/uiLocale.tsx`; adding a content language remains data, not a frontend
+release.
+
 ## Deliberately absent
 
 No Redux/Zustand/React Query, no Tailwind, no component library, no test runner.

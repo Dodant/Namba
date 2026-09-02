@@ -1,11 +1,12 @@
 import { useEffect, useId, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
-  api, fmtDate, FORMAT_LABEL, FORMATS, LANG_CODE, langLabel, nickname,
-  originalLabel, subjectWord, showValue, TAG_MAX, tagLabel, TAGS_PER_POST,
+  api, fmtDate, FORMATS, LANG_CODE, langLabel, nickname,
+  showValue, TAG_MAX, tagLabel, TAGS_PER_POST,
   type Format, type Post, type Revision, type Tag, type Translation,
 } from '../api'
 import { useAsync } from '../useAsync'
+import { useUi } from '../uiLocale'
 
 /* What the number field takes, and whether separators mean anything, follow
    the format the poster picked. Auto-detect constrains nothing: nothing has
@@ -79,6 +80,7 @@ const langsWith = (cur: string) => (!cur || LANGS.includes(cur) ? LANGS : [cur, 
    useId rather than fixed strings because a form is not guaranteed to be the
    only one on the page -- the translation editor below is a second set. */
 export default function PostForm() {
+  const { locale, m } = useUi()
   const { id } = useParams()
   const uid = useId()
   const fid = (name: string) => `${uid}-${name}`
@@ -102,7 +104,7 @@ export default function PostForm() {
   const [lang, setLang] = useState(LANGS[0])
   const [grouped, setGrouped] = useState(false)
   // what this form is about right now: "number" until Abbreviation is picked
-  const noun = subjectWord(format === 'ABBR')
+  const noun = m.common.subject(format === 'ABBR')
   const [coined, setCoined] = useState('')
   /* the chips are the wiki's working vocabulary, not a list in here. Capped so
      the form cannot grow without bound as people coin more, and unioned with
@@ -206,17 +208,17 @@ export default function PostForm() {
        it is where the read page already keeps it. */
     <div className="form-layout">
       <form className="form" onSubmit={submit}>
-        <h1>{editing ? 'Edit entry' : 'Add an entry'}</h1>
+        <h1>{editing ? m.form.editTitle : m.form.addTitle}</h1>
         <p className="form-intro">
           {editing
-            ? `Anyone can edit anything here${owner ? `, including entries written by ${owner}` : ''}. The version you replace is kept in the history, and ${owner || 'the original author'} stays credited.`
-            : 'One entry per meaning. If 42 already exists, this joins it rather than replacing it.'}{' '}
+            ? m.form.editIntro(owner)
+            : m.form.addIntro}{' '}
           {/* Outside the ternary: both branches want it. The rule this form
               cannot enforce is which numbers are worth an entry -- 3 is a
               valid value whether it is the Trinity or the third GTA -- so the
               one place it can be said is next to the person about to type
               one. */}
-          <Link to="/guide">Entry guidelines</Link>.
+          <Link to="/guide">{m.form.guidelines}</Link>.
         </p>
 
         <div className="row">
@@ -233,9 +235,9 @@ export default function PostForm() {
                 you are typing UFO into. Auto-detect keeps Number, because
                 that is what most of this wiki is. */}
             <label htmlFor={fid('value')}>
-              {noun[0].toUpperCase() + noun.slice(1)}{' '}
+              {format === 'ABBR' ? m.form.abbreviation : m.form.number}{' '}
               <span className="hint">
-                {editing ? `fixed — another ${noun} is another entry` : EXAMPLES[format]}
+                {editing ? m.form.fixedValue(noun) : EXAMPLES[format]}
               </span>
             </label>
             <input
@@ -279,13 +281,13 @@ export default function PostForm() {
                   checked={grouped}
                   onChange={(e) => setGrouped(e.target.checked)}
                 />
-                Group thousands
+                {m.form.groupThousands}
                 <span className="hint">{showValue(value, true)}</span>
               </label>
             )}
           </div>
           <div className="field fmt-field">
-            <label htmlFor={fid('format')}>Format</label>
+            <label htmlFor={fid('format')}>{m.form.format}</label>
             {/* a wrapper only so the caret can be a ::after that follows the
                 theme; a background-image would have baked its colour in */}
             <div className="select">
@@ -299,10 +301,10 @@ export default function PostForm() {
                   if (!groupable(next)) setGrouped(false)
                 }}
               >
-                <option value="">Auto-detect</option>
+                <option value="">{m.form.autoDetect}</option>
                 {FORMATS.map((f) => (
                   <option key={f} value={f}>
-                    {FORMAT_LABEL[f]}
+                    {m.format[f]}
                   </option>
                 ))}
               </select>
@@ -312,8 +314,8 @@ export default function PostForm() {
 
         <div className="field">
           <label htmlFor={fid('title')}>
-            Title{' '}
-            <span className="hint">what it refers to</span>
+            {m.form.title}{' '}
+            <span className="hint">{m.form.titleHint}</span>
           </label>
           <input
             id={fid('title')}
@@ -321,25 +323,24 @@ export default function PostForm() {
             maxLength={200}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="The Hitchhiker's Guide to the Galaxy"
+            placeholder={m.form.titlePlaceholder}
           />
         </div>
 
         <div className="field">
           <label htmlFor={fid('body')}>
-            Details{' '}
-            <span className="hint">optional — why this number, what it means</span>
+            {m.form.details}{' '}
+            <span className="hint">{m.form.detailsHint}</span>
           </label>
           <textarea
             id={fid('body')}
             maxLength={5000}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="The Answer to the Ultimate Question of Life, the Universe, and Everything."
+            placeholder={m.form.detailsPlaceholder}
           />
           <p className="fine">
-            Markdown works — **bold**, *italic*, [links](https://…), lists,
-            headings and tables. A single Enter is a line break.
+            {m.form.markdown}
           </p>
         </div>
 
@@ -349,7 +350,7 @@ export default function PostForm() {
         {/* narrow caps the control, not the field -- on the field it caps the
             label with it */}
         <div className="field">
-          <label htmlFor={fid('lang')}>Written in</label>
+          <label htmlFor={fid('lang')}>{m.form.writtenIn}</label>
           <div className="select narrow">
             <select id={fid('lang')} value={lang} onChange={(e) => setLang(e.target.value)}>
               {/* minus whatever is already a tab below: the Languages panel has
@@ -383,9 +384,9 @@ export default function PostForm() {
             control -- so a group with a name, and the box names itself */}
         <div className="field" role="group" aria-labelledby={fid('cats')}>
           <span className="field-label" id={fid('cats')}>
-            Categories{' '}
+            {m.form.categories}{' '}
             <span className="hint">
-              up to {TAGS_PER_POST} — a film of a book gets both
+              {m.form.categoryHint(TAGS_PER_POST)}
             </span>
           </span>
           <div className="chips">
@@ -407,8 +408,8 @@ export default function PostForm() {
             <input
               value={coined}
               maxLength={TAG_MAX}
-              aria-label="Name a new category"
-              placeholder="or name your own"
+              aria-label={m.form.newCategoryAria}
+              placeholder={m.form.newCategory}
               /* folded as it is typed, not on the way out, so the field shows
                  the tag that will actually be made */
               onChange={(e) => setCoined(e.target.value.toLowerCase())}
@@ -429,21 +430,21 @@ export default function PostForm() {
                 setCoined('')
               }}
             >
-              Add
+              {m.form.add}
             </button>
           </div>
         </div>
 
         <div className="field">
           <label htmlFor={fid('image')}>
-            Image{' '}
-            <span className="hint">optional — jpg, png, gif or webp, up to 5 MB</span>
+            {m.form.image}{' '}
+            <span className="hint">{m.form.imageHint}</span>
           </label>
           {image ? (
             <div className="file-row">
               <img className="thumb" src={image} alt="" decoding="async" />
               <button type="button" className="pill" onClick={() => setImage(null)}>
-                Remove
+                {m.form.remove}
               </button>
             </div>
           ) : (
@@ -458,7 +459,7 @@ export default function PostForm() {
               />
               {uploading && (
                 <p className="fine" role="status">
-                  Uploading…
+                  {m.form.uploading}
                 </p>
               )}
             </>
@@ -467,9 +468,9 @@ export default function PostForm() {
 
         <div className="field nick-field">
           <label htmlFor={fid('author')}>
-            Your nickname{' '}
+            {m.form.nickname}{' '}
             <span className="hint">
-              {editing ? 'recorded as the editor, not the author' : 'no account, no password'}
+              {editing ? m.form.editorHint : m.form.noAccountHint}
             </span>
           </label>
           <input
@@ -477,7 +478,7 @@ export default function PostForm() {
             maxLength={40}
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
-            placeholder="anonymous"
+            placeholder={m.common.anonymous}
           />
         </div>
 
@@ -493,14 +494,14 @@ export default function PostForm() {
           <button className="btn primary" disabled={busy}>
             {busy
               ? editing
-                ? 'Saving…'
-                : 'Publishing…'
+                ? m.form.saving
+                : m.form.publishing
               : editing
-                ? 'Save changes'
-                : 'Publish'}
+                ? m.form.saveChanges
+                : m.form.publish}
           </button>
           <button type="button" className="btn" onClick={() => nav(-1)}>
-            Cancel
+            {m.common.cancel}
           </button>
         </div>
         {/* Here rather than only in the footer, because this is the one moment
@@ -508,8 +509,7 @@ export default function PostForm() {
             after the fact is not one. Same line either way -- an edit is a
             contribution too. */}
         <p className="fine">
-          {editing ? 'Saving' : 'Publishing'} puts this in the public domain
-          (CC0). Anyone may reuse it, for anything, without asking.
+          {m.form.cc0(editing)}
         </p>
       </form>
 
@@ -517,16 +517,16 @@ export default function PostForm() {
         <aside className="side form-side">
           <div className="field" role="group" aria-labelledby={fid('hist')}>
             <span className="field-label" id={fid('hist')}>
-              History{' '}
-              <span className="hint">put an earlier version back at this same address</span>
+              {m.form.history}{' '}
+              <span className="hint">{m.form.historyHint}</span>
             </span>
             <div className="panel">
               <div className="panel-row now">
                 <div className="panel-main">
                   <span className="panel-t now">{post.title}</span>
                   <span className="panel-m">
-                    current ·{' '}
-                    {post.edited_by ? `edited by ${post.edited_by}` : `by ${post.author}`}
+                    {m.form.current} ·{' '}
+                    {post.edited_by ? m.post.editedBy(post.edited_by) : m.common.by(post.author)}
                   </span>
                 </div>
               </div>
@@ -535,7 +535,7 @@ export default function PostForm() {
                   <div className="panel-main">
                     <span className="panel-t">{r.snapshot.title}</span>
                     <span className="panel-m">
-                      {byline(r)} · {fmtDate(r.at)}
+                      {byline(r, m)} · {fmtDate(r.at, locale)}
                     </span>
                   </div>
                   {/* type=button and outside the form both, so a restore can
@@ -550,12 +550,12 @@ export default function PostForm() {
                       ).then(() => setRevBump((n) => n + 1))
                     }
                   >
-                    Restore
+                    {m.common.restore}
                   </button>
                 </div>
               ))}
               {!revs.length && (
-                <div className="panel-row panel-empty">No edits yet — as first written.</div>
+                <div className="panel-row panel-empty">{m.post.noEdits}</div>
               )}
             </div>
           </div>
@@ -568,8 +568,8 @@ export default function PostForm() {
 /* A delete snapshots under the author "deleted", which reads badly inside a
    sentence that already says "edited by". If the backend ever words it
    differently this just falls back to the normal phrasing. */
-const byline = (r: Revision) =>
-  r.author === 'deleted' ? 'deleted' : `edited by ${r.author}`
+const byline = (r: Revision, m: ReturnType<typeof useUi>['m']) =>
+  r.author === 'deleted' ? m.post.deleted : m.post.editedBy(r.author)
 
 /** The entry written again in other languages. Rewriting one opens it in
     place; removing it lives inside that, behind the row rather than beside
@@ -587,6 +587,7 @@ function Languages({
   onError: (m: string) => void
   bumpRevs: () => void
 }) {
+  const { m } = useUi()
   const [open, setOpen] = useState<Translation | 'new' | null>(null)
   const gid = useId()
   /* The entry's own language and every language already on the list. A second
@@ -599,8 +600,8 @@ function Languages({
   return (
     <div className="field" role="group" aria-labelledby={gid}>
       <span className="field-label" id={gid}>
-        Languages{' '}
-        <span className="hint">the same entry, written again — 한국어, Japanese, Español</span>
+        {m.form.translations}{' '}
+        <span className="hint">{m.form.translationsHint}</span>
       </span>
       {open ? (
         <TranslationEditor
@@ -623,7 +624,7 @@ function Languages({
             {/* the live field, not post.lang: the select above is what this
                 entry will be written in the moment it saves, and a panel that
                 still says plain "Original" disagrees with it on screen */}
-            <span className="panel-lang">{originalLabel(lang)}</span>
+            <span className="panel-lang">{m.post.original(lang)}</span>
             <span className="panel-title">{post.title}</span>
             <span className="panel-by">{post.author}</span>
           </div>
@@ -633,13 +634,13 @@ function Languages({
               <span className="panel-title">{t.title}</span>
               <span className="panel-by">{t.edited_by ?? t.author}</span>
               <button type="button" className="pill" onClick={() => setOpen(t)}>
-                Rewrite
+                {m.form.editTranslation}
               </button>
             </div>
           ))}
           <div className="panel-row">
             <button type="button" className="panel-add" onClick={() => setOpen('new')}>
-              + Add a language
+              {m.form.addTranslation}
             </button>
           </div>
         </div>
@@ -666,6 +667,7 @@ function TranslationEditor({
   onCancel: () => void
   onError: (m: string) => void
 }) {
+  const { m } = useUi()
   const [lang, setLang] = useState(editing?.lang ?? '')
   const [title, setTitle] = useState(editing?.title ?? '')
   const [body, setBody] = useState(editing?.body ?? '')
@@ -674,7 +676,7 @@ function TranslationEditor({
   const fid = (name: string) => `${uid}-${name}`
 
   async function save() {
-    if (!lang.trim() || !title.trim()) return onError('A language and a title are required.')
+    if (!lang.trim() || !title.trim()) return onError(m.form.requiredTranslation)
     onError('')
     nickname.set(author)
     try {
@@ -693,7 +695,7 @@ function TranslationEditor({
 
   async function drop() {
     if (!editing) return
-    if (!confirm(`Remove the ${editing.lang} version? It stays in the entry's history.`)) return
+    if (!confirm(m.form.removeTranslationConfirm(editing.lang))) return
     onError('')
     try {
       onSaved(await api.untranslate(post.id, editing.id, nickname.get() || 'anonymous'))
@@ -706,8 +708,8 @@ function TranslationEditor({
     <div className="panel panel-edit">
       <div className="field">
         <label htmlFor={fid('lang')}>
-          Language{' '}
-          <span className="hint">the one this version is written in</span>
+          {m.form.language}{' '}
+          <span className="hint">{m.form.languageHint}</span>
         </label>
         {/* the language names the tab, so changing it would orphan the old one;
             rewrite the text here and add a new tab for a different language */}
@@ -718,7 +720,7 @@ function TranslationEditor({
             disabled={!!editing}
             onChange={(e) => setLang(e.target.value)}
           >
-            <option value="">Pick one…</option>
+            <option value="">{m.form.pickOne}</option>
             {langsWith(lang)
               .filter((l) => l === lang || !taken.includes(l))
               .map((l) => (
@@ -731,8 +733,8 @@ function TranslationEditor({
       </div>
       <div className="field">
         <label htmlFor={fid('title')}>
-          Title{' '}
-          <span className="hint">the entry's title in that language</span>
+          {m.form.title}{' '}
+          <span className="hint">{m.form.translationTitleHint}</span>
         </label>
         <input
           id={fid('title')}
@@ -743,8 +745,8 @@ function TranslationEditor({
       </div>
       <div className="field">
         <label htmlFor={fid('body')}>
-          Details{' '}
-          <span className="hint">optional — markdown works here too</span>
+          {m.form.details}{' '}
+          <span className="hint">{m.form.optionalMarkdown}</span>
         </label>
         <textarea
           id={fid('body')}
@@ -754,27 +756,27 @@ function TranslationEditor({
         />
       </div>
       <div className="field">
-        <label htmlFor={fid('author')}>Your nickname</label>
+        <label htmlFor={fid('author')}>{m.form.nickname}</label>
         <input
           id={fid('author')}
           value={author}
           onChange={(e) => setAuthor(e.target.value)}
-          placeholder="anonymous"
+          placeholder={m.common.anonymous}
           maxLength={40}
         />
       </div>
       <div className="actions">
         <button type="button" className="btn primary" onClick={save}>
-          {editing ? 'Save' : 'Add this language'}
+          {editing ? m.common.save : m.form.addThisTranslation}
         </button>
         <button type="button" className="btn" onClick={onCancel}>
-          Cancel
+          {m.common.cancel}
         </button>
         {editing && (
           <>
             <span className="spacer" />
             <button type="button" className="btn danger" onClick={drop}>
-              Remove this language
+              {m.form.removeTranslation}
             </button>
           </>
         )}
@@ -794,6 +796,7 @@ function LinkPanel({
   onLinked: (p: Post) => void
   onError: (m: string) => void
 }) {
+  const { m } = useUi()
   const [q, setQ] = useState('')
   const [hits, setHits] = useState<Post[] | null>(null)
   const [finding, setFinding] = useState(false)
@@ -827,8 +830,8 @@ function LinkPanel({
   return (
     <div className="field" role="group" aria-labelledby={gid}>
       <span className="field-label" id={gid}>
-        Related entries{' '}
-        <span className="hint">other numbers this one belongs beside</span>
+        {m.form.related}{' '}
+        <span className="hint">{m.form.relatedHint}</span>
       </span>
       <div className="panel">
         {post.related?.map((r) => (
@@ -836,14 +839,14 @@ function LinkPanel({
             <span className="panel-num">{showValue(r.value, r.grouped)}</span>
             <span className="panel-title ink">{r.title}</span>
             <button type="button" className="pill" onClick={() => act(() => api.unlink(post.id, r.id))}>
-              Unlink
+              {m.form.unlink}
             </button>
           </div>
         ))}
         <div className="panel-row panel-find">
           <input
             value={q}
-            aria-label="Search the wiki for an entry to link"
+            aria-label={m.form.linkSearchAria}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -851,7 +854,7 @@ function LinkPanel({
                 search()
               }
             }}
-            placeholder="Search the wiki — e.g. Back to the Future"
+            placeholder={m.form.linkSearchPlaceholder}
           />
           <button
             type="button"
@@ -859,7 +862,7 @@ function LinkPanel({
             disabled={!q.trim() || finding}
             onClick={search}
           >
-            {finding ? 'Searching…' : 'Search'}
+            {finding ? m.form.searching : m.form.search}
           </button>
         </div>
         {hits?.map((h) => (
@@ -875,11 +878,11 @@ function LinkPanel({
                 setHits(rest.length ? rest : null) // not "no matches" -- none left
               }}
             >
-              Link
+              {m.form.link}
             </button>
           </div>
         ))}
-        {hits?.length === 0 && <div className="panel-row panel-empty">No matches.</div>}
+        {hits?.length === 0 && <div className="panel-row panel-empty">{m.form.noMatches}</div>}
       </div>
     </div>
   )

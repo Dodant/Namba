@@ -1,17 +1,18 @@
 import { Fragment, useLayoutEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  api, BUCKETS, BUCKET_LABEL, entryPath, fmtDate, FORMATS, FORMAT_LABEL,
-  isAbbr, numSize, plain, showValue, subjectWord, tagLabel, tagPath,
+  api, BUCKETS, entryPath, fmtDate, FORMATS,
+  isAbbr, numSize, plain, showValue, tagLabel, tagPath,
   type Format, type NumberEntry, type Post,
 } from '../api'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
+import { useUi } from '../uiLocale'
 
 /* one path instead of an icon package -- it inherits currentColor and the
    row's font size, so it stays as quiet as the text beside it */
-const PHOTO = (
-  <svg className="ix-img" viewBox="0 0 16 16" role="img" aria-label="has an image">
+const Photo = ({ label }: { label: string }) => (
+  <svg className="ix-img" viewBox="0 0 16 16" role="img" aria-label={label}>
     <rect x="1.4" y="3" width="13.2" height="10" rx="1.6" fill="none"
           stroke="currentColor" strokeWidth="1.3" />
     <circle cx="5.4" cy="6.6" r="1.2" fill="currentColor" />
@@ -119,6 +120,7 @@ export default function Home({ lang }: { lang: string }) {
 }
 
 function Feed({ lang }: { lang: string }) {
+  const { locale, m } = useUi()
   /* sort=recent is updated_at DESC, so an entry someone rewrote this morning
      comes back to the top. Sorted by the API, not here: a client-side sort
      over a bounded page is only right until the twenty-first entry. */
@@ -127,7 +129,7 @@ function Feed({ lang }: { lang: string }) {
   return (
     <>
       <p className="feed-intro">
-        The same wiki, last touched first — written and rewritten.
+        {m.home.feedIntro}
       </p>
 
       {posts.err && (
@@ -137,7 +139,7 @@ function Feed({ lang }: { lang: string }) {
       )}
       {posts.loading && !posts.data && (
         <p className="empty" role="status">
-          Loading…
+          {m.common.loading}
         </p>
       )}
 
@@ -161,12 +163,11 @@ function Feed({ lang }: { lang: string }) {
                 </Link>
               ))}
               <span>
-                by {p.author} · {fmtDate(p.created_at)}
+                {m.common.by(p.author)} · {fmtDate(p.created_at, locale)}
               </span>
               {p.updated_at !== p.created_at && (
                 <span>
-                  · edited {fmtDate(p.updated_at)}
-                  {p.edited_by && ` by ${p.edited_by}`}
+                  · {m.common.edited(fmtDate(p.updated_at, locale), p.edited_by)}
                 </span>
               )}
               <span className="likes">♥ {p.likes}</span>
@@ -177,7 +178,7 @@ function Feed({ lang }: { lang: string }) {
 
       {!posts.loading && !posts.data?.length && (
         <p className="empty">
-          Nothing written yet. <Link to="/new">Add the first one.</Link>
+          {m.home.empty} <Link to="/new">{m.common.addFirst}</Link>
         </p>
       )}
     </>
@@ -196,13 +197,17 @@ const FOLD_OVER = 10
    the one that moves as the wiki fills up. Both, because the band folds:
    closed, this line is all it says about itself. The first noun follows the
    format: the Abbreviation band counts abbreviations, not numbers. */
-function bandCount(items: NumberEntry[], format: Format) {
+function bandCount(items: NumberEntry[], format: Format, m: ReturnType<typeof useUi>['m']) {
   const entries = items.reduce((n, item) => n + item.entries.length, 0)
-  return `${items.length} ${subjectWord(isAbbr(format), items.length)} · ${
-    entries} ${entries === 1 ? 'entry' : 'entries'}`
+  return m.home.bandCount(
+    items.length,
+    m.common.subject(isAbbr(format), items.length),
+    entries,
+  )
 }
 
 function Index({ lang }: { lang: string }) {
+  const { m } = useUi()
   const [params, setParams] = useSearchParams()
   const format = (params.get('format') ?? 'INTEGER') as Format
   const tag = params.get('tag') ?? ''
@@ -242,14 +247,14 @@ function Index({ lang }: { lang: string }) {
   const bands =
     shownFormat === 'INTEGER'
       ? BUCKETS.map((b) => ({
-          label: BUCKET_LABEL[b],
+          label: m.buckets[b],
           items: (numbers.data ?? []).filter((n) => n.bucket === b),
         }))
-      : [{ label: FORMAT_LABEL[shownFormat], items: numbers.data ?? [] }]
+      : [{ label: m.format[shownFormat], items: numbers.data ?? [] }]
 
   return (
     <>
-      <nav className="tabs fmts" ref={strip} aria-label="What kind of entry">
+      <nav className="tabs fmts" ref={strip} aria-label={m.home.entryKinds}>
         {FORMATS.map((f) => (
           <Link
             key={f}
@@ -268,7 +273,7 @@ function Index({ lang }: { lang: string }) {
                 to slice each label down to "Int" and "Abbr." to make them
                 fit; scrolling is what replaced that, and a label here is now
                 just its label. */}
-            {FORMAT_LABEL[f]}
+            {m.format[f]}
           </Link>
         ))}
       </nav>
@@ -279,13 +284,13 @@ function Index({ lang }: { lang: string }) {
           hides which one is on. */}
       <details className="band chips-fold">
         <summary className="band-head">
-          <h2>Categories</h2>
+          <h2>{m.home.categories}</h2>
           {/* outside the h2: heading type is uppercase here, and a tag that
               reads BOOK beside a chip reading book is the same word twice */}
           {tag && <span className="active">{tagLabel(tag)}</span>}
           <span className="rule" />
           <span className="n">
-            {tags.data?.length ?? 0} {tags.data?.length === 1 ? 'tag' : 'tags'}
+            {m.common.tags(tags.data?.length ?? 0)}
           </span>
         </summary>
         <div className="chips">
@@ -294,7 +299,7 @@ function Index({ lang }: { lang: string }) {
             aria-pressed={!tag}
             onClick={() => setParam('tag', '')}
           >
-            All
+            {m.home.all}
           </button>
           {(tags.data ?? []).map((t) => (
             <button
@@ -319,7 +324,7 @@ function Index({ lang }: { lang: string }) {
           line that replaced it would be the collapse all over again */}
       {numbers.loading && !numbers.data && (
         <p className="empty" role="status">
-          Loading…
+          {m.common.loading}
         </p>
       )}
 
@@ -335,7 +340,7 @@ function Index({ lang }: { lang: string }) {
               <summary className="band-head">
                 <h2>{band.label}</h2>
                 <span className="rule" />
-                <span className="n">{bandCount(band.items, shownFormat)}</span>
+                <span className="n">{bandCount(band.items, shownFormat, m)}</span>
               </summary>
               <ol className="index">
                 {band.items.map((n: NumberEntry) => {
@@ -347,7 +352,7 @@ function Index({ lang }: { lang: string }) {
                     <div className="ix-e" key={e.id}>
                       <Link className="ix-link" to={`/p/${e.id}`}>
                         <span className="ix-t">{mark(e.title, rx)}</span>
-                        {e.image && PHOTO}
+                        {e.image && <Photo label={m.home.hasImage} />}
                         {e.body && (
                           <span className="ix-b"> — {mark(plain(e.body), rx)}</span>
                         )}
@@ -377,7 +382,7 @@ function Index({ lang }: { lang: string }) {
                         click that has to be two things. */}
                     {n.entries.length > FOLD_OVER ? (
                       <details className="ix-titles" open>
-                        <summary className="ix-fold">{n.entries.length} entries</summary>
+                        <summary className="ix-fold">{m.home.foldedEntries(n.entries.length)}</summary>
                         {/* the rows need a box of their own in here. A
                             <details> puts everything after the summary into
                             one anonymous content box, so the column's gap
@@ -400,7 +405,7 @@ function Index({ lang }: { lang: string }) {
 
       {!numbers.loading && !numbers.data?.length && (
         <p className="empty">
-          Nothing here yet. <Link to="/new">Add the first one.</Link>
+          {m.notFound} <Link to="/new">{m.common.addFirst}</Link>
         </p>
       )}
     </>

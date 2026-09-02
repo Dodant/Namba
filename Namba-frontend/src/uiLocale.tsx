@@ -1,0 +1,299 @@
+/* oxlint-disable react/only-export-components -- the provider and its hook share
+   one private context; splitting them would export that implementation detail. */
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+
+export type UiLocale = 'en' | 'ko'
+
+const EN = {
+  siteTitle: 'Namba — a wiki of numbers',
+  tagline: 'An open wiki about numbers',
+  common: {
+    loading: 'Loading…',
+    backToIndex: 'Back to the index.',
+    addFirst: 'Add the first one.',
+    anonymous: 'anonymous',
+    cancel: 'Cancel',
+    save: 'Save',
+    edit: 'edit',
+    restore: 'Restore',
+    by: (name: string) => `by ${name}`,
+    edited: (when: string, name?: string | null) =>
+      `edited ${when}${name ? ` by ${name}` : ''}`,
+    entries: (n: number) => `${n} ${n === 1 ? 'entry' : 'entries'}`,
+    tags: (n: number) => `${n} ${n === 1 ? 'tag' : 'tags'}`,
+    subject: (abbr: boolean, n = 1): string =>
+      abbr ? (n === 1 ? 'abbreviation' : 'abbreviations') : n === 1 ? 'number' : 'numbers',
+  },
+  format: {
+    INTEGER: 'Integer', DECIMAL: 'Decimal', MIXED: 'Mixed', TIME: 'Time', ABBR: 'Abbreviation',
+  },
+  buckets: {
+    '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',
+    '1000': '1,000 – 9,999', '10000+': '10,000 and up',
+  },
+  header: {
+    searchLabel: 'Search the wiki by number, title or text',
+    searchPlaceholder: 'Search the wiki…',
+    recent: 'Recent', random: 'Random', add: '+ Add entry', backToTop: 'Back to top',
+  },
+  random: {
+    failed: (error: string) => `Couldn’t pick one — ${error}.`,
+    empty: 'Nothing to pick from yet.',
+  },
+  footer: {
+    cc0Before: 'Everything written here is',
+    cc0After: '— public domain. Take it, quote it, or feed it to a machine; no permission or credit is needed. The byline remains to record who wrote it first.',
+    privacy: 'No account is required. Raw IP addresses and user-agent strings are not stored; salted hashes are kept to prevent abuse and enforce blocks.',
+    guidelines: 'Entry guidelines', source: 'Source', apiOpen: 'open, no key.',
+    interfaceLanguage: 'Interface', contentLanguage: 'Entry text',
+    interfaceAria: 'Interface language', contentAria: 'Preferred entry language',
+    asWritten: 'As written', translatedCount: (lang: string, n: number) => `${lang} · ${n}`,
+  },
+  home: {
+    hasImage: 'has an image',
+    feedIntro: 'Recent entries and edits, newest first.',
+    empty: 'Nothing written yet.',
+    entryKinds: 'Entry format', categories: 'Categories', all: 'All',
+    foldedEntries: (n: number) => `${n} entries`,
+    bandCount: (subjects: number, subject: string, entries: number) =>
+      `${subjects} ${subject} · ${entries} ${entries === 1 ? 'entry' : 'entries'}`,
+  },
+  browse: {
+    category: 'Category', search: 'Search',
+    summary: (n: number, abbr: boolean) =>
+      `${n === 1 ? 'One entry explains' : `${n} entries explain`} this ${abbr ? 'abbreviation' : 'number'}.`,
+    addMeaning: '+ Add another meaning',
+    emptyValue: (value: string) => `Nothing filed under ${value} yet.`,
+    giveMeaning: 'Give it a meaning.',
+    emptyTag: (tag: string) => `Nothing tagged ${tag} yet.`,
+    noMatches: (q: string) => `No matches for “${q}”. Try another word, or`,
+    addNewEntry: 'add a new entry.',
+  },
+  post: {
+    openFailed: (error: string) => `Couldn’t open this entry — ${error}.`,
+    usedToSay: 'What it used to say',
+    restoreHelp: 'Nothing here is lost. Restoring puts the entry back at this same address, so existing links still work.',
+    language: 'Language', original: (lang?: string | null) => lang ? `Original (${lang})` : 'Original',
+    showCredits: 'Show credits', hideCredits: 'Hide credits', edit: 'Edit',
+    writtenBy: (name: string, when: string) => `Written by ${name} · ${when}`,
+    lastEditedBy: (name: string, when: string) => `Last edited by ${name} · ${when}`,
+    translationCredit: (lang: string, author: string, editor: string | null, when: string) =>
+      `${lang} added by ${author}${editor ? `, last edited by ${editor}` : ''} · ${when}`,
+    originalCredit: (lang?: string | null) => lang ? `Originally written in ${lang}` : 'Original version',
+    editPromise: 'Anyone can edit — every version is kept, so nothing is lost.',
+    noDetails: 'No details yet.', sayMeaning: 'Say what it means.', related: 'Related entries',
+    editHistory: 'Edit history', current: 'current', noEdits: 'No edit history yet.',
+    comments: 'Comments', nickname: 'Your nickname', saySomething: 'Say something',
+    commentLimit: 'at most 300 characters', commentPlaceholder: 'What do you think?',
+    posting: 'Posting…', postComment: 'Post', more: (n: number) => `${n} more`,
+    noComments: 'No comments yet.', deleted: 'deleted', editedBy: (name: string) => `edited by ${name}`,
+  },
+  form: {
+    editTitle: 'Edit entry', addTitle: 'Add an entry',
+    editIntro: (owner: string) => `Anyone can edit this entry${owner ? `, including one written by ${owner}` : ''}. The version you replace stays in the history, and ${owner || 'the original author'} remains credited.`,
+    addIntro: 'One entry per meaning. If 42 already exists, this joins it rather than replacing it.',
+    guidelines: 'Entry guidelines', fixedValue: (noun: string) => `fixed — another ${noun} is another entry`,
+    number: 'Number', abbreviation: 'Abbreviation', groupThousands: 'Use thousands separators',
+    format: 'Format', autoDetect: 'Auto-detect', title: 'Title', titleHint: 'what it refers to',
+    titlePlaceholder: "The Hitchhiker's Guide to the Galaxy",
+    details: 'Details', detailsHint: 'optional — why this number, what it means',
+    detailsPlaceholder: 'The Answer to the Ultimate Question of Life, the Universe, and Everything.',
+    markdown: 'Markdown works — **bold**, *italic*, [links](https://…), lists, headings and tables. A single Enter is a line break.',
+    writtenIn: 'Written in', categories: 'Categories',
+    categoryHint: (n: number) => `up to ${n} — a film adapted from a book can use both`,
+    newCategoryAria: 'Name a new category', newCategory: 'or name your own', add: 'Add',
+    image: 'Image', imageHint: 'optional — jpg, png, gif or webp, up to 5 MB', remove: 'Remove',
+    uploading: 'Uploading…', nickname: 'Your nickname', editorHint: 'recorded as the editor, not the author',
+    noAccountHint: 'no account, no password', saving: 'Saving…', publishing: 'Publishing…',
+    saveChanges: 'Save changes', publish: 'Publish',
+    cc0: (editing: boolean) => `${editing ? 'Saving' : 'Publishing'} releases this contribution under CC0. Anyone may reuse it for any purpose without asking.`,
+    history: 'History', historyHint: 'restore an earlier version at this same address', current: 'current',
+    translations: 'Translations', translationsHint: 'this entry in other languages',
+    editTranslation: 'Edit translation', addTranslation: '+ Add translation',
+    requiredTranslation: 'A language and a title are required.',
+    removeTranslationConfirm: (lang: string) => `Remove the ${lang} translation? It stays in the entry’s history.`,
+    language: 'Language', languageHint: 'the language used for this translation', pickOne: 'Pick one…',
+    translationTitleHint: 'the entry’s title in that language', optionalMarkdown: 'optional — markdown works here too',
+    addThisTranslation: 'Add translation', removeTranslation: 'Remove translation',
+    related: 'Related entries', relatedHint: 'other numbers that belong beside this one', unlink: 'Unlink',
+    linkSearchAria: 'Search the wiki for an entry to link',
+    linkSearchPlaceholder: 'Search the wiki — e.g. Back to the Future', searching: 'Searching…',
+    search: 'Search', link: 'Link', noMatches: 'No matches.',
+  },
+  flag: {
+    heading: 'Flag a problem', kindAria: 'What kind of problem', report: 'Something is wrong',
+    remove: 'It should be removed', reportLead: 'Send a report to the moderators. The entry will remain visible.',
+    removeLead: 'Ask a moderator to remove this entry. If approved, it will be hidden and can be restored.',
+    reported: 'Report sent. A moderator will review it.', requested: 'Removal requested. A moderator will review it.',
+    whatWrong: 'What is wrong', pickOne: 'Pick one…', details: 'Details', detailHint: 'optional, up to 1000',
+    removePlaceholder: 'Why should this entry be removed?', reportPlaceholder: 'What should it say instead?',
+    nickname: 'Your nickname', sending: 'Sending…', askRemoval: 'Ask for removal', reportIt: 'Report it',
+  },
+  reasons: {
+    DUPLICATE: 'It duplicates another entry', INCORRECT: 'The information is wrong',
+    NO_SOURCE: 'There is no reliable source', SOURCE: 'The source is wrong or missing',
+    SPAM: 'Spam', AD: 'An advertisement', ABUSE: 'Abusive or hateful',
+    COPYRIGHT: 'A copyright problem', VANDALISM: 'Vandalism', OTHER: 'Something else',
+  },
+  guide: { readIn: 'Read these rules in', addEntry: 'Add an entry.' },
+  notFound: 'Nothing here.',
+}
+
+const KO: typeof EN = {
+  siteTitle: 'Namba — 숫자의 의미를 모으는 위키',
+  tagline: '숫자의 의미를 모으는 열린 위키',
+  common: {
+    loading: '불러오는 중…', backToIndex: '색인으로 돌아가기.', addFirst: '첫 항목 추가하기.',
+    anonymous: '익명', cancel: '취소', save: '저장', edit: '수정', restore: '복원',
+    by: (name: string) => `${name === 'anonymous' ? '익명' : name} 작성`,
+    edited: (when: string, name?: string | null) => `${when} 수정${name ? ` · ${name === 'anonymous' ? '익명' : name}` : ''}`,
+    entries: (n: number) => `항목 ${n}개`, tags: (n: number) => `태그 ${n}개`,
+    subject: (abbr: boolean) => abbr ? '약어' : '숫자',
+  },
+  format: { INTEGER: '정수', DECIMAL: '소수', MIXED: '혼합형', TIME: '시각', ABBR: '약어' },
+  buckets: {
+    '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',
+    '1000': '1,000 – 9,999', '10000+': '10,000 이상',
+  },
+  header: {
+    searchLabel: '숫자, 제목 또는 내용으로 위키 검색', searchPlaceholder: '위키 검색…',
+    recent: '최근', random: '무작위', add: '+ 항목 추가', backToTop: '맨 위로',
+  },
+  random: {
+    failed: (error: string) => `무작위 항목을 고르지 못했습니다 — ${error}.`,
+    empty: '아직 고를 수 있는 항목이 없습니다.',
+  },
+  footer: {
+    cc0Before: '이곳에 작성된 모든 내용은',
+    cc0After: '에 따라 퍼블릭 도메인으로 공개됩니다. 허락이나 출처 표시 없이 인용하거나 재사용할 수 있습니다. 작성자 표시는 최초 작성 기록으로 남습니다.',
+    privacy: '계정은 필요하지 않습니다. 원본 IP 주소와 사용자 에이전트 문자열은 저장하지 않으며, 남용 방지와 차단 적용을 위해 솔트 처리된 해시만 보관합니다.',
+    guidelines: '항목 작성 지침', source: '소스 코드', apiOpen: '키 없이 공개.',
+    interfaceLanguage: '화면 언어', contentLanguage: '항목 내용',
+    interfaceAria: '화면 언어', contentAria: '선호하는 항목 언어', asWritten: '원문 그대로',
+    translatedCount: (lang: string, n: number) => `${lang} · 번역 ${n}개`,
+  },
+  home: {
+    hasImage: '이미지 있음', feedIntro: '최근 작성·수정된 항목부터 보여줍니다.',
+    empty: '아직 작성된 항목이 없습니다.', entryKinds: '항목 형식', categories: '분류', all: '전체',
+    foldedEntries: (n: number) => `항목 ${n}개`,
+    bandCount: (subjects: number, subject: string, entries: number) =>
+      `${subject} ${subjects}개 · 항목 ${entries}개`,
+  },
+  browse: {
+    category: '분류', search: '검색',
+    summary: (n: number, abbr: boolean) => `${abbr ? '이 약어' : '이 숫자'}를 설명하는 항목이 ${n}개 있습니다.`,
+    addMeaning: '+ 다른 의미 추가', emptyValue: (value: string) => `${value}에 등록된 항목이 아직 없습니다.`,
+    giveMeaning: '의미 추가하기.', emptyTag: (tag: string) => `${tag} 태그가 붙은 항목이 아직 없습니다.`,
+    noMatches: (q: string) => `“${q}” 검색 결과가 없습니다. 다른 단어로 검색하거나`,
+    addNewEntry: '새 항목을 추가해 보세요.',
+  },
+  post: {
+    openFailed: (error: string) => `항목을 열지 못했습니다 — ${error}.`, usedToSay: '이전에 작성된 내용',
+    restoreHelp: '내용은 사라지지 않았습니다. 복원하면 같은 주소에 항목이 다시 나타나므로 기존 링크도 그대로 작동합니다.',
+    language: '언어', original: (lang?: string | null) => lang ? `원문 (${lang})` : '원문',
+    showCredits: '작성 정보 보기', hideCredits: '작성 정보 숨기기', edit: '수정',
+    writtenBy: (name: string, when: string) => `${name} 작성 · ${when}`,
+    lastEditedBy: (name: string, when: string) => `${name} 최종 수정 · ${when}`,
+    translationCredit: (lang: string, author: string, editor: string | null, when: string) =>
+      `${lang} 번역: ${author}${editor ? ` · 최종 수정 ${editor}` : ''} · ${when}`,
+    originalCredit: (lang?: string | null) => lang ? `${lang}로 처음 작성됨` : '최초 작성본',
+    editPromise: '누구나 수정할 수 있으며 모든 버전이 기록에 남습니다.', noDetails: '아직 자세한 설명이 없습니다.',
+    sayMeaning: '의미 설명하기.', related: '관련 항목', editHistory: '수정 기록', current: '현재',
+    noEdits: '아직 수정 기록이 없습니다.', comments: '댓글', nickname: '닉네임',
+    saySomething: '댓글 작성', commentLimit: '최대 300자', commentPlaceholder: '어떻게 생각하시나요?',
+    posting: '게시 중…', postComment: '게시', more: (n: number) => `${n}개 더 보기`,
+    noComments: '아직 댓글이 없습니다.', deleted: '삭제됨', editedBy: (name: string) => `${name} 수정`,
+  },
+  form: {
+    editTitle: '항목 수정', addTitle: '항목 추가',
+    editIntro: (owner: string) => `누구나 이 항목을 수정할 수 있습니다${owner ? `. 최초 작성자는 ${owner}입니다` : ''}. 교체되는 버전은 기록에 남고 ${owner || '최초 작성자'} 표시는 유지됩니다.`,
+    addIntro: '하나의 항목에는 하나의 의미를 작성합니다. 42가 이미 있어도 기존 내용을 교체하지 않고 새 의미로 추가됩니다.',
+    guidelines: '항목 작성 지침', fixedValue: (noun: string) => `고정됨 — 다른 ${noun}는 별도 항목으로 작성`,
+    number: '숫자', abbreviation: '약어', groupThousands: '천 단위 구분 기호 사용', format: '형식',
+    autoDetect: '자동 감지', title: '제목', titleHint: '무엇을 가리키는지 작성',
+    titlePlaceholder: '은하수를 여행하는 히치하이커를 위한 안내서',
+    details: '자세히', detailsHint: '선택 — 이 숫자인 이유와 의미',
+    detailsPlaceholder: '삶, 우주, 그리고 모든 것에 대한 궁극적인 질문의 답.',
+    markdown: 'Markdown을 사용할 수 있습니다 — **굵게**, *기울임*, [링크](https://…), 목록, 제목, 표. Enter 한 번은 줄바꿈으로 표시됩니다.',
+    writtenIn: '작성 언어', categories: '분류',
+    categoryHint: (n: number) => `최대 ${n}개 — 책을 원작으로 한 영화라면 둘 다 선택 가능`,
+    newCategoryAria: '새 분류 이름', newCategory: '새 분류 직접 입력', add: '추가', image: '이미지',
+    imageHint: '선택 — jpg, png, gif, webp, 최대 5 MB', remove: '제거', uploading: '업로드 중…',
+    nickname: '닉네임', editorHint: '작성자가 아닌 수정자로 기록', noAccountHint: '계정과 비밀번호 없음',
+    saving: '저장 중…', publishing: '게시 중…', saveChanges: '변경 내용 저장', publish: '게시',
+    cc0: (editing: boolean) => `${editing ? '저장하면' : '게시하면'} 이 기여분은 CC0으로 공개됩니다. 누구나 허락 없이 어떤 목적으로든 재사용할 수 있습니다.`,
+    history: '기록', historyHint: '이 주소의 이전 버전 복원', current: '현재',
+    translations: '번역', translationsHint: '이 항목을 다른 언어로 작성',
+    editTranslation: '번역 수정', addTranslation: '+ 번역 추가',
+    requiredTranslation: '언어와 제목을 입력해야 합니다.',
+    removeTranslationConfirm: (lang: string) => `${lang} 번역을 제거할까요? 항목 기록에는 남습니다.`,
+    language: '언어', languageHint: '이 번역에 사용된 언어', pickOne: '선택…',
+    translationTitleHint: '해당 언어로 쓴 항목 제목', optionalMarkdown: '선택 — 여기서도 Markdown 사용 가능',
+    addThisTranslation: '번역 추가', removeTranslation: '번역 제거', related: '관련 항목',
+    relatedHint: '함께 볼 만한 다른 숫자', unlink: '연결 해제',
+    linkSearchAria: '연결할 항목 검색', linkSearchPlaceholder: '위키 검색 — 예: Back to the Future',
+    searching: '검색 중…', search: '검색', link: '연결', noMatches: '검색 결과가 없습니다.',
+  },
+  flag: {
+    heading: '문제 신고', kindAria: '문제 유형', report: '내용에 문제가 있음', remove: '내려야 하는 항목',
+    reportLead: '운영자에게 내용을 신고합니다. 항목은 계속 공개됩니다.',
+    removeLead: '운영자에게 항목을 내려 달라고 요청합니다. 승인되면 숨김 처리되며 다시 복원할 수 있습니다.',
+    reported: '신고했습니다. 운영자가 검토합니다.', requested: '삭제를 요청했습니다. 운영자가 검토합니다.',
+    whatWrong: '문제 사유', pickOne: '선택…', details: '자세히', detailHint: '선택, 최대 1000자',
+    removePlaceholder: '이 항목을 내려야 하는 이유는 무엇인가요?', reportPlaceholder: '어떻게 고쳐야 하나요?',
+    nickname: '닉네임', sending: '전송 중…', askRemoval: '삭제 요청', reportIt: '신고',
+  },
+  reasons: {
+    DUPLICATE: '다른 항목과 중복됨', INCORRECT: '정보가 잘못됨', NO_SOURCE: '신뢰할 만한 출처가 없음',
+    SOURCE: '출처가 잘못되었거나 없음', SPAM: '스팸', AD: '광고', ABUSE: '모욕적이거나 혐오스러움',
+    COPYRIGHT: '저작권 문제', VANDALISM: '문서 훼손', OTHER: '기타',
+  },
+  guide: { readIn: '지침 언어', addEntry: '항목 추가하기.' },
+  notFound: '페이지를 찾을 수 없습니다.',
+}
+
+const MESSAGES = { en: EN, ko: KO }
+
+const UI_KEY = 'namba.uiLocale'
+export const uiLocale = {
+  get: (): UiLocale => {
+    const saved = localStorage.getItem(UI_KEY)
+    if (saved === 'en' || saved === 'ko') return saved
+    return navigator.language.toLowerCase().startsWith('ko') ? 'ko' : 'en'
+  },
+  set: (locale: UiLocale) => localStorage.setItem(UI_KEY, locale),
+}
+
+type UiContextValue = {
+  locale: UiLocale
+  setLocale: (locale: UiLocale) => void
+  m: typeof EN
+}
+
+const UiContext = createContext<UiContextValue | null>(null)
+
+export function UiProvider({ children }: { children: ReactNode }) {
+  const [locale, setLocaleState] = useState<UiLocale>(uiLocale.get)
+
+  useEffect(() => {
+    document.documentElement.lang = locale
+    document.documentElement.dir = 'ltr'
+  }, [locale])
+
+  function setLocale(next: UiLocale) {
+    uiLocale.set(next)
+    setLocaleState(next)
+  }
+
+  return (
+    <UiContext value={{ locale, setLocale, m: MESSAGES[locale] }}>
+      {children}
+    </UiContext>
+  )
+}
+
+export function useUi() {
+  const value = useContext(UiContext)
+  if (!value) throw new Error('useUi must be used inside UiProvider')
+  return value
+}
