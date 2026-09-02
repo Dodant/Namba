@@ -109,6 +109,14 @@ hand-copied vocabulary and a branch beside every existing one.
   such as `1,2,3` is content and must not be silently rewritten. Server-written
   titles use the mirrored UI-locale cookie, falling back to `Accept-Language`.
 
+  **The same UI locale owns the server-rendered metadata around the content.**
+  `<html lang>`, `Content-Language`, the site and list prose in titles and
+  descriptions, Open Graph locale/text and JSON-LD `WebSite`/`CollectionPage`
+  language all come from `Namba-backend/seo_locale.py`. Entry titles, bodies
+  and an Article's stored `inLanguage` remain content and are never translated
+  by that choice. Every localized response varies on both the UI cookie and
+  `Accept-Language`; canonical URLs remain locale-neutral.
+
   **An `ABBR` value is stored upper-case for exactly that reason.** `ufo`,
   `Ufo` and `UFO` are one word, and with no accounts there is nobody to merge
   three pages about it afterwards. `resolve_format` folds it, because settling

@@ -31,6 +31,7 @@ import auth  # noqa: E402
 import db  # noqa: E402
 import events  # noqa: E402
 import main  # noqa: E402
+import seo_locale  # noqa: E402
 from numfmt import FORMATS, bucket_of, grouped_value, is_abbr, parse_number  # noqa: E402
 
 # The write limiter counts per IP, and the whole suite is one IP making a
@@ -259,11 +260,10 @@ def _ld(page):
 def test_the_site_has_one_name():
     """index.html's <title> and App.tsx's SITE_TITLE are the same string.
 
-    Two places hold the site's own name and neither generates the other.
-    main.py reads index.html's back out rather than keeping a third copy, so
-    the server cannot drift; the front end's is a hand-copy, because the one
-    thing it does with the head is put that title back after a client-side
-    navigation and building it from the server's would mean fetching it.
+    The English build default, client-side navigation title and localized SEO
+    dictionary are separate because Python cannot import a TypeScript object.
+    Assert all three, and every translated client title, so changing the name
+    in one place cannot quietly leave a stale browser tab or search result.
 
     Same bargain as test_the_two_apps_still_agree: notice, do not enforce. Drift
     here is quiet -- the tab reads the old name after a navigation and is right
@@ -272,11 +272,105 @@ def test_the_site_has_one_name():
     root = os.path.join(db.DIR, os.pardir, "Namba-frontend")
     page = open(os.path.join(root, "index.html"), encoding="utf-8").read()
     app = open(os.path.join(root, "src", "App.tsx"), encoding="utf-8").read()
+    ui = open(os.path.join(root, "src", "uiLocale.tsx"), encoding="utf-8").read()
     in_html = re.search(r"<title>(.*?)</title>", page, re.S)
     in_app = re.search(r"const SITE_TITLE = '(.*?)'", app)
     assert in_html, "index.html has no <title> -- og_head rewrites that tag by regex"
     assert in_app, "App.tsx has no SITE_TITLE"
     assert in_html.group(1) == in_app.group(1), (in_html.group(1), in_app.group(1))
+    assert in_html.group(1) == seo_locale.words("en")["site_title"]
+    for locale, text in seo_locale.TEXT.items():
+        title = text["site_title"]
+        assert f"siteTitle: '{title}'" in ui, (locale, title)
+
+
+def test_localized_metadata():
+    """Every server-rendered metadata channel follows the UI locale.
+
+    The entry's own language is content and remains separate: a French UI does
+    not turn a Korean article into French, even though its surrounding site
+    description and share-card prose are French.
+    """
+    c = TestClient(main.app)
+    accept = {
+        "en": "en-US,en;q=0.9", "ko": "ko-KR", "ja": "ja-JP",
+        "zh-Hans": "zh-CN,zh;q=0.9", "es": "es-ES",
+        "fr": "fr-FR", "de": "de-DE",
+    }
+    for locale, header in accept.items():
+        res = c.get("/", headers={"Accept-Language": header})
+        page = res.text
+        text = seo_locale.words(locale)
+        assert res.headers["content-language"] == locale
+        assert res.headers["vary"] == "Accept-Language, Cookie"
+        assert f'<html lang="{locale}">' in page, (locale, page[:100])
+        assert f"<title>{text['site_title']}</title>" in page, locale
+        assert text["site_desc"] in page, locale
+        assert (f'property="og:locale" content="{seo_locale.OG_LOCALES[locale]}"'
+                in page), locale
+        assert page.count('property="og:locale:alternate"') == 6, locale
+        assert text["image_alt"] in page, locale
+        site, = _ld(page)[0]
+        assert site["inLanguage"] == locale, (locale, site)
+
+    post = c.post("/api/posts", json={
+        "value": "7654321.5", "title": "Localized metadata entry",
+        "grouped": True, "lang": "한국어", "tags": ["metadata-test"],
+    }).json()
+
+    number = c.get(
+        "/n/7654321.5", headers={"Accept-Language": "de-DE"},
+    ).text
+    assert "<title>7.654.321,5 — 1 Eintrag · Namba</title>" in number
+    assert "Was 7.654.321,5 bedeutet — 1 Eintrag auf Namba" in number
+    collection, _ = _ld(number)[0]
+    assert collection["inLanguage"] == "de"
+    assert collection["isPartOf"]["inLanguage"] == "de"
+
+    entry = c.get(
+        f"/p/{post['id']}", headers={"Accept-Language": "fr-FR"},
+    ).text
+    assert "<title>7\u202f654\u202f321,5 — Localized metadata entry · Namba</title>" in entry
+    assert ("Localized metadata entry — ce que signifie 7\u202f654\u202f321,5 sur Namba."
+            in entry)
+    article, _ = _ld(entry)[0]
+    assert article["inLanguage"] == {"@type": "Language", "name": "한국어"}
+    assert article["isPartOf"]["inLanguage"] == "fr"
+
+    tagged = c.get(
+        "/t/metadata-test", headers={"Accept-Language": "es-ES"},
+    ).text
+    assert "<title>metadata-test — 1 entrada · Namba</title>" in tagged
+    assert "Números con la etiqueta metadata-test — 1 entrada en Namba" in tagged
+
+    abbreviation = c.post("/api/posts", json={
+        "value": "seo", "format": "ABBR", "title": "Search engine optimization",
+    }).json()
+    abbr = c.get(
+        "/a/SEO", headers={"Accept-Language": "ja-JP"},
+    ).text
+    assert "<title>SEO — 1件の項目 · Namba</title>" in abbr
+    assert "SEOが表すもの — Nambaの1件の項目" in abbr
+
+    guide = c.get("/guide", headers={"Accept-Language": "ko-KR"}).text
+    assert "<title>항목 작성 지침 — Namba</title>" in guide
+    assert seo_locale.words("ko")["guide_desc"] in guide
+    crumb, = _ld(guide)[0]
+    assert crumb["itemListElement"][-1]["name"] == "항목 작성 지침"
+
+    noindex = c.get("/new", headers={"Accept-Language": "zh-CN"})
+    assert noindex.headers["content-language"] == "zh-Hans"
+    assert '<html lang="zh-Hans">' in noindex.text
+    assert 'content="noindex, follow"' in noindex.text
+
+    # The explicit UI cookie remains authoritative over Accept-Language for
+    # every metadata field, not only for decimal punctuation.
+    c.cookies.set("namba_ui_locale", "de")
+    chosen = c.get("/", headers={"Accept-Language": "fr-FR"})
+    assert chosen.headers["content-language"] == "de"
+    assert "<title>Namba — ein Wiki über Zahlen</title>" in chosen.text
+    assert 'property="og:locale" content="de_DE"' in chosen.text
+    c.cookies.delete("namba_ui_locale")
 
 
 def test_head_per_route():

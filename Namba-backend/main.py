@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field, field_validator
 import admin_api
 import db
 import events
+import seo_locale
 from db import get_db, now
 from store import (
     LIVE, fetch_one, guard_public, shape, snapshot, write_tags, write_translations,
@@ -1187,7 +1188,6 @@ CC0 = "https://creativecommons.org/publicdomain/zero/1.0/"
 # like any other build output; test_the_share_card_is_a_real_png keeps it
 # 1200x630, which is the size the scrapers crop from.
 OG_CARD = "og.png"
-OG_CARD_ALT = "Namba — every number means something to someone"
 
 
 def clip(s: str, n: int = OG_DESC) -> str:
@@ -1250,19 +1250,6 @@ def path_seg(request, prefix: str) -> Optional[str]:
     return unquote(rest[len(prefix):]) or None
 
 
-def page_bits(page: str):
-    """The site's own title and description, read back out of index.html.
-
-    Rather than a fourth hand-copy of them in here. index.html is where they
-    are written, this file already knows how to find both -- it rewrites them
-    below -- and a constant would drift the first time either was reworded.
-    """
-    t = re.search(r"<title>(.*?)</title>", page, re.S)
-    d = re.search(r'<meta name="description" content="(.*?)"\s*/?>', page, re.S)
-    return (html.unescape(t.group(1)) if t else "Namba",
-            html.unescape(d.group(1)) if d else "")
-
-
 def json_ld(data) -> str:
     """JSON-LD as it may safely sit inside a <script> in this document.
 
@@ -1277,12 +1264,12 @@ def json_ld(data) -> str:
 
 
 def write_head(page: str, *, title=None, desc=None, canonical=None,
-               robots=None, og=(), ld=None) -> str:
+               robots=None, og=(), ld=None, locale="en") -> str:
     """Put this page's own head into the built index.html.
 
-    One writer for all five routes. Title and description are *replaced* -- two
-    <title>s and the browser keeps the first -- and everything else is appended
-    before </head>.
+    One writer for all six public routes. Title and description are *replaced*
+    -- two <title>s and the browser keeps the first -- and everything else is
+    appended before </head>.
 
     Both substitutions pass a callable rather than a string, and that is not a
     style choice: re.sub reads a *string* replacement for group references, so
@@ -1291,6 +1278,21 @@ def write_head(page: str, *, title=None, desc=None, canonical=None,
     for good. html.escape does not touch a backslash and should not; it is
     escaping for HTML, and this was a regex problem wearing its clothes.
     """
+    # The first response has to identify its language before React runs. This
+    # is also what crawlers and assistive technology read; the client keeps it
+    # in step when a person changes the interface language without a reload.
+    page, changed = re.subn(
+        r'(<html\b[^>]*\blang=")[^"]*(")',
+        lambda hit: (
+            f"{hit.group(1)}{html.escape(locale, quote=True)}{hit.group(2)}"
+        ),
+        page, count=1, flags=re.I,
+    )
+    if not changed:
+        page = re.sub(
+            r"<html\b", f'<html lang="{html.escape(locale, quote=True)}"',
+            page, count=1, flags=re.I,
+        )
     if title is not None:
         esc = html.escape(title, quote=True)
         page = re.sub(r"<title>.*?</title>", lambda _: f"<title>{esc}</title>",
@@ -1320,7 +1322,7 @@ def write_head(page: str, *, title=None, desc=None, canonical=None,
     return page.replace("</head>", "  " + "\n    ".join(out) + "\n  </head>", 1)
 
 
-def og_tags(title, desc, url, kind, base, image=None):
+def og_tags(title, desc, url, kind, base, image=None, locale="en"):
     """The share card.
 
     twitter:card alone beside the og: tags: Twitter reads og:title,
@@ -1340,23 +1342,28 @@ def og_tags(title, desc, url, kind, base, image=None):
     """
     alt = None
     if not image:
-        image, alt = f"{base}{OG_CARD}", OG_CARD_ALT
-    tags = [("og:type", kind), ("og:site_name", "Namba"), ("og:locale", "en"),
+        image, alt = f"{base}{OG_CARD}", seo_locale.words(locale)["image_alt"]
+    tags = [("og:type", kind), ("og:site_name", "Namba"),
+            ("og:locale", seo_locale.OG_LOCALES[locale]),
             ("og:title", title), ("og:description", desc), ("og:url", url),
             ("twitter:card", "summary_large_image"), ("og:image", image)]
+    tags.extend(
+        ("og:locale:alternate", code)
+        for name, code in seo_locale.OG_LOCALES.items() if name != locale
+    )
     if alt:
         tags.append(("og:image:alt", alt))
     return tags
 
 
-def site_ld(base):
+def site_ld(base, locale="en"):
     """The wiki itself, as the thing every other page says it belongs to.
 
     Given an @id so the four page types point at one node rather than each
     describing a separate website that happens to share a name.
     """
     return {"@type": "WebSite", "@id": f"{base}#site", "name": "Namba",
-            "url": base, "inLanguage": "en", "license": CC0}
+            "url": base, "inLanguage": locale, "license": CC0}
 
 
 def crumbs(base, trail):
@@ -1368,10 +1375,11 @@ def crumbs(base, trail):
                 for i, (name, url) in enumerate(items, 1)]}
 
 
-def head_home(page, base):
+def head_home(page, base, locale="en"):
     """The front page: the wiki, and the fact that it can be searched."""
-    title, desc = page_bits(page)
-    ld = dict(site_ld(base), **{
+    text = seo_locale.words(locale)
+    title, desc = text["site_title"], text["site_desc"]
+    ld = dict(site_ld(base, locale), **{
         "@context": "https://schema.org",
         "description": desc,
         "potentialAction": {
@@ -1385,11 +1393,13 @@ def head_home(page, base):
     # canonical is the bare base on purpose. ?view=feed, ?format= and ?tag= all
     # re-sort or filter the same index, and ?tag=book is the page /t/book
     # already is -- four addresses for one page, and this says which of them.
-    return write_head(page, canonical=base, ld=[ld],
-                      og=og_tags(title, desc, base, "website", base=base))
+    return write_head(
+        page, title=title, desc=desc, canonical=base, ld=[ld], locale=locale,
+        og=og_tags(title, desc, base, "website", base=base, locale=locale),
+    )
 
 
-def head_guide(page, base):
+def head_guide(page, base, locale="en"):
     """The rules page: the one route here that is prose rather than a query.
 
     Indexable, which makes it the exception to _index()'s default and the
@@ -1399,23 +1409,21 @@ def head_guide(page, base):
     is the one that says what the wiki will and will not keep -- which is what
     somebody searching for whether their number belongs here is looking for.
 
-    Its own title and description rather than page_bits(): the site's blurb
-    describes the wiki, and a search result for this page that repeated it
+    Its own title and description rather than the site's blurb: a search result
+    for this page that repeated the home page description
     would be indistinguishable from the front page.
     """
     url = base + "guide"
-    title = "Entry guidelines — Namba"
-    desc = ("What makes an entry on Namba: a number in a work, a number that "
-            "stands for something, a constant. Not a number that only counts "
-            "its own sequels.")
+    text = seo_locale.words(locale)
+    title, desc = text["guide_title"], text["guide_desc"]
     return write_head(
-        page, title=title, desc=desc, canonical=url,
-        og=og_tags(title, desc, url, "article", base=base),
-        ld=[crumbs(base, [("Entry guidelines", url)])],
+        page, title=title, desc=desc, canonical=url, locale=locale,
+        og=og_tags(title, desc, url, "article", base=base, locale=locale),
+        ld=[crumbs(base, [(text["guide_name"], url)])],
     )
 
 
-def head_list(page, base, *, kind, subject, url, rows, empty):
+def head_list(page, base, *, kind, subject, url, rows, locale="en"):
     """A page that is a list of entries: /n/{value}, /a/{value} or /t/{tag}.
 
     One shape for both, because they are one component in the front end for the
@@ -1432,23 +1440,19 @@ def head_list(page, base, *, kind, subject, url, rows, empty):
         # "nobody has written about 1234 yet, want to?" is a link somebody
         # pastes on purpose, and it should not paste as a grey box.
         title = f"{subject} · Namba"
+        empty = seo_locale.empty_summary(kind, subject, locale)
         return write_head(page, title=title, desc=empty, canonical=url,
                           robots="noindex, follow",
-                          og=og_tags(title, empty, url, "website", base=base))
+                          og=og_tags(title, empty, url, "website", base=base,
+                                     locale=locale), locale=locale)
     n = len(rows)
-    count = "1 entry" if n == 1 else f"{n} entries"
     titles = [r["title"] for r in rows[:DESC_TITLES]]
-    rest = n - len(titles)
-    lead = {"number": f"What {subject} means",
-            "abbreviation": f"What {subject} stands for"}.get(
-                kind, f"Numbers tagged {subject}")
-    desc = clip(f"{lead} — {count} on Namba: " + "; ".join(titles)
-                + (f"; and {rest} more." if rest else "."))
-    title = f"{subject} — {count} · Namba"
+    desc = clip(seo_locale.list_summary(kind, subject, titles, n, locale))
+    title = seo_locale.list_title(subject, n, locale)
     page_ld = {
         "@context": "https://schema.org", "@type": "CollectionPage",
-        "name": title, "url": url, "description": desc, "inLanguage": "en",
-        "license": CC0, "isPartOf": site_ld(base),
+        "name": title, "url": url, "description": desc, "inLanguage": locale,
+        "license": CC0, "isPartOf": site_ld(base, locale),
         "about": {"@type": "Thing", "name": subject},
         # the list is the page. Names as well as urls, because anything that
         # does not run the JavaScript has this and the description and nothing
@@ -1461,8 +1465,9 @@ def head_list(page, base, *, kind, subject, url, rows, empty):
                 for i, r in enumerate(rows, 1)],
         },
     }
-    return write_head(page, title=title, desc=desc, canonical=url,
-                      og=og_tags(title, desc, url, "website", base=base),
+    return write_head(page, title=title, desc=desc, canonical=url, locale=locale,
+                      og=og_tags(title, desc, url, "website", base=base,
+                                 locale=locale),
                       ld=[page_ld, crumbs(base, [(subject, url)])])
 
 
@@ -1476,11 +1481,10 @@ def head_number(con, page, value, base, locale="en"):
         value, bool(rows) and all(r["grouped"] for r in rows), locale,
     )
     return head_list(page, base, kind="number", subject=shown,
-                     url=f"{base}n/{enc(value)}", rows=rows,
-                     empty=f"Nothing is filed under {shown} on Namba yet.")
+                     url=f"{base}n/{enc(value)}", rows=rows, locale=locale)
 
 
-def head_abbr(con, page, value, base):
+def head_abbr(con, page, value, base, locale="en"):
     """The same page for the other section. Separate from head_number because
     the two say different words -- what a number means, what an abbreviation
     stands for -- and because a value stored as one is not filed under the
@@ -1491,18 +1495,16 @@ def head_abbr(con, page, value, base):
         "SELECT id, title FROM posts WHERE value = ? AND status = ? "
         f"AND {section_where('abbr')} ORDER BY id", (value, LIVE))]
     return head_list(page, base, kind="abbreviation", subject=value,
-                     url=f"{base}a/{enc(value)}", rows=rows,
-                     empty=f"Nothing is filed under {value} on Namba yet.")
+                     url=f"{base}a/{enc(value)}", rows=rows, locale=locale)
 
 
-def head_tag(con, page, tag, base):
+def head_tag(con, page, tag, base, locale="en"):
     tag = tag.lower()  # tagLabel() folds these, and /t/BOOK is an old link
     rows = [dict(r) for r in con.execute(
         "SELECT p.id, p.title FROM posts p JOIN post_tags t ON t.post_id = p.id "
         "WHERE t.tag = ? AND p.status = ? ORDER BY p.id", (tag, LIVE))]
     return head_list(page, base, kind="tag", subject=tag,
-                     url=f"{base}t/{enc(tag)}", rows=rows,
-                     empty=f"Nothing on Namba is tagged {tag} yet.")
+                     url=f"{base}t/{enc(tag)}", rows=rows, locale=locale)
 
 
 def og_head(page: str, post: dict, base: str, tags=(), locale="en") -> str:
@@ -1523,9 +1525,9 @@ def og_head(page: str, post: dict, base: str, tags=(), locale="en") -> str:
     # body and "What 2 means, on Namba." was the description on all of them --
     # identical, word for word, on the 29 that share a number. A description
     # that cannot tell two pages apart is one a search engine drops.
-    means = "stands for" if post["format"] == "ABBR" else "means"
-    desc = og_summary(post["body"]) or clip(
-        f"{post['title']} — what {value} {means}, on Namba.")
+    desc = og_summary(post["body"]) or clip(seo_locale.post_summary(
+        post["title"], value, post["format"] == "ABBR", locale,
+    ))
     img = f"{base}{post['image'].lstrip('/')}" if post["image"] else None
     url = f"{base}p/{post['id']}"
     article = {
@@ -1537,7 +1539,7 @@ def og_head(page: str, post: dict, base: str, tags=(), locale="en") -> str:
         # separate key here for the same reason it is a separate column.
         "author": {"@type": "Person", "name": post["author"]},
         "about": {"@type": "Thing", "name": value},
-        "isPartOf": site_ld(base), "license": CC0,
+        "isPartOf": site_ld(base, locale), "license": CC0,
     }
     if post["edited_by"]:
         article["editor"] = {"@type": "Person", "name": post["edited_by"]}
@@ -1550,8 +1552,9 @@ def og_head(page: str, post: dict, base: str, tags=(), locale="en") -> str:
         # the name the wiki actually stored
         article["inLanguage"] = {"@type": "Language", "name": post["lang"]}
     return write_head(
-        page, title=title, desc=desc, canonical=url,
-        og=og_tags(title, desc, url, "article", base=base, image=img)
+        page, title=title, desc=desc, canonical=url, locale=locale,
+        og=og_tags(title, desc, url, "article", base=base, image=img,
+                   locale=locale)
            + [("article:published_time", post["created_at"]),
               ("article:modified_time", post["updated_at"])],
         ld=[article, crumbs(base, [(value, base + value_path(post["format"],
@@ -1565,27 +1568,28 @@ def _index(con, request, path: str, base: str) -> HTMLResponse:
         page = fh.read()
     locale = request_ui_locale(request)
 
-    def answer(body):
+    def answer(body, content_locale=locale):
         res = HTMLResponse(body)
         # The number in a title varies by explicit UI preference first and
         # Accept-Language second. A cache must not hand the German spelling to
         # a French request (or the reverse).
         res.headers["Vary"] = "Accept-Language, Cookie"
+        res.headers["Content-Language"] = content_locale
         return res
 
     if path == "":
-        return answer(head_home(page, base))
+        return answer(head_home(page, base, locale))
     if path == "guide":
-        return answer(head_guide(page, base))
+        return answer(head_guide(page, base, locale))
     value = path_seg(request, "n/")
     if value is not None:
         return answer(head_number(con, page, value, base, locale))
     abbr = path_seg(request, "a/")
     if abbr is not None:
-        return answer(head_abbr(con, page, abbr, base))
+        return answer(head_abbr(con, page, abbr, base, locale))
     tag = path_seg(request, "t/")
     if tag is not None:
-        return answer(head_tag(con, page, tag, base))
+        return answer(head_tag(con, page, tag, base, locale))
     hit = re.fullmatch(r"p/(\d+)", path)
     if hit:
         row = con.execute("SELECT * FROM posts WHERE id = ? AND status = ?",
@@ -1606,7 +1610,7 @@ def _index(con, request, path: str, base: str) -> HTMLResponse:
     # added there would arrive claiming to be indexable until somebody
     # remembered this file. Being indexable is the thing that has to be spelled
     # out; not being indexable is the safe answer to give a stranger.
-    return answer(write_head(page, robots="noindex, follow"))
+    return answer(write_head(page, robots="noindex, follow", locale=locale))
 
 
 @app.get("/robots.txt", response_class=PlainTextResponse)

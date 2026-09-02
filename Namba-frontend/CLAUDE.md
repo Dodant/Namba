@@ -965,7 +965,8 @@ app should try**, and nothing in `src/` mentions `og:`, `canonical` or
 `ld+json` — grep and see.
 
 `main.py`'s `_index()` writes a title, description, canonical, `og:`/`twitter:`
-tags and JSON-LD for `/`, `/n/:value`, `/t/:tag` and `/p/:id`, and marks
+tags and JSON-LD for `/`, `/guide`, `/n/:value`, `/a/:value`, `/t/:tag` and
+`/p/:id`, and marks
 everything else `noindex` — `/search`, `/random`, `/new`, `/p/:id/edit` and the
 `*` route, which answers 200 with "Nothing here" and would otherwise be indexed
 as a copy of the front page. Two consequences for work in here:
@@ -973,8 +974,10 @@ as a copy of the front page. Two consequences for work in here:
 - **`index.html`'s `<title>` and `<meta name="description">` are rewritten by
   regex.** Reorder an attribute on either, add a second `<title>`, or hardcode
   an `og:` tag beside them and the substitution silently no-ops or duplicates.
-  They are also read back out as the site's own title and blurb, so they stay
-  the one place those words are written.
+  They are the English no-JavaScript defaults. The server replaces them from
+  `Namba-backend/seo_locale.py`, which mirrors every `siteTitle` in
+  `uiLocale.tsx`; `test_the_site_has_one_name` catches drift between the build
+  default, the client titles and all server copies.
 - **`public/og.png` is the share card, and it is the only asset in this repo.**
   Vite copies `public/` into `dist/` untouched, which is the whole reason it
   exists here rather than as a route in the API. `main.py`'s `OG_CARD` points

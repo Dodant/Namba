@@ -287,11 +287,12 @@ it is unset, `secret.key` beside the database is generated and used instead).
   out of a result carries a `noindex` meta instead, because a path disallowed
   in `robots.txt` can never be crawled to *find* that meta — an old link to one
   sits in an index as a bare URL for good.
-- **Five routes get their `<head>` written server-side, and everything else is
+- **Six routes get their `<head>` written server-side, and everything else is
   told not to be indexed.** `_index()` is the one place that decides which:
   `/` gets the site's own head, `/n/{value}`, `/a/{value}` and `/t/{tag}` get a
   title, description and `ItemList` naming the entries filed there, `/p/{id}`
-  gets `og_head()`. The two value pages are one `head_list()` saying different
+  gets `og_head()`, and `/guide` gets its own article summary. The two value
+  pages are one `head_list()` saying different
   words — what a number means, what an abbreviation stands for. No crawler
   runs the JavaScript that would set any of it client-side — that is the reason
   the API serves the front end at all, and `Namba-frontend/CLAUDE.md` says
@@ -312,6 +313,18 @@ it is unset, `secret.key` beside the database is generated and used instead).
   `plain()` in the front end's `api.ts`; they are deliberately not kept in
   step, since one feeds a preview row and the other a meta tag and nobody sees
   both at once.
+
+  **Metadata chrome follows the UI locale; contributed content does not.**
+  `request_ui_locale()` chooses the explicit `namba_ui_locale` cookie before
+  the weighted `Accept-Language` header. `seo_locale.py` is the server's one
+  table for the home and guide blurbs, counts, list summaries, empty states,
+  entry fallback descriptions and share-card alt text. The same choice writes
+  `<html lang>`, `Content-Language`, `og:locale` plus its alternates, and the
+  `inLanguage` on `WebSite` and `CollectionPage`. An Article still uses the
+  entry's free-form `posts.lang`; a French interface around a Korean entry is
+  French site metadata containing Korean contributed content, not a French
+  translation of that content. Canonicals carry neither choice, and `Vary:
+  Accept-Language, Cookie` keeps cached variants apart.
 - **Every page falls back to one share card, and it is a file, not a route.**
   `OG_CARD` is `og.png` in the front end's `public/`, so Vite copies it into
   `dist/` and the catch-all serves it like any other build output — there is no
