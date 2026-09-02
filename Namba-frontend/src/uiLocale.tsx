@@ -2,7 +2,7 @@
    one private context; splitting them would export that implementation detail. */
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
-export type UiLocale = 'en' | 'ko'
+export type UiLocale = 'en' | 'ko' | 'ja'
 
 const EN = {
   siteTitle: 'Namba — a wiki of numbers',
@@ -252,14 +252,134 @@ const KO: typeof EN = {
   notFound: '페이지를 찾을 수 없습니다.',
 }
 
-const MESSAGES = { en: EN, ko: KO }
+const JA: typeof EN = {
+  siteTitle: 'Namba — 数字の意味を集めるウィキ',
+  tagline: '数字の意味を集めるオープンなウィキ',
+  common: {
+    loading: '読み込み中…', backToIndex: '一覧に戻る。', addFirst: '最初の項目を追加する。',
+    anonymous: '匿名', cancel: 'キャンセル', save: '保存', edit: '編集', restore: '復元',
+    by: (name: string) => `${name === 'anonymous' ? '匿名' : name}が作成`,
+    edited: (when: string, name?: string | null) => name
+      ? `${name === 'anonymous' ? '匿名' : name}が${when}に編集`
+      : `${when}に編集`,
+    entries: (n: number) => `${n}件`, tags: (n: number) => `${n}個のタグ`,
+    subject: (abbr: boolean) => abbr ? '略語' : '数字',
+  },
+  format: { INTEGER: '整数', DECIMAL: '小数', MIXED: '混合', TIME: '時刻', ABBR: '略語' },
+  buckets: {
+    '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',
+    '1000': '1,000 – 9,999', '10000+': '10,000以上',
+  },
+  header: {
+    searchLabel: '数字、タイトル、本文からウィキを検索', searchPlaceholder: 'ウィキを検索…',
+    recent: '最近', random: 'ランダム', add: '+ 項目を追加', backToTop: 'ページ上部へ',
+  },
+  random: {
+    failed: (error: string) => `項目を選べませんでした — ${error}。`,
+    empty: '選べる項目がまだありません。',
+  },
+  footer: {
+    cc0Before: 'ここに書かれたすべての内容は',
+    cc0After: 'のもとでパブリックドメインとして公開されます。許可やクレジット表記なしで引用・再利用できます。作成者名は最初に書いた人の記録として残ります。',
+    privacy: 'アカウントは必要ありません。IPアドレスとユーザーエージェントの原文は保存せず、不正利用の防止とブロックの適用に必要なソルト付きハッシュのみを保持します。',
+    guidelines: '項目ガイドライン', source: 'ソースコード', apiOpen: 'キー不要で公開中。',
+    interfaceLanguage: '表示言語', contentLanguage: '項目の本文',
+    interfaceAria: '表示言語', contentAria: '項目の優先言語', asWritten: '原文のまま',
+    translatedCount: (lang: string, n: number) => `${lang} · 翻訳${n}件`,
+  },
+  home: {
+    hasImage: '画像あり', feedIntro: '最近作成・編集された項目から表示します。',
+    empty: 'まだ項目がありません。', entryKinds: '項目の形式', categories: 'カテゴリ', all: 'すべて',
+    foldedEntries: (n: number) => `${n}件の項目`,
+    bandCount: (subjects: number, subject: string, entries: number) =>
+      `${subject}${subjects}個 · 項目${entries}件`,
+  },
+  browse: {
+    category: 'カテゴリ', search: '検索',
+    summary: (n: number, abbr: boolean) => `${abbr ? 'この略語' : 'この数字'}を説明する項目が${n}件あります。`,
+    addMeaning: '+ 別の意味を追加', emptyValue: (value: string) => `${value}の項目はまだありません。`,
+    giveMeaning: '意味を追加する。', emptyTag: (tag: string) => `${tag}タグの項目はまだありません。`,
+    noMatches: (q: string) => `「${q}」に一致する項目はありません。別の言葉で検索するか、`,
+    addNewEntry: '新しい項目を追加してください。',
+  },
+  post: {
+    openFailed: (error: string) => `項目を開けませんでした — ${error}。`, usedToSay: '以前の内容',
+    restoreHelp: '内容は失われていません。復元すると同じURLに項目が戻るため、既存のリンクもそのまま使えます。',
+    language: '言語', original: (lang?: string | null) => lang ? `原文（${lang}）` : '原文',
+    showCredits: '作成情報を表示', hideCredits: '作成情報を隠す', edit: '編集',
+    writtenBy: (name: string, when: string) => `${name}が作成 · ${when}`,
+    lastEditedBy: (name: string, when: string) => `${name}が最終編集 · ${when}`,
+    translationCredit: (lang: string, author: string, editor: string | null, when: string) =>
+      `${lang}翻訳: ${author}${editor ? ` · 最終編集 ${editor}` : ''} · ${when}`,
+    originalCredit: (lang?: string | null) => lang ? `${lang}で最初に作成` : '初版',
+    editPromise: '誰でも編集でき、すべての版が履歴に残ります。', noDetails: '詳しい説明はまだありません。',
+    sayMeaning: '意味を説明する。', related: '関連項目', editHistory: '編集履歴', current: '現在',
+    noEdits: '編集履歴はまだありません。', comments: 'コメント', nickname: 'ニックネーム',
+    saySomething: 'コメントを書く', commentLimit: '300文字まで', commentPlaceholder: 'どう思いますか？',
+    posting: '投稿中…', postComment: '投稿', more: (n: number) => `さらに${n}件`,
+    noComments: 'コメントはまだありません。', deleted: '削除済み', editedBy: (name: string) => `${name}が編集`,
+  },
+  form: {
+    editTitle: '項目を編集', addTitle: '項目を追加',
+    editIntro: (owner: string) => `誰でもこの項目を編集できます${owner ? `。最初の作成者は${owner}です` : ''}。置き換えられた版は履歴に残り、${owner || '最初の作成者'}のクレジットも維持されます。`,
+    addIntro: '1項目につき1つの意味を記載します。42がすでに存在していても、置き換えずに新しい意味として追加されます。',
+    guidelines: '項目ガイドライン', fixedValue: (noun: string) => `変更不可 — 別の${noun}は別項目として作成`,
+    number: '数字', abbreviation: '略語', groupThousands: '3桁区切りを使用', format: '形式',
+    autoDetect: '自動判定', title: 'タイトル', titleHint: '何を指す数字か',
+    titlePlaceholder: '銀河ヒッチハイク・ガイド', details: '詳細',
+    detailsHint: '任意 — なぜこの数字なのか、何を意味するのか',
+    detailsPlaceholder: '生命、宇宙、そして万物についての究極の疑問の答え。',
+    markdown: 'Markdownが使えます — **太字**、*斜体*、[リンク](https://…)、リスト、見出し、表。Enterを1回押すと改行されます。',
+    writtenIn: '記述言語', categories: 'カテゴリ',
+    categoryHint: (n: number) => `${n}個まで — 本を原作とする映画なら両方を選択可能`,
+    newCategoryAria: '新しいカテゴリ名', newCategory: '新しいカテゴリを入力', add: '追加',
+    image: '画像', imageHint: '任意 — jpg、png、gif、webp、5 MBまで', remove: '削除',
+    uploading: 'アップロード中…', nickname: 'ニックネーム', editorHint: '作成者ではなく編集者として記録',
+    noAccountHint: 'アカウント・パスワード不要', saving: '保存中…', publishing: '公開中…',
+    saveChanges: '変更を保存', publish: '公開',
+    cc0: (editing: boolean) => `${editing ? '保存すると' : '公開すると'}、この投稿はCC0で公開されます。誰でも許可なく、あらゆる目的に再利用できます。`,
+    history: '履歴', historyHint: 'このURLの以前の版を復元', current: '現在',
+    translations: '翻訳', translationsHint: 'この項目を別の言語で記述',
+    editTranslation: '翻訳を編集', addTranslation: '+ 翻訳を追加',
+    requiredTranslation: '言語とタイトルを入力してください。',
+    removeTranslationConfirm: (lang: string) => `${lang}の翻訳を削除しますか？ 項目の履歴には残ります。`,
+    language: '言語', languageHint: 'この翻訳で使用する言語', pickOne: '選択…',
+    translationTitleHint: 'その言語での項目タイトル', optionalMarkdown: '任意 — ここでもMarkdownを使用可能',
+    addThisTranslation: '翻訳を追加', removeTranslation: '翻訳を削除', related: '関連項目',
+    relatedHint: '一緒に見るとよい別の数字', unlink: 'リンクを解除',
+    linkSearchAria: 'リンクする項目を検索', linkSearchPlaceholder: 'ウィキを検索 — 例: Back to the Future',
+    searching: '検索中…', search: '検索', link: 'リンク', noMatches: '一致する項目はありません。',
+  },
+  flag: {
+    heading: '問題を報告', kindAria: '問題の種類', report: '内容に問題がある', remove: '削除すべき項目',
+    reportLead: 'モデレーターに内容を報告します。項目は引き続き公開されます。',
+    removeLead: 'モデレーターに項目の削除を依頼します。承認されると非表示になり、後から復元できます。',
+    reported: '報告を送信しました。モデレーターが確認します。', requested: '削除を依頼しました。モデレーターが確認します。',
+    whatWrong: '問題の理由', pickOne: '選択…', details: '詳細', detailHint: '任意、1000文字まで',
+    removePlaceholder: 'この項目を削除すべき理由を教えてください。', reportPlaceholder: 'どのように修正すべきですか？',
+    nickname: 'ニックネーム', sending: '送信中…', askRemoval: '削除を依頼', reportIt: '報告',
+  },
+  reasons: {
+    DUPLICATE: '別の項目と重複している', INCORRECT: '情報が間違っている', NO_SOURCE: '信頼できる出典がない',
+    SOURCE: '出典が間違っている、または不足している', SPAM: 'スパム', AD: '広告',
+    ABUSE: '攻撃的または差別的な内容', COPYRIGHT: '著作権上の問題',
+    VANDALISM: '荒らし行為', OTHER: 'その他',
+  },
+  guide: { readIn: 'ガイドラインの言語', addEntry: '項目を追加する。' },
+  notFound: 'ページが見つかりません。',
+}
+
+const MESSAGES = { en: EN, ko: KO, ja: JA }
 
 const UI_KEY = 'namba.uiLocale'
 export const uiLocale = {
   get: (): UiLocale => {
     const saved = localStorage.getItem(UI_KEY)
-    if (saved === 'en' || saved === 'ko') return saved
-    return navigator.language.toLowerCase().startsWith('ko') ? 'ko' : 'en'
+    if (saved === 'en' || saved === 'ko' || saved === 'ja') return saved
+    const browser = navigator.language.toLowerCase()
+    if (browser.startsWith('ko')) return 'ko'
+    if (browser.startsWith('ja')) return 'ja'
+    return 'en'
   },
   set: (locale: UiLocale) => localStorage.setItem(UI_KEY, locale),
 }

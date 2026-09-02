@@ -362,7 +362,7 @@ function Footer({ lang, onLang }: { lang: string; onLang: (v: string) => void })
       <p>
         {m.footer.cc0Before}{' '}
         <a href="https://creativecommons.org/publicdomain/zero/1.0/">CC0</a>
-        {locale === 'ko' ? '' : ' '}{m.footer.cc0After}
+        {locale === 'en' ? ' ' : ''}{m.footer.cc0After}
       </p>
       <p>
         {m.footer.privacy}
@@ -394,6 +394,7 @@ function Footer({ lang, onLang }: { lang: string; onLang: (v: string) => void })
             >
               <option value="en">English</option>
               <option value="ko">한국어</option>
+              <option value="ja">日本語</option>
             </select>
           </span>
         </label>

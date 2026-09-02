@@ -91,9 +91,13 @@ Changing one must never change the other.
 
 The interface picker is always present because it describes what this bundle
 can render. The entry-text picker is populated from `/api/languages` because it
-describes what contributors have translated. Add interface copy to both maps in
+describes what contributors have translated. Add interface copy to every map in
 `src/uiLocale.tsx`; adding a content language remains data, not a frontend
 release.
+
+The guide's prose is a third, explicit document choice under `src/guide/`.
+An interface locale does not promise a guide translation: Japanese UI may
+therefore offer the English and Korean guide documents until `ja.ts` exists.
 
 ## Deliberately absent
 
