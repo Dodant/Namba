@@ -104,13 +104,15 @@ describes what contributors have translated. Add interface copy to every map in
 `src/uiLocale.tsx`; adding a content language remains data, not a frontend
 release.
 
-`Recent`, `Random`, `+ Add` and the visible `Search…` placeholder are one
-compact English product vocabulary in every locale. They only help a reader
-move around: Add opens the form and Search submits a query. The detailed search
-`aria-label` stays localized, as do actions whose outcome matters — Publish,
-Save, Delete, Restore, reporting and every confirmation. `GLOBAL_NAV` is the
-one copy of that boundary. There is no About control today; if one is added, it
-belongs with this global vocabulary rather than in seven translation maps.
+`Recent`, `Random`, `+ Add`, visible `Search…`/`Search` labels, `GitHub`, `API`,
+`Markdown` and `CC0` are one compact English product vocabulary in every
+locale. The navigation words only help a reader move around: Add opens the form
+and Search submits a query. The detailed search `aria-label` stays localized,
+as do actions whose outcome matters — Publish, Save, Delete, Restore, linking,
+reporting and every confirmation. `GLOBAL_NAV` and `GLOBAL_TERMS` hold the
+shared words that otherwise live in locale maps; API, Markdown and CC0 are
+proper technical names already written directly. There is no About control
+today; if one is added, it belongs with this vocabulary too.
 
 The guide's prose is a third, explicit document choice under `src/guide/`.
 An interface locale does not promise a guide translation: Japanese UI may

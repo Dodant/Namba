@@ -16,6 +16,11 @@ const GLOBAL_NAV = {
   add: '+ Add',
 } as const
 
+const GLOBAL_TERMS = {
+  search: 'Search',
+  github: 'GitHub',
+} as const
+
 const EN = {
   siteTitle: 'Namba — a wiki of numbers',
   tagline: 'An open wiki about numbers',
@@ -55,7 +60,7 @@ const EN = {
     cc0Before: 'Everything written here is',
     cc0After: '— public domain. Take it, quote it, or feed it to a machine; no permission or credit is needed. The byline remains to record who wrote it first.',
     privacy: 'No account is required. Raw IP addresses and user-agent strings are not stored; salted hashes are kept to prevent abuse and enforce blocks.',
-    guidelines: 'Entry guidelines', source: 'Source', apiOpen: 'open, no key.',
+    guidelines: 'Entry guidelines', source: GLOBAL_TERMS.github, apiOpen: 'open, no key.',
     interfaceLanguage: 'Interface', contentLanguage: 'Entry text',
     interfaceAria: 'Interface language', contentAria: 'Preferred entry language',
     asWritten: 'As written', translatedCount: (lang: string, n: number) => `${lang} · ${fmtCount(n, 'en')}`,
@@ -70,7 +75,7 @@ const EN = {
       `${fmtCount(subjects, 'en')} ${subject} · ${fmtCount(entries, 'en')} ${entries === 1 ? 'entry' : 'entries'}`,
   },
   browse: {
-    category: 'Category', search: 'Search',
+    category: 'Category', search: GLOBAL_TERMS.search,
     summary: (n: number, abbr: boolean) =>
       `${n === 1 ? 'One entry explains' : `${fmtCount(n, 'en')} entries explain`} this ${abbr ? 'abbreviation' : 'number'}.`,
     addMeaning: '+ Add another meaning',
@@ -124,12 +129,12 @@ const EN = {
     requiredTranslation: 'A language and a title are required.',
     removeTranslationConfirm: (lang: string) => `Remove the ${lang} translation? It stays in the entry’s history.`,
     language: 'Language', languageHint: 'the language used for this translation', pickOne: 'Pick one…',
-    translationTitleHint: 'the entry’s title in that language', optionalMarkdown: 'optional — markdown works here too',
+    translationTitleHint: 'the entry’s title in that language', optionalMarkdown: 'optional — Markdown works here too',
     addThisTranslation: 'Add translation', removeTranslation: 'Remove translation',
     related: 'Related entries', relatedHint: 'other numbers that belong beside this one', unlink: 'Unlink',
     linkSearchAria: 'Search the wiki for an entry to link',
     linkSearchPlaceholder: 'Search the wiki — e.g. Back to the Future', searching: 'Searching…',
-    search: 'Search', link: 'Link', noMatches: 'No matches.',
+    search: GLOBAL_TERMS.search, link: 'Link', noMatches: 'No matches.',
   },
   flag: {
     heading: 'Flag a problem', kindAria: 'What kind of problem', report: 'Something is wrong',
@@ -178,7 +183,7 @@ const KO: typeof EN = {
     cc0Before: '이곳에 작성된 모든 내용은',
     cc0After: '에 따라 퍼블릭 도메인으로 공개됩니다. 허락이나 출처 표시 없이 인용하거나 재사용할 수 있습니다. 작성자 표시는 최초 작성 기록으로 남습니다.',
     privacy: '계정은 필요하지 않습니다. 원본 IP 주소와 사용자 에이전트 문자열은 저장하지 않으며, 남용 방지와 차단 적용을 위해 솔트 처리된 해시만 보관합니다.',
-    guidelines: '항목 작성 지침', source: '소스 코드', apiOpen: '키 없이 공개.',
+    guidelines: '항목 작성 지침', source: GLOBAL_TERMS.github, apiOpen: '키 없이 공개.',
     interfaceLanguage: '화면 언어', contentLanguage: '항목 내용',
     interfaceAria: '화면 언어', contentAria: '선호하는 항목 언어', asWritten: '원문 그대로',
     translatedCount: (lang: string, n: number) => `${lang} · 번역 ${fmtCount(n, 'ko')}개`,
@@ -191,7 +196,7 @@ const KO: typeof EN = {
       `${subject} ${fmtCount(subjects, 'ko')}개 · 항목 ${fmtCount(entries, 'ko')}개`,
   },
   browse: {
-    category: '분류', search: '검색',
+    category: '분류', search: GLOBAL_TERMS.search,
     summary: (n: number, abbr: boolean) => `${abbr ? '이 약어' : '이 숫자'}를 설명하는 항목이 ${fmtCount(n, 'ko')}개 있습니다.`,
     addMeaning: '+ 다른 의미 추가', emptyValue: (value: string) => `${value}에 등록된 항목이 아직 없습니다.`,
     giveMeaning: '의미 추가하기.', emptyTag: (tag: string) => `${tag} 태그가 붙은 항목이 아직 없습니다.`,
@@ -243,7 +248,7 @@ const KO: typeof EN = {
     addThisTranslation: '번역 추가', removeTranslation: '번역 제거', related: '관련 항목',
     relatedHint: '함께 볼 만한 다른 숫자', unlink: '연결 해제',
     linkSearchAria: '연결할 항목 검색', linkSearchPlaceholder: '위키 검색 — 예: Back to the Future',
-    searching: '검색 중…', search: '검색', link: '연결', noMatches: '검색 결과가 없습니다.',
+    searching: '검색 중…', search: GLOBAL_TERMS.search, link: '연결', noMatches: '검색 결과가 없습니다.',
   },
   flag: {
     heading: '문제 신고', kindAria: '문제 유형', report: '내용에 문제가 있음', remove: '내려야 하는 항목',
@@ -293,7 +298,7 @@ const JA: typeof EN = {
     cc0Before: 'ここに書かれたすべての内容は',
     cc0After: 'のもとでパブリックドメインとして公開されます。許可やクレジット表記なしで引用・再利用できます。作成者名は最初に書いた人の記録として残ります。',
     privacy: 'アカウントは必要ありません。IPアドレスとユーザーエージェントの原文は保存せず、不正利用の防止とブロックの適用に必要なソルト付きハッシュのみを保持します。',
-    guidelines: '項目ガイドライン', source: 'ソースコード', apiOpen: 'キー不要で公開中。',
+    guidelines: '項目ガイドライン', source: GLOBAL_TERMS.github, apiOpen: 'キー不要で公開中。',
     interfaceLanguage: '表示言語', contentLanguage: '項目の本文',
     interfaceAria: '表示言語', contentAria: '項目の優先言語', asWritten: '原文のまま',
     translatedCount: (lang: string, n: number) => `${lang} · 翻訳${fmtCount(n, 'ja')}件`,
@@ -306,7 +311,7 @@ const JA: typeof EN = {
       `${subject}${fmtCount(subjects, 'ja')}個 · 項目${fmtCount(entries, 'ja')}件`,
   },
   browse: {
-    category: 'カテゴリ', search: '検索',
+    category: 'カテゴリ', search: GLOBAL_TERMS.search,
     summary: (n: number, abbr: boolean) => `${abbr ? 'この略語' : 'この数字'}を説明する項目が${fmtCount(n, 'ja')}件あります。`,
     addMeaning: '+ 別の意味を追加', emptyValue: (value: string) => `${value}の項目はまだありません。`,
     giveMeaning: '意味を追加する。', emptyTag: (tag: string) => `${tag}タグの項目はまだありません。`,
@@ -359,7 +364,7 @@ const JA: typeof EN = {
     addThisTranslation: '翻訳を追加', removeTranslation: '翻訳を削除', related: '関連項目',
     relatedHint: '一緒に見るとよい別の数字', unlink: 'リンクを解除',
     linkSearchAria: 'リンクする項目を検索', linkSearchPlaceholder: 'ウィキを検索 — 例: Back to the Future',
-    searching: '検索中…', search: '検索', link: 'リンク', noMatches: '一致する項目はありません。',
+    searching: '検索中…', search: GLOBAL_TERMS.search, link: 'リンク', noMatches: '一致する項目はありません。',
   },
   flag: {
     heading: '問題を報告', kindAria: '問題の種類', report: '内容に問題がある', remove: '削除すべき項目',
@@ -409,7 +414,7 @@ const ZH_HANS: typeof EN = {
     cc0Before: '本站所有内容均依据',
     cc0After: '作为公共领域内容发布，无需许可或署名即可引用和再利用。作者署名仍会保留，用于记录最初的创作者。',
     privacy: '无需注册账号。我们不会存储原始IP地址或用户代理字符串，仅保留加盐哈希，用于防止滥用和执行封禁。',
-    guidelines: '条目指南', source: '源代码', apiOpen: '开放使用，无需密钥。',
+    guidelines: '条目指南', source: GLOBAL_TERMS.github, apiOpen: '开放使用，无需密钥。',
     interfaceLanguage: '界面语言', contentLanguage: '条目内容',
     interfaceAria: '界面语言', contentAria: '条目内容的首选语言', asWritten: '按原文显示',
     translatedCount: (lang: string, n: number) => `${lang} · ${fmtCount(n, 'zh-Hans')}篇译文`,
@@ -422,7 +427,7 @@ const ZH_HANS: typeof EN = {
       `${fmtCount(subjects, 'zh-Hans')}个${subject} · ${fmtCount(entries, 'zh-Hans')}个条目`,
   },
   browse: {
-    category: '分类', search: '搜索',
+    category: '分类', search: GLOBAL_TERMS.search,
     summary: (n: number, abbr: boolean) => `共有${fmtCount(n, 'zh-Hans')}个条目解释${abbr ? '这个缩写' : '这个数字'}。`,
     addMeaning: '+ 添加另一种含义', emptyValue: (value: string) => `${value}下还没有条目。`,
     giveMeaning: '添加一种含义。', emptyTag: (tag: string) => `还没有带有${tag}标签的条目。`,
@@ -475,7 +480,7 @@ const ZH_HANS: typeof EN = {
     addThisTranslation: '添加翻译', removeTranslation: '移除翻译', related: '相关条目',
     relatedHint: '适合与此条目一同查看的其他数字', unlink: '取消关联',
     linkSearchAria: '搜索要关联的条目', linkSearchPlaceholder: '搜索维基 — 例如：Back to the Future',
-    searching: '搜索中…', search: '搜索', link: '关联', noMatches: '没有匹配的结果。',
+    searching: '搜索中…', search: GLOBAL_TERMS.search, link: '关联', noMatches: '没有匹配的结果。',
   },
   flag: {
     heading: '报告问题', kindAria: '问题类型', report: '内容有误', remove: '应当移除',
@@ -529,7 +534,7 @@ const ES: typeof EN = {
     cc0Before: 'Todo lo escrito aquí se publica bajo',
     cc0After: '— es de dominio público. Puedes copiarlo, citarlo o reutilizarlo sin permiso ni atribución. La autoría se conserva para registrar quién lo escribió primero.',
     privacy: 'No necesitas una cuenta. No guardamos direcciones IP ni cadenas de agente de usuario sin procesar; solo conservamos hashes con sal para evitar abusos y aplicar bloqueos.',
-    guidelines: 'Guía para las entradas', source: 'Código fuente', apiOpen: 'abierta y sin clave.',
+    guidelines: 'Guía para las entradas', source: GLOBAL_TERMS.github, apiOpen: 'abierta y sin clave.',
     interfaceLanguage: 'Idioma de la interfaz', contentLanguage: 'Contenido de las entradas',
     interfaceAria: 'Idioma de la interfaz', contentAria: 'Idioma preferido de las entradas',
     asWritten: 'Texto original',
@@ -543,7 +548,7 @@ const ES: typeof EN = {
       `${fmtCount(subjects, 'es')} ${subject} · ${fmtCount(entries, 'es')} ${entries === 1 ? 'entrada' : 'entradas'}`,
   },
   browse: {
-    category: 'Categoría', search: 'Búsqueda',
+    category: 'Categoría', search: GLOBAL_TERMS.search,
     summary: (n: number, abbr: boolean) =>
       `${n === 1 ? 'Una entrada explica' : `${fmtCount(n, 'es')} entradas explican`} ${abbr ? 'esta abreviatura' : 'este número'}.`,
     addMeaning: '+ Añadir otro significado',
@@ -601,7 +606,7 @@ const ES: typeof EN = {
     related: 'Entradas relacionadas', relatedHint: 'otros números que conviene consultar junto a este', unlink: 'Desvincular',
     linkSearchAria: 'Buscar en la wiki una entrada para vincular',
     linkSearchPlaceholder: 'Buscar en la wiki — p. ej., Regreso al futuro', searching: 'Buscando…',
-    search: 'Buscar', link: 'Vincular', noMatches: 'No hay resultados.',
+    search: GLOBAL_TERMS.search, link: 'Vincular', noMatches: 'No hay resultados.',
   },
   flag: {
     heading: 'Avisar de un problema', kindAria: 'Tipo de problema', report: 'Hay un error',
@@ -656,7 +661,7 @@ const FR: typeof EN = {
     cc0Before: 'Tout ce qui est écrit ici est publié sous',
     cc0After: '— et appartient au domaine public. Vous pouvez le copier, le citer ou le réutiliser sans autorisation ni attribution. Le nom de l’auteur reste affiché pour indiquer qui l’a écrit en premier.',
     privacy: 'Aucun compte n’est nécessaire. Nous ne conservons ni les adresses IP brutes ni les chaînes d’agent utilisateur ; seuls des hachages salés sont gardés afin de prévenir les abus et d’appliquer les blocages.',
-    guidelines: 'Guide des entrées', source: 'Code source', apiOpen: 'ouverte, sans clé.',
+    guidelines: 'Guide des entrées', source: GLOBAL_TERMS.github, apiOpen: 'ouverte, sans clé.',
     interfaceLanguage: 'Langue de l’interface', contentLanguage: 'Contenu des entrées',
     interfaceAria: 'Langue de l’interface', contentAria: 'Langue préférée des entrées',
     asWritten: 'Texte d’origine',
@@ -671,7 +676,7 @@ const FR: typeof EN = {
       `${fmtCount(subjects, 'fr')} ${subject} · ${fmtCount(entries, 'fr')} ${entries === 1 ? 'entrée' : 'entrées'}`,
   },
   browse: {
-    category: 'Catégorie', search: 'Recherche',
+    category: 'Catégorie', search: GLOBAL_TERMS.search,
     summary: (n: number, abbr: boolean) =>
       `${n === 1 ? 'Une entrée explique' : `${fmtCount(n, 'fr')} entrées expliquent`} ${abbr ? 'cette abréviation' : 'ce nombre'}.`,
     addMeaning: '+ Ajouter une autre signification',
@@ -733,7 +738,7 @@ const FR: typeof EN = {
     related: 'Entrées associées', relatedHint: 'd’autres nombres à consulter avec celui-ci', unlink: 'Dissocier',
     linkSearchAria: 'Rechercher dans le wiki une entrée à associer',
     linkSearchPlaceholder: 'Rechercher dans le wiki — p. ex. Retour vers le futur', searching: 'Recherche…',
-    search: 'Rechercher', link: 'Associer', noMatches: 'Aucun résultat.',
+    search: GLOBAL_TERMS.search, link: 'Associer', noMatches: 'Aucun résultat.',
   },
   flag: {
     heading: 'Signaler un problème', kindAria: 'Type de problème', report: 'Quelque chose ne va pas',
@@ -792,7 +797,7 @@ const DE: typeof EN = {
     cc0Before: 'Alles, was hier geschrieben wird, steht unter',
     cc0After: '— und ist gemeinfrei. Es darf ohne Erlaubnis oder Namensnennung kopiert, zitiert und weiterverwendet werden. Der Autorenname bleibt erhalten, um die ursprüngliche Urheberschaft zu dokumentieren.',
     privacy: 'Kein Konto erforderlich. Rohe IP-Adressen und User-Agent-Strings werden nicht gespeichert; gesalzene Hashes dienen ausschließlich dazu, Missbrauch zu verhindern und Sperren durchzusetzen.',
-    guidelines: 'Richtlinien für Einträge', source: 'Quellcode', apiOpen: 'offen, kein Schlüssel erforderlich.',
+    guidelines: 'Richtlinien für Einträge', source: GLOBAL_TERMS.github, apiOpen: 'offen, kein Schlüssel erforderlich.',
     interfaceLanguage: 'Sprache der Benutzeroberfläche', contentLanguage: 'Eintragsinhalte',
     interfaceAria: 'Sprache der Benutzeroberfläche', contentAria: 'Bevorzugte Sprache der Einträge',
     asWritten: 'Wie verfasst',
@@ -806,7 +811,7 @@ const DE: typeof EN = {
       `${fmtCount(subjects, 'de')} ${subject} · ${fmtCount(entries, 'de')} ${entries === 1 ? 'Eintrag' : 'Einträge'}`,
   },
   browse: {
-    category: 'Kategorie', search: 'Suche',
+    category: 'Kategorie', search: GLOBAL_TERMS.search,
     summary: (n: number, abbr: boolean) =>
       `${n === 1 ? 'Ein Eintrag erklärt' : `${fmtCount(n, 'de')} Einträge erklären`} ${abbr ? 'diese Abkürzung' : 'diese Zahl'}.`,
     addMeaning: '+ Weitere Bedeutung hinzufügen',
@@ -867,7 +872,7 @@ const DE: typeof EN = {
     related: 'Verwandte Einträge', relatedHint: 'andere Zahlen, die zu diesem Eintrag passen', unlink: 'Verknüpfung lösen',
     linkSearchAria: 'Wiki nach einem zu verknüpfenden Eintrag durchsuchen',
     linkSearchPlaceholder: 'Wiki durchsuchen — z. B. Zurück in die Zukunft', searching: 'Wird gesucht…',
-    search: 'Suchen', link: 'Verknüpfen', noMatches: 'Keine Treffer.',
+    search: GLOBAL_TERMS.search, link: 'Verknüpfen', noMatches: 'Keine Treffer.',
   },
   flag: {
     heading: 'Problem melden', kindAria: 'Art des Problems', report: 'Etwas stimmt nicht',
