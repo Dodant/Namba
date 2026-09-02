@@ -431,5 +431,7 @@ export function fmtDate(s: string, locale = 'en') {
       ? 'たった今'
       : locale === 'zh-Hans'
         ? '刚刚'
-        : 'just now'
+        : locale === 'es'
+          ? 'ahora mismo'
+          : 'just now'
 }
