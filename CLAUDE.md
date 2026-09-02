@@ -100,6 +100,15 @@ hand-copied vocabulary and a branch beside every existing one.
   the moment `1,000` is storable, `/n/1000` and `/n/1%2C000` are two pages
   about one number.
 
+  **Number punctuation follows the interface locale, but number identity does
+  not.** The stored spelling and every `/n/` URL remain locale-neutral — no
+  grouping and a dot decimal — while the public UI renders that value with the
+  selected interface locale. The write form sends `number_locale` as input
+  grammar, so German `1.000,5`, French `1 000,5` and English `1,000.5` all
+  become stored `1000.5`. A strict grouping pattern is required: mixed notation
+  such as `1,2,3` is content and must not be silently rewritten. Server-written
+  titles use the mirrored UI-locale cookie, falling back to `Accept-Language`.
+
   **An `ABBR` value is stored upper-case for exactly that reason.** `ufo`,
   `Ufo` and `UFO` are one word, and with no accounts there is nobody to merge
   three pages about it afterwards. `resolve_format` folds it, because settling

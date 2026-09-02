@@ -84,10 +84,19 @@ line was theatre and anyone running it alone got a green that meant nothing.
 ## Two kinds of language
 
 Interface locale and entry language are separate state. `UiProvider` owns
-`namba.uiLocale` and changes only Namba's controls, explanatory copy, document
-language and dates. `contentLanguage` owns `namba.contentLang` and changes only
-which entry translation list APIs prefer, falling back to the original text.
-Changing one must never change the other.
+`namba.uiLocale` and changes Namba's controls, explanatory copy, document
+language, dates and numeric punctuation. It mirrors that non-sensitive choice
+to `namba_ui_locale` so server-written titles agree after a refresh;
+`Accept-Language` covers the first request. `contentLanguage` owns
+`namba.contentLang` and changes only which entry translation list APIs prefer,
+falling back to the original text. Changing one must never change the other.
+
+Number identity stays locale-neutral. `showValue()` formats the stored string
+without converting it to a JavaScript `Number`, so long integers keep every
+digit. The new-entry form sends its raw localized spelling plus `number_locale`;
+the backend normalizes German `1.000,5`, French `1 000,5` and English
+`1,000.5` to the single stored value `1000.5`. Links always use that raw stored
+value, never the formatted display string.
 
 The interface picker is always present because it describes what this bundle
 can render. The entry-text picker is populated from `/api/languages` because it

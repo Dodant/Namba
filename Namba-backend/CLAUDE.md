@@ -95,15 +95,16 @@ it is unset, `secret.key` beside the database is generated and used instead).
   reader's own move. The front end defaults the setting to English, which is
   where that old policy went.
 - **`posts.grouped` is how the number is written, not what it is.** `value`
-  never carries separators; `grouped_value()` puts them on for display and
-  leaves anything that is not a plain integer or decimal alone. `ungroup()`
-  takes them back out of whatever was typed **whatever the box says** — 1000
-  and 1,000 answer at one address or they are two numbers — and returns the
-  flag alongside the value, because typing the commas is itself a way of asking
-  for them. A comma that is not a thousands separator (`1,2,3`, `Apollo,11`) is
-  left where it is. In `/api/numbers` a row is grouped only when
-  every entry filed under it is: one number, one spelling, and a disagreement
-  falls back to the plain form nobody had to opt into.
+  never carries separators and always uses a dot decimal; `grouped_value()`
+  applies the requested UI locale for display and leaves anything that is not
+  a plain integer or decimal alone. `ungroup()` treats `number_locale` as input
+  grammar and takes valid localized separators back out **whatever the box
+  says** — English `1,000.5`, German `1.000,5` and French `1 000,5` all answer
+  at `/n/1000.5` — and returns the flag alongside the value, because typing a
+  grouping mark is itself a way of asking for one. An invalid grouping pattern
+  (`1,2,3`, `Apollo,11`) is left where it is. In `/api/numbers` a row is grouped
+  only when every entry filed under it is: one number, one spelling, and a
+  disagreement falls back to the plain form nobody had to opt into.
 - **`admin_api.py` must not import `main`.** `main.py` imports it and includes
   the router, so the arrow only points one way. Everything both need lives
   below them — `db.py` (`get_db`, `now`, the schema and the five vocabularies),
