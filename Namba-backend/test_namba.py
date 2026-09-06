@@ -4,6 +4,7 @@ import os
 import re
 import struct
 import tempfile
+import time
 from datetime import datetime, timedelta, timezone
 from xml.etree import ElementTree
 
@@ -1148,12 +1149,16 @@ def test_admin_accounts():
     # move the suite makes with main.WRITE_LIMIT at the top of the file. Filling
     # to it would make this test allocate whatever the constant happens to say,
     # which is a thing somebody would raise one day and not think about.
+    # Stale is an hour before now rather than the constant 1.0 that used to sit
+    # here: monotonic() counts from boot, and a CI runner fresh from its image
+    # read 56 seconds, which put 1.0 inside the sixty-second window and kept it.
+    stale = time.monotonic() - 3600
     for mod in (auth, main):
         was, mod.KEEP_CLIENTS = mod.KEEP_CLIENTS, 2
         try:
             seen = auth._attempts if mod is auth else main._writes
             seen.clear()
-            seen.update({f"stale{i}": [1.0] for i in range(3)})
+            seen.update({f"stale{i}": [stale] for i in range(3)})
             if mod is auth:
                 auth.limit_login("live")
             else:
