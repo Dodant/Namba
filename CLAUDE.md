@@ -175,7 +175,7 @@ codebase (~13,500 lines, tests and CSS included). Each app has its own
 **Commit in logical units, without being asked.** One coherent change per
 commit — the feature, then the doc note, not both in a heap at the end of a
 session. Run the checks above before each one. Pushing is a separate decision:
-`origin` is `github.com/MIIRAIII/Namba`, and whether a commit goes there is the
+`origin` is `github.com/Dodant/Namba`, and whether a commit goes there is the
 user's call, not a default — commit freely, push when asked.
 
 Messages follow [Conventional Commits](https://www.conventionalcommits.org):

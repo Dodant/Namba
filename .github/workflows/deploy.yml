@@ -89,13 +89,13 @@ jobs:
           # Lower-case and sha-tagged, both because the SSM document's
           # allowedPattern rejects anything else. That pattern is what stops a
           # tag from being a shell injection, so it is deliberately narrow.
-          tags: ghcr.io/miiraiii/namba:${{ github.sha }}
+          tags: ghcr.io/dodant/namba:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       # ── deploy ────────────────────────────────────────────────────────────
       # The role's trust policy accepts two spellings of the OIDC subject,
-      # `repo:MIIRAIII/Namba:...` and `repo:MIIRAIII@<org id>/Namba@<repo id>:...`,
+      # `repo:Dodant/Namba:...` and `repo:Dodant@<user id>/Namba@<repo id>:...`,
       # because GitHub is mid-rollout of the id-suffixed one and which arrives is
       # not ours to pick -- chiral-backend sent the old form and this repo the new
       # one five hours apart. A mismatch reads only as `Not authorized to perform
@@ -110,7 +110,7 @@ jobs:
       - name: Deploy via the namba-deploy document
         env:
           INSTANCE: i-03752dda7499977e7
-          IMAGE: ghcr.io/miiraiii/namba:${{ github.sha }}
+          IMAGE: ghcr.io/dodant/namba:${{ github.sha }}
         run: |
           set -euo pipefail
           CMD_ID="$(aws ssm send-command \

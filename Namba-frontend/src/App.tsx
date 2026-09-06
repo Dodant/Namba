@@ -376,7 +376,7 @@ function Footer({ lang, onLang }: { lang: string; onLang: (v: string) => void })
             bundle, and a full document load here would throw the app away. */}
         <Link to="/guide">{m.footer.guidelines}</Link>{' · '}
         <a href="/docs">API</a> — {m.footer.apiOpen}{' · '}
-        <a href="https://github.com/MIIRAIII/Namba">{m.footer.source}</a>
+        <a href="https://github.com/Dodant/Namba">{m.footer.source}</a>
       </p>
       {/* Two independent choices. Interface changes Namba's own controls and
           dates; entry text asks the API for a preferred translation and falls
