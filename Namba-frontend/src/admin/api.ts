@@ -9,6 +9,7 @@ import { json, qs, req, type Params, type Post, type PostStatus } from '../api'
 
 export type Role = 'ADMIN' | 'SUPER_ADMIN'
 export type Who = { id: number; email: string; role: Role }
+export type LoginChallenge = { mfa_required: true; challenge: string }
 
 /** Every list route answers this shape: the page, and the size of the whole
     set so a pager can say "51–100 of 812". */
@@ -230,11 +231,16 @@ export type Operator = {
   active: number
   created_at: string
   last_login_at: string | null
+  /** A password alone never signs in. False means shell enrollment is pending. */
+  totp_enabled: number
 }
 
 export const adm = {
   login: (email: string, password: string) =>
-    req<Who>('/api/admin/login', json('POST', { email, password })),
+    req<LoginChallenge>('/api/admin/login', json('POST', { email, password })),
+
+  loginTotp: (challenge: string, code: string) =>
+    req<Who>('/api/admin/login/totp', json('POST', { challenge, code })),
 
   logout: () => req<{ ok: boolean }>('/api/admin/logout', { method: 'POST' }),
 

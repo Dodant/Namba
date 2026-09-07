@@ -154,7 +154,12 @@ CREATE TABLE IF NOT EXISTS admins (
   role          TEXT NOT NULL DEFAULT 'ADMIN',   -- ADMIN | SUPER_ADMIN
   active        INTEGER NOT NULL DEFAULT 1,
   created_at    TEXT NOT NULL,
-  last_login_at TEXT
+  last_login_at TEXT,
+  -- NULL until `admin.py totp-enroll`. The actual TOTP key is derived from the
+  -- installation secret and this generation, so a database leak does not carry
+  -- the second factor with it. Incrementing the generation is a reset.
+  totp_generation   INTEGER,
+  totp_last_counter INTEGER
 );
 
 -- The cookie's value is never stored, only its sha256: a leaked database is
@@ -172,6 +177,21 @@ CREATE TABLE IF NOT EXISTS admin_sessions (
   expires_at TEXT NOT NULL,
   ip_hash    TEXT NOT NULL
 );
+
+-- Password success is not a session. It buys five minutes in which to present
+-- the second factor, through an opaque token whose hash is all the database
+-- keeps. Attempts live here as well, so restarting the one worker does not give
+-- a challenge five more guesses.
+CREATE TABLE IF NOT EXISTS admin_login_challenges (
+  token_hash TEXT PRIMARY KEY,
+  admin_id   INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  ip_hash    TEXT NOT NULL,
+  attempts   INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_admin_login_challenges_expires
+  ON admin_login_challenges(expires_at);
 
 -- What a visitor sends instead of a delete button. No foreign key: a request
 -- has to be readable after the entry it asked about is gone, or the audit trail
@@ -366,4 +386,10 @@ def init():
             con.execute(
                 "ALTER TABLE posts ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'"
             )
+
+        admin_have = {r["name"] for r in con.execute("PRAGMA table_info(admins)")}
+        if "totp_generation" not in admin_have:
+            con.execute("ALTER TABLE admins ADD COLUMN totp_generation INTEGER")
+        if "totp_last_counter" not in admin_have:
+            con.execute("ALTER TABLE admins ADD COLUMN totp_last_counter INTEGER")
     con.close()

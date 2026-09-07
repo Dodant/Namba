@@ -673,11 +673,35 @@ def _operator(c, email="mod@namba.test", role="ADMIN"):
     with con:
         con.execute("UPDATE admins SET role = ? WHERE email = ?", (role, email))
     con.close()
-    auth._attempts.clear()
-    got = c.post("/api/admin/login", json={"email": email,
-                                           "password": "a long enough password"})
+    got = _totp_login(c, email, "a long enough password")
     assert got.status_code == 200, got.text
     return c
+
+
+def _enroll_totp(email):
+    """Enroll the current test account without weakening the production path."""
+    at = time.time()
+    setup = admin.totp_enrollment(email)
+    admin.enable_totp(
+        email, setup["generation"],
+        auth.totp_code(setup["admin_id"], setup["generation"], at=at),
+    )
+    return setup, at
+
+
+def _totp_login(c, email, password):
+    """A fresh enrollment makes rapid test logins use distinct counters."""
+    setup, at = _enroll_totp(email)
+    auth._attempts.clear()
+    auth._mfa_attempts.clear()
+    begun = c.post("/api/admin/login", json={"email": email, "password": password})
+    if begun.status_code != 202:
+        return begun
+    code = auth.totp_code(
+        setup["admin_id"], setup["generation"], at=at + auth.TOTP_STEP,
+    )
+    return c.post("/api/admin/login/totp",
+                  json={"challenge": begun.json()["challenge"], "code": code})
 
 
 def test_delete_requests():
@@ -1038,6 +1062,11 @@ def test_password_hashing():
     cheap = auth.hash_password("x" * 12).replace(f"scrypt${auth.N}$", "scrypt$1024$")
     assert not auth.verify("x" * 12, cheap), "the stored cost was ignored"
 
+    # RFC 6238's first SHA-1 vector. The RFC prints eight digits; the admin
+    # login uses the conventional six over the same HOTP calculation.
+    secret = b"12345678901234567890"
+    assert auth.hotp(secret, 59 // 30, digits=8) == "94287082"
+
 
 def test_admin_accounts():
     """The only login in the wiki. Readers still have none: there is no signup
@@ -1046,13 +1075,19 @@ def test_admin_accounts():
     email = "keeper@namba.test"
     admin.add_admin(email, "a long enough password")
 
+    # A password is never sufficient, including during the migration from the
+    # old account rows. Enrollment is a shell operation, not a public setup UI.
+    not_ready = c.post("/api/admin/login",
+                       json={"email": email, "password": "a long enough password"})
+    assert not_ready.status_code == 403
+    assert auth.SESSION_COOKIE not in c.cookies
+    assert "totp-enroll" in not_ready.json()["detail"]
+
     def sign_in():
         """Five attempts a minute is the point of the limiter and a nuisance to a
         test that signs in six times, so the window is cleared rather than
         widened -- the limit itself is asserted at the end."""
-        auth._attempts.clear()
-        return c.post("/api/admin/login",
-                      json={"email": email, "password": "a long enough password"})
+        return _totp_login(c, email, "a long enough password")
 
     # nothing is gated by guesswork -- with no cookie it is 401, not an empty body
     assert c.get("/api/admin/me").status_code == 401
@@ -1070,7 +1105,30 @@ def test_admin_accounts():
                   ).json()["detail"] == "wrong email or password", \
         "the message told a stranger which addresses exist"
 
-    got = sign_in()
+    # Password success creates an opaque, short-lived challenge and still no
+    # session. A wrong code cannot exchange it; a valid unused counter can.
+    setup, at = _enroll_totp(email)
+    auth._attempts.clear()
+    auth._mfa_attempts.clear()
+    begun = c.post("/api/admin/login",
+                   json={"email": email, "password": "a long enough password"})
+    assert begun.status_code == 202, begun.text
+    challenge = begun.json()["challenge"]
+    assert auth.SESSION_COOKIE not in c.cookies
+    con = db.connect()
+    try:
+        challenge_rows = [dict(r) for r in con.execute(
+            "SELECT * FROM admin_login_challenges")]
+    finally:
+        con.close()
+    assert challenge not in [r["token_hash"] for r in challenge_rows]
+    assert challenge_rows[-1]["token_hash"] == auth._token_hash(challenge)
+    assert c.post("/api/admin/login/totp",
+                  json={"challenge": challenge, "code": "000000"}).status_code == 401
+    code = auth.totp_code(setup["admin_id"], setup["generation"],
+                          at=at + auth.TOTP_STEP)
+    got = c.post("/api/admin/login/totp",
+                 json={"challenge": challenge, "code": code})
     assert got.status_code == 200, got.text
     assert got.json()["role"] == "SUPER_ADMIN", "the first account has to be able " \
                                                "to create the second"
@@ -1098,6 +1156,18 @@ def test_admin_accounts():
     c.cookies.set(auth.SESSION_COOKIE, token)
     assert c.get("/api/admin/me").status_code == 401, "the old token still worked"
     c.cookies.clear()
+
+    # A TOTP counter is accepted once even if a fresh password challenge is
+    # obtained while the six digits are still on screen.
+    auth._attempts.clear()
+    auth._mfa_attempts.clear()
+    replay = c.post("/api/admin/login",
+                    json={"email": email, "password": "a long enough password"})
+    assert replay.status_code == 202
+    assert c.post("/api/admin/login/totp",
+                  json={"challenge": replay.json()["challenge"], "code": code}
+                  ).status_code == 401
+    assert c.get("/api/admin/me").status_code == 401
 
     # a revoked account loses its live sessions on the next request, which is
     # the whole reason this is a session table and not a signed token
@@ -1139,6 +1209,7 @@ def test_admin_accounts():
     codes = [c.post("/api/admin/login", json={"email": email, "password": "no"}
                     ).status_code for _ in range(auth.LOGIN_LIMIT + 1)]
     assert codes[-1] == 429, codes
+    auth._mfa_attempts.clear()
 
     # and the dict it counts in does not keep every address that ever knocked.
     # Nothing expired a *key* before this, only the timestamps inside one, so a
@@ -1416,9 +1487,7 @@ def test_admin_accounts_from_the_panel():
     # ...and the account works, without being able to change the list
     lesser = TestClient(main.app)
     auth._attempts.clear()
-    assert lesser.post("/api/admin/login",
-                       json={"email": plain_email, "password": "a fine long password"}
-                       ).json()["role"] == "ADMIN"
+    assert _totp_login(lesser, plain_email, "a fine long password").json()["role"] == "ADMIN"
     assert lesser.get("/api/admin/admins").status_code == 200, \
         "who else can act here is not a secret from the people who can act here"
     assert lesser.post("/api/admin/admins",

@@ -81,7 +81,7 @@ export default function Operators({ who }: { who: Who }) {
       {!rows ? (
         <Empty>Loading…</Empty>
       ) : (
-        <Table cols={['Email', 'Role', 'Since', 'Last signed in', 'State', '']}>
+        <Table cols={['Email', 'Role', '2FA', 'Since', 'Last signed in', 'State', '']}>
           {rows.map((a) => (
             <tr key={a.id} className={a.active ? '' : 'dim'}>
               <td>
@@ -90,6 +90,9 @@ export default function Operators({ who }: { who: Who }) {
               </td>
               <td className="tight">
                 <Badge>{a.role}</Badge>
+              </td>
+              <td className="tight">
+                <Badge>{a.totp_enabled ? 'TOTP' : 'SETUP NEEDED'}</Badge>
               </td>
               <td className="tight">
                 <When at={a.created_at} />
@@ -173,9 +176,10 @@ export default function Operators({ who }: { who: Who }) {
             </button>
           </form>
           <p className="lede">
-            They will need to be told the password out of band; there is no email
-            here to send one, and no reset flow — changing one is{' '}
-            <code>python admin.py passwd their@address</code>, which also drops
+            Tell them the password out of band, then enroll their authenticator
+            from the server with <code>python admin.py totp-enroll their@address</code>.
+            Until that is done, the password cannot sign in. Password changes use{' '}
+            <code>python admin.py passwd their@address</code>; either command drops
             every live session they had.
           </p>
         </section>

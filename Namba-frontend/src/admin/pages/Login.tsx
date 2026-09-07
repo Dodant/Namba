@@ -9,12 +9,14 @@ import { adm, type Who } from '../api'
     screen has nothing to offer somebody who does not already have an account,
     and says so rather than leaving them looking for the link.
 
-    The password field is `type="password"` and nothing here remembers it: the
-    session is an httpOnly cookie the server sets, so the app never holds a
-    credential of any kind after this form is submitted. */
+    Password success returns a five-minute opaque challenge, not a session. The
+    session is issued only after the authenticator code, and then lives in an
+    httpOnly cookie this app cannot read. */
 export default function Login({ onIn }: { onIn: (who: Who) => void }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [challenge, setChallenge] = useState('')
+  const [code, setCode] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -24,10 +26,17 @@ export default function Login({ onIn }: { onIn: (who: Who) => void }) {
     setBusy(true)
     setErr('')
     try {
-      onIn(await adm.login(email.trim(), password))
+      if (challenge) {
+        onIn(await adm.loginTotp(challenge, code))
+      } else {
+        const next = await adm.login(email.trim(), password)
+        setChallenge(next.challenge)
+        setPassword('')
+      }
     } catch (x) {
       setErr((x as Error).message)
-      setPassword('')
+      if (challenge) setCode('')
+      else setPassword('')
     } finally {
       setBusy(false)
     }
@@ -40,39 +49,70 @@ export default function Login({ onIn }: { onIn: (who: Who) => void }) {
           Na<span>mb</span>a · back office
         </h1>
         <p className="lede">
-          For whoever runs the wiki. Accounts are made from the server, not from
-          here.
+          {challenge
+            ? 'Enter the current code from your authenticator app.'
+            : 'Accounts and authenticator keys are made from the server, not here.'}
         </p>
         {err && (
           <p className="err" role="alert">
             {err}
           </p>
         )}
-        <div className="field">
-          <label htmlFor="ad-email">Email</label>
-          <input
-            id="ad-email"
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(ev) => setEmail(ev.target.value)}
-            required
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="ad-pw">Password</label>
-          <input
-            id="ad-pw"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(ev) => setPassword(ev.target.value)}
-            required
-          />
-        </div>
+        {challenge ? (
+          <div className="field">
+            <label htmlFor="ad-code">Authentication code</label>
+            <input
+              id="ad-code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              value={code}
+              onChange={(ev) => setCode(ev.target.value.replace(/\D/g, '').slice(0, 6))}
+              autoFocus
+              required
+            />
+          </div>
+        ) : (
+          <>
+            <div className="field">
+              <label htmlFor="ad-email">Email</label>
+              <input
+                id="ad-email"
+                type="email"
+                autoComplete="username"
+                value={email}
+                onChange={(ev) => setEmail(ev.target.value)}
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="ad-pw">Password</label>
+              <input
+                id="ad-pw"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(ev) => setPassword(ev.target.value)}
+                required
+              />
+            </div>
+          </>
+        )}
         <button className="btn primary" type="submit" disabled={busy}>
-          {busy ? 'Signing in…' : 'Sign in'}
+          {busy ? 'Checking…' : challenge ? 'Verify and sign in' : 'Continue'}
         </button>
+        {challenge && (
+          <button
+            className="btn"
+            type="button"
+            disabled={busy}
+            onClick={() => { setChallenge(''); setCode(''); setErr('') }}
+          >
+            Use another account
+          </button>
+        )}
       </form>
     </div>
   )

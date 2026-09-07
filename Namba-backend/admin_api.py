@@ -7,11 +7,12 @@ operator's. `main.py` imports this and includes the router, so **nothing here
 may import main** -- the shared pieces live in `db.py`, `events.py` and
 `auth.py` instead.
 
-Three routes are open, because they are how you stop being anonymous: login,
-logout and me. Every other route in this file depends on `auth.require_admin`.
+The two login steps and logout are reachable without a live session. `me` and
+every operator route depend on `auth.require_admin`.
 """
 import difflib
 import json
+import secrets
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -32,29 +33,104 @@ class LoginIn(BaseModel):
     password: str = Field(min_length=1, max_length=200)
 
 
-@router.post("/login")
-def login(body: LoginIn, request: Request, response: Response, con=Depends(db.get_db)):
+@router.post("/login", status_code=202)
+def login(body: LoginIn, request: Request, con=Depends(db.get_db)):
     """Five attempts a minute per address, and no answer about which addresses
     exist: scrypt runs against a dummy hash when the email is unknown, so the
     request takes the same time either way."""
     who = events.client_of(request)
     auth.limit_login(who["ip_hash"])
     row = con.execute(
-        "SELECT id, email, role, password_hash FROM admins WHERE email = ? AND active = 1",
+        """SELECT id, email, role, password_hash, totp_generation
+           FROM admins WHERE email = ? AND active = 1""",
         (body.email.strip(),),
     ).fetchone()
     ok = auth.verify(body.password, row["password_hash"] if row else auth.DUMMY)
     if not (row and ok):
         # One message for both halves. "No such account" is a free directory.
         raise HTTPException(401, "wrong email or password")
+    if row["totp_generation"] is None:
+        raise HTTPException(
+            403, "two-factor authentication is not enrolled; run admin.py totp-enroll",
+        )
+
+    # A correct password buys only a short opaque challenge, never a session.
+    # Replace an earlier challenge from this address so every login has one
+    # current second step and the table cannot grow until expiry cleanup.
+    token = secrets.token_urlsafe(32)
+    ends = (datetime.now(timezone.utc) + timedelta(minutes=auth.CHALLENGE_MINUTES)
+            ).isoformat(timespec="seconds")
     with con:
-        token = auth.start_session(con, row["id"], who["ip_hash"])
-        con.execute("UPDATE admins SET last_login_at = ? WHERE id = ?",
-                    (db.now(), row["id"]))
-        events.record(con, "ADMIN_LOGIN", client=who, admin_id=row["id"],
-                      target_type="admin", target_id=row["id"])
+        con.execute("DELETE FROM admin_login_challenges WHERE expires_at <= ?",
+                    (db.now(),))
+        con.execute(
+            "DELETE FROM admin_login_challenges WHERE admin_id = ? AND ip_hash = ?",
+            (row["id"], who["ip_hash"]),
+        )
+        con.execute(
+            """INSERT INTO admin_login_challenges
+                   (token_hash, admin_id, created_at, expires_at, ip_hash)
+               VALUES (?,?,?,?,?)""",
+            (auth._token_hash(token), row["id"], db.now(), ends, who["ip_hash"]),
+        )
+    return {"mfa_required": True, "challenge": token}
+
+
+class TotpIn(BaseModel):
+    challenge: str = Field(min_length=32, max_length=200)
+    code: str = Field(pattern=r"^\d{6}$")
+
+
+@router.post("/login/totp")
+def login_totp(
+    body: TotpIn, request: Request, response: Response, con=Depends(db.get_db)
+):
+    """Exchange a password challenge and one unused TOTP counter for a session."""
+    client = events.client_of(request)
+    auth.limit_mfa(client["ip_hash"])
+    row = con.execute(
+        """SELECT c.token_hash, c.admin_id, c.ip_hash, c.attempts,
+                  a.email, a.role, a.totp_generation, a.totp_last_counter
+           FROM admin_login_challenges c
+           JOIN admins a ON a.id = c.admin_id AND a.active = 1
+           WHERE c.token_hash = ? AND c.expires_at > ?""",
+        (auth._token_hash(body.challenge), db.now()),
+    ).fetchone()
+    if row is None or row["ip_hash"] != client["ip_hash"]:
+        raise HTTPException(401, "authentication challenge expired")
+
+    counter = auth.match_totp(
+        row["admin_id"], row["totp_generation"], body.code,
+        last_counter=row["totp_last_counter"],
+    )
+    if counter is None:
+        with con:
+            if row["attempts"] + 1 >= auth.LOGIN_LIMIT:
+                con.execute("DELETE FROM admin_login_challenges WHERE token_hash = ?",
+                            (row["token_hash"],))
+            else:
+                con.execute(
+                    "UPDATE admin_login_challenges SET attempts = attempts + 1 "
+                    "WHERE token_hash = ?", (row["token_hash"],),
+                )
+        raise HTTPException(401, "wrong authentication code")
+
+    with con:
+        # The predicate makes reuse fail even when two requests race each other.
+        used = con.execute(
+            """UPDATE admins SET totp_last_counter = ?, last_login_at = ?
+               WHERE id = ? AND (totp_last_counter IS NULL OR totp_last_counter < ?)""",
+            (counter, db.now(), row["admin_id"], counter),
+        )
+        if not used.rowcount:
+            raise HTTPException(401, "wrong authentication code")
+        con.execute("DELETE FROM admin_login_challenges WHERE admin_id = ?",
+                    (row["admin_id"],))
+        token = auth.start_session(con, row["admin_id"], client["ip_hash"])
+        events.record(con, "ADMIN_LOGIN", client=client, admin_id=row["admin_id"],
+                      target_type="admin", target_id=row["admin_id"], mfa="totp")
     auth.set_cookie(response, request, token)
-    return {"id": row["id"], "email": row["email"], "role": row["role"]}
+    return {"id": row["admin_id"], "email": row["email"], "role": row["role"]}
 
 
 @router.post("/logout")
@@ -724,7 +800,8 @@ def list_admins(_=Depends(auth.require_admin), con=Depends(db.get_db)):
     """Readable by any operator: who else can act here is not a secret from the
     people who can act here. Changing the list needs a super admin."""
     return [dict(r) for r in con.execute(
-        """SELECT id, email, role, active, created_at, last_login_at
+        """SELECT id, email, role, active, created_at, last_login_at,
+                  (totp_generation IS NOT NULL) AS totp_enabled
            FROM admins ORDER BY id""")]
 
 

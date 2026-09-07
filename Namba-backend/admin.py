@@ -8,6 +8,7 @@
     admins                   who can sign in to the back office
     add <email> [--super]    create an operator; prompts for the password
     passwd <email>           change one
+    totp-enroll <email>      add or replace the authenticator app key
     deactivate <email>       revoke the account and kill its live sessions
     activate <email>
 
@@ -38,6 +39,7 @@ import getpass
 import os
 import sqlite3
 import sys
+from urllib.parse import quote
 
 import auth
 import db
@@ -125,7 +127,8 @@ def admins():
     con = db.connect()
     try:
         return [dict(r) for r in con.execute(
-            """SELECT id, email, role, active, created_at, last_login_at
+            """SELECT id, email, role, active, created_at, last_login_at,
+                      (totp_generation IS NOT NULL) AS totp_enabled
                FROM admins ORDER BY id""")]
     finally:
         con.close()
@@ -178,6 +181,70 @@ def set_password(email, password):
         con.close()
     if not cur.rowcount:
         raise LookupError(f"no account for {email}")
+
+
+def totp_enrollment(email):
+    """Describe the next enrollment without changing the working one.
+
+    The caller shows the key first and only commits it after a code proves the
+    authenticator app received it. Losing a terminal halfway through setup must
+    not replace a key that still works.
+    """
+    email = email.strip()
+    con = db.connect()
+    try:
+        row = con.execute(
+            "SELECT id, email, totp_generation FROM admins WHERE email = ?",
+            (email,),
+        ).fetchone()
+    finally:
+        con.close()
+    if row is None:
+        raise LookupError(f"no account for {email}")
+    generation = (row["totp_generation"] or 0) + 1
+    key = auth.totp_setup_key(row["id"], generation)
+    label = quote(f"Namba:{row['email']}", safe="")
+    uri = (
+        f"otpauth://totp/{label}?secret={key}&issuer=Namba"
+        f"&algorithm=SHA1&digits={auth.TOTP_DIGITS}&period={auth.TOTP_STEP}"
+    )
+    return {"admin_id": row["id"], "email": row["email"],
+            "generation": generation, "key": key, "uri": uri}
+
+
+def enable_totp(email, generation, code):
+    """Commit an enrollment after its first current code has been checked."""
+    email = email.strip()
+    con = db.connect()
+    try:
+        row = con.execute(
+            "SELECT id, totp_generation FROM admins WHERE email = ?", (email,),
+        ).fetchone()
+        if row is None:
+            raise LookupError(f"no account for {email}")
+        expected = (row["totp_generation"] or 0) + 1
+        if generation != expected:
+            raise ValueError("that enrollment was replaced; start again")
+        counter = auth.match_totp(row["id"], generation, code)
+        if counter is None:
+            raise ValueError("that authenticator code is not current")
+        with con:
+            cur = con.execute(
+                """UPDATE admins
+                   SET totp_generation = ?, totp_last_counter = ?
+                   WHERE id = ? AND coalesce(totp_generation, 0) = ?""",
+                (generation, counter, row["id"], generation - 1),
+            )
+            if not cur.rowcount:
+                raise ValueError("that enrollment was replaced; start again")
+            con.execute("DELETE FROM admin_sessions WHERE admin_id = ?", (row["id"],))
+            con.execute("DELETE FROM admin_login_challenges WHERE admin_id = ?",
+                        (row["id"],))
+            events.record(con, "ADMIN_TOTP_ENROLL", target_type="admin",
+                          target_id=row["id"], email=email, by="shell")
+    finally:
+        con.close()
+    return generation
 
 
 def set_active(email, active):
@@ -251,7 +318,9 @@ if __name__ == "__main__":
             for a in admins():
                 mark = "" if a["active"] else "  (revoked)"
                 seen = a["last_login_at"] or "never signed in"
-                print(f"{a['id']:>3}  {a['role']:<12} {a['email']:<32} {seen}{mark}")
+                mfa = "TOTP" if a["totp_enabled"] else "TOTP NEEDED"
+                print(f"{a['id']:>3}  {a['role']:<12} {a['email']:<32} "
+                      f"{mfa:<11} {seen}{mark}")
         elif cmd == "add" and rest:
             _, first = add_admin(rest[0], _ask_password(),
                                    "SUPER_ADMIN" if "--super" in rest else "ADMIN")
@@ -259,6 +328,28 @@ if __name__ == "__main__":
         elif cmd == "passwd" and rest:
             set_password(rest[0], _ask_password())
             print(f"changed, and every live session for {rest[0]} is gone")
+        elif cmd == "totp-enroll" and rest:
+            if not sys.stdin.isatty():
+                raise SystemExit(
+                    "totp-enroll needs an interactive terminal so its setup key "
+                    "does not land in deployment logs.\n"
+                    "Run: docker compose exec namba python admin.py totp-enroll "
+                    f"{rest[0]}"
+                )
+            setup = totp_enrollment(rest[0])
+            print(
+                "In Google Authenticator, choose + then Enter a setup key.\n"
+                f"Account: Namba ({setup['email']})\n"
+                f"Key:     {setup['key']}\n"
+                "Type:    Time based\n\n"
+                "For another authenticator app, the provisioning URI is:\n"
+                f"{setup['uri']}\n\n"
+                "Do not paste either value into an online QR-code generator."
+            )
+            code = input("current six-digit code: ").strip()
+            enable_totp(rest[0], setup["generation"], code)
+            print("TOTP enrolled. Existing sessions are gone; wait for the next "
+                  "code before signing in.")
         elif cmd in ("deactivate", "activate") and rest:
             set_active(rest[0], cmd == "activate")
             print(f"{rest[0]} is now {'active' if cmd == 'activate' else 'revoked'}")

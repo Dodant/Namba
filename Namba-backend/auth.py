@@ -8,11 +8,16 @@ policy, a reset flow and four tables nobody asked for.
     stdlib scrypt, not bcrypt or passlib   -- hashlib has it, memory-hard, done
     an opaque token, not a JWT             -- logout and deactivation must bite
     the token's sha256 in the table        -- a leaked database is dead tokens
+    password then RFC 6238 TOTP            -- neither factor creates a session alone
     SameSite=Strict, httponly, no CSRF     -- see set_cookie() below
     no signup route, ever                  -- accounts come from admin.py
 """
+import base64
 import hashlib
+import hmac
+import os
 import secrets
+import struct
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -20,9 +25,23 @@ from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, Request
 
 import db
+import events
 
 SESSION_COOKIE = "namba_admin"
 SESSION_DAYS = 14
+CHALLENGE_MINUTES = 5
+
+# RFC 6238's interoperable defaults. Google Authenticator and every other TOTP
+# app understand the same base32 key, six digits and thirty-second step.
+TOTP_STEP = 30
+TOTP_DIGITS = 6
+TOTP_WINDOW = 1
+
+# Keep the TOTP root outside the database. An explicit secret lets production
+# separate this from the client-hash key; the durable installation secret is a
+# safe fallback and is domain-separated below. Do not rotate either after
+# enrollment without enrolling every operator again.
+TOTP_MASTER = os.environ.get("NAMBA_TOTP_SECRET", "").encode() or events.SECRET
 
 # scrypt's cost. 128 * r * n is 16 MB of memory per attempt at these numbers,
 # which is the point of choosing it: a GPU farm cannot widen that the way it can
@@ -35,6 +54,7 @@ DKLEN = 32
 # Five a minute, against the write limiter's twenty. The same in-memory
 # ponytail as main._writes: per-process, gone on restart, fine for one worker.
 _attempts = defaultdict(list)
+_mfa_attempts = defaultdict(list)
 LOGIN_LIMIT, LOGIN_WINDOW = 5, 60
 # When the dict is big enough to be worth emptying of the clients that stopped
 # knocking. Nothing expired a key before, only the timestamps inside one.
@@ -69,21 +89,78 @@ def verify(password, stored):
 DUMMY = hash_password(secrets.token_hex(16))
 
 
-def limit_login(ip_hash):
+def _limit(bucket, ip_hash):
     cutoff = time.monotonic() - LOGIN_WINDOW
     # the same unbounded-dict sweep main.guard does, written out again rather
     # than shared: auth may not import main (main imports this), and a helper
     # in db.py for two lines about a rate limiter would be a worse home than
     # either. This dict grows a key per address that ever reached the login
     # form, which on a panel only an operator uses is mostly crawlers.
-    if len(_attempts) > KEEP_CLIENTS:
-        for k in [k for k, v in _attempts.items() if not v or v[-1] <= cutoff]:
-            del _attempts[k]
-    hits = [t for t in _attempts[ip_hash] if t > cutoff]
+    if len(bucket) > KEEP_CLIENTS:
+        for k in [k for k, v in bucket.items() if not v or v[-1] <= cutoff]:
+            del bucket[k]
+    hits = [t for t in bucket[ip_hash] if t > cutoff]
     if len(hits) >= LOGIN_LIMIT:
         raise HTTPException(429, "Too many attempts. Wait a minute.")
     hits.append(time.monotonic())
-    _attempts[ip_hash] = hits
+    bucket[ip_hash] = hits
+
+
+def limit_login(ip_hash):
+    _limit(_attempts, ip_hash)
+
+
+def limit_mfa(ip_hash):
+    _limit(_mfa_attempts, ip_hash)
+
+
+def totp_secret(admin_id, generation):
+    """The binary key for one enrollment, never stored in the database.
+
+    HMAC is a keyed pseudorandom function here: knowing the public admin id and
+    generation is not enough to recover this without the installation key.
+    """
+    label = f"namba-admin-totp\0{admin_id}\0{generation}".encode()
+    # 160 bits is the RFC 6238 SHA-1 key size and becomes a manageable 32
+    # base32 characters in an app's manual-entry screen.
+    return hmac.new(TOTP_MASTER, label, hashlib.sha256).digest()[:20]
+
+
+def totp_setup_key(admin_id, generation):
+    """The padding-free base32 spelling authenticator apps ask users to type."""
+    return base64.b32encode(totp_secret(admin_id, generation)).decode().rstrip("=")
+
+
+def hotp(secret, counter, digits=TOTP_DIGITS):
+    """RFC 4226 dynamic truncation, split out so RFC vectors can test it."""
+    digest = hmac.new(secret, struct.pack(">Q", counter), hashlib.sha1).digest()
+    offset = digest[-1] & 0x0F
+    number = struct.unpack(">I", digest[offset:offset + 4])[0] & 0x7FFFFFFF
+    return str(number % (10 ** digits)).zfill(digits)
+
+
+def totp_code(admin_id, generation, at=None):
+    counter = int(time.time() if at is None else at) // TOTP_STEP
+    return hotp(totp_secret(admin_id, generation), counter)
+
+
+def match_totp(admin_id, generation, code, *, last_counter=None, at=None):
+    """Return the matching time counter, or None.
+
+    One neighbouring step either side tolerates clock and typing skew. A counter
+    at or below the last accepted one is still a no: a six-digit code is a
+    one-time password, not a thirty-second password.
+    """
+    if not isinstance(code, str) or len(code) != TOTP_DIGITS or not code.isdigit():
+        return None
+    current = int(time.time() if at is None else at) // TOTP_STEP
+    for counter in range(current - TOTP_WINDOW, current + TOTP_WINDOW + 1):
+        if last_counter is not None and counter <= last_counter:
+            continue
+        want = hotp(totp_secret(admin_id, generation), counter)
+        if secrets.compare_digest(code, want):
+            return counter
+    return None
 
 
 def _token_hash(token):
