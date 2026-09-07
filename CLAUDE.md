@@ -14,7 +14,9 @@ cd Namba-frontend && npm run dev                           # :5173, wiki at /, b
 ```
 
 There is no signup, so the first operator comes from a shell:
-`cd Namba-backend && .venv/bin/python admin.py add you@example.com`.
+`cd Namba-backend && .venv/bin/python admin.py add you@example.com`, followed by
+`.venv/bin/python admin.py totp-enroll you@example.com`. A password without an
+enrolled authenticator never creates a session.
 
 Before claiming anything works:
 
@@ -84,6 +86,12 @@ hand-copied vocabulary and a branch beside every existing one.
   (`admin.py add`), and every one after that from a super admin inside the
   panel. If a feature needs a reader to log in, the answer is that the feature
   is wrong for this wiki.
+
+  **Every operator login is password plus TOTP.** Enrollment and recovery stay
+  in `admin.py`, never in the public app: the shell is the existing root of
+  trust, and a convenient browser recovery route would be a second door around
+  the second factor. Password success creates only a five-minute challenge;
+  the session cookie is issued after one unused authenticator counter succeeds.
 - **Nothing removes an entry.** `posts.status` is `ACTIVE` / `HIDDEN` /
   `DELETED`, and a hidden entry drops out of all thirteen public reads and comes
   back whole. There is no `DELETE /api/posts/{id}` — the path answers 405 — and

@@ -33,10 +33,25 @@ There is no signup, so the first operator comes from a shell:
 ```sh
 cd Namba-backend
 .venv/bin/python admin.py add you@example.com  # prompts twice; the first is a super admin
+.venv/bin/python admin.py totp-enroll you@example.com  # add the key to Google Authenticator
 .venv/bin/python admin.py admins               # who can sign in
 ```
 
-That wants a real terminal, because it hides the typing. Somewhere without one —
+An operator cannot sign in with a password alone. `totp-enroll` needs an
+interactive terminal, prints a manual setup key, and commits the enrollment only
+after a current six-digit code proves the authenticator received it. Running the
+same command again replaces a lost phone's key and revokes every live session.
+There is deliberately no browser recovery route.
+
+On the production host, including once immediately after the release that first
+adds TOTP, enroll the existing operator inside the container:
+
+```sh
+cd /home/ubuntu/chiral-root
+docker compose exec namba python admin.py totp-enroll you@example.com
+```
+
+The password command wants a real terminal, because it hides the typing. Somewhere without one —
 `docker exec`, a deploy script — pipe it instead, knowing that a pipe puts the
 password wherever your shell keeps its history:
 
@@ -70,7 +85,7 @@ including the test suite:
 | `auth.py` | operator passwords and sessions — the only login here |
 | `events.py` | who a request is from, as hashes, and the log of what they did |
 | `gc_uploads.py` | the cron job that deletes pictures nothing points at |
-| `admin.py` | the operator's commands — accounts, `hide`, `show`, `purge` |
+| `admin.py` | the operator's commands — accounts, TOTP enrollment, `hide`, `show`, `purge` |
 
 `Namba-frontend` — React + Vite, no state library and no UI kit. `src/api.ts` is
 the whole client; `Browse.tsx` serves the number (`/n/`), abbreviation (`/a/`),

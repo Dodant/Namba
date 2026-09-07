@@ -40,6 +40,11 @@ every link in the panel is wrong in one of them.
 
 ### Inside the panel
 
+- **Login has two stages and only the second returns `Who`.** The password call
+  returns a five-minute opaque challenge; `Login.tsx` clears the password and
+  exchanges that challenge plus the six-digit authenticator code for the
+  httpOnly session. Do not collapse the API types into one response or treat a
+  successful password check as a signed-in operator.
 - **`NAV` in `AdminApp.tsx` is the rail.** One list, so a page cannot exist
   without appearing in it or appear in it without existing. Add a page by adding
   a line and a `<Route>`, never a link to something unbuilt.

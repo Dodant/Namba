@@ -14,8 +14,8 @@ COPY Namba-frontend/dist/ ./dist/
 
 # The database, the uploads and secret.key all sit beside DB_PATH, so one
 # volume holds everything that has to outlive the image. secret.key especially:
-# it salts the hashes in events, and a new one every deploy silently stops
-# matching the blocks it wrote.
+# it salts the hashes in events and, unless NAMBA_TOTP_SECRET is set, roots the
+# operator TOTP keys. A new one silently stops matching blocks and authenticators.
 ENV NAMBA_DIST=/app/dist \
     NAMBA_DB=/data/namba.db \
     NAMBA_UPLOADS=/data/uploads

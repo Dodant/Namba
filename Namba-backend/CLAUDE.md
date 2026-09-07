@@ -24,6 +24,7 @@ nobody to stop a stranger triggering one.
 .venv/bin/python test_namba.py           # run before saying anything passes
 .venv/bin/python seed.py --reset         # wipe + reload from ../Memorable Numbers.md
 .venv/bin/python admin.py add you@x.test # the first operator; there is no signup
+.venv/bin/python admin.py totp-enroll you@x.test # mandatory second factor
 .venv/bin/python admin.py hide 42        # take an entry off the public wiki
 .venv/bin/uvicorn main:app --reload
 ```
@@ -31,6 +32,11 @@ nobody to stop a stranger triggering one.
 Env overrides: `NAMBA_DB`, `NAMBA_UPLOADS` (the tests use both to stay
 hermetic), `NAMBA_SECRET` (the key the client hashes are salted with -- and if
 it is unset, `secret.key` beside the database is generated and used instead).
+`NAMBA_TOTP_SECRET` may provide a separate root for operator TOTP keys; when it
+is unset the same durable installation key is used with domain separation.
+Whichever root was used for enrollment must not be rotated without re-enrolling
+every operator.
+
 `NAMBA_DIST` selects the built frontend directory (default: `../Namba-frontend/dist`);
 `NAMBA_UPLOAD_TOTAL_MB` sets the uploads directory cap in MiB (default: `1024`);
 `NAMBA_BASE_URL` overrides the request-derived base URL for metadata, robots and
@@ -128,8 +134,11 @@ the sitemap.
   raising `N` later leaves every existing password working. `login` runs scrypt
   against `auth.DUMMY` when the email is unknown and answers "wrong email or
   password" either way — the response time and the message are both free
-  directories otherwise. Five attempts a minute, against the write limiter's
-  twenty.
+  directories otherwise. A correct password creates a five-minute opaque
+  challenge, not a session; `/login/totp` exchanges that and one unused RFC 6238
+  counter for the existing cookie. Both stages have five-attempt rate limits,
+  and each challenge also keeps its attempts in SQLite so a restart cannot
+  refill it.
 - **`SameSite=Strict` is standing in for a CSRF token, and `allow_credentials`
   must stay off.** Those are the two layers, and there is no third. The admin
   app is same-origin with the API, so no legitimate request is cross-site and
@@ -150,6 +159,13 @@ the sitemap.
   raised `termios.error` and then `EOFError` on top of it, printing a traceback
   instead of saying what was wrong. It now says which of the two to use and that
   a pipe costs you the history a terminal does not.
+- **TOTP enrollment and recovery are shell-only.** `admin.py totp-enroll` shows
+  a manual setup key only on an interactive terminal, verifies one current code
+  before committing it, and revokes sessions. The key is derived with HMAC from
+  the installation secret, operator id and enrollment generation; the database
+  holds only the generation and last accepted counter. Re-running the command
+  is the lost-device recovery path. There is no QR or recovery endpoint whose
+  compromise could silently replace the second factor.
 - **An account is revoked, never deleted.** Every audit row in `events` points
   at an `admins.id`, and an operator who leaves must not take their record with
   them. `active = 0` is in the session join, so it takes effect on the next
@@ -248,7 +264,9 @@ the sitemap.
   here whose loss is silent. `NAMBA_SECRET` wins; otherwise `secret.key` is
   written beside the database at 0600, by `os.open` with the mode at creation
   rather than a `chmod` afterwards. **It belongs in the backup with the
-  database.**
+  database.** Unless `NAMBA_TOTP_SECRET` is explicitly set, it is also the root
+  from which domain-separated operator TOTP keys are derived, so losing it now
+  makes enrolled authenticators stop matching as well.
 - **`guard` replaced `rate_limit` and hands back an identity.** It is still the
   single `Depends` on every write, it still refuses at 20 a minute, and it now
   returns the caller's three hashes so a route can record what happened without
