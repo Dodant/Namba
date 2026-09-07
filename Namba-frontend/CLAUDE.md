@@ -19,9 +19,12 @@ inherit it, and the build proves it — `main-*.css` is about 28 kB and `admin-*
 `admin.css` keeps the identity and changes the register: same green, same
 terracotta for anything destructive, IBM Plex Mono on every numeral (a back
 office is mostly numerals) — but system sans for the chrome, 13px, 32px rows,
-hairline rules, no radius over 6px. **Do not import `index.css` into the admin
-app or `admin.css` into the wiki.** They define the same custom property names
-with different values on purpose, and one document loading both would be neither.
+hairline rules. Most controls and surfaces use `--radius` (6px); 9–10px dialog/
+source containers and 999px status badges are intentional exceptions. They mark
+a distinct overlay or compact state rather than acting as general controls.
+**Do not import `index.css` into the admin app or `admin.css` into the wiki.**
+They define the same custom property names with different values on purpose, and
+one document loading both would be neither.
 
 `req`, `qs` and `json` are shared from `src/api.ts`, so one place knows how
 FastAPI reports an error. The panel also imports moderation vocabularies,
@@ -40,12 +43,13 @@ every link in the panel is wrong in one of them.
 - **`NAV` in `AdminApp.tsx` is the rail.** One list, so a page cannot exist
   without appearing in it or appear in it without existing. Add a page by adding
   a line and a `<Route>`, never a link to something unbuilt.
-- **The filters live in the URL, not in state.** Same call the wiki makes for
-  its feed toggle: "everything flagged, oldest first" survives a reload, can be
-  bookmarked, and can be sent to somebody. The search *box* is local and Enter
-  commits — typing into the query fires a request per keystroke and puts every
-  prefix of the word in the history. Any filter change clears `offset`, because
-  page 4 of the old filter is not page 4 of the new one.
+- **Shareable list filters live in the URL.** The content, requests and reports
+  lists survive a reload, can be bookmarked, and can be sent to somebody.
+  Blocks' live/history toggle and Abuse's time-window thresholds are local
+  triage controls. The search *box* is local until Enter commits — typing into
+  the query fires a request per keystroke and puts every prefix of the word in
+  the history. Any URL-filter change clears `offset`, because page 4 of the old
+  filter is not page 4 of the new one.
 - **One entry is a page, not a drawer.** The diff needs the width, and an
   operator working a queue has to be able to send one to somebody. Reports use
   a drawer for their details; requests and blocks use confirmation dialogs for

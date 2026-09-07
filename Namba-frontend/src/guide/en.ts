@@ -75,7 +75,7 @@ falls in the series.`,
     },
 
     'the-point': {
-      heading: '1. The number has to carry the meaning',
+      heading: '1. Meaning-bearing numbers',
       body: `A number qualifies when it is part of what the thing is. It is
 named in the work, or it stands for an idea, or people recognise the thing by
 the number itself.
@@ -100,7 +100,7 @@ story.`,
     },
 
     sequences: {
-      heading: '2. Sequence, edition and year numbers are out',
+      heading: '2. Sequence, edition and year numbers',
       body: `Season 2, *GTA 3*, the 2022 World Cup, iPhone 15, Super Bowl 52,
 Episode 4.
 
@@ -140,7 +140,7 @@ nothing but "Season N of —".`,
     },
 
     mining: {
-      heading: '3. Do not mine a source for numbers',
+      heading: '3. Source-number mining',
       body: `A single film has hundreds of numbers in it. Do not read a work end
 to end and file every number you see.
 
@@ -167,7 +167,7 @@ one where every number has something worth explaining**.`,
     },
 
     why: {
-      heading: '4. Explain why that number',
+      heading: '4. Why this number',
       body: `\`33 — Santal 33\`
 
 This has only matched a number to a name.

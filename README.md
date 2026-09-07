@@ -7,7 +7,7 @@ down. No account, no login: anyone can read, post and edit.
 Nobody can delete. There is a back office at `/admin` where whoever runs the wiki
 decides that instead, and it is the only login in the place.
 
-Seeded from `Memorable Numbers.md` (183 entries).
+Seeded from the tracked `Memorable Numbers.md` source (183 entries).
 
 ## Running it
 
@@ -286,8 +286,9 @@ blocking whoever wrote it are separate buttons with separate audit rows, rather
 than one button that does four things and logs one.
 
 No address is stored anywhere. Every IP, user agent and client cookie is a
-sha256 salted with the install's own key, and only the first four characters are
-ever shown.
+sha256 salted with the install's own key. Tables show only the first four
+characters; a block confirmation and its audit-log metadata show eight so an
+operator can distinguish the exact target of an irreversible decision.
 
 ## Deploying
 

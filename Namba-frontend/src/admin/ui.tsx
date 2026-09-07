@@ -29,12 +29,13 @@ export function Badge({ children }: { children: string }) {
   return <span className={`badge ${TONE[children] ?? ''}`}>{children}</span>
 }
 
-/** Four hex characters and the rest in a tooltip.
+/** Four hex characters and the rest in a tooltip for ordinary list rows.
 
     It is a salted hash of an address rather than an address, and forty more
     characters of it on screen buy nothing readable -- what an operator actually
-    does with one is compare two rows, and four is enough to do that by eye. The
-    whole thing is still there to copy, because a block needs it. */
+    does with one is compare two rows, and four is enough to do that by eye.
+    Block confirmations show eight characters, where the target is being acted
+    on; the whole value is still there to copy, because a block needs it. */
 export function Hash({ value }: { value: string | null | undefined }) {
   if (!value) return <span className="hash">—</span>
   return (

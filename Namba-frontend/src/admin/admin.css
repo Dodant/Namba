@@ -6,8 +6,10 @@
    What it keeps is the identity: the same green, the same terracotta for
    anything that destroys something, IBM Plex Mono on every numeral. What it
    changes is the register. System sans for the chrome, 13px, 32px rows, hairline
-   rules, no shadows and no radius over 6px. Density is the feature -- an
-   operator is here to see forty rows at once and decide about three of them. */
+   rules and no shadows. Most controls use the 6px base radius; the 9–10px
+   dialog/source containers and 999px badges are purposeful exceptions. Density
+   is the feature -- an operator is here to see forty rows at once and decide
+   about three of them. */
 
 :root {
   --bg: #fbfbfa;
@@ -223,10 +225,9 @@ td.wide a, td.wide span { display: block; overflow: hidden; text-overflow: ellip
 .badge.warn { background: var(--warn-soft); color: var(--warn); }
 .badge.bad { background: var(--hit-soft); color: var(--hit); }
 
-/* First four hex characters and a title with the rest. It is a hash of an
-   address and not an address, but forty more characters of it on screen buy
-   nothing an operator can read -- what they do is compare two rows, and four
-   is enough to do that by eye. */
+/* List rows show four hex characters and the rest in a title. A block
+   confirmation and its audit metadata show eight, where distinguishing the
+   target of an operator decision matters. */
 .hash { font-size: 11.5px; color: var(--muted); cursor: help; }
 .when { font-size: 11.5px; color: var(--muted); white-space: nowrap; cursor: help; }
 
