@@ -2,7 +2,7 @@
 
 React 19 + Vite + TypeScript. **Two documents**: the wiki (`index.html` →
 `src/`) and the back office (`admin.html` → `src/admin/`). The wiki is
-`src/api.ts` plus four pages and two components; the back office is its own
+`src/api.ts` plus five pages and two components; the back office is its own
 shell, its own stylesheet and a page per thing an operator does. Dev server
 proxies `/api`, `/uploads`, `/docs` and `/openapi.json` to `127.0.0.1:8000`
 (`vite.config.ts`) — no CORS config needed locally.
@@ -10,10 +10,10 @@ proxies `/api`, `/uploads`, `/docs` and `/openapi.json` to `127.0.0.1:8000`
 ## Two documents, and why
 
 `/admin` is a second Vite entry, not a route in the wiki's bundle. The reason
-that decides it is `index.css`: 1400 lines of global rules in which every
+that decides it is `index.css`: roughly 1,600 lines of global rules in which every
 control is a `border-radius: 999px` capsule and the type is a serif meant for
 reading, none of which belongs on a table of hashes. A separate document cannot
-inherit it, and the build proves it — `main-*.css` is 26 kB and `admin-*.css` is
+inherit it, and the build proves it — `main-*.css` is about 28 kB and `admin-*.css` is
 12, with nothing shared. The wiki's JS did not grow either.
 
 `admin.css` keeps the identity and changes the register: same green, same
@@ -23,10 +23,10 @@ hairline rules, no radius over 6px. **Do not import `index.css` into the admin
 app or `admin.css` into the wiki.** They define the same custom property names
 with different values on purpose, and one document loading both would be neither.
 
-Three things are shared and they are the right three: `req`, `qs` and `json`
-from `src/api.ts`, so one place knows how FastAPI reports an error. Plus
-`fmtDate` and `showValue`, because "2 days ago" and `1,234` should read the same
-on both sides of the product. `src/admin/api.ts` adds the operator's shapes and
+`req`, `qs` and `json` are shared from `src/api.ts`, so one place knows how
+FastAPI reports an error. The panel also imports moderation vocabularies,
+reason labels and `tagLabel` there, plus `fmtDate` and `showValue`, because
+"2 days ago" and `1,234` should read the same on both sides of the product. `src/admin/api.ts` adds the operator's shapes and
 nothing else.
 
 Getting there in development needs a rewrite, because `/admin` is a router path
@@ -47,8 +47,9 @@ every link in the panel is wrong in one of them.
   prefix of the word in the history. Any filter change clears `offset`, because
   page 4 of the old filter is not page 4 of the new one.
 - **One entry is a page, not a drawer.** The diff needs the width, and an
-  operator working a queue has to be able to send one to somebody. Requests,
-  reports and blocks are drawers, since deciding one is a sentence.
+  operator working a queue has to be able to send one to somebody. Reports use
+  a drawer for their details; requests and blocks use confirmation dialogs for
+  decisions.
 - **The body is shown as source.** An operator judging vandalism wants the
   characters a stranger typed — a link's real href, a zero-width space, the
   twelve blank lines — not the paragraph they render into. This is the one place
@@ -172,12 +173,12 @@ sanitiser config to get wrong.
   every placeholder and the file input's "No file chosen" — none of which the
   copy ever actually contained.
 - 24px is the floor for anything you press. The two borderless like buttons
-  keep their 10.5px type and buy the target with padding, then hand it back
-  to the row with a matching negative margin, so the hit box grows and the
+  use 10.5px type on post/card rows and 11px in the index, and buy the target
+  with padding, then hand it back to the row with a matching negative margin, so the hit box grows and the
   layout does not move. Do not "tidy" the negative margins away. On a coarse
   pointer the same trade is made once more, in the `@media (pointer: coarse)`
-  block at the foot of the file, which lands the small controls at 33–40px. A
-  width query cannot ask that question: an iPad at 1024px needs it and a 480px
+  block near the end of the file, before the footer and to-top rules, which
+  lands the small controls at 33–40px. A width query cannot ask that question: an iPad at 1024px needs it and a 480px
   window on a desktop does not.
 - `overflow-wrap: break-word` is inherited from `body`, and the two
   single-column grid overrides say `minmax(0, 1fr)`. Both are there because
@@ -230,10 +231,12 @@ sanitiser config to get wrong.
   sort, not two — do not add a `sort=new` beside it.
 - `useAsync.ts` carries a file-level `oxlint-disable react-hooks/exhaustive-deps`
   because the hook forwards its caller's deps array, which the rule cannot verify
-  statically. There is one other in the whole codebase — a
+  statically. A second suppression is an
   `eslint-disable-next-line` on the same rule in `src/admin/pages/Log.tsx`, where
   an effect drops a stale `offset` out of the query string and must not rerun
-  when the params it writes come back. Two is the count; do not add a third.
+  when the params it writes come back. `uiLocale.tsx` also suppresses
+  `react/only-export-components` because the provider and its hook share one
+  context. Keep each suppression tied to its stated reason.
 - `useAsync`'s third argument, `keep`, holds the last answer on screen while
   the next loads. Only `Index` and `Feed` pass it: their deps re-filter one
   list. Do not pass it from a page whose deps name a *subject* — `Browse` and
@@ -298,14 +301,14 @@ sanitiser config to get wrong.
   "5 months ago" — the same scale a feed uses, because every date on this wiki
   is a byline in a list, an edit in a history or a remark under an entry, and
   all three are read to answer how fresh a thing is. It is one function and
-  eleven call sites in the wiki, one of them inside a template literal, which is
-  why it returns a string and not a `<time>`. The exact timestamp is therefore
-  nowhere on screen here, and where it is wanted it is a `title` on the element
+  eleven call sites in the wiki, used in JSX and localized message functions;
+  it returns a string so callers can compose their bylines. The exact timestamp
+  is therefore nowhere on screen here, and where it is wanted it is a `title` on the element
   that carries the date, not a second format for lists to choose between — which
-  is what the back office does, in `When` in `admin/ui.tsx` and in the nine
-  further call sites behind it. Months are 30 days and a year is twelve of
+  is what the back office does, in `When` in `admin/ui.tsx` and in eight further
+  `fmtDate` calls across the panel. Months are 30 days and a year is twelve of
   those, so "12 months ago" cannot happen.
-- Markdown renders on `/p/:id` only. Every list shows `plain(body)` — the source
+- Markdown renders on `/p/:id` and `/guide`. Every list shows `plain(body)` — the source
   read back as prose, so `**bold**` and `## ` are not punctuation in a preview —
   clamped to three lines in CSS. `plain()` is a handful of regexes and is not a
   parser; it does not need to be, because the entry itself is one click away.
@@ -317,9 +320,9 @@ The breakpoints are places something stops fitting, not round numbers:
 | px | what changes |
 |---|---|
 | 1130 | the form and its History rail stop fitting side by side (680+40+340) |
-| 900 | the wordmark, search, language picker and three pills stop fitting one line |
+| 900 | the wordmark, search and three pills stop fitting one line |
 | 820 | the entry and its Edit history rail stop fitting side by side |
-| 560 | a phone: rows fold, the search takes a row, the numeral stops being a column, the format tabs drop to their short labels |
+| 560 | a phone: rows fold, the search takes a row, the numeral stops being a column, the format tabs scroll horizontally |
 
 Between them everything is `clamp()` — the page gutter, the section rhythm,
 every heading and every numeral — so dragging a window from 1920 to 320 has
@@ -457,8 +460,8 @@ What actually changes shape, rather than size:
   need to be.** This is what the paragraph before this list means by reaching
   for a clamp, or here a basis, before a fifth media query.
 - **The rails** stop being rails and become the end of the page — and the
-  Edit history stops being a 60dvh scroll port inside a scrolling page. That
-  cap lives on `.side .revs`, not `.revs`: the same list is the recovery view
+  Edit history stops being a `min(40dvh, 320px)` scroll port inside a scrolling
+  page. That cap lives on `.side .revs`, not `.revs`: the same list is the recovery view
   in `PostPage`, where it is the page and holds the only Restore there is.
 
 Mobile browsers, specifically: every box you type in is 16px on a coarse
@@ -524,25 +527,24 @@ navigation depend on.
 
 ## The reader's language
 
-`displayLang` in `api.ts` (`localStorage`, defaults to `English`) is which
-language lists render in. `App` holds it in state and hands it to `Home` and
-`Browse` as a prop, which is the point: a page only refetches when a value it
-renders with changes, and a page reading `localStorage` itself would not notice
-the header. It is not a search param — it is a standing preference, and every
-internal `Link` would have to carry it or drop it.
+`contentLanguage` in `api.ts` stores the entry-text preference in
+`localStorage` under `namba.contentLang`, falling back to the legacy
+`namba.lang` key. It defaults to `''`, shown as "As written". `App` holds it in
+state and passes it to `Home`, `Browse` and `PostPage`. The list pages refetch
+when it changes; `PostPage` selects the translation locally and resets its
+selection when the preference or post id changes. Reading `localStorage` in
+each page would not notice the footer control. It is not a search param — it
+is a standing preference, and every internal `Link` would have to carry it or drop it.
 
 An entry with no translation in that language keeps its own title. Nothing
 marks the difference in a list, so a mixed-language index is expected.
 
-The header picker is not rendered at all while `/api/languages` is empty. On a
-wiki nobody has translated yet its only entries are `Original` and the stored
-default drawn as `English · 0` — two labels for the same nothing — and the
-second is kept alive only by being selected, so choosing `Original` deletes it.
-A control that opens to say no and loses an option when used is worse than no
-control; it returns with the first translation.
+The footer picker is always visible. "As written" is always an option,
+`/api/languages` supplies the available translations, and a saved choice absent
+from the response remains selectable with a zero count. The interface picker
+beside it is independent: it changes Namba's controls and dates.
 
-The language tabs on `/p/:id` follow the same rule and are absent until the
-entry has a translation. One tab is a rule drawn across the top of the page
+The language tabs on `/p/:id` are absent until the entry has a translation. One tab is a rule drawn across the top of the page
 to say the entry is written in the language you are already reading — and on
 most of the wiki that was the first thing above the number.
 
@@ -595,10 +597,10 @@ filter in step only spares the reader a rejection they can see coming. Integer a
 separator checkbox — from the fourth
 digit, because there is no thousand in `100` and a box that ticks with nothing
 on the page changing reads as broken rather than as inapplicable. It asks
-`showValue(value, true) !== value` rather than counting digits: that is the
-function that decides, and it knows `3.14159` has nothing to group after the
-point. The tick survives a value dropping back under four digits — `grouped`
-is display only, so nothing shows until the digit comes back.
+`canGroupValue(canonical.value)`, which checks that a plain number has at
+least four digits before the decimal point; `3.14159` has nothing to group.
+The tick survives a value dropping back under four digits — `grouped` is
+display only, so nothing shows until the digit comes back.
 
 The checkbox sits under the Number
 field, where it stays out of the top row — a third column that came and went
@@ -626,8 +628,9 @@ takes it out of the tab order and announces it as unavailable.
 
 `showValue(value, grouped)` is display only — **never build a link from it.**
 `entryPath()` takes the raw value, and `/n/1,000` is a different page from
-`/n/1000`. Index rows and the `/n/:value` hero use the all-entries-agree rule
-from the API; everywhere a single post is shown, its own flag wins.
+`/n/1000`. Index rows use the API's all-entries-agree flag. The `/n/:value`
+hero applies the same rule in `Browse.tsx` with `posts.data.every((p) => p.grouped)`;
+everywhere a single post is shown, its own flag wins.
 
 ## Values are not URL-safe
 
@@ -661,9 +664,9 @@ be said is to the person about to type one. Two links reach it — the footer an
 is a search box and three pills, and a fourth is the 900px row's fifth
 breakpoint.
 
-**It is two layers over one `<hr>`, and the split is what keeps it usable.**
-Above it is what somebody about to type a value reads — the four words the rest
-of it leans on, one test, four rules, four things that are never entries, and
+**The guide has three `<hr>` separators: test/rules, rules/reference and
+reference/summary.** Above the second is what somebody about to type a value
+reads — the four words the rest of it leans on, one test, four rules, four things that are never entries, and
 what happens when an entry breaks one. The definitions come first because
 *entry* and *number page* are not the same thing here and everything under them
 depends on the difference: `/n/42` is not an entry, it is every entry filed
@@ -709,8 +712,8 @@ operator can quote it to a poster in either.
 
 `GUIDES` in `src/guide/index.ts` is every translation, keyed by the same
 endonym `LANG_CODE` uses — which is why `LANG_CODE` and `langLabel` moved from
-`PostForm.tsx` into `api.ts`. **This is not the header's picker and not
-`/api/languages`**, which counts what readers translated *entries* into and is
+`PostForm.tsx` into `api.ts`. **This is separate from the footer's content
+picker and from `/api/languages`**, which counts what readers translated *entries* into and is
 empty on a fresh wiki; this is what the project translated *this document*
 into, and the two sets are different. Adding a language is a file and a line in
 `GUIDES`.
@@ -728,7 +731,7 @@ read to answer how fresh a thing is; a version is read to answer *which* rules,
 and "changed 5 months ago" cannot answer that. It is not somebody forgetting
 `fmtDate`.
 
-`?lang=ko`, not state and not `displayLang`: a rule an operator is quoting has
+`?lang=ko`, not state and not `contentLanguage`: a rule an operator is quoting has
 to travel. The picker navigates with `useNavigate` rather than
 `setSearchParams` because a partial path defaults every field it does not name
 — `setSearchParams` drops the fragment, and switching language while parked on
@@ -736,7 +739,7 @@ to travel. The picker navigates with `useNavigate` rather than
 
 **This page takes the container's whole width**, unlike the form beside it in
 the stylesheet — it is wider than a reading measure wants, and that is the
-call: the nine two-column tables are what the width is for, and at 680px they
+call: the eight two-column tables are what the width is for, and at 680px they
 sat narrow with half the screen empty. `.wrap`'s 1160 still caps it, so the
 1160 rule below is untouched.
 
@@ -770,9 +773,10 @@ child inside it is the one thing `.body` is guaranteed to erase.
 prose rhythm; `.guide` rides on `.form`'s rule for the `h1`. Its own rules are
 few: the
 standfirst (a class, not `:first-of-type`, since the version row became the
-first `<p>`), `.guide-meta`, and `margin: 0` on a paragraph inside a table cell
-— react-markdown renders a cell as one, and `.body p`'s bottom margin pushed
-every table open.
+first `<p>`) and `.guide-meta`. The table-cell paragraph reset,
+`.body td > p { margin: 0 }`, belongs to the shared body rules and also applies
+to entry markdown: react-markdown renders cells as paragraphs, and `.body p`'s
+bottom margin pushed every table open.
 
 The version row sits on the line above the `h1` and is pushed to the far edge:
 the title anchors the left, what is true *about* the document answers on the
@@ -799,8 +803,7 @@ uses. An entry has exactly one address — an abbreviation never answers at `/n/
 
 All four heroes are one shape: a `.kicker` of metadata over an `<h1>` that is
 the subject and nothing else. On `/n/:value` and `/a/:value` the kicker is the
-format and the sort key, which for an abbreviation is the format alone; on the
-other two it is the kind of page and the count, and the count
+format alone; on the other two it is the kind of page and the count. The count
 waits for `posts.data` because "0 entries" before the fetch lands is a result
 rather than a wait. `/t/:tag` passes its tag to `PostCard` as `except`, so a
 row does not carry a chip linking to the page it is already on — what is left
@@ -828,8 +831,8 @@ other is a record you go looking for — the history's summary carries the edit
 count, so shut is still an answer. Neither remembers which way you left it, the
 same as the credits toggle: press it and it is closed for as long as you want it
 closed. The `<summary>` wears `.ix-fold`, which is where
-its caret, its hidden marker and its 24px hit box come from; the `<h4>` stays a
-heading *inside* it, so it is still in the outline and still announced as one.
+its caret, its hidden marker and its 24px hit box come from; the
+`<h2 className="section">` stays a heading *inside* it, so it is still in the outline and still announced as one.
 Nesting a fold in a fold is deliberate: the section, then the rest of the
 comments inside it.
 
@@ -931,13 +934,13 @@ the entry form, an inner submit bubbles out and publishes the entry.
 ## Mirrors the backend
 
 `FORMATS` in `api.ts` is a hand-copy of `numfmt.py` — five of them now, four
-ways of reading digits and `ABBR` for letters. `FORMAT_LABEL` and `numfmt.py`'s
-parser branch have to gain a line with it: the backend 422s an unknown format,
-but a format missing from the label map renders as `undefined` in a tab and
-nothing errors. The five moderation
-vocabularies — `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`,
-`REQUEST_STATUSES`, `REPORT_STATUSES` — are hand-copies of `db.py`. Changing any
-of them here alone gets a 422 from the API. `REASON_LABEL` is one map for both
+ways of reading digits and `ABBR` for letters. `numfmt.py`'s parser branch and
+the localized `m.format` maps in `uiLocale.tsx` must change with it. The seven
+moderation vocabularies — `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`,
+`REQUEST_STATUSES`, `REPORT_STATUSES`, `BLOCK_TYPES`, `BLOCK_HOURS` — are
+hand-copies of `db.py`. Unknown reasons, statuses and block types get a 422;
+`BLOCK_HOURS` is the shared menu of suggested durations, while the API accepts
+other durations too. `REASON_LABEL` is one map for both
 reason lists, because four reasons are in each and a reader picking one neither
 knows nor cares which list it came from. Tags are **not** a list any more — do not add one back. The
 form's chips come from `api.tags()`, which reports what the wiki actually uses,
@@ -953,7 +956,9 @@ upper-case link and one place has to decide.
 
 The nickname and the set of liked post ids live in `localStorage` — the keys
 are `namba.nick` and `namba.liked`, wrapped as `nickname` and `liked` in
-`api.ts`, and `namba.lang` is the third. There is no session, no user object,
+`api.ts`. The content preference uses `namba.contentLang` (`contentLanguage`);
+`namba.lang` is read only as a legacy fallback. The separate interface locale
+uses `namba.uiLocale`. There is no session, no user object,
 and no "my posts".
 Likes update optimistically and roll back on failure.
 
@@ -971,8 +976,8 @@ route 404s with a message saying so.
 That is also where the `<head>` comes from — all of it, for every route.
 Setting it from React is not an option and never was: a crawler does not run the
 JS that would do it, so the head has to arrive already written. **Nothing in this
-app should try**, and nothing in `src/` mentions `og:`, `canonical` or
-`ld+json` — grep and see.
+app should try** to create those metadata tags in React. `canonicalNumber`
+in `src/` normalizes numeric values; it has no relation to canonical URL tags.
 
 `main.py`'s `_index()` writes a title, description, canonical, `og:`/`twitter:`
 tags and JSON-LD for `/`, `/guide`, `/n/:value`, `/a/:value`, `/t/:tag` and
@@ -1001,17 +1006,18 @@ as a copy of the front page. Two consequences for work in here:
   way round. If a route added here deserves to be in a search result, it needs a
   branch in `_index()` — adding the `<Route>` alone is not enough. `/guide` is
   the only route that has ever asked: `head_guide()` gives it a title and blurb
-  of its own rather than `page_bits()`, which would hand it the site's and put
-  a copy of the front page in the result. It is in `sitemap()` for the reason
+  of its own through `write_head()`; using `head_home()` would put a copy of
+  the front page in the result. It is in `sitemap()` for the reason
   every entry is — the footer's link to it is a `<Link>` no crawler runs the
   JavaScript to see.
 - **`SiteTitle` in `App.tsx` is the one thing in here that touches the head, and
   it only ever puts it back.** A client-side navigation fetches no document, so
   the tab kept the last server-written title — "book — 17 entries" while you
   read `/p/1`, and a bookmark taken there saved that name. It restores
-  `SITE_TITLE` and stops. Not the *page's* title: building that here is a second
-  copy of four format strings that live in `main.py`, with nothing to notice the
-  drift. `SITE_TITLE` is a hand-copy of `index.html`'s `<title>` and
+  the current UI locale's site title (`SITE_TITLE` for English, `m.siteTitle`
+  otherwise) and stops. Page-specific titles remain
+  server-written. The `siteTitle` values in `uiLocale.tsx` mirror
+  `seo_locale.py`; the English default also matches `index.html`, and
   `test_the_site_has_one_name` compares them. A `useRef` keeps the first render
   out of it, or the title the server just wrote is thrown away on mount.
 

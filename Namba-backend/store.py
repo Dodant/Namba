@@ -17,8 +17,8 @@ from numfmt import bucket_of
 # vocabularies, an entry's related row, its history and its comments, the four
 # <head>s written for /p/{id}, /n/{value}, /a/{value} and /t/{tag}, and the
 # sitemap -- and missing one leaks the body of something an operator took down.
-# test_hidden_is_invisible walks all thirteen. It was nine until the crawler's
-# half of the site arrived: a head that names an entry and a sitemap that links
+# test_hidden_is_invisible walks all thirteen: eight API reads, four heads and
+# the sitemap. A head that names an entry and a sitemap that links
 # to it are both places a row can leak to somebody who never called the API at
 # all. The writes need no equivalent: they reach for fetch_one() below first and
 # get the 404 from there.

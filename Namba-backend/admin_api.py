@@ -452,7 +452,7 @@ def list_all_posts(
 @router.get("/posts/{post_id}")
 def one_post(post_id: int, _=Depends(auth.require_admin), con=Depends(db.get_db)):
     """The entry whatever its status, with what is attached to it. hidden=True is
-    what this route is for -- it is the only read in the codebase that passes it."""
+    also used by the admin diff, status and restore handlers; public reads omit it."""
     post = store.fetch_one(con, post_id, hidden=True)
     post["comments"] = [dict(r) for r in con.execute(
         "SELECT * FROM comments WHERE post_id = ? ORDER BY id DESC", (post_id,))]
@@ -473,7 +473,7 @@ def all_revisions(post_id: int, _=Depends(auth.require_admin), con=Depends(db.ge
 
     The snapshots do not come with it. They are read to pull the title out as a
     label and then dropped: fifty whole entries is megabytes, and the diff route
-    below fetches the two that are actually being looked at. `revision_number`
+    below fetches the two that are actually being looked at. `number`
     is the position in this list, not a column -- it only means anything in the
     order it is read in.
 

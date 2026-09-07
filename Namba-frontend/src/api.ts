@@ -75,14 +75,6 @@ export const langLabel = (l: string) => (LANG_CODE[l] ? `${l} (${LANG_CODE[l]})`
 export const FORMATS = ['INTEGER', 'DECIMAL', 'MIXED', 'TIME', 'ABBR'] as const
 export type Format = (typeof FORMATS)[number]
 
-export const FORMAT_LABEL: Record<Format, string> = {
-  INTEGER: 'Integer',
-  DECIMAL: 'Decimal',
-  MIXED: 'Mixed',
-  TIME: 'Time',
-  ABBR: 'Abbreviation',
-}
-
 /* An abbreviation is the one kind of entry that is not a number, so it reads
    in its own words wherever the app counts or describes what is on a page.
    One function for both nouns, or the band head and the hero drift apart. */

@@ -1,6 +1,6 @@
 # Namba-backend
 
-FastAPI over stdlib `sqlite3`. Ten files:
+FastAPI over stdlib `sqlite3`. Thirteen Python files, including the test suite:
 
 | | |
 |---|---|
@@ -11,6 +11,8 @@ FastAPI over stdlib `sqlite3`. Ten files:
 | `events.py` | who a request is from, as hashes, and the log of what they did |
 | `auth.py` | operator passwords, sessions and the `require_admin` dependency |
 | `numfmt.py` | value parsing |
+| `seo_locale.py` | localized metadata prose and Open Graph locale codes |
+| `test_namba.py` | the backend and cross-app checks |
 | `seed.py` + `seed_tags.py` | the markdown importer |
 | `gc_uploads.py` | the uploads collector |
 | `admin.py` | the operator's shell commands |
@@ -29,6 +31,10 @@ nobody to stop a stranger triggering one.
 Env overrides: `NAMBA_DB`, `NAMBA_UPLOADS` (the tests use both to stay
 hermetic), `NAMBA_SECRET` (the key the client hashes are salted with -- and if
 it is unset, `secret.key` beside the database is generated and used instead).
+`NAMBA_DIST` selects the built frontend directory (default: `../Namba-frontend/dist`);
+`NAMBA_UPLOAD_TOTAL_MB` sets the uploads directory cap in MiB (default: `1024`);
+`NAMBA_BASE_URL` overrides the request-derived base URL for metadata, robots and
+the sitemap.
 
 ## Load-bearing details
 
@@ -92,8 +98,9 @@ it is unset, `secret.key` beside the database is generated and used instead).
   with no translation in that language keeps its own title and body — that
   fallback is the feature, not a gap. `fetch_one` deliberately does **not**
   translate: the single-post view has a tab strip, and switching there is the
-  reader's own move. The front end defaults the setting to English, which is
-  where that old policy went.
+  reader's own move. The front end defaults to the empty string ("As written")
+  and passes the footer preference to `PostPage`, which selects a matching
+  translation locally while preserving the tab strip.
 - **`posts.grouped` is how the number is written, not what it is.** `value`
   never carries separators and always uses a dot decimal; `grouped_value()`
   applies the requested UI locale for display and leaves anything that is not
@@ -107,7 +114,7 @@ it is unset, `secret.key` beside the database is generated and used instead).
   disagreement falls back to the plain form nobody had to opt into.
 - **`admin_api.py` must not import `main`.** `main.py` imports it and includes
   the router, so the arrow only points one way. Everything both need lives
-  below them — `db.py` (`get_db`, `now`, the schema and the five vocabularies),
+  below them — `db.py` (`get_db`, `now`, the schema and the seven vocabularies),
   `events.py`, `auth.py`, and `store.py` for `fetch_one`, `shape`, `snapshot`,
   `guard_public`, `write_tags` and `write_translations`. That layering is the
   only reason `store.py` exists: put a shared entry helper there, not in
@@ -182,9 +189,9 @@ it is unset, `secret.key` beside the database is generated and used instead).
   resolved, and `reports` is already the truth — the test resolves one and
   checks the badge goes with it.
 - **`/api/admin/posts` is the only list that does not carry `store.LIVE`, and
-  `one_post` is the only read that passes `hidden=True`.** That is what the back
-  office is for. If a third caller ever wants `hidden=True`, look hard at it
-  first.
+  `hidden=True` is confined to the back office.** `one_post`, the current side
+  of a diff, and the status/restore handlers use it to read moderated entries;
+  snapshots during admin restore use it too. A public caller must not pass it.
 - **`hidden` travels all the way down into `snapshot()`.** It reads through
   `fetch_one`, so without it an operator reverting vandalism gets a 404 in the
   middle of their own restore — an entry worth reverting is usually one they took
@@ -199,7 +206,7 @@ it is unset, `secret.key` beside the database is generated and used instead).
   new *column* it reaches existing databases with no `ALTER` pass.
 - **The admin revisions list does not ship snapshots.** It reads them to pull a
   title out as a label and drops them: fifty whole entries is megabytes, and
-  `/diff` fetches the two actually being looked at. `revision_number` is the
+  `/diff` fetches the two actually being looked at. `number` is the
   position in that list rather than a column — it only means anything in the
   order it is read in.
 - **The diff answers fields and body separately.** A changed sort key inside a
@@ -228,9 +235,10 @@ it is unset, `secret.key` beside the database is generated and used instead).
   up after themselves in is not an audit log, so do not add a route that edits
   one, and do not "clean up" old rows without saying so out loud. It has no
   foreign keys for the reason `revisions` has none — a record of what happened
-  to a thing outlives the thing — and `target_id` points at four different
-  tables anyway. `admin_id` is the whole split: `NULL` is a visitor, set is an
-  operator's own decision, which is why the activity feed and the audit log are
+  to a thing outlives the thing — and `target_id` points at five different
+  tables anyway (`posts`, `reports`, `delete_requests`, `blocks`, `admins`).
+  `admin_id` is the whole split: `NULL` is a visitor, set is an operator's own
+  decision, which is why the activity feed and the audit log are
   one table with two filters rather than two tables of the same shape.
 - **`events.SECRET` must survive a restart or every hash in the database goes
   quiet.** No raw address is stored anywhere — not in `events`, not in the write
@@ -244,8 +252,9 @@ it is unset, `secret.key` beside the database is generated and used instead).
 - **`guard` replaced `rate_limit` and hands back an identity.** It is still the
   single `Depends` on every write, it still refuses at 20 a minute, and it now
   returns the caller's three hashes so a route can record what happened without
-  asking twice — hence `who=Depends(guard)` on the nine writes that log and
-  `_=Depends(guard)` on the two that do not. `like` and `unlike` are the two:
+  asking twice — eleven writes log, ten binding `who=Depends(guard)` and
+  `put_translation` binding `client=Depends(guard)`. The two that do not log
+  bind `_=Depends(guard)`. `like` and `unlike` are the two:
   a like says nothing about the entry and at one row per tap the abuse view
   would be nothing else. The limiter counts hashes now, not addresses.
 - **`now()` lives in `db.py`.** It is a property of the schema — every date
@@ -281,7 +290,8 @@ it is unset, `secret.key` beside the database is generated and used instead).
   write here is CC0 and the footer invites anyone to "take it, quote it, feed
   it to a machine", so blocking them would contradict the licence the site
   states on every page. If that is ever to change it changes here *and* in the
-  footer, and `test_robots_and_sitemap` asserts the pair.
+  footer. `test_robots_and_sitemap` checks the robots rules; it does not inspect
+  the footer copy.
 
   `Disallow` covers only `/admin` and `/api/`. Everything else that should stay
   out of a result carries a `noindex` meta instead, because a path disallowed
@@ -368,12 +378,13 @@ it is unset, `secret.key` beside the database is generated and used instead).
 - **`/api/numbers` is an ordered scan grouped in Python, not a `GROUP BY`.** The
   home list needs each number's entry titles, so aggregating and then re-querying
   for them would be two passes to build one thing. It returns `entries`, not a
-  `count` — and stays lean deliberately: ids and titles only, never bodies, tags
-  or dates.
+  `count` — each entry carries `id`, `title`, `body` (the first 140 characters,
+  with an ellipsis if truncated), `image` (a boolean) and `likes`, without full
+  bodies, tags or dates.
 - **Translations ride inside the post snapshot.** `fetch_one` attaches them and
   `snapshot()` reads through `fetch_one`, which is the whole reason a removed
   translation is recoverable — and why `restore_revision` calls
-  `_write_translations`. Keep them out of `shape()`: the list endpoints must
+  `write_translations`. Keep them out of `shape()`: the list endpoints must
   stay lean. `lang` is `COLLATE NOCASE` with `UNIQUE(post_id, lang)`, so the
   `ON CONFLICT(post_id, lang)` upsert is what makes a rewrite an edit.
 - **`post_links` always stores `a_id < b_id`** (there is a CHECK). Sort the pair
@@ -438,11 +449,10 @@ there. The operator's half has a login, and the notes above are the whole of it.
 - Nothing the API offers removes a row. `posts.status` is the whole of
   moderation and `LIVE` is the condition thirteen public reads carry; the list
   of them is in `store.py` above the constant, and `test_hidden_is_invisible`
-  walks all thirteen. It was nine until the crawler's half of the site arrived —
-  the four `<head>`s written server-side and the sitemap are five more places a
-  hidden row can reach somebody who never called the API. A new public read
+  walks all thirteen: eight API reads, four server-written `<head>`s and the
+  sitemap. The latter five are places a hidden row can reach somebody who never called the API. A new public read
   that touches `posts` joins that list, or it leaks the body of something an
-  operator took down. `head_abbr` is the thirteenth, and it arrived with `/a/`.
+  operator took down. `head_abbr` arrived with `/a/`.
 
 - Uploads: extension allowlist, 5 MB per file, `UPLOAD_TOTAL_MAX` for the
   directory, and the filename is always `uuid4().hex + ext`. Never build a path

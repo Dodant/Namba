@@ -21,7 +21,7 @@ uv pip install -r requirements.txt --python .venv/bin/python
 .venv/bin/python seed.py --reset     # first time only
 .venv/bin/uvicorn main:app --reload
 
-# web  → http://localhost:5173  (proxies /api and /uploads to the api)
+# web  → http://localhost:5173  (proxies /api, /uploads, /docs and /openapi.json to the api)
 #        the wiki is at /, the back office at /admin
 cd Namba-frontend
 npm install
@@ -54,7 +54,8 @@ go stale the way a table here would.
 
 ## How it fits together
 
-`Namba-backend` — FastAPI over stdlib `sqlite3`, no ORM. Ten files:
+`Namba-backend` — FastAPI over stdlib `sqlite3`, no ORM. Thirteen Python files,
+including the test suite:
 
 | file | what it holds |
 |---|---|
@@ -62,6 +63,8 @@ go stale the way a table here would.
 | `db.py` | connection + schema |
 | `store.py` | reading and writing one entry — the pieces both APIs need |
 | `numfmt.py` | `parse_number()` — a display string to a format and a sort key |
+| `seo_locale.py` | localized metadata prose and Open Graph locale codes |
+| `test_namba.py` | the backend and cross-app checks |
 | `seed.py` + `seed_tags.py` | the markdown importer and its hand-written tags |
 | `admin_api.py` | the back office's routes, under `/api/admin` |
 | `auth.py` | operator passwords and sessions — the only login here |
@@ -70,8 +73,8 @@ go stale the way a table here would.
 | `admin.py` | the operator's commands — accounts, `hide`, `show`, `purge` |
 
 `Namba-frontend` — React + Vite, no state library and no UI kit. `src/api.ts` is
-the whole client; `Browse.tsx` serves the number, tag and search pages because
-they differ only by which filter they pass. The home page has two views off a
+the whole client; `Browse.tsx` serves the number (`/n/`), abbreviation (`/a/`),
+tag and search pages because they differ only by which filter they pass. The home page has two views off a
 `?view=` param — the number index, and a feed of what was last written or
 rewritten.
 
@@ -123,7 +126,8 @@ abbreviation in another alphabet and would be a second page about one word.
 
 That is the only place on this wiki with an alphabet rule, and it is about the
 *value*, which is the address. What an entry says is as free as anywhere else —
-`/a/UFO` can be titled and written in Korean, and translated into six more.
+`/a/UFO` can be titled and written in Korean, and translated into other
+languages; the form offers 18 language choices.
 
 ### Anyone can edit
 
@@ -165,7 +169,8 @@ them along.
 
 Writes are rate limited to 20/minute per IP, in memory — likes included, since
 they are writes too. Uploads are capped at
-5 MB each and 1 GB in total, restricted to jpg/png/gif/webp, and always renamed
+5 MB each and 1 GB in total by default (`NAMBA_UPLOAD_TOTAL_MB=1024` sets
+the directory cap in MiB), restricted to jpg/png/gif/webp, and always renamed
 to a server-generated UUID. A picture is uploaded the moment it is picked, before
 the entry is saved, so a closed form leaves one behind; `gc_uploads.py` collects
 those, and treats a name in a body or in a revision snapshot as a reference,
@@ -180,8 +185,8 @@ the same language twice edits it instead of duplicating it.
 
 The label is free-form to the API — any 40-character string — but the form does
 not let you type one. Both language fields are menus over a list of endonyms in
-`PostForm.tsx`, because free text turns one language into "Korean", "한국어" and
-"korean", which reads as three tabs and filters as three. Nobody is coining a
+`api.ts` (`LANG_CODE`), because free text turns one language into "Korean",
+"한국어" and "korean", which reads as three tabs and filters as three. Nobody is coining a
 language, so a fixed menu is not a claim about what people may mean, the way a
 fixed tag list would be.
 
@@ -194,20 +199,20 @@ recording no language at all. The column is still nullable and everything
 written before the field existed is still `NULL` until somebody saves it —
 nothing backfills on an entry's behalf.
 
-A picker in the header sets which language the **lists** are read in — the
-index, the feed, a number, a tag, a search. An entry that has been written in
-that language shows that version; an entry that has not keeps its own title and
+A picker in the footer sets the preferred language for entry text — the
+index, the feed, a number, an abbreviation, a tag, a search and an entry page.
+An entry that has been written in that language shows that version; an entry that has not keeps its own title and
 body, so a wiki nobody has finished translating still reads as a wiki rather
 than as a page of gaps. The options come from the translations that exist, not
-a fixed list, and the setting lives in `localStorage` like the nickname. Entry
-pages ignore it: they have a tab strip, and switching there is the reader's own
-move.
+a fixed list. `contentLanguage` in `api.ts` saves it as `namba.contentLang` in
+`localStorage`, with `namba.lang` as a legacy fallback. The default is the empty
+string, shown as "As written". Entry pages start with that preference and also
+let the reader switch translations with their own tab strip.
 
-Until somebody translates something there is no picker at all. `/api/languages`
-reads off the translations, so on a fresh wiki it is empty and the menu would
-hold "Original" and the stored default drawn as "English · 0" — two labels for
-the same nothing, and picking the first drops the second for good. It appears
-with the first translation.
+The footer picker is always visible, including before the first translation.
+`/api/languages` supplies the translated-language options; a saved choice missing
+from that response remains selectable with a count of zero. The interface
+language is a separate footer setting.
 
 Translations follow the same rules as everything else: anyone can add, rewrite
 or remove one, the first translator keeps the byline, and the change is
@@ -257,7 +262,8 @@ picture together.
 
 `/admin`, behind a login, and a second document rather than a route in the wiki's
 bundle — the reading pages should not carry a table UI nobody but an operator
-opens, and 1400 lines of the wiki's global CSS should not reach a dense table.
+opens, and roughly 1,600 lines of the wiki's global CSS should not reach a dense
+table.
 
 | | |
 |---|---|
@@ -296,17 +302,19 @@ They are served together rather than split so that every page can carry its own
 `<head>`. A share of an entry has to arrive with that entry's title, blurb and
 picture already in the markup — no crawler runs the JavaScript that would set
 them — so something has to write the `<head>` per request, and the only process
-holding the entry is this one. `/`, `/n/42`, `/a/UFO` and `/t/book` get one too,
-with the entries filed there named in the description and in a JSON-LD
-`ItemList`;
+holding the entry is this one. `/` gets `WebSite` JSON-LD with a
+`SearchAction`; `/n/42`, `/a/UFO` and `/t/book` get descriptions and JSON-LD
+`ItemList`s naming their entries. `/guide` gets its own title, description and
+breadcrumbs.
 `/search`, `/new`, `/random`, an edit form and anything mistyped are marked
 `noindex`. `NAMBA_DIST` overrides where it looks.
 
 `/robots.txt` and `/sitemap.xml` come from the same process and name the address
 the request arrived at, so there is no domain configured anywhere in this repo.
-Behind a reverse proxy that does not pass `X-Forwarded-Proto`, either run
-uvicorn with `--proxy-headers` or set `NAMBA_BASE_URL=https://your.host`, or
-every canonical on an https site will say http.
+Uvicorn enables proxy headers by default; set `FORWARDED_ALLOW_IPS` to the
+trusted proxy addresses so its forwarded scheme and client address are used.
+If the proxy does not pass `X-Forwarded-Proto`, set
+`NAMBA_BASE_URL=https://your.host` for correct canonical URLs.
 
 The sitemap is how the wiki is found at all: every link to `/n/42` is drawn by
 the router after the JavaScript runs, and most crawlers — every AI one — do not
@@ -314,8 +322,8 @@ run it. `robots.txt` allows those crawlers deliberately, because everything here
 is CC0 and the footer already says so.
 
 In development nothing of that runs: `npm run dev` serves the app and proxies
-`/api` here, which is why the injection is covered by `test_share_card` rather
-than by looking at it.
+`/api`, `/uploads`, `/docs` and `/openapi.json` here, which is why the injection
+is covered by `test_share_card` rather than by looking at it.
 
 One caveat: the rate limiter lives in process memory, so it is per-worker. Run
 one worker, or move it to redis. It counts per IP, so a reverse proxy needs

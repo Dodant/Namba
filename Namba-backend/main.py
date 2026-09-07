@@ -518,7 +518,7 @@ def list_languages(con=Depends(get_db)):
 
     Joined to posts rather than read off translations alone: a language nothing
     visible is written in is not one the wiki can be read in, and leaving the
-    join out put a hidden entry's language in the header's picker."""
+    join out would put a hidden entry's language in the footer's content picker."""
     return [
         {"lang": r["lang"], "count": r["count"]}
         for r in con.execute(
@@ -1665,7 +1665,7 @@ def sitemap(request: Request, con=Depends(get_db)):
     urls += [(base + value_path(r["fmt"], r["value"]), r["at"])
              for r in con.execute(
         "SELECT value, MAX(updated_at) AS at, "
-        "       CASE WHEN format = 'ABBR' THEN 'ABBR' ELSE '' END AS fmt "
+        f"       CASE WHEN {section_where('abbr')} THEN 'ABBR' ELSE '' END AS fmt "
         "FROM posts WHERE status = ? GROUP BY value, fmt ORDER BY value, fmt",
         (LIVE,))]
     urls += [(f"{base}t/{enc(r['tag'])}", r["at"]) for r in con.execute(

@@ -281,9 +281,9 @@ export default function PostForm() {
                 both sides -- 4+ digits, because there is no thousand in 100 --
                 so under that the box was a control you could tick and untick
                 with nothing on the page changing either way, which reads as
-                broken rather than as inapplicable. Asking showValue rather
-                than counting digits here: it is the function that decides,
-                and it also knows 3.14159 has nothing to group after the point.
+                broken rather than as inapplicable. canGroupValue counts the
+                canonical number's integer digits, so 3.14159 has nothing to
+                group after the point.
 
                 The tick survives a value that drops back under four digits.
                 grouped is display only and showValue ignores it there, so

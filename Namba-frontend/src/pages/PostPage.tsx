@@ -115,8 +115,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
             to add "English" as a tab of its own. A reader's switch and nothing
             more -- adding a language is a write, and writes are at /edit.
 
-            Absent until there is a second one, the same rule the header's
-            language picker follows: one tab is a rule drawn across the top of
+            Absent until there is a translation: one tab is a rule across the top of
             the page to say the entry is written in the language you are
             already reading. It returns with the first translation. */}
         {!!post.translations?.length && (

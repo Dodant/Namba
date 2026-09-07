@@ -3,7 +3,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 /* The back office is a second document, not a route in the wiki's bundle. Two
-   reasons, and the first is the one that matters: index.css is 1300 lines of
+   reasons, and the first is the one that matters: index.css is roughly 1,600 lines of
    global rules in which every control is a 999px capsule, and none of that
    belongs on a dense table. A separate document cannot inherit it. The second
    is that the reading pages should not carry a table UI nobody but an operator

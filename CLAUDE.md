@@ -44,9 +44,11 @@ That test is there because the 422 only catches drift one way. The backend
 rejects an unknown format, a tag past either limit and an invented reason — so a
 frontend-only change fails loudly. A **backend**-only one does not: add a reason
 here and forget `api.ts` and nothing errors, the choice is simply missing from a
-menu and nobody finds out. The five vocabularies live in `db.py` rather than
-beside the routes because they are what the `TEXT` columns may hold, and both
-`main.py` and `admin_api.py` need them without importing each other.
+menu and nobody finds out. The seven vocabularies live in `db.py` rather than
+beside the routes because they define schema values and block-duration choices,
+and both
+`main.py` and `admin_api.py` need them without a circular import. `main.py`
+imports `admin_api.py`; the shared vocabularies stay below both.
 
 They are **not** SQL `CHECK` constraints, and that is a trade rather than an
 oversight: `CREATE TABLE IF NOT EXISTS` skips a database that already exists and
@@ -112,7 +114,9 @@ hand-copied vocabulary and a branch beside every existing one.
   **The same UI locale owns the server-rendered metadata around the content.**
   `<html lang>`, `Content-Language`, the site and list prose in titles and
   descriptions, Open Graph locale/text and JSON-LD `WebSite`/`CollectionPage`
-  language all come from `Namba-backend/seo_locale.py`. Entry titles, bodies
+  language use the locale selected by `request_ui_locale()` in `main.py`.
+  `seo_locale.py` supplies the localized prose and Open Graph locale codes;
+  `main.py` writes the language attributes and headers. Entry titles, bodies
   and an Article's stored `inLanguage` remain content and are never translated
   by that choice. Every localized response varies on both the UI cookie and
   `Accept-Language`; canonical URLs remain locale-neutral.
@@ -127,8 +131,8 @@ hand-copied vocabulary and a branch beside every existing one.
   than taken at its word.** The other four are ways of *reading* what was
   typed and cannot be wrong about it; this one is a claim *about* the value,
   and on a wiki with no login the claim is a stranger's. `is_abbr` in
-  `numfmt.py` is the rule and `resolve_format` is where it bites, so both
-  writes hit it. It is not a keyboard preference: `유에프오` and `УФО` are the
+  `numfmt.py` is the rule and `resolve_format` in `main.py` is where it bites,
+  so both writes hit it. It is not a keyboard preference: `유에프오` and `УФО` are the
   same abbreviation in another alphabet, and one `/a/` page per alphabet is
   the split the upper-casing exists to prevent. An entry still says what it
   means in any language — `lang` and the translations are untouched by this;
@@ -169,7 +173,7 @@ hand-copied vocabulary and a branch beside every existing one.
 ## Working here
 
 Prefer editing what exists over adding files — this is deliberately a small
-codebase (~13,500 lines, tests and CSS included). Each app has its own
+codebase (~17,000 lines, tests and CSS included). Each app has its own
 `CLAUDE.md` with the details that bite.
 
 **Commit in logical units, without being asked.** One coherent change per

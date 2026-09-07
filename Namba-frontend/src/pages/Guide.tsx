@@ -93,10 +93,10 @@ export default function Guide() {
   const [params] = useSearchParams()
   const nav = useNavigate()
   const { hash } = useLocation()
-  /* The URL decides, not state and not the header's picker. A rule an operator
+  /* The URL decides, independently of the footer's content picker. A rule an operator
      is quoting has to travel: /guide?lang=ko#mining is a link that goes in a
-     delete request and arrives at the same rule it left. The header's picker
-     answers a different question anyway -- which language *lists* render in,
+     delete request and arrives at the same rule it left. The content picker
+     answers a different question anyway -- which language entry text renders in,
      off what readers have translated -- and the two vocabularies are not the
      same set. */
   const lang = byCode(params.get('lang')) ?? BASE_LANG

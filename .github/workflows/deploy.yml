@@ -35,7 +35,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # ── the checks from CLAUDE.md, in the order it lists them ──────────────
+      # Checks from CLAUDE.md: build the frontend first so backend tests can
+      # inspect the built documents and assets.
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

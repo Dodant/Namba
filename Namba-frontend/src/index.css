@@ -1131,7 +1131,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 /* 680px is a line you can read, and a form is a column of fields anyway. */
 .form { max-width: 680px; padding-bottom: 28px; }
 /* The rules page takes the container's whole width instead, which is the
-   .wrap's 1160 and no more. It reads wider than a measure wants -- the nine
+   .wrap's 1160 and no more. It reads wider than a measure wants -- the eight
    two-column tables are what the width is for, and they were the narrow thing
    in a 680px column while half the screen sat empty beside them. */
 /* padding rather than a margin on the row inside, because .body > :first-child
@@ -1565,15 +1565,11 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    column. Below that they stack on their own -- around 860, which is not one
    of this file's four widths and does not need to be. */
 .foot p { margin: 0; flex: 1 1 380px; max-width: 68ch; }
-/* the links, always their own line: they are the footer's only controls and
-   a row of four is not a third sentence. of-type, not last-child -- the
-   language picker is the footer's last child when there is one to draw. */
+/* the links, always their own line: a row of four is not a third sentence.
+   of-type, not last-child -- the language controls follow this paragraph. */
 .foot p:last-of-type { flex-basis: 100%; }
-/* and the picker under them, in the corner: alone on its line, auto margin
-   takes the whole of it and parks the pill against the right edge of the
-   text column. Nothing else in the footer is right-aligned, which is the
-   point -- it is the one thing down here that is a control rather than a
-   sentence. */
+/* The interface and content pickers share a full-width row below the links.
+   Flex alignment puts the controls at the right edge; they wrap when needed. */
 .locale-picks {
   flex-basis: 100%; margin-left: auto;
   display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px 16px;

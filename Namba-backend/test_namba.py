@@ -528,7 +528,7 @@ def test_head_per_route():
 
     # -- /guide is the second page here that is not a query, and the only
     # route besides the front page that _index() indexes on purpose. It has to
-    # carry a title and a blurb of its own: page_bits() would give it the
+    # carry a title and a blurb of its own: head_home() would give it the
     # site's, and a search result for the rules would then be a duplicate of
     # the front page's.
     page = c.get("/guide").text
@@ -576,7 +576,7 @@ def test_robots_and_sitemap():
     # One group and no per-bot rule. Everything here is CC0 and the footer
     # invites anyone to feed it to a machine, so blocking the machines would
     # contradict the licence the site states on every page. If that changes it
-    # changes in both places, and this is the assertion that says so.
+    # changes in both places; these assertions check only the robots half.
     assert res.text.count("User-agent:") == 1
     for bot in ("GPTBot", "ClaudeBot", "PerplexityBot", "CCBot", "Google-Extended"):
         assert bot not in res.text, f"{bot} is blocked but the footer says CC0"
@@ -1241,7 +1241,7 @@ def test_admin_content_and_dashboard():
     assert ops.get("/api/admin/posts", params={"status": "NONSENSE"}
                    ).status_code == 422
 
-    # ...and so does the detail read, which is the only caller of hidden=True
+    # ...and so does the detail read, using hidden=True like other admin handlers
     assert c.get(f"/api/posts/{pid}").status_code == 404
     full = ops.get(f"/api/admin/posts/{pid}").json()
     assert full["title"] == "Moon landings" and full["revision_count"] == 1

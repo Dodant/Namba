@@ -107,7 +107,7 @@ CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id, id DESC);
 -- Append-only. Nothing in this codebase issues an UPDATE or a DELETE here, and
 -- that is the point -- an audit log an operator can tidy is not one. No foreign
 -- keys either, for the reason revisions has none: a record of what happened to
--- a thing must outlive the thing, and target_id points at four different
+-- a thing must outlive the thing, and target_id points at five different
 -- tables anyway.
 --
 -- No raw address is stored. The three hashes are salted with the install's own
