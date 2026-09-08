@@ -602,7 +602,7 @@ so the form cannot drop it on the next save.
 The Format select reshapes the field beside it, down to that field's own label
 — with Abbreviation picked, "Number" is the wrong word for the box you are
 typing `UFO` into, so the label reads Abbreviation and the filter keeps Latin
-letters, digits and `.&/-`. Case is kept as typed — `SaaS` is spelled `SaaS` —
+letters, digits and `.&/;-`. Case is kept as typed — `SaaS` is spelled `SaaS` —
 and the API is what keeps `ufo` and `UFO` on one page, by adopting the spelling
 already stored for the word. That filter is a copy of `is_abbr` in
 `numfmt.py`, which **refuses** anything else with a 422 — unlike the other four

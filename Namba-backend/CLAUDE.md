@@ -436,7 +436,7 @@ the sitemap.
   other four describe how to *read* what was typed and cannot be wrong about
   it — `resolve_format` takes an explicit `TIME` on `1:29:300` at its word and
   files it with no sort key. `ABBR` is a claim *about* the value, so it is
-  checked: Latin letters, digits and `.&/-`, and at least one letter. It is a
+  checked: Latin letters, digits and `.&/;-`, and at least one letter. It is a
   422 raised from `resolve_format` rather than a Pydantic validator, because
   the validator cannot see both halves — an edit sends a `format` and no
   `value` at all — and because that function is the one place both writes

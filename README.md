@@ -138,7 +138,7 @@ A word has one stored spelling — the first writer's, so `SaaS` stays `SaaS` �
 and `ufo` typed later lands on `UFO`, because they are one word and with no
 accounts there is nobody to merge two pages about it afterwards — the same
 argument the thousands separator makes one paragraph up. And the value is
-Latin letters: `R&D`, `Ph.D`, `I/O` and `MP3` are fine, `유에프오` and `УФО` are
+Latin letters: `R&D`, `Ph.D`, `I/O`, `TL;DR` and `MP3` are fine, `유에프오` and `УФО` are
 the same abbreviation in another alphabet and would be a second page about one
 word.
 
