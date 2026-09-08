@@ -318,9 +318,9 @@ if __name__ == "__main__":
             for a in admins():
                 mark = "" if a["active"] else "  (revoked)"
                 seen = a["last_login_at"] or "never signed in"
-                mfa = "TOTP" if a["totp_enabled"] else "TOTP NEEDED"
+                enrolled = "TOTP" if a["totp_enabled"] else "TOTP NEEDED"
                 print(f"{a['id']:>3}  {a['role']:<12} {a['email']:<32} "
-                      f"{mfa:<11} {seen}{mark}")
+                      f"{enrolled:<11} {seen}{mark}")
         elif cmd == "add" and rest:
             _, first = add_admin(rest[0], _ask_password(),
                                    "SUPER_ADMIN" if "--super" in rest else "ADMIN")

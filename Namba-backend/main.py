@@ -1309,14 +1309,14 @@ def write_head(page: str, *, title=None, desc=None, canonical=None,
         )
     if title is not None:
         esc = html.escape(title, quote=True)
-        page = re.sub(r"<title>.*?</title>", lambda _: f"<title>{esc}</title>",
-                      page, count=1, flags=re.S)
+        page = re.sub(r"<title>[^<]*</title>", lambda _: f"<title>{esc}</title>",
+                      page, count=1)
     if desc is not None:
         d = html.escape(desc, quote=True)
         page = re.sub(
-            r'<meta name="description" content=".*?"\s*/?>',
+            r'<meta name="description" content="[^"]*"\s*/?>',
             lambda _: f'<meta name="description" content="{d}" />',
-            page, count=1, flags=re.S,
+            page, count=1,
         )
     out = []
     if canonical:
