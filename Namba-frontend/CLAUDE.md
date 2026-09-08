@@ -363,9 +363,10 @@ What actually changes shape, rather than size:
 
 - **The header.** One row above 900. Below it the three pills lose their
   labels and keep their icons — `.lbl` is clipped to a pixel, not
-  `display: none`, so each link keeps its accessible name — and the search
-  and the pills stay on one row: beside the wordmark while there is room,
-  under it below 560. They used to take a row of their own under the search,
+  `display: none`, so each link keeps its accessible name — as circles the
+  exact height of the search box, sized off `--ctl-font` so they grow with
+  the box at a coarse pointer; and the search and the pills stay on one row:
+  beside the wordmark while there is room, under it below 560. They used to take a row of their own under the search,
   which made a phone's header three rows tall before the first number. In
   the 900 band the search carries `margin-left: auto`, so once its 460px cap
   bites the slack goes to the wordmark's side and the pills stay flush right.
