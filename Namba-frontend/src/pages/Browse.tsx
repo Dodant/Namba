@@ -17,10 +17,6 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
   const query = canonicalNumber(q, locale).value
 
   const abbr = mode === 'abbr'
-  /* the value is stored upper-case, and /a/ufo is a link somebody typed or
-     pasted from before that was true -- fold it here rather than asking the
-     API to match loosely, so the page and its canonical say the one spelling */
-  const value = abbr ? raw.toUpperCase() : raw
   /* one value, two sections: a page about a number never shows an entry filed
      as an abbreviation, and the other way round. See section_where() in main.py */
   const section = abbr ? 'abbr' : 'number'
@@ -29,13 +25,16 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
     () =>
       api.posts(
         mode === 'number' || abbr
-          ? { value, section, sort: 'number', lang }
+          ? { value: raw, section, sort: 'number', lang }
           : mode === 'tag'
             ? { tag, sort: 'number', lang }
             : { q: query, sort: 'number', lang },
       ),
-    [mode, value, section, tag, query, lang],
+    [mode, raw, section, tag, query, lang],
   )
+  /* an abbreviation has one stored spelling and the API reads /a/ufo up to
+     case, so the hero says the spelling the entries have, not the link's */
+  const value = abbr && posts.data?.length ? posts.data[0].value : raw
 
   const n = posts.data?.length ?? 0
   const count = m.common.entries(n)

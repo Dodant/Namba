@@ -70,6 +70,7 @@ def test_parse():
         "R&D": ("ABBR", None),
         "Ph.D": ("ABBR", None),
         "X-ray": ("ABBR", None),
+        "I/O": ("ABBR", None),                 # a slash is punctuation too
         "3M": ("MIXED", None),                 # a digit in it, so not a word
         "G7": ("MIXED", None),
         "유에프오": ("MIXED", None),              # another alphabet is not this one
@@ -83,8 +84,8 @@ def test_parse():
     # only ever guesses, and a poster picking ABBR is otherwise taken at their
     # word. Digits pass here and not above -- MP3 and Y2K are abbreviations
     # nothing can guess at -- but the alphabet is not negotiable.
-    for ok in ("UFO", "ufo", "CSI", "R&D", "Ph.D", "X-ray", "MP3", "Y2K",
-               "COVID-19", "3M", " UFO "):
+    for ok in ("UFO", "ufo", "CSI", "R&D", "Ph.D", "X-ray", "I/O", "N/A", "km/h",
+               "MP3", "Y2K", "COVID-19", "3M", " UFO "):
         assert is_abbr(ok), ok
     for no in ("유에프오", "УФО", "宇宙", "café", "Ünicode", "42", "9.5", "9¾",
                "", "   ", "-", "...", "UF O", "UFO!"):
@@ -345,7 +346,7 @@ def test_localized_metadata():
     assert "Números con la etiqueta metadata-test — 1 entrada en Namba" in tagged
 
     abbreviation = c.post("/api/posts", json={
-        "value": "seo", "format": "ABBR", "title": "Search engine optimization",
+        "value": "SEO", "format": "ABBR", "title": "Search engine optimization",
     }).json()
     abbr = c.get(
         "/a/SEO", headers={"Accept-Language": "ja-JP"},
@@ -437,7 +438,7 @@ def test_head_per_route():
     # -- /a/{value} is the same page for the other section, in its own words.
     # An abbreviation is not a number, so it does not answer at /n/ and the
     # sentence under it does not say "means".
-    c.post("/api/posts", json={"value": "ufo", "format": "ABBR",
+    c.post("/api/posts", json={"value": "UFO", "format": "ABBR",
                                "title": "Unidentified flying object"})
     page = c.get("/a/UFO").text
     assert "<title>UFO — 1 entry · Namba</title>" in page, page[:400]
@@ -446,8 +447,16 @@ def test_head_per_route():
     coll, crumb = _ld(page)[0]
     assert coll["about"]["name"] == "UFO"
     assert crumb["itemListElement"][-1]["item"] == "http://testserver/a/UFO"
-    # the value is stored upper-case, so /a/ufo is the same page and says so
-    assert 'rel="canonical" href="http://testserver/a/UFO"' in c.get("/a/ufo").text
+    # a word has one spelling, so /a/ufo is the same page and says the stored
+    # one -- in its title and its canonical, not just in its rows
+    lower = c.get("/a/ufo").text
+    assert "<title>UFO — 1 entry · Namba</title>" in lower, lower[:400]
+    assert 'rel="canonical" href="http://testserver/a/UFO"' in lower
+    # a slash in an abbreviation is the same raw-path trap as 11/22/63
+    c.post("/api/posts", json={"value": "I/O", "format": "ABBR", "title": "input/output"})
+    page = c.get("/a/I%2FO").text
+    assert "<title>I/O — 1 entry · Namba</title>" in page, page[:400]
+    assert 'rel="canonical" href="http://testserver/a/I%2FO"' in page, "canonical re-encoded"
     # ...and the two sections do not leak into each other
     assert "noindex" in c.get("/n/UFO").text, "an abbreviation answered at /n/"
     assert "Unidentified" not in c.get("/n/UFO").text
@@ -506,7 +515,7 @@ def test_head_per_route():
     # means, and the crumb above it points at the section it is read in. Both
     # come off the row's own format: hardcode either back to the number's and
     # the page still looks right, which is why they are asserted here.
-    dna = c.post("/api/posts", json={"value": "dna", "format": "ABBR",
+    dna = c.post("/api/posts", json={"value": "DNA", "format": "ABBR",
                                      "title": "Deoxyribonucleic acid"}).json()
     page = c.get(f"/p/{dna['id']}").text
     assert 'content="Deoxyribonucleic acid — what DNA stands for, on Namba."' in page, \
@@ -1662,15 +1671,33 @@ def test_api_round_trip():
     assert t["format"] == "MIXED" and t["sort_key"] is None and t["bucket"] is None
 
     # -- the fifth kind. Letters are an abbreviation, they carry no sort key,
-    # and the value is folded to upper case on the way in so that ufo, Ufo and
-    # UFO are one word at one address -- the same argument the separators make.
-    u = c.post("/api/posts", json={"value": "ufo", "title": "Unidentified flying object",
+    # and a word has one spelling: the first writer's. A later "ufo" lands on
+    # the "UFO" already here instead of opening a second page -- the same
+    # argument the separators make -- and it is not folded to upper case,
+    # because SaaS and IoT are abbreviations too and SAAS is not how anyone
+    # writes them.
+    u = c.post("/api/posts", json={"value": "UFO", "title": "Unidentified flying object",
                                    "author": "mulder"}).json()
     assert u["value"] == "UFO", u["value"]
     assert u["format"] == "ABBR" and u["sort_key"] is None and u["bucket"] is None
-    again = c.post("/api/posts", json={"value": "UFO", "title": "the film"}).json()
+    again = c.post("/api/posts", json={"value": "ufo", "title": "the film"}).json()
+    assert again["value"] == "UFO", again["value"]
     assert len(c.get("/api/posts", params={"value": "UFO"}).json()) == 2, \
         "the two spellings did not land on the same abbreviation"
+    saas = c.post("/api/posts", json={"value": "SaaS", "title": "Software as a service"}).json()
+    assert saas["value"] == "SaaS" and saas["format"] == "ABBR", saas
+    saas2 = c.post("/api/posts", json={"value": "SAAS", "format": "ABBR", "title": "x"}).json()
+    assert saas2["value"] == "SaaS", "a later writer did not adopt the spelling"
+    assert len(c.get("/api/posts", params={"value": "saas", "section": "abbr"}).json()) == 2, \
+        "the abbr section is not read case-insensitively"
+    # the one entry about a word may still correct its own case: the lookup
+    # leaves the entry being edited out, and nothing else here spells it
+    iot = c.post("/api/posts", json={"value": "IOT", "format": "ABBR", "title": "x"}).json()
+    assert c.patch(f"/api/posts/{iot['id']}", json={"value": "IoT", "author": "y"}
+                   ).json()["value"] == "IoT"
+    # a slash is punctuation an abbreviation carries, and the parser guesses it
+    io = c.post("/api/posts", json={"value": "I/O", "title": "input/output"}).json()
+    assert io["value"] == "I/O" and io["format"] == "ABBR", io
     # -- and this is the one format that is checked rather than taken at its
     # word. Every other one is a way of reading what was typed and cannot be
     # wrong about it; ABBR is a claim about the value, and with no login the
@@ -1690,7 +1717,7 @@ def test_api_round_trip():
     # digits are allowed even though the parser will never guess at them
     mp3 = c.post("/api/posts", json={"value": "mp3", "title": "MPEG-1 Audio Layer III",
                                      "format": "ABBR"}).json()
-    assert mp3["value"] == "MP3" and mp3["format"] == "ABBR", mp3
+    assert mp3["value"] == "mp3" and mp3["format"] == "ABBR", mp3
 
     # a poster who means the letters as a number says so, and it is still a
     # different page -- one value, two sections, one address each
@@ -1710,14 +1737,15 @@ def test_api_round_trip():
     # it does not break the page
     assert len(section("banana")) == 3
 
-    # the format is what settles the spelling, so re-filing an entry folds it
-    # too -- the number field is read-only on an edit and sends no value at all
-    later = c.post("/api/posts", json={"value": "csi", "format": "MIXED",
+    # the format is what settles the spelling, so re-filing an entry adopts
+    # the word's too -- the number field is read-only on an edit and sends no
+    # value at all
+    later = c.post("/api/posts", json={"value": "Ufo", "format": "MIXED",
                                        "title": "not sure yet"}).json()
-    assert later["value"] == "csi", "MIXED keeps what was typed"
+    assert later["value"] == "Ufo", "MIXED keeps what was typed"
     fixed = c.patch(f"/api/posts/{later['id']}",
                     json={"format": "ABBR", "author": "scully"}).json()
-    assert fixed["value"] == "CSI" and fixed["format"] == "ABBR", fixed
+    assert fixed["value"] == "UFO" and fixed["format"] == "ABBR", fixed
     assert fixed["author"] == later["author"], "re-filing took the byline over"
     assert fixed["edited_by"] == "scully"
     # re-filing an existing entry is the other way in, and the number field is
@@ -1732,7 +1760,8 @@ def test_api_round_trip():
     assert len(c.get(f"/api/posts/{ko['id']}/revisions").json()) == before, \
         "a refused edit left a snapshot behind"
 
-    for pid in (u["id"], again["id"], mixed["id"], fixed["id"], mp3["id"], ko["id"]):
+    for pid in (u["id"], again["id"], mixed["id"], fixed["id"], mp3["id"], ko["id"],
+                saas["id"], saas2["id"], iot["id"], io["id"]):
         admin.set_status(pid, "HIDDEN")
 
     clock = c.post("/api/posts", json={"value": "09:41", "title": "iPhone keynote",

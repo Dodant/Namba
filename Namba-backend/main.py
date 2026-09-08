@@ -435,15 +435,21 @@ def ungroup(value, grouped, locale="en"):
     return value, bool(grouped or typed_grouping)
 
 
-def resolve_format(value, given):
+def resolve_format(value, given, con, self_id=None):
     """(value as stored, format, sort_key). The parsed suggestion, unless the
     poster explicitly picked a format.
 
     It hands the value back because settling the format is what settles how the
-    value is spelled: an ABBR is stored upper-case, so "ufo", "Ufo" and "UFO"
-    are one abbreviation at one address. Same argument `ungroup` makes about
-    commas -- the moment both spellings are storable, /a/UFO and /a/ufo are two
-    pages about one word, and there is no login here to merge them afterwards.
+    value is spelled: an ABBR has one spelling per word, so "ufo", "Ufo" and
+    "UFO" are one abbreviation at one address. Same argument `ungroup` makes
+    about commas -- the moment two spellings are storable, /a/UFO and /a/ufo
+    are two pages about one word, and there is no login here to merge them
+    afterwards. The spelling is the first writer's rather than upper-case,
+    because SaaS and IoT are abbreviations too and SAAS is not how anyone
+    writes them: a later writer adopts what is already stored, whatever its
+    status, and only an entry with no sibling keeps what it typed. `self_id`
+    leaves the entry being edited out of that lookup, so the one entry about a
+    word can still correct its own case.
 
     It is also where ABBR is checked rather than taken at its word. Every other
     format is a way of reading what was typed and cannot be wrong about it; this
@@ -467,7 +473,12 @@ def resolve_format(value, given):
             raise HTTPException(
                 422, "an abbreviation is Latin letters, and needs at least one "
                      "-- UFO, CSI, R&D, MP3. Anything else is another format.")
-        value = value.upper()
+        value = value.strip()
+        first = con.execute(
+            "SELECT value FROM posts WHERE format = 'ABBR' AND value = ? COLLATE NOCASE "
+            "AND id IS NOT ? ORDER BY id LIMIT 1", (value, self_id)).fetchone()
+        if first:
+            value = first["value"]
     return value, fmt, key
 
 
@@ -641,7 +652,10 @@ def list_posts(
     where.append("p.status = ?")
     args.append(LIVE)
     if value is not None:
-        where.append("p.value = ?")
+        # an abbreviation is one word however a link spells it -- see
+        # resolve_format; a Mixed "gross" and "GROSS" stay two values
+        loose = section == "abbr" or (format or "").upper() == "ABBR"
+        where.append("p.value = ? COLLATE NOCASE" if loose else "p.value = ?")
         args.append(value)
     if format:
         where.append("p.format = ?")
@@ -755,7 +769,7 @@ def list_comments(post_id: int, con=Depends(get_db)):
 @app.post("/api/posts", status_code=201)
 def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
     value, grouped = ungroup(p.value, p.grouped, p.number_locale)
-    value, fmt, key = resolve_format(value, p.format)
+    value, fmt, key = resolve_format(value, p.format, con)
     ts = now()
     with con:
         cur = con.execute(
@@ -799,9 +813,9 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         if p.value is not None:
             value, grouped = ungroup(p.value, grouped, p.number_locale)
         if p.format:
-            value, fmt, key = resolve_format(value, p.format)
+            value, fmt, key = resolve_format(value, p.format, con, post_id)
         elif p.value is not None:
-            value, fmt, key = resolve_format(value, None)  # value changed, re-derive
+            value, fmt, key = resolve_format(value, None, con, post_id)  # value changed, re-derive
         else:
             fmt, key = current["format"], current["sort_key"]
         # author is the first writer and stays put -- on an open wiki, an edit
@@ -1490,10 +1504,13 @@ def head_abbr(con, page, value, base, locale="en"):
     stands for -- and because a value stored as one is not filed under the
     other. No grouped_value: there is no thousand in UFO.
     """
-    value = value.upper()  # /a/ufo is an old link to the one abbreviation
+    # /a/ufo is a link to the one abbreviation however it was typed, and the
+    # page and its canonical say the spelling that is stored, not the link's
     rows = [dict(r) for r in con.execute(
-        "SELECT id, title FROM posts WHERE value = ? AND status = ? "
-        f"AND {section_where('abbr')} ORDER BY id", (value, LIVE))]
+        "SELECT id, title, value FROM posts WHERE value = ? COLLATE NOCASE "
+        f"AND status = ? AND {section_where('abbr')} ORDER BY id", (value, LIVE))]
+    if rows:
+        value = rows[0]["value"]
     return head_list(page, base, kind="abbreviation", subject=value,
                      url=f"{base}a/{enc(value)}", rows=rows, locale=locale)
 

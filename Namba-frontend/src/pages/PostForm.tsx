@@ -18,10 +18,10 @@ import { useUi } from '../uiLocale'
 const KEEP: Record<string, RegExp> = {
   /* Latin script only, which is the API's rule and not a keyboard
      preference: 유에프오 and УФО are the same abbreviation in another
-     alphabet, and one /a/ page per alphabet is the split the upper-casing
-     avoids. Digits belong here even though parse_number will not guess at
-     them -- MP3 and Y2K are abbreviations somebody has to be able to file. */
-  ABBR: /[^A-Za-z0-9.&-]/g,
+     alphabet, and one /a/ page per alphabet is the split the one-spelling
+     rule avoids. Digits belong here even though parse_number will not guess
+     at them -- MP3 and Y2K are abbreviations somebody has to be able to file. */
+  ABBR: /[^A-Za-z0-9.&/-]/g,
 }
 
 const EXAMPLES: Record<string, string> = {
@@ -260,14 +260,13 @@ export default function PostForm() {
                   : KEEP[format]
                     ? e.target.value.replace(KEEP[format], '')
                     : e.target.value
-                /* the API stores an abbreviation upper-case so that ufo and
-                   UFO are one page, and a field that showed the other one
-                   would be lying about the address this is about to have */
-                const next = format === 'ABBR' ? kept.toUpperCase() : kept
-                setValue(next)
+                /* case is kept: SaaS is spelled SaaS. The API still keeps
+                   ufo and UFO on one page by adopting the spelling already
+                   stored, so what is typed is a proposal, not the address */
+                setValue(kept)
                 /* Typing the locale's grouping marks is itself a request to
                    keep displaying them, just as typing 1,000 always was. */
-                if (format !== 'ABBR' && canonicalNumber(next, locale).grouped) {
+                if (format !== 'ABBR' && canonicalNumber(kept, locale).grouped) {
                   setGrouped(true)
                 }
               }}
