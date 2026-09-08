@@ -247,7 +247,25 @@ sanitiser config to get wrong.
   summary is one click that has to be two things. Its rows need the
   `.ix-list` box: everything after a summary goes into one anonymous content
   box, so the column's `gap` lands between the summary and that box rather
-  than between the rows in it. `Feed` is
+  than between the rows in it.
+
+  **A row is one line and never two.** The index is read down the numerals,
+  and a blurb that wraps pushes the next number a line further from the last,
+  so one long entry loosens the whole band around it. `.ix-link` is
+  `nowrap` + `ellipsis`, and the way through is `.ix-more` — "See more" at the
+  right end, before the like. It is shown by `.ix-link.cut`, which is a class
+  an effect in `Index` puts on: whether a line was clipped is a measurement
+  (`scrollWidth > clientWidth`) and no selector can ask for it. That effect
+  re-measures on `resize` and once more on `document.fonts.ready`, because
+  Newsreader arrives after the first paint and is wider than the fallback it
+  replaces — measuring only on mount marks the wrong rows on a cold load. It
+  queries the document rather than a ref, since `Index` returns a fragment
+  with nothing to hang one on and is the only thing in the app that renders an
+  `.ix-link`. **Below 560 the word goes and the clipped line is the whole
+  signal**: 288px is a numeral, a title and a like already, and "See more" is
+  55 of them. The second link is `aria-hidden` and out of the tab order — it
+  goes exactly where the row link goes, and "see more" names nothing in a
+  screen reader's list of links. `Feed` is
   `sort=recent` off `/api/posts` — `updated_at DESC`, so a rewrite brings an old
   entry back up. It is labelled `Recent` in the header and the component is
   still `Feed`: the label names the order, `?view=feed` names the shape. One
