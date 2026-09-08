@@ -227,9 +227,9 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 
    Above 900 it is 92px and every clamp in it has hit its ceiling, so the
    height is a constant and the two rules below can be written in one number.
-   Under 900 it wraps to two rows and then three, and by a phone it is 172px
-   of a 667px screen -- a quarter of the page given to chrome permanently, on
-   the device with the least page to give. So it stays put there, and that
+   Under 900 it wraps to two rows, and by a phone it is 128px of a 667px
+   screen -- a fifth of the page given to chrome permanently, on the device
+   with the least page to give. So it stays put there, and that
    takes no rule to say: the whole block is inside a min-width query and
    simply does not reach a phone. Same 900 the header already wraps at,
    because it is the same fact -- this is a bar while it is one line and a
@@ -341,28 +341,31 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
    flush right, where they sit on a wide screen.
    1024 is above this, so a laptop and an iPad in landscape still get one row. */
 @media (max-width: 900px) {
-  /* a 220px basis rather than auto: at auto the group's base size is its
-     max-content, which includes the action row's 100% basis, so .acts was too
-     wide to sit beside the wordmark and took a line of its own -- three rows
-     of header before the first number. At 220 it fits, then grows into what is
-     left of the wordmark's line. */
-  .acts { flex: 1 1 220px; min-width: 0; }
+  /* The basis is the group's floor: a search box worth typing into beside
+     three icon pills. Under it the group drops below the wordmark whole,
+     rather than staying beside it and crushing the search to make room. */
+  .acts { flex: 1 1 320px; min-width: 0; }
   /* flex-end is a baseline argument between a wordmark and a row of pills, and
      there is no single row to have it in once the group is two rows tall: it
      dropped the masthead down beside the actions with the search box above it,
      so the first thing on the page was a form field. Top-aligned, the wordmark
      is first again. */
   .top { align-items: flex-start; }
-  /* margin-left, so the box ends where the row under it ends. The 460 cap is
-     what makes this necessary: past about 740 the search stops growing and
-     the slack it stops taking used to collect on its right, which left it
-     floating 41px short of the pills at 768 and 166px short at 900 -- the one
-     width band where they are two rows and the misalignment is the only thing
-     the eye has to line them up by. The slack goes to the wordmark's side
-     now, where there is nothing under it to line up with. */
+  /* margin-left, so once the 460 cap stops the box growing, the slack goes
+     to the wordmark's side and the pills stay flush right. */
   .search { flex: 1 1 180px; min-width: 0; max-width: 460px; margin-left: auto; }
   .search input { flex: 1; width: auto; min-width: 0; }
-  .acts-main { flex: 1 0 100%; justify-content: flex-end; }
+  /* The label goes and the icon stays. With the words on, the three wanted a
+     row of their own under the search -- a header three rows tall on a phone
+     before the first number. Icon-only they fit beside the box. The name is
+     clipped, not removed: display: none would take it out of the link's
+     accessible name along with the pixels. 11px of side padding, since a
+     14px icon in a 16px pill was a wide blank with a dot in it. */
+  .acts-main .lbl {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+  }
+  .acts-main .btn { padding: 9px 11px; }
 }
 
 /* --- buttons ------------------------------------------------------ */
@@ -620,32 +623,21 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
   .ix-num.mid { font-size: 16px; }
   .acts { gap: 6px; }
 
-  /* Left to wrap on their natural widths the five controls came out as
-     [search][Recent] over [Random][+ Add] -- two ragged rows, split at
-     whatever width the search box happened to be, with a different pair on
-     each. Give the search the row and the three pills the row under it:
-     the box gets the width it always wanted on a phone, and the actions
-     read as the one group they are.
+  /* The group takes the row under the wordmark: the search box and the three
+     icon pills, with the box getting whatever the pills leave.
 
-     flex-basis, not width: the 900 band above gives .acts a 220px basis so it
-     can sit beside the wordmark, and an explicit basis beats width outright --
+     flex-basis, not width: the 900 band above gives .acts a basis so it can
+     sit beside the wordmark, and an explicit basis beats width outright --
      width: 100% here did nothing at all, and the search came back up onto the
      masthead's line at 560. */
   .acts { flex: 1 1 100%; margin-left: 0; }
-  /* basis auto and no cap, not the 900 band's 180/460: this is the width
-     where the search is entitled to the whole row. */
-  .search { flex: 1 1 auto; max-width: none; }
-  /* space-between, not the 900 band's flush right: on a phone the group has
-     the row to itself under a full-width search box, and clumped at one end
-     it read as three buttons pushed aside rather than as the row's own three
-     actions. Spread, they answer the box above them edge to edge -- 38px
-     apart at 390, where the floor below would have given them 6.
-
-     6px and not 8: with the clock on Recent the three want 273px, and 320
-     leaves the row 288 -- two 8px gaps are one pixel more than that. The gap
-     is a floor nothing reaches until the row is narrower than any phone, and
-     wrap is what happens after that rather than three squeezed pills. */
-  .acts-main { gap: 6px; justify-content: space-between; flex-wrap: wrap; }
+  /* No cap, not the 900 band's 460: this is the width where the search is
+     entitled to the rest of the row. And a 120px basis rather than auto or
+     the 900 band's 180: .acts still wraps, and at 320 the row is 288px, of
+     which the three pills and their gaps take 136. A basis over 152 put the
+     pills back on a row of their own -- the three-row header this band
+     exists to prevent -- while 120 fits and then grows into the rest. */
+  .search { flex: 1 1 120px; max-width: none; }
 }
 
 /* --- feed --------------------------------------------------------- */

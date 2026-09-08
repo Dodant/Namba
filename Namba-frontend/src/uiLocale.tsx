@@ -13,7 +13,7 @@ const GLOBAL_NAV = {
   searchPlaceholder: 'Search…',
   recent: 'Recent',
   random: 'Random',
-  add: '+ Add',
+  add: 'Add',
 } as const
 
 const GLOBAL_TERMS = {

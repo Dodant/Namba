@@ -73,6 +73,15 @@ const CLOCK = (
   </svg>
 )
 
+/* Plus for Add, to the same spec. It was a "+" in the label; as an icon it
+   is what is left of the button once the label goes under 900. */
+const PLUS = (
+  <svg className="ico" viewBox="0 0 16 16" aria-hidden="true">
+    <path d="M8 3.5v9M3.5 8h9" fill="none" stroke="currentColor"
+          strokeWidth="1.3" strokeLinecap="round" />
+  </svg>
+)
+
 /* Nothing puts the reader at the top of a new page on its own: the router
    leaves the scroll where it was, and until the lists stopped emptying on
    every load it was reset by accident -- the page collapsed to a "Loading…"
@@ -257,9 +266,12 @@ function Header() {
             defaultValue={showValue(params.get('q') ?? '', false, locale)}
           />
         </form>
-        {/* The three that act, in a group of their own: the search takes a
-            row, these take the row under it. Left to wrap on their own widths
-            they broke wherever the search box happened to end. On a wide
+        {/* The three that act, in a group of their own. Left to wrap on
+            their own widths they broke wherever the search box happened to
+            end; grouped, they stay one set. Under 900 the labels are clipped
+            and the icons stay, so the group keeps the search box's row
+            instead of taking one of its own -- .lbl is what the CSS hides,
+            and the name is still in the link for a screen reader. On a wide
             screen the wrapper is a flex row inside a flex row with the same
             gap, so it draws exactly as before. */}
         <div className="acts-main">
@@ -272,14 +284,15 @@ function Header() {
             to={feed ? '/' : '/?view=feed'}
           >
             {CLOCK}
-            {m.header.recent}
+            <span className="lbl">{m.header.recent}</span>
           </Link>
           <Link className="btn" to="/random">
             {DIE}
-            {m.header.random}
+            <span className="lbl">{m.header.random}</span>
           </Link>
           <Link className="btn primary" to="/new">
-            {m.header.add}
+            {PLUS}
+            <span className="lbl">{m.header.add}</span>
           </Link>
         </div>
       </div>
