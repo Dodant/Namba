@@ -302,6 +302,10 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
    wordmark and these, and without something holding the middle they would
    collect against the logo */
 .acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto; }
+/* the search input's font size, held here so the icon pills under 900 can
+   read it too: their circle is the search box's height, and that height is
+   this size times the line-height plus the padding both share */
+.acts { --ctl-font: 12.5px; }
 /* the three that act. On a wide row this is a flex row inside a flex row at
    the same gap and changes nothing; on a phone it is what keeps them one
    group when the row above them wraps */
@@ -319,7 +323,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 .search .slash { font-family: var(--mono); font-size: 12px; color: var(--faint); }
 .search input {
   width: 150px; border: 0; padding: 9px 0; background: none;
-  font-family: var(--mono); font-size: 12.5px;
+  font-family: var(--mono); font-size: var(--ctl-font);
 }
 /* the ring moves to the pill: the input has no border of its own to ring */
 .search input:focus-visible { outline: none; }
@@ -359,13 +363,23 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
      row of their own under the search -- a header three rows tall on a phone
      before the first number. Icon-only they fit beside the box. The name is
      clipped, not removed: display: none would take it out of the link's
-     accessible name along with the pixels. 11px of side padding, since a
-     14px icon in a 16px pill was a wide blank with a dot in it. */
+     accessible name along with the pixels. */
   .acts-main .lbl {
     position: absolute; width: 1px; height: 1px; overflow: hidden;
     clip-path: inset(50%); white-space: nowrap;
   }
-  .acts-main .btn { padding: 9px 11px; }
+  /* A circle the height of the search box: that height written out -- its
+     9px of padding twice, its line, its border twice -- at the input's own
+     font size, so the two stay equal at (pointer: coarse) too, where the
+     input is 16px and the box grows with it. Written out rather than
+     stretched: align-self: stretch fills .acts-main, which is centered in
+     the row and only as tall as its content. Without a size at all the
+     clipped label took the line box with it and the pill sat 34px in a 39px
+     row: a 14px icon has no line of its own. */
+  .acts-main .btn {
+    width: calc(1lh + 20px); height: calc(1lh + 20px); padding: 0;
+    justify-content: center; font-size: var(--ctl-font);
+  }
 }
 
 /* --- buttons ------------------------------------------------------ */
@@ -634,7 +648,8 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
   /* No cap, not the 900 band's 460: this is the width where the search is
      entitled to the rest of the row. And a 120px basis rather than auto or
      the 900 band's 180: .acts still wraps, and at 320 the row is 288px, of
-     which the three pills and their gaps take 136. A basis over 152 put the
+     which the three pills and their gaps take 133 -- 151 with a coarse
+     pointer, where the pills grow with the box. A basis over 137 put the
      pills back on a row of their own -- the three-row header this band
      exists to prevent -- while 120 fits and then grows into the rest. */
   .search { flex: 1 1 120px; max-width: none; }
@@ -1488,7 +1503,8 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    else, and these land at 33-40 with 8px between them, which a thumb hits.
    The page's own 24px floor is unchanged for a mouse. */
 @media (pointer: coarse) {
-  .search input { font-size: 16px; width: 172px; }
+  .acts { --ctl-font: 16px; }
+  .search input { width: 172px; }
   .field select, .field .coin input, .panel-find input { font-size: 16px; }
   .field.check input[type="checkbox"] { width: 20px; height: 20px; }
 
