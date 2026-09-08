@@ -21,7 +21,7 @@ const KEEP: Record<string, RegExp> = {
      alphabet, and one /a/ page per alphabet is the split the one-spelling
      rule avoids. Digits belong here even though parse_number will not guess
      at them -- MP3 and Y2K are abbreviations somebody has to be able to file. */
-  ABBR: /[^A-Za-z0-9.&/-]/g,
+  ABBR: /[^A-Za-z0-9.&/;-]/g,
 }
 
 const EXAMPLES: Record<string, string> = {

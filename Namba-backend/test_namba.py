@@ -71,6 +71,7 @@ def test_parse():
         "Ph.D": ("ABBR", None),
         "X-ray": ("ABBR", None),
         "I/O": ("ABBR", None),                 # a slash is punctuation too
+        "TL;DR": ("ABBR", None),               # and so is a semicolon
         "3M": ("MIXED", None),                 # a digit in it, so not a word
         "G7": ("MIXED", None),
         "유에프오": ("MIXED", None),              # another alphabet is not this one
@@ -85,7 +86,7 @@ def test_parse():
     # word. Digits pass here and not above -- MP3 and Y2K are abbreviations
     # nothing can guess at -- but the alphabet is not negotiable.
     for ok in ("UFO", "ufo", "CSI", "R&D", "Ph.D", "X-ray", "I/O", "N/A", "km/h",
-               "MP3", "Y2K", "COVID-19", "3M", " UFO "):
+               "TL;DR", "MP3", "Y2K", "COVID-19", "3M", " UFO "):
         assert is_abbr(ok), ok
     for no in ("유에프오", "УФО", "宇宙", "café", "Ünicode", "42", "9.5", "9¾",
                "", "   ", "-", "...", "UF O", "UFO!"):
@@ -457,6 +458,12 @@ def test_head_per_route():
     page = c.get("/a/I%2FO").text
     assert "<title>I/O — 1 entry · Namba</title>" in page, page[:400]
     assert 'rel="canonical" href="http://testserver/a/I%2FO"' in page, "canonical re-encoded"
+    # a semicolon is a reserved character in a URL the same way, and TL;DR
+    # is an abbreviation somebody will file
+    c.post("/api/posts", json={"value": "TL;DR", "format": "ABBR", "title": "too long"})
+    page = c.get("/a/TL%3BDR").text
+    assert "<title>TL;DR — 1 entry · Namba</title>" in page, page[:400]
+    assert 'rel="canonical" href="http://testserver/a/TL%3BDR"' in page, "canonical re-encoded"
     # ...and the two sections do not leak into each other
     assert "noindex" in c.get("/n/UFO").text, "an abbreviation answered at /n/"
     assert "Unidentified" not in c.get("/n/UFO").text
