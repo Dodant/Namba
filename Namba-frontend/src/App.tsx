@@ -73,12 +73,17 @@ const CLOCK = (
   </svg>
 )
 
-/* Plus for Add, to the same spec. It was a "+" in the label; as an icon it
-   is what is left of the button once the label goes under 900. */
+/* Plus for Add, to the same box. It was a "+" in the label; as an icon it
+   is what is left of the button once the label goes under 900. Its arms
+   reach 2.75 to 13.25, a little inside the die's 1.7 to 14.3: a plus has no
+   outline to mark its extent, so drawn to the same edges it reads bigger
+   than the shapes beside it, and drawn to 9 units it read smaller. And a
+   1.5 stroke rather than the set's 1.3, because this one is light on the
+   filled button, where the same line looks thinner than ink on paper. */
 const PLUS = (
   <svg className="ico" viewBox="0 0 16 16" aria-hidden="true">
-    <path d="M8 3.5v9M3.5 8h9" fill="none" stroke="currentColor"
-          strokeWidth="1.3" strokeLinecap="round" />
+    <path d="M8 2.75v10.5M2.75 8h10.5" fill="none" stroke="currentColor"
+          strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 )
 
