@@ -416,17 +416,23 @@ the sitemap.
   and the same override applies: `GROSS` is a word, but somebody filing it as
   Mixed is allowed to mean the number.
 - **`resolve_format` hands the value back, not just the format.** Settling
-  which of the five a value is settles how it is spelled: an ABBR is stored
-  upper-case, so `ufo` and `UFO` are one word at one address. That is
+  which of the five a value is settles how it is spelled: an ABBR word has one
+  stored spelling, so `ufo` and `UFO` are one word at one address. That is
   `ungroup`'s argument about separators reached from the other end, and it is
   why both `create_post` and `edit_post` reassign `value` from it — an edit
-  arrives with the number field read-only and no value at all, so the fold has
-  to happen off the stored one.
+  arrives with the number field read-only and no value at all, so the lookup
+  has to happen off the stored one. The spelling is the first writer's rather
+  than upper-case (`SaaS`, not `SAAS`): it takes `con`, finds an ABBR row with
+  the same value `COLLATE NOCASE` in any status and adopts its spelling, and
+  `self_id` keeps the entry being edited out of that lookup so the one entry
+  about a word can still correct its own case. `list_posts` in the abbr
+  section and `head_abbr` compare `NOCASE` the same way, so `/a/ufo` is the
+  `UFO` page and its canonical says so.
 - **`ABBR` is the one format that is refused, and `is_abbr` is the rule.** The
   other four describe how to *read* what was typed and cannot be wrong about
   it — `resolve_format` takes an explicit `TIME` on `1:29:300` at its word and
   files it with no sort key. `ABBR` is a claim *about* the value, so it is
-  checked: Latin letters, digits and `.&-`, and at least one letter. It is a
+  checked: Latin letters, digits and `.&/-`, and at least one letter. It is a
   422 raised from `resolve_format` rather than a Pydantic validator, because
   the validator cannot see both halves — an edit sends a `format` and no
   `value` at all — and because that function is the one place both writes
@@ -438,8 +444,8 @@ the sitemap.
   will never guess at them, and a gate refusing what a poster explicitly
   picked would be deciding something it was not asked to. And it is not about
   keyboards — `유에프오` and `УФО` are the same abbreviation in another
-  alphabet, and one `/a/` page per alphabet is the split the upper-casing
-  exists to prevent. The entry's own language is not touched: `lang` and the
+  alphabet, and one `/a/` page per alphabet is the split the one-spelling
+  rule exists to prevent. The entry's own language is not touched: `lang` and the
   translations are as free as anywhere else on this wiki.
 
   `restore_revision` and `admin_restore` do **not** re-check it, the same way

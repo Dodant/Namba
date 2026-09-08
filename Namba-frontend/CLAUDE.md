@@ -595,9 +595,10 @@ so the form cannot drop it on the next save.
 
 The Format select reshapes the field beside it, down to that field's own label
 — with Abbreviation picked, "Number" is the wrong word for the box you are
-typing `UFO` into, so the label reads Abbreviation, the filter keeps Latin
-letters, digits and `.&-`, and what is typed is folded to upper case because
-that is how the API will store it. That filter is a copy of `is_abbr` in
+typing `UFO` into, so the label reads Abbreviation and the filter keeps Latin
+letters, digits and `.&/-`. Case is kept as typed — `SaaS` is spelled `SaaS` —
+and the API is what keeps `ufo` and `UFO` on one page, by adopting the spelling
+already stored for the word. That filter is a copy of `is_abbr` in
 `numfmt.py`, which **refuses** anything else with a 422 — unlike the other four
 formats, which are ways of reading what was typed and take it as given. It is
 not in the root `CLAUDE.md`'s hand-synced table for the same reason a tag's
@@ -629,9 +630,9 @@ retyping it there would not correct the entry — it would move it to a page
 about a different number and leave the old one short a meaning. Format and the
 separator checkbox stay editable either way: they change how the same
 characters are read, not which value the entry is about — though changing an
-entry to Abbreviation does fold its value to upper case and move it to `/a/`,
-which is the format deciding the spelling and the address, not the field being
-retyped. `readOnly` and not `disabled` —
+entry to Abbreviation does move it to `/a/` and adopt the word's stored
+spelling if one exists, which is the format deciding the spelling and the
+address, not the field being retyped. `readOnly` and not `disabled` —
 the number is the first thing you check before editing the rest, and `disabled`
 takes it out of the tab order and announces it as unavailable.
 
@@ -805,9 +806,9 @@ one thing in this app somebody has a reason to quote at somebody else. Do not
 "finish" the list by adding it.
 
 `/n/` and `/a/` are two sections over one column and the mode is what picks
-between them: it sends `section` to the API, folds the value to upper case for
-`/a/` so that an old `/a/ufo` link still lands, and chooses the noun the hero
-uses. An entry has exactly one address — an abbreviation never answers at `/n/`
+between them: it sends `section` to the API, which reads `/a/` up to case so
+that `/a/ufo` still lands on `UFO`, shows the entries' stored spelling in the
+hero rather than the link's, and chooses the noun the hero uses. An entry has exactly one address — an abbreviation never answers at `/n/`
 — and `section_where()` in `main.py` is the single condition that says so.
 
 All four heroes are one shape: a `.kicker` of metadata over an `<h1>` that is

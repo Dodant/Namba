@@ -129,11 +129,15 @@ hand-copied vocabulary and a branch beside every existing one.
   by that choice. Every localized response varies on both the UI cookie and
   `Accept-Language`; canonical URLs remain locale-neutral.
 
-  **An `ABBR` value is stored upper-case for exactly that reason.** `ufo`,
+  **An `ABBR` word has one stored spelling for exactly that reason.** `ufo`,
   `Ufo` and `UFO` are one word, and with no accounts there is nobody to merge
-  three pages about it afterwards. `resolve_format` folds it, because settling
-  the format is what settles the spelling. Digits have no case, which is why
-  this never came up for the other four.
+  three pages about it afterwards. The spelling is the first writer's, not
+  upper-case: `SaaS` and `IoT` are abbreviations too, and `SAAS` is not how
+  anyone writes them. `resolve_format` settles it, because settling the format
+  is what settles the spelling — a later writer of the same word, in any case,
+  adopts what is already stored, and the `/a/` reads compare `COLLATE NOCASE`
+  so `/a/ufo` still lands on `UFO`. Digits have no case, which is why this
+  never came up for the other four.
 
   **And `ABBR` is Latin script only — the one format that is checked rather
   than taken at its word.** The other four are ways of *reading* what was
@@ -142,7 +146,7 @@ hand-copied vocabulary and a branch beside every existing one.
   `numfmt.py` is the rule and `resolve_format` in `main.py` is where it bites,
   so both writes hit it. It is not a keyboard preference: `유에프오` and `УФО` are the
   same abbreviation in another alphabet, and one `/a/` page per alphabet is
-  the split the upper-casing exists to prevent. An entry still says what it
+  the split the one-spelling rule exists to prevent. An entry still says what it
   means in any language — `lang` and the translations are untouched by this;
   it is the value that is one spelling.
 
