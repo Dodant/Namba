@@ -80,8 +80,9 @@ hand-copied vocabulary and a branch beside every existing one.
   operators. This line used to say "no accounts, ever", and it was revised
   deliberately rather than quietly, because an operator's decision has to carry
   a name and be undoable, and neither is possible for nobody. What that buys is
-  the back office — a dashboard, moderation, delete requests, reports, blocks and
-  an audit log — and what it must never buy is a reader account. There is no
+  the back office — a dashboard, moderation, delete requests, reports, blocks,
+  an audit log, and the one edit the open half refuses: correcting the number an
+  entry is filed under — and what it must never buy is a reader account. There is no
   signup route to find. The first operator can only come from a shell
   (`admin.py add`), and every one after that from a super admin inside the
   panel. If a feature needs a reader to log in, the answer is that the feature
@@ -108,7 +109,13 @@ hand-copied vocabulary and a branch beside every existing one.
   Adding a `numbers` table would buy nothing. This is also why thousands
   separators are a display flag (`posts.grouped`) and never live in `value`:
   the moment `1,000` is storable, `/n/1000` and `/n/1%2C000` are two pages
-  about one number.
+  about one number. And it is why the value is the one field the wiki's own
+  form will not let you retype — a query on a column is an address, so
+  retyping it does not correct an entry, it moves the entry to a page about a
+  different number and leaves the old one short a meaning. Correcting one is
+  an operator's route (`POST /api/admin/posts/{id}/value`, `Change the number`
+  in the panel), because there it takes a name, a snapshot and an audit row
+  with it.
 
   **Number punctuation follows the interface locale, but number identity does
   not.** The stored spelling and every `/n/` URL remain locale-neutral — no

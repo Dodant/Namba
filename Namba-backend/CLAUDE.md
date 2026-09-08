@@ -213,6 +213,31 @@ the sitemap.
   middle of their own restore — an entry worth reverting is usually one they took
   down first. This was a real bug caught by `test_admin_content_and_dashboard`,
   not a hypothetical.
+- **The number itself is an operator's edit, and the only route that is.**
+  `POST /api/admin/posts/{id}/value` is the one place `posts.value` is changed
+  on purpose. The wiki's own form keeps that field read-only, because `/n/42`
+  is a query on this column: a stranger retyping it does not correct an entry,
+  it moves the entry to a page about a different number and leaves 42 short a
+  meaning. Refusing that to anonymity and allowing it to a name is the whole
+  shape of the operator exception, so the route pays for it -- it snapshots
+  first with `hidden=True` (a number worth fixing is often on an entry already
+  taken down), settles the value through the same `ungroup` and
+  `resolve_format` the wiki's two writes call, writes `edited_by` and never
+  `author`, and leaves a `CONTENT_RENUMBER` row pointing at the revision. It
+  answers 409 rather than writing a revision that changes nothing.
+
+  Which is what moved `ungroup` and `resolve_format` down into `store.py`: with
+  a third write, and that one in a module that may not import `main`, the
+  alternative was a second answer to how a value is spelled and which format it
+  is filed under. The format travels with the value because it has to -- 1969
+  retyped as 10:04 is a TIME, and an entry deliberately filed as Mixed must not
+  jump to `/a/` the first time a typo in it is fixed, so the panel sends the
+  format it is showing.
+
+  `PATCH /api/posts/{id}` still accepts a `value` and is left alone. It is the
+  same column the restore path writes, and the wiki says no in the form rather
+  than in the model -- worth knowing before treating the read-only field as the
+  enforcement.
 - **`events` is joined on `revision_id`, so it is indexed on it.** The admin
   revisions list turns "someone" into an action and a client hash through that
   join, and without `idx_events_revision` the plan is `SCAN e` over the one

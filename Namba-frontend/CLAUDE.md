@@ -63,10 +63,20 @@ every link in the panel is wrong in one of them.
   characters a stranger typed — a link's real href, a zero-width space, the
   twelve blank lines — not the paragraph they render into. This is the one place
   in the product that deliberately does not use `react-markdown`.
-- **Editing goes to the wiki's own form.** `/p/:id/edit` in a new tab, as a
-  plain `<a>` because it is another document. There is one place that knows how
-  a number value is parsed and how `grouped` follows the commas, and a second
-  editor in here would be a second answer.
+- **Editing goes to the wiki's own form, except the number.** `/p/:id/edit` in
+  a new tab, as a plain `<a>` because it is another document. There is one place
+  that knows how a number value is parsed and how `grouped` follows the commas,
+  and a second editor in here would be a second answer.
+- **The number is the exception, and only because the wiki refuses it.** That
+  field is `readOnly` on the wiki's form on purpose (see *Mirrors the backend*
+  below), so this panel is the only place a mistyped value can be corrected at
+  all — `Change the number` on `Entry.tsx`, over `adm.renumber`. It is still not
+  a second parser: the dialog sends what was typed and the format it is showing,
+  and `resolve_format` on the server settles the spelling, the separators and
+  the sort key. The answer is refetched rather than patched in for that reason,
+  and a refusal is drawn *inside* the dialog — 409 for the same number back
+  again and 422 for an abbreviation with no letters in it are the ordinary
+  replies here, and the page behind a modal is inert and unreadable.
 - **`Confirm` is a native `<dialog>`.** `showModal()` brings the focus trap,
   Escape, `::backdrop` and an inert page; hand-rolling those is a hundred lines
   and half of them wrong. Not `window.confirm` either — it blocks the event loop
@@ -633,7 +643,10 @@ must not turn it into `112263`.
 On an **edit** the value field is `readOnly` and its hint says so. An entry is
 one meaning of one value and `/n/:value` is a query on that column, so
 retyping it there would not correct the entry — it would move it to a page
-about a different number and leave the old one short a meaning. Format and the
+about a different number and leave the old one short a meaning. Which is why
+correcting one is an operator's job and lives in the back office instead: the
+same edit, refused to anonymity and allowed to a name that carries a snapshot
+and an audit row. Format and the
 separator checkbox stay editable either way: they change how the same
 characters are read, not which value the entry is about — though changing an
 entry to Abbreviation does move it to `/a/` and adopt the word's stored
