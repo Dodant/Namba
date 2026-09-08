@@ -582,7 +582,14 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
 .ix-fold:hover, .ix-fold:hover::before { color: var(--ink); }
 
 .ix-e { display: flex; align-items: baseline; gap: 10px; }
-.ix-link { min-width: 0; font-size: 16.5px; line-height: 1.35; }
+/* One line an entry, always. The index is read down the numerals, and a blurb
+   that takes a second line puts the next number a line further from the last
+   -- one long entry loosens the whole band around it. What does not fit is cut
+   and the word after it is the way through. */
+.ix-link {
+  min-width: 0; font-size: 16.5px; line-height: 1.35;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 /* the whole entry is one link, but only the title underlines -- the blurb
    trailing it is context, not a second thing to click */
 .ix-link:hover { text-decoration: none; color: var(--accent); }
@@ -613,6 +620,17 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
   .ix-e:hover .ix-like, .ix-e:focus-within .ix-like { opacity: 1; }
 }
 .ix-b { color: var(--muted); font-weight: 300; }
+/* Only on a row that was actually cut, which is why the class comes from
+   Home.tsx: overflow is a measurement and no selector can ask for it. Sized
+   and coloured like .ix-like beside it -- the two are the same kind of thing,
+   a small mono word at the end of the row -- and flex: none so the line it
+   belongs to is the one that gives up the space. */
+.ix-more {
+  display: none; flex: none;
+  font-family: var(--mono); font-size: 10.5px; color: var(--fainter);
+}
+.ix-link.cut + .ix-more { display: block; }
+.ix-more:hover { color: var(--ink); text-decoration: none; }
 /* the number itself, wherever it turns up in the title or blurb -- the one
    place the old terracotta still appears */
 .hit { color: var(--hit); font-weight: 600; }
@@ -635,6 +653,11 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
   /* inline, the numeral is competing with the title for the row rather than
      sitting in a column of its own, so the middle sizes shrink too */
   .ix-num.mid { font-size: 16px; }
+  /* The row is still one line here, but the word saying so goes: at 320 there
+     is 288px for a numeral, a title and a like already, and "See more" is 55
+     of them. The clipped line is the signal instead, and the whole row was
+     always the link. */
+  .ix-link.cut + .ix-more { display: none; }
   .acts { gap: 6px; }
 
   /* The group takes the row under the wordmark: the search box and the three

@@ -66,6 +66,7 @@ const EN = {
     asWritten: 'As written', translatedCount: (lang: string, n: number) => `${lang} · ${fmtCount(n, 'en')}`,
   },
   home: {
+    seeMore: 'See more',
     hasImage: 'has an image',
     feedIntro: 'Recent entries and edits, newest first.',
     empty: 'Nothing written yet.',
@@ -189,6 +190,7 @@ const KO: typeof EN = {
     translatedCount: (lang: string, n: number) => `${lang} · 번역 ${fmtCount(n, 'ko')}개`,
   },
   home: {
+    seeMore: '더 보기',
     hasImage: '이미지 있음', feedIntro: '최근 작성·수정된 항목부터 보여줍니다.',
     empty: '아직 작성된 항목이 없습니다.', entryKinds: '항목 형식', categories: '분류', all: '전체',
     foldedEntries: (n: number) => `항목 ${fmtCount(n, 'ko')}개`,
@@ -304,6 +306,7 @@ const JA: typeof EN = {
     translatedCount: (lang: string, n: number) => `${lang} · 翻訳${fmtCount(n, 'ja')}件`,
   },
   home: {
+    seeMore: 'もっと見る',
     hasImage: '画像あり', feedIntro: '最近作成・編集された項目から表示します。',
     empty: 'まだ項目がありません。', entryKinds: '項目の形式', categories: 'カテゴリ', all: 'すべて',
     foldedEntries: (n: number) => `${fmtCount(n, 'ja')}件の項目`,
@@ -420,6 +423,7 @@ const ZH_HANS: typeof EN = {
     translatedCount: (lang: string, n: number) => `${lang} · ${fmtCount(n, 'zh-Hans')}篇译文`,
   },
   home: {
+    seeMore: '查看更多',
     hasImage: '包含图片', feedIntro: '按最近创建或编辑的时间排序。',
     empty: '还没有任何条目。', entryKinds: '条目格式', categories: '分类', all: '全部',
     foldedEntries: (n: number) => `${fmtCount(n, 'zh-Hans')}个条目`,
@@ -541,6 +545,7 @@ const ES: typeof EN = {
     translatedCount: (lang: string, n: number) => `${lang} · ${fmtCount(n, 'es')} ${n === 1 ? 'traducción' : 'traducciones'}`,
   },
   home: {
+    seeMore: 'Ver más',
     hasImage: 'con imagen', feedIntro: 'Entradas y ediciones recientes, de más nuevas a más antiguas.',
     empty: 'Aún no hay entradas.', entryKinds: 'Formato de la entrada', categories: 'Categorías', all: 'Todas',
     foldedEntries: (n: number) => `${fmtCount(n, 'es')} ${n === 1 ? 'entrada' : 'entradas'}`,
@@ -668,6 +673,7 @@ const FR: typeof EN = {
     translatedCount: (lang: string, n: number) => `${lang} · ${fmtCount(n, 'fr')} ${n === 1 ? 'traduction' : 'traductions'}`,
   },
   home: {
+    seeMore: 'Voir plus',
     hasImage: 'avec une image',
     feedIntro: 'Entrées et modifications récentes, des plus nouvelles aux plus anciennes.',
     empty: 'Aucune entrée pour le moment.', entryKinds: 'Format de l’entrée', categories: 'Catégories', all: 'Toutes',
@@ -804,6 +810,7 @@ const DE: typeof EN = {
     translatedCount: (lang: string, n: number) => `${lang} · ${fmtCount(n, 'de')} ${n === 1 ? 'Übersetzung' : 'Übersetzungen'}`,
   },
   home: {
+    seeMore: 'Mehr anzeigen',
     hasImage: 'mit Bild', feedIntro: 'Neueste Einträge und Änderungen zuerst.',
     empty: 'Noch wurde nichts eingetragen.', entryKinds: 'Eintragsformat', categories: 'Kategorien', all: 'Alle',
     foldedEntries: (n: number) => `${fmtCount(n, 'de')} ${n === 1 ? 'Eintrag' : 'Einträge'}`,

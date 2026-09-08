@@ -1,4 +1,4 @@
-import { Fragment, useLayoutEffect, useRef } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   ABBR_BUCKETS, api, BUCKETS, entryPath, fmtCount, fmtDate, FORMATS,
@@ -233,6 +233,29 @@ function Index({ lang }: { lang: string }) {
   const tags = useAsync(() => api.tags(), [])
   const numbers = useAsync(() => api.numbers({ format, tag, lang }), [format, tag, lang], true)
 
+  /* Which rows had to be cut. An index is read down the numerals, so a row is
+     one line and what does not fit is clipped -- but whether a given line was
+     clipped is a measurement, and CSS cannot ask it, so the class goes on from
+     here and `.ix-more` is drawn off it.
+
+     A window resize is the whole of it: nothing else changes a row's width --
+     a band folding changes the height, and the like appearing is opacity. The
+     second pass is for the fonts, which arrive after the first paint with
+     `display=swap` and are wider than what they replace, so measuring once
+     marks the wrong rows on a cold load. Queried off the document rather than
+     a ref because this component is the only thing in the app that renders an
+     `.ix-link`, and the fragment it returns has no element to hang one on. */
+  useEffect(() => {
+    const measure = () => {
+      for (const el of document.querySelectorAll<HTMLElement>('.ix-link'))
+        el.classList.toggle('cut', el.scrollWidth > el.clientWidth + 1)
+    }
+    measure()
+    document.fonts.ready.then(measure)
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [numbers.data])
+
   function setParam(key: string, value: string) {
     const next = new URLSearchParams(params)
     if (value) next.set(key, value)
@@ -364,6 +387,21 @@ function Index({ lang }: { lang: string }) {
                         {e.body && (
                           <span className="ix-b"> — {mark(plain(e.body), rx)}</span>
                         )}
+                      </Link>
+                      {/* The way through when the line was cut. A second link
+                          to where the first one goes, so it is aria-hidden and
+                          out of the tab order: "see more" in a screen reader's
+                          list of links names nothing, and the row above it
+                          already does. index.css shows it only on a .ix-link
+                          the effect marked, so a row that fits ends in its own
+                          last word. */}
+                      <Link
+                        className="ix-more"
+                        to={`/p/${e.id}`}
+                        aria-hidden
+                        tabIndex={-1}
+                      >
+                        {m.home.seeMore}
                       </Link>
                       <span className="ix-like">
                         <Like post={e} />
