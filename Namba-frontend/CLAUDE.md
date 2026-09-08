@@ -361,16 +361,17 @@ scrolled to the tab you are on rather than left at its start.
 
 What actually changes shape, rather than size:
 
-- **The header.** One row above 900. Below it the wordmark keeps its line with
-  the search, and the three pills take the line under it flush right; below 560
-  the search takes a row of its own. In the 900 band the search carries
-  `margin-left: auto` so the two rows end on the same edge: its 460px cap
-  bites from about 740 up, and without the auto margin the slack it stops
-  taking collects on its right, leaving the box 41px short of the pills at 768
-  and 166px short at 900. The slack belongs on the wordmark's side, where
-  there is nothing underneath to line up with. `.acts` carries an explicit flex basis in
-  both bands, so set `flex`, never `width` — an explicit basis beats `width`
-  outright, and `width: 100%` on it did nothing at all.
+- **The header.** One row above 900. Below it the three pills lose their
+  labels and keep their icons — `.lbl` is clipped to a pixel, not
+  `display: none`, so each link keeps its accessible name — and the search
+  and the pills stay on one row: beside the wordmark while there is room,
+  under it below 560. They used to take a row of their own under the search,
+  which made a phone's header three rows tall before the first number. In
+  the 900 band the search carries `margin-left: auto`, so once its 460px cap
+  bites the slack goes to the wordmark's side and the pills stay flush right.
+  `.acts` carries an explicit flex basis in both bands, so set `flex`, never
+  `width` — an explicit basis beats `width` outright, and `width: 100%` on it
+  did nothing at all.
 
   **And above 900 it sticks.** `position: sticky; top: 0` with an opaque
   `var(--bg)` and then `backdrop-filter: blur(18px) saturate(160%)` on top of
@@ -380,9 +381,9 @@ What actually changes shape, rather than size:
   `.wrap` is in that column, so the glass is exactly as wide as the things
   that pass under it and there is no edge to see. The whole block lives inside
   `@media (min-width: 901px)`, and that media query is the entire mechanism
-  for keeping it off a phone — below 900 the header wraps to two rows and then
-  three, 172px of a 667px screen, a quarter of the device given permanently to
-  chrome. Same 900 the header already wraps at, because it is the same fact:
+  for keeping it off a phone — below 900 the header wraps to two rows, 128px
+  of a 667px screen, a fifth of the device given permanently to chrome. Same
+  900 the header already wraps at, because it is the same fact:
   this is a bar while it is one line and a block once it is not.
 
   `html { scroll-padding-top: 104px }` is in that same block and is the other
