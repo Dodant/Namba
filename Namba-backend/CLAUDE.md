@@ -407,9 +407,13 @@ the sitemap.
   `ON CONFLICT(post_id, lang)` upsert is what makes a rewrite an edit.
 - **`post_links` always stores `a_id < b_id`** (there is a CHECK). Sort the pair
   before insert or delete; read it back with the `UNION` in `get_post`.
-- **`bucket_of` only bands INTEGER.** A TIME sort key is minutes past midnight,
-  so banding 09:41 by magnitude files it under "100", and an ABBR has no sort
-  key to band at all.
+- **`bucket_of` bands INTEGER by magnitude and ABBR by first letter or
+  digit** — A to W, `X-Z`, and `0-9` last — off the value, since an
+  abbreviation has no sort key. Nothing else gets one: a TIME sort key is
+  minutes past midnight, so banding 09:41 by magnitude files it under "100".
+  Both `list_numbers` and `store.shape` call it, so an index row and a post
+  carry the same band; `ABBR_BUCKETS` in `api.ts` is the order the front end
+  draws them in.
 - **`parse_number` is a suggestion.** `11:11` is a clock, `1:29:300` is
   Heinrich's law; nothing in the string distinguishes them, so the poster's
   explicit `format` wins in `resolve_format`. Letters go to ABBR the same way,

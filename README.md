@@ -125,8 +125,9 @@ gets what it asked for.
 work that way: `11:11` is a clock, `1:29:300` is Heinrich's law, and nothing in
 the string says which.
 
-Only integers get a magnitude band (`1`, `10`, `100`, `1000`, `10000+`), because
-banding a TIME by its sort key would file 09:41 under "100".
+Integers get a magnitude band (`1`, `10`, `100`, `1000`, `10000+`) and
+abbreviations a letter band (A to W, then `X-Z`, then `0-9` last for `MP3`); a
+TIME gets none, because banding 09:41 by its sort key would file it under "100".
 
 **Abbreviations** are the fifth format and the one that is not digits — `UFO`,
 `CSI`, `NASA`. Everything else about them is a number's: one entry per meaning,

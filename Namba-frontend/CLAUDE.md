@@ -222,7 +222,11 @@ sanitiser config to get wrong.
   column for every "7" — the class comes from `numSize()` in `api.ts`, shared
   with the feed rows, the cards and both heroes, because one font size either
   shouts at "7" or breaks on "1960년 4월 16일 오후 3시" and a viewport clamp
-  cannot tell those apart. Each band is a `<details>` open by default, and the
+  cannot tell those apart. The Integer tab bands by magnitude and the
+  Abbreviation tab by first letter — `ABBR_BUCKETS` in `api.ts`: A to W, then
+  X – Z together, then 0 – 9 last, the keys the API returns in `bucket` — and
+  the other three tabs are one band named for the format. Each band is a
+  `<details>` open by default, and the
   category filter is the same thing closed by default — the browser owns the
   collapse, so there is no open state to hold anywhere. A closed filter still
   shows the tag that is on, or it would hide why the list is short. A single
