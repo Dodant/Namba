@@ -18,11 +18,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 import auth
 import db
 import events
+import numfmt
 import store
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -667,6 +668,74 @@ def set_post_status(
                       admin_id=who["id"], target_type="post", target_id=post_id,
                       was=was["status"], note=body.note.strip())
     return {"id": post_id, "status": body.status, "was": was["status"]}
+
+
+class ValueIn(BaseModel):
+    value: str = Field(min_length=1, max_length=32)
+    format: Optional[str] = None
+    note: str = Field(default="", max_length=1000)
+
+    @field_validator("value")
+    @classmethod
+    def not_blank(cls, v):
+        if not v.strip():
+            raise ValueError("must not be blank")
+        return v
+
+    @field_validator("format")
+    @classmethod
+    def known_format(cls, v):
+        if v is not None and v not in numfmt.FORMATS:
+            raise ValueError(f"format must be one of {numfmt.FORMATS}")
+        return v
+
+
+@router.post("/posts/{post_id}/value")
+def set_post_value(
+    post_id: int,
+    body: ValueIn,
+    request: Request,
+    who=Depends(auth.require_admin),
+    con=Depends(db.get_db),
+):
+    """Correct the number an entry is filed under. Operators only, and this is
+    the only route that does it.
+
+    The wiki's own form has the field read-only, on purpose: /n/42 is a query on
+    this column, so retyping it there would not fix an entry, it would move it
+    to a page about something else and leave 42 short a meaning. That argument
+    holds for a stranger and not for an operator -- somebody has to be able to
+    fix a typo'd number, and on this wiki that somebody carries a name, an audit
+    row and a snapshot to revert to. Which is the whole difference: the same
+    edit is refused to anonymity and allowed to an accountable name.
+
+    The format comes with it because the value cannot be corrected without it.
+    Retyping 1969 as 10:04 is a TIME, and an entry deliberately filed as Mixed
+    must not silently jump to /a/ the first time its spelling is fixed -- so the
+    panel sends the format it is showing and `resolve_format` settles both, the
+    same call the wiki's two writes make.
+    """
+    was = store.fetch_one(con, post_id, hidden=True)
+    # A separator never reaches the column, whatever was typed -- and typing one
+    # is still how you ask for the display flag. It can be turned on here and
+    # not off; taking it off is the wiki's own form, where it is a checkbox.
+    value, grouped = store.ungroup(body.value, bool(was["grouped"]))
+    value, fmt, key = store.resolve_format(value, body.format, con, post_id)
+    if (value, fmt, grouped) == (was["value"], was["format"], bool(was["grouped"])):
+        raise HTTPException(409, "that is the number it already has")
+    label = f"operator {who['email']}"
+    with con:
+        rev = store.snapshot(con, post_id, label, hidden=True)
+        con.execute(
+            """UPDATE posts SET value=?, format=?, sort_key=?, grouped=?,
+                                edited_by=?, updated_at=? WHERE id=?""",
+            (value, fmt, key, int(grouped), label, db.now(), post_id),
+        )
+        events.record(con, "CONTENT_RENUMBER", client=events.client_of(request),
+                      admin_id=who["id"], target_type="post", target_id=post_id,
+                      revision_id=rev, was=was["value"], value=value,
+                      note=body.note.strip())
+    return store.fetch_one(con, post_id, hidden=True)
 
 
 class AdminRestoreIn(BaseModel):

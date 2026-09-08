@@ -5,7 +5,7 @@
     Nothing here holds a token. The session is an httpOnly cookie the browser
     sends by existing, which is why every call below looks like a plain fetch
     and why a 401 is the only thing that means "signed out". */
-import { json, qs, req, type Params, type Post, type PostStatus } from '../api'
+import { json, qs, req, type Format, type Params, type Post, type PostStatus } from '../api'
 
 export type Role = 'ADMIN' | 'SUPER_ADMIN'
 export type Who = { id: number; email: string; role: Role }
@@ -273,6 +273,17 @@ export const adm = {
     req<FullPost>(`/api/admin/posts/${id}/revisions/${rev}/restore`,
                   json('POST', { note })),
 
+  /** The number itself, which is the one field the wiki's own form keeps
+      read-only: /n/42 is a query on `posts.value`, so a stranger retyping it
+      would not correct an entry, it would move it to a page about a different
+      number. That is an edit to refuse anonymously and allow here, where it
+      takes a snapshot, an audit row and an operator's name with it. The format
+      goes along because a corrected number may be a different kind of one, and
+      an entry deliberately filed as Mixed must not jump to /a/ on a typo fix. */
+  renumber: (id: number | string, value: string, format: Format | '', note: string) =>
+    req<FullPost>(`/api/admin/posts/${id}/value`,
+                  json('POST', { value, format: format || null, note })),
+
   requests: (p: Params = {}) =>
     req<Page<QueuedRequest>>(`/api/admin/delete-requests${qs(p)}`),
 
@@ -360,6 +371,7 @@ export const ACTION_LABEL: Record<string, string> = {
   CONTENT_DELETE: 'removed an entry',
   CONTENT_RESTORE: 'put an entry back',
   CONTENT_REVERT: 'reverted an entry',
+  CONTENT_RENUMBER: 'changed the number',
   REQUEST_APPROVE: 'approved a removal',
   REQUEST_REJECT: 'rejected a removal',
   REPORT_RESOLVE: 'resolved reports',

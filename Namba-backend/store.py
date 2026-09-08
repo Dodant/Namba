@@ -2,15 +2,22 @@
 
 Here rather than in main.py because `admin_api.py` needs them too and may not
 import main -- main imports it, to include the router. Everything in this file
-is about a `posts` row and the four tables hanging off it; the routes, the
-models and the number parsing stay where they were.
+is about a `posts` row and the four tables hanging off it; the routes and the
+models stay where they were.
+
+`ungroup` and `resolve_format` are here for that same reason and no other. They
+started in main.py, beside the only two writes that settled a value, and moved
+down the day the back office got a third -- an operator correcting a number.
+How a value is spelled and which format it is filed under has to be answered
+identically by all three, and the alternative to sharing them was a second copy
+in a module that may not import the first.
 """
 import json
 
 from fastapi import HTTPException
 
 from db import now
-from numfmt import bucket_of
+from numfmt import bucket_of, canonical_value, is_abbr, parse_number
 
 # The only status a visitor ever sees. Thirteen reads in main.py carry it -- the
 # index, the list endpoint the feed and the search share, one entry, the two
@@ -23,6 +30,68 @@ from numfmt import bucket_of
 # all. The writes need no equivalent: they reach for fetch_one() below first and
 # get the 404 from there.
 LIVE = "ACTIVE"
+
+
+def ungroup(value, grouped, locale="en"):
+    """(value as stored, whether to draw it grouped).
+
+    A separator never reaches the database, whatever the box says. 1000,
+    English 1,000, German 1.000 and French 1 000 are one number and have to
+    answer at one address.
+
+    Typing the grouping mark is also how you ask for it. Stripping it and
+    leaving the box off would swallow what the poster plainly meant.
+    """
+    value, typed_grouping = canonical_value(value, locale)
+    return value, bool(grouped or typed_grouping)
+
+
+def resolve_format(value, given, con, self_id=None):
+    """(value as stored, format, sort_key). The parsed suggestion, unless the
+    poster explicitly picked a format.
+
+    It hands the value back because settling the format is what settles how the
+    value is spelled: an ABBR has one spelling per word, so "ufo", "Ufo" and
+    "UFO" are one abbreviation at one address. Same argument `ungroup` makes
+    about commas -- the moment two spellings are storable, /a/UFO and /a/ufo
+    are two pages about one word, and there is no login here to merge them
+    afterwards. The spelling is the first writer's rather than upper-case,
+    because SaaS and IoT are abbreviations too and SAAS is not how anyone
+    writes them: a later writer adopts what is already stored, whatever its
+    status, and only an entry with no sibling keeps what it typed. `self_id`
+    leaves the entry being edited out of that lookup, so the one entry about a
+    word can still correct its own case.
+
+    It is also where ABBR is checked rather than taken at its word. Every other
+    format is a way of reading what was typed and cannot be wrong about it; this
+    one is a claim about the value, and with no login the claim is a stranger's.
+    All three writes settle the format here -- create with what was typed, edit
+    with what is stored, since the wiki's form keeps the number read-only once
+    the entry exists, and an operator's renumber with what they retyped -- so
+    this is the one place that catches every one of them.
+    """
+    fmt, key = parse_number(value)
+    if given and given != fmt:
+        if given in ("INTEGER", "DECIMAL"):
+            try:
+                key = float(value)
+            except ValueError:
+                key = None
+        else:
+            key = None  # MIXED, ABBR, or a TIME that is not actually a clock
+        fmt = given
+    if fmt == "ABBR":
+        if not is_abbr(value):
+            raise HTTPException(
+                422, "an abbreviation is Latin letters, and needs at least one "
+                     "-- UFO, CSI, R&D, MP3. Anything else is another format.")
+        value = value.strip()
+        first = con.execute(
+            "SELECT value FROM posts WHERE format = 'ABBR' AND value = ? COLLATE NOCASE "
+            "AND id IS NOT ? ORDER BY id LIMIT 1", (value, self_id)).fetchone()
+        if first:
+            value = first["value"]
+    return value, fmt, key
 
 
 def shape(rows, con):

@@ -24,11 +24,10 @@ import events
 import seo_locale
 from db import get_db, now
 from store import (
-    LIVE, fetch_one, guard_public, shape, snapshot, write_tags, write_translations,
+    LIVE, fetch_one, guard_public, resolve_format, shape, snapshot, ungroup,
+    write_tags, write_translations,
 )
-from numfmt import (
-    FORMATS, bucket_of, canonical_value, grouped_value, is_abbr, parse_number,
-)
+from numfmt import FORMATS, bucket_of, grouped_value
 
 # A tag is whatever people call it, like a translation's language label. What
 # is checked is its shape, not its membership of a list -- the wiki's working
@@ -421,67 +420,6 @@ class LinkIn(BaseModel):
 
 
 # --- helpers ------------------------------------------------------------
-def ungroup(value, grouped, locale="en"):
-    """(value as stored, whether to draw it grouped).
-
-    A separator never reaches the database, whatever the box says. 1000,
-    English 1,000, German 1.000 and French 1 000 are one number and have to
-    answer at one address.
-
-    Typing the grouping mark is also how you ask for it. Stripping it and
-    leaving the box off would swallow what the poster plainly meant.
-    """
-    value, typed_grouping = canonical_value(value, locale)
-    return value, bool(grouped or typed_grouping)
-
-
-def resolve_format(value, given, con, self_id=None):
-    """(value as stored, format, sort_key). The parsed suggestion, unless the
-    poster explicitly picked a format.
-
-    It hands the value back because settling the format is what settles how the
-    value is spelled: an ABBR has one spelling per word, so "ufo", "Ufo" and
-    "UFO" are one abbreviation at one address. Same argument `ungroup` makes
-    about commas -- the moment two spellings are storable, /a/UFO and /a/ufo
-    are two pages about one word, and there is no login here to merge them
-    afterwards. The spelling is the first writer's rather than upper-case,
-    because SaaS and IoT are abbreviations too and SAAS is not how anyone
-    writes them: a later writer adopts what is already stored, whatever its
-    status, and only an entry with no sibling keeps what it typed. `self_id`
-    leaves the entry being edited out of that lookup, so the one entry about a
-    word can still correct its own case.
-
-    It is also where ABBR is checked rather than taken at its word. Every other
-    format is a way of reading what was typed and cannot be wrong about it; this
-    one is a claim about the value, and with no login the claim is a stranger's.
-    Both writes settle the format here -- create with what was typed, edit with
-    what is stored, since the number field is read-only once the entry exists --
-    so this is the one place that catches both.
-    """
-    fmt, key = parse_number(value)
-    if given and given != fmt:
-        if given in ("INTEGER", "DECIMAL"):
-            try:
-                key = float(value)
-            except ValueError:
-                key = None
-        else:
-            key = None  # MIXED, ABBR, or a TIME that is not actually a clock
-        fmt = given
-    if fmt == "ABBR":
-        if not is_abbr(value):
-            raise HTTPException(
-                422, "an abbreviation is Latin letters, and needs at least one "
-                     "-- UFO, CSI, R&D, MP3. Anything else is another format.")
-        value = value.strip()
-        first = con.execute(
-            "SELECT value FROM posts WHERE format = 'ABBR' AND value = ? COLLATE NOCASE "
-            "AND id IS NOT ? ORDER BY id LIMIT 1", (value, self_id)).fetchone()
-        if first:
-            value = first["value"]
-    return value, fmt, key
-
-
 def section_where(section, prefix=""):
     """SQL for "this is an abbreviation" / "this is a number", or None for both.
 

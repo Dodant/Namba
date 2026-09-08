@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { fmtDate, showValue, tagLabel, type PostStatus } from '../../api'
+import { FORMATS, fmtDate, showValue, tagLabel, type Format, type PostStatus } from '../../api'
 import { ACTION_LABEL, adm, type Diff, type FullPost, type Rev } from '../api'
 import { Badge, Confirm, Empty, Hash, Table, When } from '../ui'
 
@@ -59,6 +59,13 @@ export default function Entry() {
   const [pick, setPick] = useState<string | null>(null)
   const [diff, setDiff] = useState<Diff | null>(null)
   const [reverting, setReverting] = useState<Rev | null>(null)
+  /* The number, while it is being corrected. Its own state and not the post's:
+     the field starts as what is stored and is a proposal until it is sent --
+     the server settles the spelling, the format and the separators, the same
+     way it does for the wiki's own writes. */
+  const [renaming, setRenaming] = useState(false)
+  const [num, setNum] = useState('')
+  const [numFmt, setNumFmt] = useState<'' | Format>('')
 
   const load = useCallback(() => {
     setErr('')
@@ -82,6 +89,25 @@ export default function Entry() {
       setAsk(null)
       setNote('')
       load()
+    } catch (e) {
+      setErr((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function renumber() {
+    setBusy(true)
+    try {
+      await adm.renumber(id, num, numFmt, note)
+      setRenaming(false)
+      setNote('')
+      /* Refetched rather than patched in: the number decides the format, the
+         sort key and the separators, and only the server knows what it settled
+         them to. Renumbering also adds a revision, so the history is a row
+         longer than the one on screen. */
+      load()
+      setPick(null)
     } catch (e) {
       setErr((e as Error).message)
     } finally {
@@ -165,10 +191,22 @@ export default function Entry() {
             {MOVES.show.label}
           </button>
         )}
+        <button
+          className="btn"
+          onClick={() => {
+            setErr('')
+            setNum(showValue(post.value, post.grouped))
+            setNumFmt(post.format)
+            setRenaming(true)
+          }}
+        >
+          Change the number
+        </button>
         {/* Plain anchors, and they have to be: the wiki is a different
-            document. Editing goes through the wiki's own form rather than a
-            second editor in here -- there is one place that knows how a number
-            value is parsed, and it is that form. */}
+            document. Everything else about an entry is edited on the wiki's own
+            form rather than in a second editor here. The number is the one
+            exception, and it is above: that field is read-only there on purpose,
+            so this panel is the only place it can be corrected at all. */}
         <a className="btn push" href={`/p/${post.id}/edit`} target="_blank" rel="noreferrer">
           Edit on the wiki ↗
         </a>
@@ -419,6 +457,75 @@ export default function Entry() {
           <label htmlFor="mv-note">Why (kept in the log)</label>
           <input
             id="mv-note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Optional, and read by the next operator"
+          />
+        </div>
+      </Confirm>
+
+      <Confirm
+        open={renaming}
+        title="Change the number?"
+        verb="Change it"
+        busy={busy}
+        onCancel={() => {
+          setRenaming(false)
+          setNote('')
+        }}
+        onOk={renumber}
+      >
+        {/* Repeated inside the dialog, and it has to be: the page behind a
+            modal is inert and unreadable, and a refusal here is the ordinary
+            case rather than the exception -- the same number back again, a
+            format the value cannot be, an abbreviation with no letters in it.
+            The typed value stays put so it can be corrected. */}
+        {err && (
+          <p className="err" role="alert">
+            {err}
+          </p>
+        )}
+        <p>
+          The entry moves: it leaves{' '}
+          <b className="num">{showValue(post.value, post.grouped)}</b> and is
+          filed under whatever you type here instead. Nothing else about it
+          changes, and the version it is now is kept — this is undoable from the
+          history below like any other edit.
+        </p>
+        <div className="field">
+          <label htmlFor="rn-value">Number</label>
+          <input
+            id="rn-value"
+            className="mono"
+            maxLength={32}
+            value={num}
+            onChange={(e) => setNum(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="rn-format">Format</label>
+          {/* Sent as it stands rather than re-guessed, because the guess is
+              sometimes wrong on purpose: an entry filed as Mixed must not jump
+              into the abbreviation index the first time somebody fixes a typo
+              in it. Auto-detect is here for the case where the new number is
+              honestly a different kind. */}
+          <select
+            id="rn-format"
+            value={numFmt}
+            onChange={(e) => setNumFmt(e.target.value as '' | Format)}
+          >
+            <option value="">Work it out</option>
+            {FORMATS.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="rn-note">Why (kept in the log)</label>
+          <input
+            id="rn-note"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Optional, and read by the next operator"

@@ -1410,6 +1410,44 @@ def test_admin_content_and_dashboard():
 
     ops.post(f"/api/admin/posts/{pid}/status", json={"status": "ACTIVE"})
 
+    # An operator can correct the number, and is the only one who can: the
+    # wiki's own form keeps that field read-only, because /n/42 is a query on
+    # this column and a stranger retyping it moves the entry to a page about
+    # something else. The same edit is allowed here for the reason operators
+    # exist at all -- it carries a name, a snapshot and a row in the log.
+    assert TestClient(main.app).post(f"/api/admin/posts/{pid}/value",
+                                     json={"value": "1971"}).status_code == 401
+    ops.post(f"/api/admin/posts/{pid}/status", json={"status": "HIDDEN"})
+    fixed = ops.post(f"/api/admin/posts/{pid}/value",
+                     json={"value": "1,971", "note": "off by two"})
+    assert fixed.status_code == 200, fixed.text
+    fixed = fixed.json()
+    # a separator never reaches the column, and typing one is still how the
+    # display flag is asked for -- the same ungroup() the wiki's writes call
+    assert fixed["value"] == "1971" and fixed["grouped"] is True
+    assert fixed["format"] == "INTEGER" and fixed["sort_key"] == 1971.0
+    assert fixed["author"] == "armstrong", "renumbering took the byline"
+    assert fixed["edited_by"] == "operator mod@namba.test"
+    assert fixed["status"] == "HIDDEN", \
+        "a hidden entry is exactly the one whose number needs fixing"
+    logged = _events(action="CONTENT_RENUMBER")[-1]
+    assert logged["admin_id"] and json.loads(logged["meta"])["was"] == "1969"
+    renumbered = ops.get(f"/api/admin/posts/{pid}/revisions").json()[0]
+    assert renumbered["action"] == "CONTENT_RENUMBER"
+    assert renumbered["value"] == "1969", \
+        "the number it was is only recoverable because the snapshot came first"
+    assert ops.post(f"/api/admin/posts/{pid}/value",
+                    json={"value": "1971"}).status_code == 409
+    assert ops.post(f"/api/admin/posts/{pid}/value",
+                    json={"value": "1971", "format": "SHRUG"}).status_code == 422
+    # ABBR is a claim about the value rather than a way of reading it, so it is
+    # checked here too -- this route settles the format through resolve_format
+    # for exactly that reason
+    assert ops.post(f"/api/admin/posts/{pid}/value",
+                    json={"value": "1971", "format": "ABBR"}).status_code == 422
+    ops.post(f"/api/admin/posts/{pid}/value", json={"value": "1969"})
+    ops.post(f"/api/admin/posts/{pid}/status", json={"status": "ACTIVE"})
+
     # the counters, and the two that must not double-count each other
     st = ops.get("/api/admin/stats").json()
     assert st["entries"] >= 1 and st["numbers"] >= 1
