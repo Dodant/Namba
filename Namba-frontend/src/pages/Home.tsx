@@ -1,7 +1,7 @@
 import { Fragment, useLayoutEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  api, BUCKETS, entryPath, fmtCount, fmtDate, FORMATS,
+  ABBR_BUCKETS, api, BUCKETS, entryPath, fmtCount, fmtDate, FORMATS,
   isAbbr, numSize, plain, showValue, tagLabel, tagPath,
   type Format, type NumberEntry, type Post,
 } from '../api'
@@ -244,13 +244,21 @@ function Index({ lang }: { lang: string }) {
      screen are still the last one's, and "Decimal" over a list of integers is
      a worse answer than a heading that lags a frame behind the tab. */
   const shownFormat = numbers.data?.[0]?.format ?? format
+  const rows = numbers.data ?? []
   const bands =
     shownFormat === 'INTEGER'
       ? BUCKETS.map((b) => ({
           label: m.buckets[b],
-          items: (numbers.data ?? []).filter((n) => n.bucket === b),
+          items: rows.filter((n) => n.bucket === b),
         }))
-      : [{ label: m.format[shownFormat], items: numbers.data ?? [] }]
+      : shownFormat === 'ABBR'
+        ? ABBR_BUCKETS.map((b) => ({
+            /* a letter is its own label in every locale; the two ranges
+               space their dash the way the integer bands do */
+            label: b.replace('-', ' – '),
+            items: rows.filter((n) => n.bucket === b),
+          }))
+        : [{ label: m.format[shownFormat], items: rows }]
 
   return (
     <>

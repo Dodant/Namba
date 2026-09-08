@@ -1636,10 +1636,15 @@ def test_bucket():
     # only integers get banded: 09:41 is 581 minutes, not a three-digit number
     assert bucket_of(581.0, "TIME") is None
     assert bucket_of(3.14, "DECIMAL") is None
-    # a key as well as a format, or this cannot fail: bucket_of(None) answers
-    # None whatever the format says, so passing one asserts nothing about ABBR
-    assert bucket_of(42.0, "ABBR") is None, "an abbreviation was banded"
-    assert bucket_of(None, "ABBR") is None
+    # an abbreviation is banded by its first letter or digit, off the value
+    # and not the key it does not have: one band a letter to W, X-Z together,
+    # and 0-9 last rather than first where ASCII would put it
+    for value, want in [("UFO", "U"), ("ufo", "U"), ("X-ray", "X-Z"), ("Y2K", "X-Z"),
+                        ("Zzz", "X-Z"), ("MP3", "M"), ("3M", "0-9"), (".NET", "N"),
+                        ("COVID-19", "C"), ("", None)]:
+        got = bucket_of(None, "ABBR", value)
+        assert got == want, f"bucket_of(ABBR, {value!r}) = {got}, want {want}"
+    assert bucket_of(42.0, "ABBR", "UFO") == "U", "the key had a say in a letter band"
 
 
 def test_api_round_trip():
@@ -1679,7 +1684,7 @@ def test_api_round_trip():
     u = c.post("/api/posts", json={"value": "UFO", "title": "Unidentified flying object",
                                    "author": "mulder"}).json()
     assert u["value"] == "UFO", u["value"]
-    assert u["format"] == "ABBR" and u["sort_key"] is None and u["bucket"] is None
+    assert u["format"] == "ABBR" and u["sort_key"] is None and u["bucket"] == "U"
     again = c.post("/api/posts", json={"value": "ufo", "title": "the film"}).json()
     assert again["value"] == "UFO", again["value"]
     assert len(c.get("/api/posts", params={"value": "UFO"}).json()) == 2, \

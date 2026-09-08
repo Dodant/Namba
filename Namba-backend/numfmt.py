@@ -145,13 +145,23 @@ def is_abbr(value):
     return bool(_ABBR_OK.match((value or "").strip()))
 
 
-def bucket_of(sort_key, fmt="INTEGER"):
-    """Magnitude band that sections the Integer index: 1 / 10 / 100 / 1000 / 10000+.
+def bucket_of(sort_key, fmt="INTEGER", value=None):
+    """Band that sections an index: magnitude for the Integer one -- 1 / 10 /
+    100 / 1000 / 10000+ -- and first letter for the Abbreviation one, A to W,
+    then X-Z together, then 0-9 last for the MP3s and 3Ms.
 
-    Only integers get one. A TIME sort_key is minutes past midnight, so banding
+    Nothing else gets one. A TIME sort_key is minutes past midnight, so banding
     it by magnitude would put 09:41 in the "100" band, which means nothing, and
-    an ABBR has no sort key to band at all.
+    Decimal and Mixed sort by string and read as one list. An abbreviation has
+    no sort key, so its band comes off the value: the first letter or digit in
+    it, so that .NET files under N and not under a punctuation mark.
     """
+    if fmt == "ABBR":
+        m = re.search(r"[A-Za-z0-9]", value or "")
+        if not m:
+            return None
+        c = m.group().upper()
+        return "0-9" if c.isdigit() else "X-Z" if c >= "X" else c
     if sort_key is None or fmt != "INTEGER":
         return None
     v = abs(sort_key)

@@ -83,6 +83,12 @@ export const subjectWord = (abbr: boolean, n = 1) =>
   abbr ? (n === 1 ? 'abbreviation' : 'abbreviations') : n === 1 ? 'number' : 'numbers'
 
 export const BUCKETS = ['1', '10', '100', '1000', '10000+'] as const
+/* The Abbreviation index bands by first letter: one band a letter to W, then
+   X – Z together since three near-empty bands is a table of contents, then
+   0 – 9 last for MP3 and 3M -- the digits are the odd ones out, so they go
+   at the end and not the front ASCII order would give them. The keys are
+   what the API returns in `bucket`, from bucket_of() in numfmt.py. */
+export const ABBR_BUCKETS: readonly string[] = [...'ABCDEFGHIJKLMNOPQRSTUVW', 'X-Z', '0-9']
 export const BUCKET_LABEL: Record<string, string> = {
   '1': '1 – 9',
   '10': '10 – 99',

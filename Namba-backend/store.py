@@ -34,7 +34,7 @@ def shape(rows, con):
     by_id = {p["id"]: p for p in posts}
     for p in posts:
         p["tags"] = []
-        p["bucket"] = bucket_of(p["sort_key"], p["format"])
+        p["bucket"] = bucket_of(p["sort_key"], p["format"], p["value"])
         # sqlite has no bool; the wire and the client both want one
         p["grouped"] = bool(p["grouped"])
     q = "SELECT post_id, tag FROM post_tags WHERE post_id IN (%s) ORDER BY tag" % (

@@ -608,7 +608,7 @@ def list_numbers(
                 "value": r["value"],
                 "format": r["format"],
                 "sort_key": r["sort_key"],
-                "bucket": bucket_of(r["sort_key"], r["format"]),
+                "bucket": bucket_of(r["sort_key"], r["format"], r["value"]),
                 # One row, several entries, one way to write the number. If the
                 # people filing under it disagree about separators, the plain
                 # form wins -- it is the one nobody had to opt into.
