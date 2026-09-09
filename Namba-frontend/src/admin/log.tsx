@@ -21,7 +21,12 @@ function sentence(e: Event) {
           ? [bits.kind, bits.hours ? `${bits.hours}h` : 'permanent'].join(' ')
           : e.action === 'EDIT' && Array.isArray(bits.fields)
             ? (bits.fields as string[]).join(', ')
-            : ''
+            : /* the type, the route pattern and the line -- all three, because
+                 one of them alone does not tell an operator whether this is
+                 one broken page or the database being down. */
+              e.action === 'ERROR'
+              ? [bits.error, bits.route, bits.where].filter(Boolean).join(' · ')
+              : ''
   const note = String(bits.note ?? '')
   return { said, extra, note }
 }

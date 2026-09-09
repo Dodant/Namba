@@ -1633,9 +1633,19 @@ def test_admin_content_and_dashboard():
     both = ops.get("/api/admin/activity").json()
     mine_only = ops.get("/api/admin/activity", params={"kind": "admin"}).json()
     anon = ops.get("/api/admin/activity", params={"kind": "anon"}).json()
-    assert both["total"] == mine_only["total"] + anon["total"]
+    # Three kinds now, not two: a visitor wrote, an operator decided, or the
+    # server fell over -- and the third has no admin_id either, so `anon` says
+    # so rather than filing a 500 as a change somebody made to the wiki.
+    con = db.connect()
+    try:
+        errors = con.execute(
+            "SELECT COUNT(*) FROM events WHERE action = 'ERROR'").fetchone()[0]
+    finally:
+        con.close()
+    assert both["total"] == mine_only["total"] + anon["total"] + errors
     assert all(r["admin_id"] and r["by"] for r in mine_only["rows"])
-    assert all(r["admin_id"] is None for r in anon["rows"])
+    assert all(r["admin_id"] is None and r["action"] != "ERROR"
+               for r in anon["rows"])
     assert ops.get("/api/admin/activity", params={"kind": "sideways"}
                    ).status_code == 422
     assert any(r["title"] for r in both["rows"] if r["target_type"] == "post")
@@ -2552,6 +2562,86 @@ def test_purge_takes_the_words_that_asked_for_it():
                         assert needle not in str(val), (table, col, needle)
     finally:
         con.close()
+
+
+def test_a_500_leaves_a_row_in_the_log():
+    """The one log this repo has is where a crash belongs, and the dashboard
+    already draws it.
+
+    `raise_server_exceptions=False` because Starlette re-raises after calling
+    the handler so the server can still log it -- which is also why the stdout
+    traceback is untouched by this. The stand-in break is `seo.index_html`,
+    since the real one this closes was exactly there: a backslash in a title
+    reaching `re.sub` as a replacement string.
+    """
+    broken = TestClient(main.app, raise_server_exceptions=False)
+    real = seo.index_html
+    seo.index_html = lambda *a, **k: (_ for _ in ()).throw(ValueError("boom"))
+    try:
+        res = broken.get("/")
+    finally:
+        seo.index_html = real
+    assert res.status_code == 500, res.status_code
+    assert "nothing you sent was saved" in res.json()["detail"], res.text
+
+    con = db.connect()
+    try:
+        row = con.execute(
+            "SELECT * FROM events WHERE action = 'ERROR' ORDER BY id DESC"
+        ).fetchone()
+        assert row is not None, "the crash went nowhere"
+        # nobody decided this, and it is about no entry
+        assert row["admin_id"] is None and row["target_type"] is None
+        assert row["ip_hash"], "an error still says which client hit it"
+        meta = json.loads(row["meta"])
+        assert meta["error"] == "ValueError", meta
+        # the route's *pattern*, never the path as typed: a crash on a path a
+        # stranger composed would otherwise sit forever in the one table
+        # `purge` cannot reach
+        assert meta["route"] == "GET /{path:path}", meta
+        assert meta["where"].startswith("test_namba.py:"), meta
+        # and never the message, for the same reason
+        assert "boom" not in row["meta"], row["meta"]
+    finally:
+        con.close()
+
+    # The two back-office queries, called as functions rather than over a signed-in
+    # client: creating an operator here would make this test the *first* account
+    # in the process, and being first is what test_admin_accounts asserts about
+    # its own. What is being checked is the SQL either way.
+    con = db.connect()
+    try:
+        feed = lambda k: {e["action"] for e in admin_api.activity(  # noqa: E731
+            kind=k, limit=50, offset=0, _=None, con=con)["rows"]}
+        assert "ERROR" in feed("all"), "the dashboard's own feed has to show it"
+        assert "ERROR" not in feed("anon"), "a 500 is not a change to the wiki"
+
+        # a write is a write and a crash is not one, or the single number that
+        # says whether a spam wave is happening counts the server falling over
+        before = admin_api.stats(_=None, con=con)["writes_1h"]
+    finally:
+        con.close()
+    seo.index_html = lambda *a, **k: (_ for _ in ()).throw(KeyError("k"))
+    try:
+        assert TestClient(main.app, raise_server_exceptions=False
+                          ).get("/").status_code == 500
+    finally:
+        seo.index_html = real
+    con = db.connect()
+    try:
+        assert admin_api.stats(_=None, con=con)["writes_1h"] == before
+    finally:
+        con.close()
+
+    # the case this runs in is the case where the database is what broke, so
+    # the handler failing must still answer the request
+    dead, events.record = events.record, lambda *a, **k: 1 / 0
+    seo.index_html = lambda *a, **k: (_ for _ in ()).throw(ValueError("boom"))
+    try:
+        again = TestClient(main.app, raise_server_exceptions=False).get("/")
+    finally:
+        seo.index_html, events.record = real, dead
+    assert again.status_code == 500, "a handler that raises answers nothing"
 
 
 def test_upload_gc_keeps_what_history_points_at():

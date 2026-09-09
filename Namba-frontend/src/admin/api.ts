@@ -367,6 +367,7 @@ export const ACTION_LABEL: Record<string, string> = {
   ADMIN_ACTIVE: 'restored an operator',
   ADMIN_DEACTIVATE: 'revoked an operator',
   ADMIN_PASSWORD: 'changed a password',
+  ADMIN_TOTP_ENROLL: 'enrolled an authenticator',
   CONTENT_HIDE: 'hid an entry',
   CONTENT_DELETE: 'removed an entry',
   CONTENT_RESTORE: 'put an entry back',
@@ -378,6 +379,10 @@ export const ACTION_LABEL: Record<string, string> = {
   REPORT_IGNORE: 'dismissed reports',
   CLIENT_BLOCK: 'blocked a client',
   CLIENT_UNBLOCK: 'lifted a block',
+  /* Not a decision by anybody -- the server fell over. It is in this list
+     rather than left to the fallback because "error" alone reads as something
+     somebody did. */
+  ERROR: 'a request failed',
 }
 
 export type { Post, PostStatus }

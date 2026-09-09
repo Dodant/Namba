@@ -441,8 +441,12 @@ def stats(_=Depends(auth.require_admin), con=Depends(db.get_db)):
         "edits_24h": one("""SELECT COUNT(*) FROM events
                             WHERE action IN ('EDIT', 'RESTORE') AND at > ?""",
                          _since(24 * 60)),
-        "writes_1h": one("SELECT COUNT(*) FROM events WHERE admin_id IS NULL AND at > ?",
-                         _since(60)),
+        # An ERROR row is not a write. It has no admin_id either -- a 500 is
+        # nobody's decision -- so without this the one number that says whether
+        # a spam wave is happening counts the server falling over as traffic.
+        "writes_1h": one("""SELECT COUNT(*) FROM events
+                            WHERE admin_id IS NULL AND action <> 'ERROR'
+                              AND at > ?""", _since(60)),
         "blocked": one("""SELECT COUNT(*) FROM blocks WHERE lifted_at IS NULL
                             AND (expires_at IS NULL OR expires_at > ?)""", db.now()),
         "comments": one("SELECT COUNT(*) FROM comments"),
@@ -463,7 +467,13 @@ def activity(
     Both joins are LEFT: an audit row outlives the entry it is about and the
     account that made it, and this is exactly the page where somebody goes
     looking for one that does."""
-    where = {"all": "1", "anon": "e.admin_id IS NULL",
+    # The split is on `admin_id` because the table has two halves: a visitor
+    # did something, or an operator decided something. An ERROR is neither, and
+    # `anon` is the wiki's recent-changes feed -- a 500 is not a change to the
+    # wiki. It stays in `all`, which is what the dashboard asks for, so the
+    # errors have a page without one being built for them.
+    where = {"all": "1",
+             "anon": "e.admin_id IS NULL AND e.action <> 'ERROR'",
              "admin": "e.admin_id IS NOT NULL"}.get(kind)
     if where is None:
         raise HTTPException(422, "kind must be all, anon or admin")

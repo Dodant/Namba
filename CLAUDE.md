@@ -249,6 +249,25 @@ hand-copied vocabulary and a branch beside every existing one.
   size gets more out of a log nobody can edit than out of a redaction. Neither
   is a bug to fix in passing: revising this means saying so here first.
 
+  **A crash is a third kind of row in it, and that is why `anon` says so.**
+  `@app.exception_handler(Exception)` in `main.py` appends an `ERROR` row when
+  a request raises, because the alternative was the container's stdout and
+  nothing else — `write_head`'s comment records a backslash in a title
+  answering that page with a 500 until somebody happened to type one. The
+  table's two halves used to be the whole story: `admin_id IS NULL` is a
+  visitor's write, set is an operator's decision. An error is neither, so
+  `/api/admin/activity?kind=anon` — the wiki's recent-changes feed — excludes
+  it, and so does the dashboard's `writes_1h`, which otherwise counts the
+  server falling over as traffic. `kind=all` is what the dashboard asks for,
+  so the errors have a page without one being built for them.
+
+  What the row carries is the exception's **type**, the route's **pattern**
+  and the file and line — never the message and never the path as typed. Both
+  of those can quote what a stranger wrote, and `meta` is the one place a
+  purge cannot follow it. So this log answers what is breaking and where; the
+  stdout traceback, which is untouched because Starlette re-raises after
+  calling a handler, answers with what input.
+
 - **Everything readers write is CC0.** Public domain, stated where it is given
   away — a line at the form's Publish button, not only in the footer, because a
   waiver read after the fact is not one. The byline still stands: `author` is a

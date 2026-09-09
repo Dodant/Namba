@@ -2,6 +2,7 @@
 import json
 import os
 import time
+import traceback
 from collections import defaultdict
 from typing import ClassVar, List, Optional
 from uuid import uuid4
@@ -9,7 +10,9 @@ from xml.sax.saxutils import escape as xml_escape
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, PlainTextResponse, Response
+from fastapi.responses import (
+    FileResponse, JSONResponse, PlainTextResponse, Response,
+)
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
@@ -95,6 +98,55 @@ async def _nosniff(request, call_next):
     res = await call_next(request)
     res.headers["X-Content-Type-Options"] = "nosniff"
     return res
+
+
+@app.exception_handler(Exception)
+def _unhandled(request: Request, exc: Exception):
+    """A 500 leaves a row in the log an operator already reads.
+
+    Before this, an unhandled exception went to the container's stdout and
+    nowhere else, and the evidence that it is not enough is in this codebase:
+    `write_head`'s comment records a backslash in a title answering that page
+    with a 500 "for good" -- it lived, quietly, until somebody happened to
+    type one. `events` is the log this repo already has, append-only, with a
+    back office drawing it; the dashboard's activity list asks for `kind=all`,
+    so an ERROR row appears there with no front-end change at all.
+
+    **What goes in `meta` is the exception's type, the route's pattern and the
+    file and line it came from -- and never the message or the path as typed.**
+    The message can quote what a stranger wrote (that is exactly what the
+    `re.error` above did) and `meta` is in the one table `purge` cannot reach,
+    which is the decision A5 settled: content does not go somewhere a removal
+    cannot follow it. So this log answers *what is breaking and where*, and the
+    stdout traceback -- unchanged, because Starlette re-raises after calling a
+    handler -- answers *with what input*.
+
+    The whole body is inside a try: the case where the database is what broke
+    is precisely the case where this runs, and a handler that raises turns a
+    500 into a stack trace with no response at all.
+    """
+    try:
+        route = request.scope.get("route")
+        frame = traceback.extract_tb(exc.__traceback__)[-1:]
+        con = db.connect()
+        try:
+            with con:
+                events.record(
+                    con, "ERROR", client=events.client_of(request),
+                    error=type(exc).__name__,
+                    route=f"{request.method} {getattr(route, 'path', '?')}",
+                    where=f"{os.path.basename(frame[0].filename)}:{frame[0].lineno}"
+                          if frame else None,
+                )
+        finally:
+            con.close()
+    except Exception:
+        pass
+    return JSONResponse(
+        {"detail": "something on this server broke -- it is in the operators' log "
+                   "now, and nothing you sent was saved"},
+        status_code=500,
+    )
 # Before every route below, and a long way before the catch-all: Starlette
 # matches in the order routes are added, so /api/admin/... has to be registered
 # ahead of @app.get("/{path:path}"). Included here rather than at the foot of
