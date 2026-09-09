@@ -60,6 +60,7 @@ export const EN = {
     seeMore: 'See more',
     hasImage: 'has an image',
     feedIntro: 'Recent entries and edits, newest first.',
+    moreRecent: 'Show more recent entries',
     empty: 'Nothing written yet.',
     entryKinds: 'Entry format', categories: 'Categories', all: 'All',
     foldedEntries: (n: number) => `${fmtCount(n, 'en')} entries`,

@@ -762,6 +762,7 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
   font-size: 16px; line-height: 1.5; color: var(--muted);
   max-width: 56ch; margin: 20px 0 6px; text-wrap: pretty;
 }
+.feed-more { display: flex; justify-content: center; margin: 24px 0 8px; }
 /* a grid, not a flex row: the body has to start under the title and not
    under the numeral, and on a phone it drops below both */
 .fx {

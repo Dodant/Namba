@@ -46,6 +46,7 @@ export const DE: Messages = {
   home: {
     seeMore: 'Mehr anzeigen',
     hasImage: 'mit Bild', feedIntro: 'Neueste Einträge und Änderungen zuerst.',
+    moreRecent: 'Weitere aktuelle Einträge anzeigen',
     empty: 'Noch wurde nichts eingetragen.', entryKinds: 'Eintragsformat', categories: 'Kategorien', all: 'Alle',
     foldedEntries: (n: number) => `${fmtCount(n, 'de')} ${n === 1 ? 'Eintrag' : 'Einträge'}`,
     bandCount: (subjects: number, subject: string, entries: number) =>

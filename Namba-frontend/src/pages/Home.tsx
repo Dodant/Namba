@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   ABBR_BUCKETS, api, BUCKETS, entryPath, FORMATS, isAbbr, tagLabel, tagPath,
@@ -47,10 +47,39 @@ export default function Home({ lang }: { lang: string }) {
 
 function Feed({ lang }: { lang: string }) {
   const { locale, m } = useUi()
+  const [offset, setOffset] = useState(0)
+  const [shown, setShown] = useState<Post[]>([])
+  const [lastPageSize, setLastPageSize] = useState(0)
   /* sort=recent is updated_at DESC, so an entry someone rewrote this morning
      comes back to the top. Sorted by the API, not here: a client-side sort
      over a bounded page is only right until the twenty-first entry. */
-  const posts = useAsync(() => api.posts({ sort: 'recent', limit: 20, lang }), [lang], true)
+  const posts = useAsync(
+    () => api.posts({ sort: 'recent', limit: FEED_PAGE_SIZE, offset, lang }),
+    [lang, offset],
+  )
+
+  /* A click on "More" must add to what the reader was already scanning, not
+     swap twenty familiar cards for twenty new ones. The id check also makes a
+     quick double click harmless if a recently edited item moves between the
+     two requests. */
+  useEffect(() => {
+    const page = posts.data
+    if (!page) return
+    setLastPageSize(page.length)
+    setShown((before) =>
+      offset === 0
+        ? page
+        : [...before, ...page.filter((p) => !before.some((old) => old.id === p.id))],
+    )
+  }, [posts.data, offset])
+
+  /* Translation preference changes the copy in every card, so the old
+     language must not remain above the first page of the new one. */
+  useEffect(() => {
+    setOffset(0)
+    setShown([])
+    setLastPageSize(0)
+  }, [lang])
 
   return (
     <>
@@ -69,7 +98,7 @@ function Feed({ lang }: { lang: string }) {
         </p>
       )}
 
-      {posts.data?.map((p: Post) => (
+      {shown.map((p: Post) => (
         <article className="fx" key={p.id}>
           <Link
             className={`fx-num ${numSize(showValue(p.value, p.grouped, locale))}`}
@@ -102,14 +131,28 @@ function Feed({ lang }: { lang: string }) {
         </article>
       ))}
 
-      {!posts.loading && !posts.data?.length && (
+      {!posts.loading && !shown.length && (
         <p className="empty">
           {m.home.empty} <Link to="/new">{m.common.addFirst}</Link>
         </p>
       )}
+      {!!shown.length && lastPageSize === FEED_PAGE_SIZE && (
+        <div className="feed-more">
+          <button
+            type="button"
+            className="btn outline"
+            disabled={posts.loading}
+            onClick={() => setOffset((n) => n + FEED_PAGE_SIZE)}
+          >
+            {posts.loading ? m.common.loading : m.home.moreRecent}
+          </button>
+        </div>
+      )}
     </>
   )
 }
+
+const FEED_PAGE_SIZE = 20
 
 /* Past this many entries one number is a wall in the middle of an index you
    are reading down, so it gets a fold of its own. Ten because that is about a

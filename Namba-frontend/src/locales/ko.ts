@@ -39,6 +39,7 @@ export const KO: Messages = {
   home: {
     seeMore: '더 보기',
     hasImage: '이미지 있음', feedIntro: '최근 작성·수정된 항목부터 보여줍니다.',
+    moreRecent: '최근 항목 더 보기',
     empty: '아직 작성된 항목이 없습니다.', entryKinds: '항목 형식', categories: '분류', all: '전체',
     foldedEntries: (n: number) => `항목 ${fmtCount(n, 'ko')}개`,
     bandCount: (subjects: number, subject: string, entries: number) =>

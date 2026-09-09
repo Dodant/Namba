@@ -41,6 +41,7 @@ export const ZH_HANS: Messages = {
   home: {
     seeMore: '查看更多',
     hasImage: '包含图片', feedIntro: '按最近创建或编辑的时间排序。',
+    moreRecent: '显示更多最近条目',
     empty: '还没有任何条目。', entryKinds: '条目格式', categories: '分类', all: '全部',
     foldedEntries: (n: number) => `${fmtCount(n, 'zh-Hans')}个条目`,
     bandCount: (subjects: number, subject: string, entries: number) =>
