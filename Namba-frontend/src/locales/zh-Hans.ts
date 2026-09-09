@@ -85,6 +85,7 @@ export const ZH_HANS: Messages = {
     markdown: '支持Markdown — **粗体**、*斜体*、[链接](https://…)、列表、标题和表格。按一次Enter即可换行。',
     writtenIn: '写作语言', categories: '分类',
     categoryHint: (n: number) => `最多${fmtCount(n, 'zh-Hans')}个 — 由图书改编的电影可以同时选择两者`,
+    allCategories: '显示所有分类', fewerCategories: '收起分类',
     newCategoryAria: '新分类名称', newCategory: '输入新分类', add: '添加',
     image: '图片', imageHint: '可选 — jpg、png、gif或webp，最大5 MB', remove: '移除',
     uploading: '上传中…', nickname: '昵称', editorHint: '记录为编辑者，而非原作者',

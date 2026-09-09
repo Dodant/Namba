@@ -95,6 +95,7 @@ export const DE: Messages = {
     markdown: 'Markdown ist möglich: **fett**, *kursiv*, [Links](https://…), Listen, Überschriften und Tabellen. Einmal Enter erzeugt einen Zeilenumbruch.',
     writtenIn: 'Sprache des Textes', categories: 'Kategorien',
     categoryHint: (n: number) => `bis zu ${fmtCount(n, 'de')} — eine Buchverfilmung kann beiden Kategorien angehören`,
+    allCategories: 'Alle Kategorien anzeigen', fewerCategories: 'Weniger Kategorien anzeigen',
     newCategoryAria: 'Name einer neuen Kategorie', newCategory: 'oder eigene Kategorie anlegen', add: 'Hinzufügen',
     image: 'Bild', imageHint: 'optional — jpg, png, gif oder webp, bis zu 5 MB', remove: 'Entfernen',
     uploading: 'Wird hochgeladen…', nickname: 'Anzeigename',

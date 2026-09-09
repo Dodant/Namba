@@ -110,6 +110,7 @@ export const EN = {
     markdown: 'Markdown works — **bold**, *italic*, [links](https://…), lists, headings and tables. A single Enter is a line break.',
     writtenIn: 'Written in', categories: 'Categories',
     categoryHint: (n: number) => `up to ${fmtCount(n, 'en')} — a film adapted from a book can use both`,
+    allCategories: 'Show all categories', fewerCategories: 'Show fewer categories',
     newCategoryAria: 'Name a new category', newCategory: 'or name your own', add: 'Add',
     image: 'Image', imageHint: 'optional — jpg, png, gif or webp, up to 5 MB', remove: 'Remove',
     uploading: 'Uploading…', nickname: 'Your nickname', editorHint: 'recorded as the editor, not the author',

@@ -83,6 +83,7 @@ export const KO: Messages = {
     markdown: 'Markdown을 사용할 수 있습니다 — **굵게**, *기울임*, [링크](https://…), 목록, 제목, 표. Enter 한 번은 줄바꿈으로 표시됩니다.',
     writtenIn: '작성 언어', categories: '분류',
     categoryHint: (n: number) => `최대 ${fmtCount(n, 'ko')}개 — 책을 원작으로 한 영화라면 둘 다 선택 가능`,
+    allCategories: '모든 분류 보기', fewerCategories: '분류 접기',
     newCategoryAria: '새 분류 이름', newCategory: '새 분류 직접 입력', add: '추가', image: '이미지',
     imageHint: '선택 — jpg, png, gif, webp, 최대 5 MB', remove: '제거', uploading: '업로드 중…',
     nickname: '닉네임', editorHint: '작성자가 아닌 수정자로 기록', noAccountHint: '계정과 비밀번호 없음',

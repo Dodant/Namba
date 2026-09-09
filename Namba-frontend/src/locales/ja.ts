@@ -85,6 +85,7 @@ export const JA: Messages = {
     markdown: 'Markdownが使えます — **太字**、*斜体*、[リンク](https://…)、リスト、見出し、表。Enterを1回押すと改行されます。',
     writtenIn: '記述言語', categories: 'カテゴリ',
     categoryHint: (n: number) => `${fmtCount(n, 'ja')}個まで — 本を原作とする映画なら両方を選択可能`,
+    allCategories: 'すべてのカテゴリを表示', fewerCategories: 'カテゴリを折りたたむ',
     newCategoryAria: '新しいカテゴリ名', newCategory: '新しいカテゴリを入力', add: '追加',
     image: '画像', imageHint: '任意 — jpg、png、gif、webp、5 MBまで', remove: '削除',
     uploading: 'アップロード中…', nickname: 'ニックネーム', editorHint: '作成者ではなく編集者として記録',

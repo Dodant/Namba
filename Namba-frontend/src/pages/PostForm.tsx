@@ -112,6 +112,7 @@ export default function PostForm() {
   // what this form is about right now: "number" until Abbreviation is picked
   const noun = m.common.subject(format === 'ABBR')
   const [coined, setCoined] = useState('')
+  const [allCategories, setAllCategories] = useState(false)
   /* the chips are the wiki's working vocabulary, not a list in here. Capped so
      the form cannot grow without bound as people coin more, and unioned with
      what this entry already carries so a rare tag never falls off the end. */
@@ -416,7 +417,15 @@ export default function PostForm() {
             </span>
           </span>
           <div className="chips">
-            {[...new Set([...(vocab.data ?? []).slice(0, 24).map((v) => v.tag), ...tags])].map(
+            {/* The working vocabulary is useful, but twenty decisions before
+                the image field makes an optional classification look like the
+                form's main task. Start with the common choices and retain any
+                selected rare choice while folded, so a picked tag never seems
+                to disappear. */}
+            {(allCategories
+              ? [...new Set([...(vocab.data ?? []).slice(0, 24).map((v) => v.tag), ...tags])]
+              : [...new Set([...(vocab.data ?? []).slice(0, 8).map((v) => v.tag), ...tags])]
+            ).map(
               (t: Tag) => (
                 <button
                   type="button"
@@ -430,6 +439,16 @@ export default function PostForm() {
               ),
             )}
           </div>
+          {(vocab.data?.length ?? 0) > 8 && (
+            <button
+              type="button"
+              className="category-more"
+              aria-expanded={allCategories}
+              onClick={() => setAllCategories((open) => !open)}
+            >
+              {allCategories ? m.form.fewerCategories : m.form.allCategories}
+            </button>
+          )}
           <div className="coin">
             <input
               value={coined}

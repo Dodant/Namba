@@ -94,6 +94,7 @@ export const ES: Messages = {
     markdown: 'Puedes usar Markdown: **negrita**, *cursiva*, [enlaces](https://…), listas, títulos y tablas. Una sola pulsación de Enter crea un salto de línea.',
     writtenIn: 'Escrito en', categories: 'Categorías',
     categoryHint: (n: number) => `hasta ${fmtCount(n, 'es')} — una película basada en un libro puede usar ambas`,
+    allCategories: 'Mostrar todas las categorías', fewerCategories: 'Mostrar menos categorías',
     newCategoryAria: 'Nombre de una categoría nueva', newCategory: 'o crea una categoría', add: 'Añadir',
     image: 'Imagen', imageHint: 'opcional — jpg, png, gif o webp, hasta 5 MB', remove: 'Eliminar',
     uploading: 'Subiendo…', nickname: 'Tu alias', editorHint: 'constará como editor, no como autor',

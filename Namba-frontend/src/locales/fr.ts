@@ -98,6 +98,7 @@ export const FR: Messages = {
     markdown: 'Vous pouvez utiliser Markdown : **gras**, *italique*, [liens](https://…), listes, titres et tableaux. Une seule pression sur Entrée crée un saut de ligne.',
     writtenIn: 'Langue du texte', categories: 'Catégories',
     categoryHint: (n: number) => `jusqu’à ${fmtCount(n, 'fr')} — un film adapté d’un livre peut utiliser les deux`,
+    allCategories: 'Afficher toutes les catégories', fewerCategories: 'Afficher moins de catégories',
     newCategoryAria: 'Nom d’une nouvelle catégorie', newCategory: 'ou créez une catégorie', add: 'Ajouter',
     image: 'Image', imageHint: 'facultatif — jpg, png, gif ou webp, jusqu’à 5 Mo', remove: 'Supprimer',
     uploading: 'Téléversement…', nickname: 'Votre pseudonyme',
