@@ -263,9 +263,27 @@ sanitiser config to get wrong.
   with nothing to hang one on and is the only thing in the app that renders an
   `.ix-link`. **Below 560 the word goes and the clipped line is the whole
   signal**: 288px is a numeral, a title and a like already, and "See more" is
-  55 of them. The second link is `aria-hidden` and out of the tab order — it
-  goes exactly where the row link goes, and "see more" names nothing in a
-  screen reader's list of links. `Feed` is
+  55 of them.
+
+  **It opens the line rather than going anywhere.** It was a second link to
+  `/p/:id` for one commit, which made it the same click as the title beside
+  it. Now it is a `<button popovertarget>` over an `[popover]` holding the
+  whole line, and the browser owns the layer: the top layer — **which is why
+  this needed no `z-index`, and the header's is still the only one in
+  `index.css`** — plus light dismiss, Escape and one-open-at-a-time, none of it
+  written here. Same argument as the `<details>` folds. A closed popover is
+  `display: none`, so the duplicated text is out of the a11y tree until it is
+  opened, and a row that fits has no button in there either.
+
+  Placement is the one part that is not free: a top-layer box's containing
+  block is the viewport, so it takes anchor positioning to sit against the row
+  — and `popovertarget` makes the button the *implicit* anchor, so there is no
+  `anchor-name` to mint per row. `position-area: block-end span-inline-start`
+  hangs it leftwards off the button's own edge with `flip-block` for a row near
+  the foot of the window, all behind `@supports (position-area: block-end)`;
+  without it the UA centres the box, which is the same words in a worse place.
+  **No tail on the bubble**: it cannot follow the flip, and one pointing at
+  nothing is worse than none. `Feed` is
   `sort=recent` off `/api/posts` — `updated_at DESC`, so a rewrite brings an old
   entry back up. It is labelled `Recent` in the header and the component is
   still `Feed`: the label names the order, `?view=feed` names the shape. One
