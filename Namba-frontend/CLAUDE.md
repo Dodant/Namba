@@ -267,13 +267,23 @@ sanitiser config to get wrong.
 
   **It opens the line rather than going anywhere.** It was a second link to
   `/p/:id` for one commit, which made it the same click as the title beside
-  it. Now it is a `<button popovertarget>` over an `[popover]` holding the
-  whole line, and the browser owns the layer: the top layer — **which is why
-  this needed no `z-index`, and the header's is still the only one in
-  `index.css`** — plus light dismiss, Escape and one-open-at-a-time, none of it
-  written here. Same argument as the `<details>` folds. A closed popover is
-  `display: none`, so the duplicated text is out of the a11y tree until it is
-  opened, and a row that fits has no button in there either.
+  it. Now it is a `<button popovertarget>` over an `[popover]`, and the browser
+  owns the layer: the top layer — **which is why this needed no `z-index`, and
+  the header's is still the only one in `index.css`** — plus light dismiss,
+  Escape and one-open-at-a-time, none of it written here. Same argument as the
+  `<details>` folds. A closed popover is `display: none`, so the duplicated
+  text is out of the a11y tree until it is opened, and a row that fits has no
+  button in there either.
+
+  **What is in it is not the row repeated.** A layer has room the row does
+  not, so it is rebuilt: the number it is filed under and the title on one
+  line, a `--line` rule under both, then the blurb as a paragraph. `--line`
+  and not `--rule-soft` — that one is the whisper between the rows of a
+  `.panel`, where repetition is what makes it read, and this is a single
+  divider that has to be seen, the same line the band heads draw. The numeral
+  is a `.num` like every other in the app (mono, tabular, accent) but not a
+  link: the box is something to read, and the row behind it still has both
+  links.
 
   Placement is the one part that is not free: a top-layer box's containing
   block is the viewport, so it takes anchor positioning to sit against the row
