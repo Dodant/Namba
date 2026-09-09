@@ -30,8 +30,8 @@ export const uiLocale = {
     A delete snapshots under the author "deleted", which sits badly inside a
     sentence that already says "edited by" -- so it becomes the word for it
     instead. Here rather than in either page because both the read page's
-    history and the edit form's History rail draw the same list, and the two
-    had a copy each. */
+    history and the edit form's History rail draw the same list, and one rule
+    beats a copy each. */
 export const revisionBy = (author: string, m: Messages) =>
   (author === 'deleted' ? m.post.deleted : m.post.editedBy(author))
 

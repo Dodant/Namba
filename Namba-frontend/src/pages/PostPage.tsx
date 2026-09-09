@@ -180,8 +180,8 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
         </div>
 
         {/* who wrote it, who changed it, and who wrote the tab in front --
-            folded, because in the meta row it was the first thing on the page
-            and the last thing anyone read */}
+            folded: in the meta row it is the first thing on the page and the
+            last thing anyone reads */}
         {credits && (
           <div className="credits">
             <span>

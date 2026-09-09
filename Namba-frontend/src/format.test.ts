@@ -106,7 +106,7 @@ test('a markdown body reads back as prose', () => {
   assert.equal(plain('![alt](http://x)'), 'alt')
   assert.equal(plain('snake_case and _wrapped_'), 'snake_case and wrapped')
   assert.equal(plain('```\ncode\n```\nafter'), 'after')
-  assert.equal(plain('a\n\n\nb'), 'a b', 'a body with blank lines used to sprawl down a row')
+  assert.equal(plain('a\n\n\nb'), 'a b', 'a body with blank lines otherwise sprawls down a row')
 })
 
 /* marker returns a /g regex and Home.tsx feeds it to String.split, so the

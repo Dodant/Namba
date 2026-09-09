@@ -6,9 +6,10 @@ import { errorText } from './api'
 /** Load-once-per-dep-change fetch state. Used by every page, hence a hook.
 
     `keep` holds the last answer on screen while the next one loads, for the
-    callers whose deps only ever re-filter one list. Without it the index fell
-    from 8000px to a 400px "Loading…" and back for one click on a format tab:
-    two layout jumps and a lost scroll position, on every filter change.
+    callers whose deps only ever re-filter one list. Without it the index
+    collapses from 8000px to a 400px "Loading…" and back for one click on a
+    format tab: two layout jumps and a lost scroll position, on every filter
+    change.
 
     It is off by default because most callers are not filtering, they are
     changing the subject -- another number, another entry -- and last

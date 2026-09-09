@@ -11,7 +11,7 @@ the shapes it answers with, the client that talks to it, and the browser-local
 state that stands in for accounts. **`format.ts` is the other direction**: how
 a stored string reads on screen and how a typed one comes back — a number's
 punctuation, a numeral's size class, a date's distance from now, a markdown
-body read as prose. It imports nothing, which is the sign the seam was real.
+body read as prose. It imports nothing, which is what makes the seam real.
 **`uiLocale.tsx` is the provider** that picks a language, remembers it and
 mirrors it to the cookie the server reads. The words themselves are seven
 files under **`src/locales/`**, collected by `index.ts` the way `src/guide/`
@@ -85,11 +85,12 @@ every link in the panel is wrong in one of them.
   the query fires a request per keystroke and puts every prefix of the word in
   the history. Any URL-filter change clears `offset`, because page 4 of the old
   filter is not page 4 of the new one — and that rule lives in `useUrlFilters`
-  in `state.ts` rather than in each page, which is where three of the five
-  hand-rolled copies of it had quietly lost it. Pass `offset` in the same call
+  in `state.ts` rather than in each page, where five copies of it would drift
+  apart. Pass `offset` in the same call
   to page without resetting; the `Pager` is the only caller that does.
-- **A decision is `useAction`.** Nine handlers wrote out the same `setBusy(true)`
-  / try / `setErr` / `finally setBusy(false)`. It takes the page's error setter
+- **A decision is `useAction`.** Every handler in the panel is the same
+  `setBusy(true)` / try / `setErr` / `finally setBusy(false)`, written once. It
+  takes the page's error setter
   rather than owning one, because `Entry` draws that string twice — on the page
   and inside a modal, which makes the page behind it unreadable — and it does
   not clear the error on the way in, since only two callers want that.
@@ -122,8 +123,8 @@ every link in the panel is wrong in one of them.
   will happen *and what survives it*, because on this wiki the second half is
   the surprising one.
 - **A diff line's sign is mapped to a class name, never interpolated.** `-` and
-  `+` are not valid in one, and building it by template produced a rule the
-  stylesheet could never match. `SIGN` in `Entry.tsx` is the mapping and
+  `+` are not valid in one, and built by template the name is one the
+  stylesheet can never match. `SIGN` in `Entry.tsx` is the mapping and
   `admin.css` names the same three.
 
 ```sh
@@ -137,8 +138,7 @@ a value's punctuation, its size class, a date's distance, a body read back as
 prose, and the regex that lights a number up inside a title. Those take a
 string and return one, so there is nothing to render and nothing to mock, and
 Node has run TypeScript directly since type stripping stopped being a flag.
-`erasableSyntaxOnly` in the tsconfigs is what keeps that true; it was already
-on before there were tests.
+`erasableSyntaxOnly` in the tsconfigs is what keeps that true.
 
 A `.test.ts` lives in `src/` beside what it tests and is typechecked by
 `tsconfig.node.json` rather than the app's project — the header on that file
@@ -151,11 +151,11 @@ against the possibility.
 
 **`-b` is not optional there.** `tsconfig.json` is a solution file — `"files":
 []` and two `references` — so a bare `tsc --noEmit` has nothing in its own file
-list, ignores the references, checks not one line and exits 0. It passed
-`const x: number = "not a number"`. The typecheck was in fact still happening,
-because `npm run build` is `tsc -b && vite build`, but the first command in that
-line was theatre and anyone running it alone got a green that meant nothing.
-`-b --noEmit` builds the referenced projects' types without writing any.
+list, ignores the references, checks not one line and exits 0: it passes
+`const x: number = "not a number"`. `npm run build` runs `tsc -b`, so the build
+is a real typecheck; the bare command on its own is a green that means
+nothing. `-b --noEmit` builds the referenced projects' types without writing
+any.
 
 ## Two kinds of language
 
@@ -180,7 +180,7 @@ describes what contributors have translated. Adding an interface locale is a
 file in `src/locales/`, a line in `UI_LOCALES` and a line in `MESSAGES` — both
 in `src/locales/index.ts` — and nothing else: that list is the union type, the
 footer's `<option>`s, the saved-value check and the `navigator.language` match,
-all of which used to be separate copies of the same seven codes. **A new key
+so there is no second copy of the seven codes to keep in step. **A new key
 goes into `en.ts` first**, because that is what `Messages` is read off; the
 other six then fail to compile until they answer it, which is the check this
 app has instead of a test runner. Adding a content language remains data, not
@@ -189,8 +189,8 @@ a frontend release.
 Punctuation that belongs to a language belongs in its strings. The space
 before the CC0 sentence is in `cc0After` for the four locales that want one,
 because Korean, Japanese and Chinese continue straight off the link with a
-particle — it was a `locale === 'en' || 'es' || …` ternary in `App.tsx`, which
-is a locale set to keep in step disguised as a styling decision.
+particle. A ternary over locale codes in the component would be a locale set
+to keep in step disguised as a styling decision.
 
 `Recent`, `Random`, `+ Add`, visible `Search…`/`Search` labels, `GitHub`, `API`,
 `Markdown` and `CC0` are one compact English product vocabulary in every
@@ -229,8 +229,8 @@ sanitiser config to get wrong.
 - `--muted`, `--faint` and `--fainter` are set by their contrast against
   `--bg` — 5.6, 5.1 and 4.6 to 1 — not by eye, in both themes. They carry the
   field hints, placeholders and byline rows, which is most of the instruction
-  on the page, and they were at 3.4, 2.6 and 2.2 in the light theme until it
-  was measured. They will look too dark next to a mockup that never had to be
+  on the page; set by eye they land near 3 to 1 and are unreadable at 10px.
+  They will look too dark next to a mockup that never had to be
   read at 10px; that is the trade, and lightening one is a regression, not a
   polish. Four legible greys under `--ink-soft` is a narrow band on purpose.
 - Every control the reader types in or presses is a capsule —
@@ -239,8 +239,8 @@ sanitiser config to get wrong.
   at each end and the text runs into it, so it takes 20px. Containers are not
   controls and keep `--radius`: panels, cards, the picker, images.
 - The focus ring sets no `border-radius` of its own. An outline already
-  follows the radius the element has, and the rule used to force 3px — which
-  squared off every capsule for as long as it held the focus.
+  follows the radius the element has, and a radius forced here squares off
+  every capsule for as long as it holds the focus.
 - Hover is a 120ms colour transition and nothing else moves. No transform, no
   size change, so a pointer running down a list of rows leaves no trail. A
   `prefers-reduced-motion` block cuts it.
@@ -250,8 +250,8 @@ sanitiser config to get wrong.
   — the form's heading and intro, the fine print, the empty states. What a
   reader wrote is what comes away with a drag: numerals, titles, blurbs,
   bodies, bylines. Nobody quotes "One entry per meaning" out of a wiki, and
-  before this a drag from a title came away with "CATEGORIES 20 tags 1 - 9
-  8 numbers" sitting on top of it. **Anything new that the app says, rather
+  without this a drag from a title comes away with band labels and counts
+  sitting on top of it. **Anything new that the app says, rather
   than the wiki, belongs in that list.**
 - A field joins the page's selection only while it has the focus. Chrome
   computes `user-select: none` on an `<input>` as `none` and not the `contain`
@@ -270,7 +270,7 @@ sanitiser config to get wrong.
   window on a desktop does not.
 - `overflow-wrap: break-word` is inherited from `body`, and the two
   single-column grid overrides say `minmax(0, 1fr)`. Both are there because
-  a title is a string a stranger typed: one unbreakable word used to widen
+  a title is a string a stranger typed: one unbreakable word otherwise widens
   the document to four times the viewport. `break-word`, not `anywhere` —
   `anywhere` feeds min-content sizing and collapses the columns. The
   numerals keep their own `anywhere`, which is deliberate and different.
@@ -328,8 +328,8 @@ sanitiser config to get wrong.
   clears `cut` off every row before it reads one**, and that is not tidiness:
   the button costs the line about 60px, so measuring while it is on screen asks
   whether the text fits in the space the button left, which a cut row can only
-  answer yes to. It was arguing for its own existence — no row ever gave it
-  back, not on a widened window and not on the fonts pass below. Read them all
+  answer yes to: the button argues for its own existence, and no row ever gives
+  it back, not on a widened window and not on the fonts pass below. Read them all
   and then write them all, too: interleaved, that is a layout per row. That
   effect re-measures on `resize` and once more on `document.fonts.ready`,
   because
@@ -340,13 +340,13 @@ sanitiser config to get wrong.
   renders an `.ix-link`, is one per entry and would need a ref each.
   `IndexEntry` and `IndexRow` are the row and the number it is filed under,
   split out of `Index` because a band, a numeral, a fold, a line, a popover
-  and a like written inline was six levels of nesting in one return. **Below 560 the word goes and the clipped line is the whole
+  and a like written inline is six levels of nesting in one return. **Below 560 the word goes and the clipped line is the whole
   signal**: 288px is a numeral, a title and a like already, and "See more" is
   55 of them.
 
-  **It opens the line rather than going anywhere.** It was a second link to
-  `/p/:id` for one commit, which made it the same click as the title beside
-  it. Now it is a `<button popovertarget>` over an `[popover]`, and the browser
+  **It opens the line rather than going anywhere.** A second link to `/p/:id`
+  would be the same click as the title beside it. It is a
+  `<button popovertarget>` over an `[popover]`, and the browser
   owns the layer: the top layer — **which is why this needed no `z-index`, and
   the header's is still the only one in `index.css`** — plus light dismiss,
   Escape and one-open-at-a-time, none of it written here. Same argument as the
@@ -405,8 +405,9 @@ sanitiser config to get wrong.
   off the deps (`shownFormat` in `Home`), because mid-load the two disagree.
 - `ScrollTop` in `App` is what puts the reader at the top of a new page, on
   path *and* search, since every param here swaps one list for another. It is
-  not decoration: before it, the only thing resetting the scroll was the lists
-  blanking out on load, and the two changes had to land together. `POP` is
+  not decoration: the lists keep their content while the next loads (`keep` in
+  `useAsync`), so nothing else resets the scroll, and the two behaviours have
+  to move together. `POP` is
   exempt — Back is the reader's own position, and restoring it properly would
   mean storing an offset per history entry. **A hash is exempt
   too, and carries a second effect of its own.** A fragment names a place in
@@ -431,7 +432,7 @@ sanitiser config to get wrong.
   **It scrolls twice, and the second one is not belt-and-braces.** The two
   faces come from Google with `display=swap`, so a cold visit paints in a
   fallback, scrolls to the right place, and is then pushed off it as every line
-  above re-measures in Newsreader — 310px measured near the foot of `/guide`,
+  above re-measures in Newsreader — about 310px near the foot of `/guide`,
   most of a section, and invisible in testing because the second visit has the
   fonts cached. So it
   goes again on `document.fonts.ready`. Not *only* then: on a repeat visit the
@@ -459,8 +460,8 @@ sanitiser config to get wrong.
   in `api.ts` beside the vocabulary it reads, `fmtDate` in `format.ts`; a
   helper that needs the locale's
   words takes `Messages` and lives in `uiLocale.tsx`, which is where
-  `revisionBy` is — `PostForm` and `PostPage` had a copy each of the rule that
-  a revision authored by "deleted" says so rather than "edited by deleted".
+  `revisionBy` is — both `PostForm` and `PostPage` draw the rule that a revision
+  authored by "deleted" says so rather than "edited by deleted", so it lives once.
 - **Every date is relative.** `fmtDate` is "4 minutes ago", "2 days ago",
   "5 months ago" — the same scale a feed uses, because every date on this wiki
   is a byline in a list, an edit in a history or a remark under an entry, and
@@ -500,10 +501,10 @@ number WCAG 2.1 1.4.10 names — content must reflow without a sideways scroll
 at 320 CSS px — which makes it both the lowest floor worth declaring and the
 highest one allowed. It is not a phone measurement: 320 is what a 1280px
 desktop becomes at 400% zoom, and that reader is the reason for the rule.
-Measured, the layout holds at exactly 320 and comes apart below it one piece
-at a time — the band count at 280, the form's buttons at 220, the header into
-three rows at 200. The format tabs used to be the first to go, at 300; they
-scroll now and so have no width they come apart at. `min-width` collapses the
+The layout holds at exactly 320 and comes apart below it one piece at a time
+— the band count at 280, the form's buttons at 220, the header into three rows
+at 200. The format tabs scroll and so have no width they come apart at.
+`min-width` collapses the
 rest into one behaviour: under 320 nothing reflows further and the page scrolls
 sideways whole. **So 320 is the width to test at, and nothing needs to work
 under it.**
@@ -521,8 +522,9 @@ What actually changes shape, rather than size:
   `display: none`, so each link keeps its accessible name — as circles the
   exact height of the search box, sized off `--ctl-font` so they grow with
   the box at a coarse pointer; and the search and the pills stay on one row:
-  beside the wordmark while there is room, under it below 560. They used to take a row of their own under the search,
-  which made a phone's header three rows tall before the first number. In
+  beside the wordmark while there is room, under it below 560, never a row of
+  their own under the search, which makes a phone's header three rows tall
+  before the first number. In
   the 900 band the search carries `margin-left: auto`, so once its 460px cap
   bites the slack goes to the wordmark's side and the pills stay flush right.
   `.acts` carries an explicit flex basis in both bands, so set `flex`, never
@@ -569,8 +571,7 @@ What actually changes shape, rather than size:
 
   **The scroll is only half of it.** The tab you are on can start off the end
   of the strip, and four tabs with no underline on any of them is a page that
-  looks like it belongs to none of them — which is what the first attempt at
-  this actually did on `/?format=ABBR`. `Index` in `Home.tsx` holds a ref on
+  looks like it belongs to none of them. `Index` in `Home.tsx` holds a ref on
   the `<nav>` and a **layout** effect that calls `scrollIntoView({ inline:
   'nearest', block: 'nearest' })` on `[aria-current="page"]`. Each half of that
   is load-bearing: `inline: 'nearest'` moves the strip the least that will do,
@@ -615,12 +616,12 @@ What actually changes shape, rather than size:
   the tags under a thumb.
 - **The footer** is a wrapping row rather than a stack: the two paragraphs
   side by side and the links on a line of their own (`flex-basis: 100%` on the
-  last, because a row of four links is not a third sentence). The measure was
-  never the problem — the 68ch cap stays on the paragraphs and must never go
-  on `.foot`, where it took the `border-top` with it and left a rule ending at
-  524px of a 1092px page, which reads as one more separator in a list rather
-  than as the page stopping. What was wrong was the empty half of the band
-  beside it. `flex: 1 1 380px` is the whole breakpoint and it is a measure and
+  last, because a row of four links is not a third sentence). The 68ch cap
+  stays on the paragraphs and must never go on `.foot`, where it takes the
+  `border-top` with it and leaves a rule ending halfway across the page, which
+  reads as one more separator in a list rather than as the page stopping. What
+  the row fixes is the empty half of the band beside a capped paragraph.
+  `flex: 1 1 380px` is the whole breakpoint and it is a measure and
   not a width: two columns hold until one would be under about 55 characters,
   which lands near 860 — **not one of the four widths above, and it does not
   need to be.** This is what the paragraph before this list means by reaching
@@ -632,7 +633,7 @@ What actually changes shape, rather than size:
 
 Mobile browsers, specifically: every box you type in is 16px on a coarse
 pointer, because under that iOS Safari zooms the page in on focus and leaves it
-zoomed — tapping the search pill used to hand back a wiki that scrolled
+zoomed, so a tap on a smaller search box hands back a wiki that scrolls
 sideways. `dvh` rather than `vh` wherever a height is capped, since a phone's
 toolbars make `vh` a promise it does not keep. `index.html` asks for
 `viewport-fit=cover` and `.wrap` maxes its gutter against
@@ -681,8 +682,8 @@ A label and its hint need `{' '}` between them. JSX drops the newline, and
 the accessible name comes out as "Titlewhat the number refers to". The space
 is a whitespace-only flex item, so it is not rendered and costs nothing.
 
-The hint is 10.5px/400 under a 10.5px/600 label. It was the larger of the
-two, and the pair read as one string. The separation is weight: `--muted`
+The hint is 10.5px/400 under a 10.5px/600 label; a hint larger than its label
+reads as one string with it. The separation is weight: `--muted`
 and `--fainter` are pinned by contrast and are not free to spend here.
 
 Where a control is a toggle it says so — `aria-pressed` on the likes and the
@@ -711,8 +712,8 @@ from the response remains selectable with a zero count. The interface picker
 beside it is independent: it changes Namba's controls and dates.
 
 The language tabs on `/p/:id` are absent until the entry has a translation. One tab is a rule drawn across the top of the page
-to say the entry is written in the language you are already reading — and on
-most of the wiki that was the first thing above the number.
+to say the entry is written in the language you are already reading, and on
+most of the wiki it would be the first thing above the number.
 
 The form's two language fields — `Written in` and the one in the Languages
 panel — are `<select>`s over `LANGS` in `PostForm.tsx`, and typing is not an
@@ -730,9 +731,9 @@ counts the names, and `langLabel()` falls back to the bare name for a language
 
 `Written in` has no empty choice: `LANGS[0]` — English, because the wiki is
 English-first — is what a new entry starts on and what an entry with nothing
-recorded picks up the next time it is saved. The field used to default to
-`Not set`, so most entries recorded no language at all and the credits line
-under them fell back to "As first entered".
+recorded picks up the next time it is saved. An empty default records no
+language on most entries, and the credits line under them falls back to a
+placeholder.
 
 The Languages panel's first row says `Original (English)` off the **field
 above it**, not off the saved `post.lang` — the select is what the entry will
@@ -770,8 +771,8 @@ The tick survives a value dropping back under four digits — `grouped` is
 display only, so nothing shows until the digit comes back.
 
 The checkbox sits under the Number
-field, where it stays out of the top row — a third column that came and went
-with the format re-measured Number and Format underneath the choice, and the
+field, where it stays out of the top row: a third column that comes and goes
+with the format re-measures Number and Format underneath the choice, and the
 preview it carries belongs under the number it rewrites. The two controls in
 that row are given one height in `index.css` rather than each taking its own:
 24px of number against 15.5px of select is a pair that sits crooked. Mixed and Time are
@@ -843,14 +844,13 @@ depends on the difference: `/n/42` is not an entry, it is every entry filed
 under 42.
 Below it the same questions are asked one subject at a time, as eight tables
 of *An entry* against *Not an entry*, which is the half an operator reads
-rather than the half a poster does. **A table can leave**, and one has:
-"Statistics and records" went because a record crossing over into a meaning is
+rather than the half a poster does. **A table can leave.** There is no
+"Statistics and records" table because a record crossing over into a meaning is
 already answered by the first rule and by the works, science and people
-tables, and what was left over was figures that are not entries — the general
-case, not a subject. Eight answer more clearly than nine, one of which said it
-depends on whether people say the number. A section going is the rules moving,
-so it takes `version` with it (0.2 to 0.3) and it has to leave `OUTLINE` and
-every language file in one commit, which is what the outline is for. **Every heading carries an `id` for that**:
+tables, and what is left is figures that are not entries — the general case,
+not a subject. A section going is the rules moving, so it takes `version` with
+it and it has to leave `OUTLINE` and every language file in one commit, which
+is what the outline is for. **Every heading carries an `id` for that**:
 `/guide#mining` is a link that goes in a delete request, and the `ScrollTop`
 hash effect exists because of these.
 
@@ -859,9 +859,9 @@ hash effect exists because of these.
 product uses; `번역` decisions like it belong to the language file and nowhere
 else. **Renaming one is not a find-and-replace**: Korean particles agree with
 the final consonant of the word before them, so swapping `항목` (which ends in
-one) for `엔트리` (which does not) silently turned every `항목이` into
-`엔트리이` and every `항목은` into `엔트리은` — fifteen of them, all wrong, none
-of which any build step can see. If a term changes, grep the new word with its
+one) for `엔트리` (which does not) turns every `항목이` into `엔트리이` and
+every `항목은` into `엔트리은`, and no build step can see it. If a term changes,
+grep the new word with its
 next character and read the list.
 
 **Section headings are noun phrases — "3. Number mining", not "One work is not
@@ -955,8 +955,7 @@ right, and the picker's edge lands on the text column's. Spacing is the page's
 against `/new` — and 12px below. Still nearer the title than the rule, so the
 row belongs to the title's band and not the header's, but not the 4px a kicker
 sitting over its own subject would take: across the page from the title, a
-capsule that close reads as resting on the `h1` rather than beside it. It
-arrived 0 above and 26 below, which put the capsule *on* the header's rule.
+capsule that close reads as resting on the `h1` rather than beside it.
 
 And it is **deliberately absent from the `:is()` no-select list**
 that every other sentence the app says about itself is in — that rule is there
@@ -1042,25 +1041,23 @@ the page is the scroller again.
 
 `/p/:id` has exactly one control that changes the entry: `Edit`, at the far end
 of the meta row, paired with the credits toggle by a `/` and wearing the same
-`.meta-btn` as it. It has been a pill beside the tags and a pill at the foot of
-the article; what was wrong with the first was the pill, not the place — a
-filled capsule at the top of the page offers to change an entry nobody has read
-yet. Quiet, at the end of the row, it is a control you find when you look for
+`.meta-btn` as it. Not a pill: a filled capsule at the top of the page offers
+to change an entry nobody has read yet. Quiet, at the end of the row, it is a
+control you find when you look for
 one, which is what an edit link on a wiki is.
 
 Adding a language, rewriting one, unlinking a related entry and restoring a
 revision all live in `/p/:id/edit` — Languages and Related entries as bordered
 panels in the form, History on a rail to the right of it (`.form-layout`, the
-same shape the read page has). Do not put any of them back on the read page —
-that is where they all were, in five different places, and the fix was to give
-them one home.
+same shape the read page has). Do not put any of them on the read page: five
+controls in five places on a read page is what the one home replaces.
 
-**Deleting is not one of them and no longer happens here at all.** The form
-used to carry a `Delete this entry` button and `api.remove()` behind it; both
-are gone, and `DELETE /api/posts/{id}` answers 405. Removing an entry is a
-request an operator decides, and hiding one is a column the operator sets. Do
-not put a delete button back in this form — the whole point is that the wiki
-cannot lose an entry to one stranger's click.
+**Deleting is not one of them and does not happen here at all.** There is no
+delete button in this form and no `api.remove()` behind one, and
+`DELETE /api/posts/{id}` answers 405. Removing an entry is a request an
+operator decides, and hiding one is a column the operator sets. Do not add a
+delete button to this form — the whole point is that the wiki cannot lose an
+entry to one stranger's click (ADR-0002).
 
 Where it went is `FlagPanel`, the third `<details>` in the read page's rail. It
 is on the read page for the reason the comment box is: it writes something
@@ -1091,9 +1088,9 @@ needs answering, it is a delete *and* an undo, not a delete.
 
 The exception is the recovery view in `PostPage`: when the post 404s but its
 revisions survive, `Restore` belongs there, because there is no edit form to
-reach. Nothing new can land in that state — no route removes a row — but the
-entries the old `DELETE` route took away are still out there with their
-snapshots, and this is the only door back to them.
+reach. Nothing new can land in that state — no route removes a row — but a
+snapshot whose entry is gone is still out there, and this is the only door
+back to it (ADR-0002 says where those come from).
 
 `PostForm` keeps two rules straight. A restore replaces the entry, so `fill()`
 resets the fields to it. Linking or translating only changes what is around the
@@ -1118,9 +1115,9 @@ and `toggleTag()` normalises a typed tag the same way the API will so that
 "Book" turns the existing book chip on rather than looking like a second one.
 
 Tags are lower-case everywhere — stored, displayed, and folded in the coin
-field as you type. `tagLabel()` used to sentence-case them and is now just a
-`toLowerCase()`; it stays a function because `/t/:tag` can arrive from an old
-upper-case link and one place has to decide.
+field as you type. `tagLabel()` is a `toLowerCase()` and stays a function
+because `/t/:tag` can arrive from an upper-case link and one place has to
+decide.
 
 ## No accounts
 

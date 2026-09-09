@@ -177,12 +177,12 @@ function Index({ lang }: { lang: string }) {
       /* Clear first, and that is the whole of this. `See more` costs the line
          about 60px, so measuring while it is on screen asks "does this fit in
          the space left after the button", which a cut row can only ever answer
-         yes to -- the control was making the case for its own existence and no
-         row ever gave it back. Widening the window did not release one, and
-         neither did the pass below: a row marked while the fallback font was
-         still showing stayed marked once Newsreader arrived narrower. So every
-         pass starts from a row with nothing at the end of it and asks the
-         question that was meant: is anything hidden at all. */
+         yes to -- the control makes the case for its own existence and no row
+         ever gives it back: not a widened window, and not the pass below,
+         since a row marked while the fallback font is showing stays marked
+         once Newsreader arrives narrower. So every pass starts from a row with
+         nothing at the end of it and asks the question that was meant: is
+         anything hidden at all. */
       links.forEach((el) => el.classList.remove('cut'))
       // read all, then write all -- interleaving them is a layout per row
       const over = links.map((el) => el.scrollWidth > el.clientWidth + 1)
@@ -238,10 +238,9 @@ function Index({ lang }: { lang: string }) {
             {/* Whole words at every width. Five of them want 400px and a
                 320px screen has 288, so the strip scrolls -- see .tabs.fmts
                 in index.css, and the layout effect above, which is what keeps
-                the tab you are on from starting off the end of it. This used
-                to slice each label down to "Int" and "Abbr." to make them
-                fit; scrolling is what replaced that, and a label here is now
-                just its label. */}
+                the tab you are on from starting off the end of it. A label
+                here is its label: the strip scrolls rather than shortening
+                them to "Int" and "Abbr." to fit. */}
             {m.format[f]}
           </Link>
         ))}
@@ -335,7 +334,7 @@ function Index({ lang }: { lang: string }) {
     Its own component because a row is three things at once -- a line clipped
     to one line, a popover that lays the same entry out with the room a layer
     has, and the button that opens the second from the first -- and written
-    inline it put a hundred lines and three more levels of nesting between a
+    inline it puts a hundred lines and three more levels of nesting between a
     band and the numerals it bands. */
 function IndexEntry(
   { entry, shownValue, mark }:

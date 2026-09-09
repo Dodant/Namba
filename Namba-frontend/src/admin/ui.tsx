@@ -11,8 +11,8 @@ import { fmtDate } from '../format'
 /** Keep a native <dialog> in step with the boolean that owns it.
 
     `showModal()` is imperative and the panel's state is not, so something has
-    to bridge them -- and `Confirm` and `Drawer` below had the same ref and the
-    same effect, letter for letter. */
+    to bridge them -- and `Confirm` and `Drawer` below need the same ref and
+    the same effect, so it is written once. */
 function useDialog(open: boolean) {
   const box = useRef<HTMLDialogElement>(null)
   useEffect(() => {

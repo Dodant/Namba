@@ -78,8 +78,8 @@ const CLOCK = (
   </svg>
 )
 
-/* Plus for Add, to the same box. It was a "+" in the label; as an icon it
-   is what is left of the button once the label goes under 900. Its arms
+/* Plus for Add, to the same box. As an icon it is what is left of the
+   button once its label goes under 900. Its arms
    reach 2.75 to 13.25, a little inside the die's 1.7 to 14.3: a plus has no
    outline to mark its extent, so drawn to the same edges it reads bigger
    than the shapes beside it, and drawn to 9 units it read smaller. And a
@@ -93,10 +93,9 @@ const PLUS = (
 )
 
 /* Nothing puts the reader at the top of a new page on its own: the router
-   leaves the scroll where it was, and until the lists stopped emptying on
-   every load it was reset by accident -- the page collapsed to a "Loading…"
-   line, and there was nowhere to be scrolled to. Now that they hold their
-   content, this has to say so.
+   leaves the scroll where it was, and the lists keep their content while the
+   next loads (`keep` in useAsync), so the page never collapses to a line that
+   would reset it by accident. This has to say so.
 
    Search too, not just the path: every param here swaps one list for another
    (a format, a tag, a query, the feed), and none of them is a position in the
@@ -539,8 +538,8 @@ function Broke() {
 }
 
 /* A boundary latches: once it has caught, it renders the fallback until it is
-   remounted -- so without this, "Back to the index" changed the address and
-   left the same apology on screen, and the site looked broken for good.
+   remounted -- so without this, "Back to the index" changes the address and
+   leaves the same apology on screen, and the site looks broken for good.
 
    ponytail: keyed on the path, which remounts the page subtree on every
    navigation and not only after a throw. It costs nothing here because every

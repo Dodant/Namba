@@ -79,9 +79,9 @@ const LANGS = Object.keys(LANG_CODE)
    it on the next save, and the entry never asked to be edited that way. */
 const langsWith = (cur: string) => (!cur || LANGS.includes(cur) ? LANGS : [cur, ...LANGS])
 
-/* Every label in here named nothing: none wrapped its control and none
-   carried an htmlFor, so ten of the eleven fields on this page reached a
-   screen reader as an unnamed edit box with a caption floating above it.
+/* Every label carries an htmlFor to its control. A caption floating above a
+   control names nothing, and a screen reader reads the field under it as an
+   unnamed edit box.
    useId rather than fixed strings because a form is not guaranteed to be the
    only one on the page -- the translation editor below is a second set. */
 export default function PostForm() {

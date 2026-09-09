@@ -35,9 +35,9 @@ const MOVES: Record<string, {
   },
 }
 
-/* A diff line's sign as a class name. '-' and '+' cannot be one, and building
-   the name by interpolation was how the stylesheet ended up with a rule it
-   could never match -- so the mapping is written out and the CSS names it. */
+/* A diff line's sign as a class name. '-' and '+' cannot be one, and built by
+   interpolation the name is one the stylesheet can never match -- so the
+   mapping is written out and the CSS names it. */
 const SIGN: Record<string, string> = { '-': 'dl-out', '+': 'dl-in', '@': 'dl-at' }
 
 /** One line of a diff: what a field was, and what it is now.

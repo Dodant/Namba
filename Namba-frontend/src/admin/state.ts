@@ -15,9 +15,9 @@ import { errorText } from '../api'
     `set` is why this is shared. **Any filter change clears `offset`**, because
     page 4 of the old filter is not page 4 of the new one and landing past the
     end of a shorter list reads as "nothing matched" when the answer was three
-    rows back. Content had that rule written out; Requests, Reports and Log
-    each hand-rolled the same two lines and three of those five hand-rolls did
-    not carry it. Pass `offset` itself in `next` to page without resetting. */
+    rows back. Written once here, because five pages hand-rolling the same
+    two lines is five places for the rule to go missing. Pass `offset` itself
+    in `next` to page without resetting. */
 export function useUrlFilters() {
   const [params, setParams] = useSearchParams()
   return {
@@ -39,8 +39,9 @@ export function useUrlFilters() {
 
     Every decision in the panel is the same shape: the dialog's button goes to
     "Working…", the request goes out, and either the page reloads or the reason
-    it did not stays where the operator can read it. Nine handlers wrote those
-    seven lines out. The error setter is passed in rather than owned here
+    it did not stays where the operator can read it. Every handler in the
+    panel is those seven lines, so they are here once. The error setter is
+    passed in rather than owned here
     because each page already has one, and on Entry that same string is drawn
     twice -- once on the page and once inside a modal that makes the page
     behind it unreadable. Nothing clears it on the way in, deliberately: the
