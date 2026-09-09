@@ -655,25 +655,36 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
   background: var(--panel); color: var(--ink);
   box-shadow: 0 10px 28px rgb(23 23 18 / 0.12);
 }
-.ix-pop p { margin: 0; }
+/* Each of the three paragraphs below owns its own margin, and there is
+   deliberately no `.ix-pop p { margin: 0 }` over them: that selector is
+   (0,1,1) and a class is (0,1,0), so the reset beat every margin set here and
+   the two gaps below silently did nothing -- the same trap `.body p` sets for
+   `.guide`. A blanket reset plus a class per child is a rule that loses to
+   itself. */
 /* The numeral over the title -- the shape every hero in this app has, and the
    one the row cannot take, since out there the number is the column the page
    is read down and one line is all a row gets. Not a link: this box is
-   something to read, and the row behind it still has both. Small mono accent
-   over a serif title is already two voices, so there is no rule between them;
-   a line drawn there would say they were two sections rather than one thing
-   and its name. */
+   something to read, and the row behind it still has both.
+
+   No rule between these two and 3px of air: small mono accent over a serif
+   title is already two voices, and the pair is one thing and its name rather
+   than two sections. The rule below them is where the box does divide. */
 .ix-pop-num {
+  margin: 0 0 3px;
   font-family: var(--mono); font-variant-numeric: tabular-nums;
-  font-size: 15px; font-weight: 600; letter-spacing: -0.02em;
+  font-size: 17px; font-weight: 600; letter-spacing: -0.02em;
   line-height: 1.25; color: var(--accent);
 }
-.ix-pop-title { font-size: 16.5px; font-weight: 500; line-height: 1.35; }
-/* the blurb is a paragraph at last -- on the row it was the tail of a
-   sentence the title started, because a row is one line. Air rather than a
-   rule again: --muted at 300 under --ink at 500 is the separation. */
+.ix-pop-title { margin: 0; font-size: 16.5px; font-weight: 500; line-height: 1.35; }
+/* The blurb is a paragraph at last -- on the row it was the tail of a sentence
+   the title started, because a row is one line -- and what an entry *is* and
+   what it *means* are the two halves worth drawing a line between. --line, the
+   same as the box's own border and the rule across a band head: this one is
+   meant to be seen, unlike the --rule-soft whisper between the rows of a
+   .panel, which reads by repeating. Equal air either side of it. */
 .ix-pop-body {
-  margin-top: 8px; color: var(--muted); font-weight: 300;
+  margin: 9px 0 0; padding-top: 9px; border-top: 1px solid var(--line);
+  color: var(--muted); font-weight: 300;
   font-size: 15.5px; line-height: 1.5; text-wrap: pretty;
 }
 /* Where it sits is the one part that is not free. A top-layer box's containing
