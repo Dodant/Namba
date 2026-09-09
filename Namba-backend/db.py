@@ -129,9 +129,26 @@ CREATE TABLE IF NOT EXISTS events (
   client_hash TEXT,
   meta        TEXT             -- JSON; whatever the action needs to be readable
 );
-CREATE INDEX IF NOT EXISTS idx_events_at     ON events(id DESC);
 CREATE INDEX IF NOT EXISTS idx_events_target ON events(target_type, target_id, id DESC);
 CREATE INDEX IF NOT EXISTS idx_events_ip     ON events(ip_hash, id DESC);
+-- There used to be an idx_events_at ON events(id DESC) here for the feed's
+-- newest-first order, and it never once got used: `id` is `INTEGER PRIMARY
+-- KEY`, which in SQLite is an alias for the rowid, so the table already *is*
+-- that index and ORDER BY id DESC is a backwards walk through it. The two
+-- above earn their keep because each leads with the column being filtered;
+-- that one indexed the row's own address. EXPLAIN QUERY PLAN gives byte-for-byte
+-- the same plan with it and without it, so it was a second write on every
+-- insert into the only table here that never stops growing, in exchange for
+-- nothing. Dropped rather than left: an index named for a column it is not on
+-- is also how the next reader concludes `at` is covered.
+DROP INDEX IF EXISTS idx_events_at;
+-- `at` really is uncovered, and it is a different question from the order --
+-- "the last 24 hours", "the last hour". The dashboard asks it twice on every
+-- load, and `at > ?` matches none of the indexes above, so each of those was a
+-- full scan of that same ever-growing table. (The abuse page asks a third time
+-- but groups by ip_hash, so SQLite keeps to idx_events_ip there and reads it in
+-- order instead of sorting -- that one was never the scan.)
+CREATE INDEX IF NOT EXISTS idx_events_since  ON events(at);
 -- The back office's revision list joins events on this to turn "someone" into
 -- an action and a client hash. Without it that join scans the one table here
 -- that only ever grows, once per entry whose history an operator opens -- and
