@@ -1,6 +1,7 @@
 """Namba API -- an open, no-login wiki of numbers."""
 import json
 import os
+import re
 import time
 import traceback
 from collections import defaultdict
@@ -47,6 +48,15 @@ DIST = os.environ.get("NAMBA_DIST", os.path.join(db.DIR, os.pardir, "Namba-front
 # without one of the two, every canonical on an https site says http.
 BASE = os.environ.get("NAMBA_BASE_URL")
 ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+# What an entry's `image` may point at: one of this wiki's own uploads. The
+# page draws the column straight into an <img>, so an outside URL is a
+# tracking pixel every reader fetches -- the reader's side of the argument that
+# keeps link unfurling out -- and og_head would build an og:image from it that
+# points nowhere. Same name shape gc_uploads.NAME_RX scans for, same extensions
+# /api/upload accepts, so the three cannot disagree about what a picture is.
+UPLOAD_PATH = re.compile(
+    r"^/uploads/[A-Za-z0-9._-]+\.(?:%s)$"
+    % "|".join(sorted(re.escape(e[1:]) for e in ALLOWED_EXT)))
 MAX_UPLOAD = 5 * 1024 * 1024
 # What the uploads directory as a whole may reach. The per-file cap and the write
 # limiter still leave one IP 100 MB a minute, and this disk holds the database
@@ -344,6 +354,16 @@ class PostRules(BaseModel):
     def known_format(cls, v):
         if v is not None and v not in FORMATS:
             raise ValueError(f"format must be one of {FORMATS}")
+        return v
+
+    # None passes: it is how the form removes a picture. A restore does not
+    # come through here, since a snapshot has to be restorable whatever it holds.
+    @field_validator("image", check_fields=False)
+    @classmethod
+    def own_upload(cls, v):
+        if v is not None and not UPLOAD_PATH.match(v):
+            raise ValueError("an image is one of this wiki's uploads: /uploads/<name>."
+                             + "|".join(sorted(e[1:] for e in ALLOWED_EXT)))
         return v
 
 

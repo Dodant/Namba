@@ -324,6 +324,25 @@ def test_share_card():
     assert 'rel="canonical" href="http://testserver/p/%d"' % p["id"] in page
     assert 'property="article:published_time"' in page
 
+    # An entry's picture is one of this wiki's uploads and nothing else. The
+    # page draws `image` straight into an <img>, so an outside URL is a
+    # tracking pixel every reader fetches -- the same argument that keeps link
+    # unfurling out, from the reader's side of the wire -- and og_head would
+    # build an og:image out of it that points nowhere. Refused on both writes;
+    # a restore does not re-check, since a snapshot has to be restorable.
+    for bad in ("https://tracker.test/pixel.gif", "//tracker.test/x.png",
+                "/uploads/../secret.key", "/uploads/x.svg", "/uploads/x",
+                "uploads/x.png", "/uploads/sub/x.png", "javascript:alert(1)"):
+        r = c.patch(f"/api/posts/{p['id']}", json={"image": bad})
+        assert r.status_code == 422, (bad, r.status_code, r.text)
+        r = c.post("/api/posts", json={"value": "1729", "title": "x", "image": bad})
+        assert r.status_code == 422, (bad, r.status_code, r.text)
+    assert c.get(f"/api/posts/{p['id']}").json()["image"] is None, "a refusal wrote nothing"
+    # ...and null still clears one: the form's Remove button rides on it
+    assert c.patch(f"/api/posts/{p['id']}", json={"image": "/uploads/x.webp"}
+                   ).json()["image"] == "/uploads/x.webp"
+    assert c.patch(f"/api/posts/{p['id']}", json={"image": None}).json()["image"] is None
+
     # an entry with a picture uses its own, at an absolute url, and takes no
     # alt: nothing here has ever seen that image
     with_img = c.patch(f"/api/posts/{p['id']}", json={"image": "/uploads/x.png"}).json()

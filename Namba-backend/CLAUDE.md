@@ -538,7 +538,12 @@ there. The operator's half has a login, and the notes above are the whole of it.
 
 - Uploads: extension allowlist, 5 MB per file, `UPLOAD_TOTAL_MAX` for the
   directory, and the filename is always `uuid4().hex + ext`. Never build a path
-  from `file.filename`. The total matters because 20 writes a minute times 5 MB
+  from `file.filename`. **An entry's `image` is one of those uploads and
+  nothing else**: `PostRules.own_upload` holds it to `UPLOAD_PATH`, a name
+  under `/uploads/` with an allowed extension, on both writes. The page draws
+  the column into an `<img>`, so an outside URL would be a tracking pixel
+  every reader fetches. A restore does not re-check, for the reason
+  `write_tags` normalises without validating. The total matters because 20 writes a minute times 5 MB
   fills the disk the database is on. Nothing looks *inside* the file, so a
   `.png` full of markup is uploadable — `/uploads` is the one place a
   stranger's bytes come back off this origin, and what keeps the guessed
