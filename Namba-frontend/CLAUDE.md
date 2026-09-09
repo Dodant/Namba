@@ -283,14 +283,16 @@ sanitiser config to get wrong.
   button in there either.
 
   **What is in it is not the row repeated.** A layer has room the row does
-  not, so it is rebuilt: the number it is filed under and the title on one
-  line, a `--line` rule under both, then the blurb as a paragraph. `--line`
-  and not `--rule-soft` — that one is the whisper between the rows of a
-  `.panel`, where repetition is what makes it read, and this is a single
-  divider that has to be seen, the same line the band heads draw. The numeral
-  is a `.num` like every other in the app (mono, tabular, accent) but not a
-  link: the box is something to read, and the row behind it still has both
-  links.
+  not, so it is rebuilt: the numeral over the title over the blurb, which is
+  the shape every hero in this app has and the one a row cannot take — out
+  there the number is the column the page is read down, and one line is all a
+  row gets. The numeral keeps the app's treatment (mono, tabular, accent) but
+  is not a link: the box is something to read, and the row behind it still has
+  both links. **No rules between the three.** Small mono accent over a serif
+  title is already two voices, and `--muted` at 300 under `--ink` at 500 is
+  two more; a line drawn between them would say they were sections rather than
+  one thing, its name and what it means. There was one for a commit, and air
+  says it better.
 
   Placement is the one part that is not free: a top-layer box's containing
   block is the viewport, so it takes anchor positioning to sit against the row
