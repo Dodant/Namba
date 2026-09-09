@@ -1,5 +1,5 @@
 import {
-  Component, useEffect, useLayoutEffect, useRef, useState,
+  Component, useDeferredValue, useEffect, useLayoutEffect, useRef, useState,
   type ReactNode,
 } from 'react'
 import {
@@ -199,12 +199,24 @@ const WORDMARK = (
   </>
 )
 
-function Header() {
+function Header({ lang }: { lang: string }) {
   const { locale, m } = useUi()
   const nav = useNavigate()
   const [params] = useSearchParams()
   const { pathname } = useLocation()
   const box = useRef<HTMLInputElement>(null)
+  const [query, setQuery] = useState(() => params.get('q') ?? '')
+  /* Rendering suggestion results can wait a moment; typing itself cannot. */
+  const deferredQuery = useDeferredValue(query.trim())
+  const suggestionQuery = canonicalNumber(deferredQuery, locale).value
+  const suggestions = useAsync(
+    () => suggestionQuery.length >= 2
+      ? api.posts({ q: suggestionQuery, limit: 5, lang })
+      : Promise.resolve([]),
+    [suggestionQuery, lang],
+  )
+
+  useEffect(() => setQuery(params.get('q') ?? ''), [params])
 
   /* the pill has always drawn a "/" and nothing has ever listened for one.
      Either the glyph goes or this does, and the glyph is the convention every
@@ -244,19 +256,20 @@ function Header() {
         <span className="logo-sub">{m.tagline}</span>
       </Link>
       <div className="acts">
-        <form
-          className="search"
-          onSubmit={(e) => {
-            e.preventDefault()
-            const q = (new FormData(e.currentTarget).get('q') as string).trim()
+        <div className="search-wrap">
+          <form
+            className="search"
+            onSubmit={(e) => {
+              e.preventDefault()
+              const q = query.trim()
             /* an empty box is not a search for nothing: the API drops an empty
                q and hands back the whole wiki, which arrived under the
                heading Search: "" and read as a bug. */
-            if (!q) return
-            nav(`/search?q=${encodeURIComponent(canonicalNumber(q, locale).value)}`)
-          }}
-        >
-          <span className="slash">/</span>
+              if (!q) return
+              nav(`/search?q=${encodeURIComponent(canonicalNumber(q, locale).value)}`)
+            }}
+          >
+            <span className="slash">/</span>
           {/* Not "Search numbers". q goes at the value, the title, the body and
               every translation's title and body -- one LIKE clause in main.py
               -- so a box that says numbers is a box nobody types a word into,
@@ -266,15 +279,38 @@ function Header() {
               172px of 16px mono, which is seventeen characters before the
               placeholder is cut. The enumeration goes in the label, which has
               no width to run out of. */}
-          <input
-            ref={box}
-            type="search"
-            name="q"
-            aria-label={m.header.searchLabel}
-            placeholder={m.header.searchPlaceholder}
-            defaultValue={showValue(params.get('q') ?? '', false, locale)}
-          />
-        </form>
+            <input
+              ref={box}
+              type="search"
+              name="q"
+              aria-label={m.header.searchLabel}
+              aria-controls="search-suggestions"
+              aria-expanded={suggestionQuery.length >= 2 && !!suggestions.data?.length}
+              placeholder={m.header.searchPlaceholder}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </form>
+          {suggestionQuery.length >= 2 && !!suggestions.data?.length && (
+            <div className="search-suggestions" id="search-suggestions" aria-label={m.header.suggestions}>
+              {suggestions.data.map((post) => (
+                <Link key={post.id} to={`/p/${post.id}`} onClick={() => setQuery('')}>
+                  <span className="search-suggestion-value">
+                    {showValue(post.value, post.grouped, locale)}
+                  </span>
+                  <span>{post.title}</span>
+                </Link>
+              ))}
+              <button
+                type="button"
+                className="search-all"
+                onClick={() => nav(`/search?q=${encodeURIComponent(suggestionQuery)}`)}
+              >
+                {m.header.allResults}
+              </button>
+            </div>
+          )}
+        </div>
         {/* The three that act, in a group of their own. Left to wrap on
             their own widths they broke wherever the search box happened to
             end; grouped, they stay one set. Under 900 the labels are clipped
@@ -464,7 +500,7 @@ function Wiki() {
       <div className="wrap">
         <ScrollTop />
         <SiteTitle />
-        <Header />
+        <Header lang={lang} />
         <main>
           <Guarded>
             <Routes>

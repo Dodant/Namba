@@ -12,6 +12,8 @@ export const GLOBAL_NAV = {
   recent: 'Recent',
   random: 'Random',
   add: 'Add',
+  suggestions: 'Suggestions',
+  allResults: 'See all results',
 } as const
 
 export const GLOBAL_TERMS = {
