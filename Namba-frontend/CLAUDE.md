@@ -288,11 +288,19 @@ sanitiser config to get wrong.
   there the number is the column the page is read down, and one line is all a
   row gets. The numeral keeps the app's treatment (mono, tabular, accent) but
   is not a link: the box is something to read, and the row behind it still has
-  both links. **No rules between the three.** Small mono accent over a serif
-  title is already two voices, and `--muted` at 300 under `--ink` at 500 is
-  two more; a line drawn between them would say they were sections rather than
-  one thing, its name and what it means. There was one for a commit, and air
-  says it better.
+  both links. **One rule, and where it goes is the point.** The numeral and the
+  title are a thing and its name, so they get 3px of air and nothing else —
+  small mono accent over a serif title is already two voices. The line falls
+  between the title and the blurb, which is where the box really divides: what
+  an entry *is*, and what it means. `--line` and 9px either side of it, the
+  same line a band head draws, not the `--rule-soft` whisper between the rows
+  of a `.panel` that reads by repeating.
+
+  Each of those three paragraphs owns its own margin, and there is **no
+  `.ix-pop p { margin: 0 }`** over them. There was, and it is (0,1,1) against a
+  class's (0,1,0), so it beat every margin set on the three and both gaps
+  silently did nothing — the same trap `.body p` sets for `.guide` further
+  down. A blanket reset plus a class per child is a rule that loses to itself.
 
   Placement is the one part that is not free: a top-layer box's containing
   block is the viewport, so it takes anchor positioning to sit against the row
