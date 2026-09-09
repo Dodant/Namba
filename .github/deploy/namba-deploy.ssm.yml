@@ -64,15 +64,21 @@ mainSteps:
             echo "[namba] nginx -t 실패 -- reload 하지 않는다"
           fi
 
+          # 두 URL 을 본다. 실패하는 방식이 다르기 때문이다. /api/posts 는
+          # 데이터베이스가 열렸음을, / 는 dist/ 가 이미지에 들어갔음을 말한다.
+          # 프런트엔드 없이 빌드된 이미지는 API 에 200 을 주면서 모든 페이지에
+          # 404 를 돌려주므로, API 만 확인하면 그 배포가 통과한다.
           CODE=000
           for _ in 1 2 3 4 5 6 7 8 9 10; do
-            CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 https://namba.chiral.kr/api/posts || true)"
-            [ "$CODE" = "200" ] && break
+            API="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 https://namba.chiral.kr/api/posts || true)"
+            DOC="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 https://namba.chiral.kr/ || true)"
+            CODE="api=$API doc=$DOC"
+            [ "$API" = "200" ] && [ "$DOC" = "200" ] && break
             sleep 2
           done
 
-          if [ "$CODE" != "200" ]; then
-            echo "[namba] 검증 실패(code=$CODE)"
+          if [ "$CODE" != "api=200 doc=200" ]; then
+            echo "[namba] 검증 실패($CODE)"
             if [ -n "${PREV:-}" ]; then
               echo "[namba] 되돌린다 → $PREV"
               sed -i '/^NAMBA_IMAGE=/d' .env
