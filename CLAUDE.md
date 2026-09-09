@@ -268,6 +268,19 @@ hand-copied vocabulary and a branch beside every existing one.
   stdout traceback, which is untouched because Starlette re-raises after
   calling a handler, answers with what input.
 
+- **One process, and that is a requirement rather than a default.** The three
+  limiters that stand between an open wiki and a script — `main._writes`,
+  `auth._attempts`, `auth._mfa_attempts` — are `defaultdict`s in process
+  memory. A second worker is a second allowance for the same address, and a
+  second container is a third: the login limiter in particular is what makes
+  five password attempts a minute mean five. `--workers 1` in the Dockerfile
+  is the enforcement and its comment says so, but a deploy setting is not
+  where a rule like this survives — this list is. So it is here: **adding
+  workers, gunicorn, or a second replica means moving those three out of
+  process memory first**, in the same change, or the rule is quietly gone with
+  nothing failing. There is no test that can catch it, which is the other
+  reason it is written down.
+
 - **Everything readers write is CC0.** Public domain, stated where it is given
   away — a line at the form's Publish button, not only in the footer, because a
   waiver read after the fact is not one. The byline still stands: `author` is a
