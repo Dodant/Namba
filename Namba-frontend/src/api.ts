@@ -213,6 +213,25 @@ export function qs(params: Params) {
   return s ? `?${s}` : ''
 }
 
+/** What the API refused, and with which status.
+
+    A plain field and not a parameter property: `erasableSyntaxOnly` is on in
+    the tsconfigs, and a parameter property is the one class syntax that is not
+    erasable.
+
+    `errorText` reads it as the `Error` it is, which is all twenty call sites
+    ever wanted. The status is for the one place that has to tell two refusals
+    apart: a 409 on a save is somebody else's edit landing first, which is
+    worth keeping a draft for, and every other refusal is a sentence to show. */
+export class ApiError extends Error {
+  status: number
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
 export async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init)
   if (!res.ok) {
@@ -226,7 +245,7 @@ export async function req<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       /* keep statusText */
     }
-    throw new Error(detail)
+    throw new ApiError(res.status, detail)
   }
   return res.status === 204 ? (null as T) : res.json()
 }

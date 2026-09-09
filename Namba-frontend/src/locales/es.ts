@@ -102,6 +102,9 @@ export const ES: Messages = {
     uploading: 'Subiendo…', nickname: 'Tu alias', editorHint: 'constará como editor, no como autor',
     noAccountHint: 'sin cuenta ni contraseña', saving: 'Guardando…', publishing: 'Publicando…',
     saveChanges: 'Guardar cambios', publish: 'Publicar',
+    conflict: (fields: string[]) =>
+      `Otra persona guardó esta entrada mientras la tenías abierta y cambió: ${fields.length ? fields.join(', ') : 'algo que no se ve aquí'}. No se ha perdido nada de lo que escribiste: pulsa Guardar cambios otra vez para escribir tu versión sobre la suya, o`,
+    conflictCompare: 'lee antes la suya ↗',
     cc0: (editing: boolean) => `Al ${editing ? 'guardar' : 'publicar'}, esta contribución se libera bajo CC0. Cualquiera puede reutilizarla para cualquier fin sin pedir permiso.`,
     history: 'Historial', historyHint: 'restaura una versión anterior en esta misma dirección', current: 'actual',
     translations: 'Traducciones', translationsHint: 'esta entrada en otros idiomas',

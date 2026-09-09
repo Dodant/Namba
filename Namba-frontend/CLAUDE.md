@@ -462,6 +462,12 @@ sanitiser config to get wrong.
   words takes `Messages` and lives in `uiLocale.tsx`, which is where
   `revisionBy` is — both `PostForm` and `PostPage` draw the rule that a revision
   authored by "deleted" says so rather than "edited by deleted", so it lives once.
+- **The like says what it does in the locale's own words.** `m.common.like`
+  takes whether it is on and the count, because the sentence is not the same
+  shape in every language — Korean counts with a suffix and English pluralises
+  a noun. It was a `locale === 'ko'` ternary in `PostCard.tsx`, which is a
+  locale set to keep in step living in the one file that cannot see
+  `src/locales/`.
 - **Every date is relative.** `fmtDate` is "4 minutes ago", "2 days ago",
   "5 months ago" — the same scale a feed uses, because every date on this wiki
   is a byline in a list, an edit in a history or a remark under an entry, and
@@ -1097,6 +1103,27 @@ resets the fields to it. Linking or translating only changes what is around the
 entry, so those `setPost()` and leave a half-typed title alone. `LinkPanel` and
 `TranslationEditor` are deliberately **not** `<form>` elements — nested inside
 the entry form, an inner submit bubbles out and publishes the entry.
+
+**A 409 keeps the draft.** The API refuses a save built on a copy of the entry
+somebody has since replaced (`base_updated_at`), and the refusal is the one
+answer this form does not simply print. It fetches the entry as it now stands,
+`setPost()`s it — which moves `base_updated_at` on, so the next press lands —
+and names the fields that moved, comparing the entry the form was *filled*
+from against the entry as it is now. Not against what is typed here: the useful
+sentence is "they changed the title", not "your title differs from theirs".
+Nothing in the form is touched, so pressing Save again writes the draft over
+theirs, and the notice links to the entry for a reader who would rather read
+first.
+
+It does not merge. Sending only the fields this form actually changed would
+let two people editing different fields both land, and that is a decision
+about what a save means rather than a way of drawing a refusal — see ADR-0006.
+
+**`ApiError` is why any of that is possible.** `req` throws one, carrying the
+status beside FastAPI's `detail`; `errorText` still reads it as the `Error` it
+is, so the twenty call sites that only want a sentence are unchanged. A plain
+field rather than a constructor parameter property, because `erasableSyntaxOnly`
+is on and a parameter property is the one class syntax that is not erasable.
 
 ## Mirrors the backend
 

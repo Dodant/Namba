@@ -1,15 +1,16 @@
 import { useEffect, useId, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
-  api, errorText, FORMATS, LANG_CODE, langLabel, nickname, TAG_MAX, tagLabel,
-  TAGS_PER_POST, type Format, type Post, type Revision, type Tag, type Translation,
+  api, ApiError, errorText, FORMATS, LANG_CODE, langLabel, nickname, TAG_MAX,
+  tagLabel, TAGS_PER_POST, type Format, type Post, type Revision, type Tag,
+  type Translation,
 } from '../api'
 import {
   canGroupValue, canonicalNumber, cleanNumberInput, fmtDate, showValue,
 } from '../format'
 import ExistingEntries from '../components/ExistingEntries'
 import { useAsync } from '../useAsync'
-import { revisionBy, useUi } from '../uiLocale'
+import { revisionBy, useUi, type Messages } from '../uiLocale'
 
 /* What the number field takes, and whether separators mean anything, follow
    the format the poster picked. Auto-detect constrains nothing: nothing has
@@ -43,6 +44,29 @@ const examples = (format: string, locale: string) => EXAMPLES[format]
 
 // there is no thousand in 10:04PM, in 9¾ or in UFO
 const groupable = (f: string) => f !== 'MIXED' && f !== 'TIME' && f !== 'ABBR'
+
+/* Which fields somebody else moved while this form was open. Compared
+   between the entry as the form was filled from it and the entry as it now
+   stands -- not against what is typed here, because the useful sentence is
+   "they changed the title", not "your title differs from theirs".
+
+   Named with the form's own labels, so the reader is pointed at fields they
+   can see rather than at column names. */
+function whatMoved(was: Post, now: Post, m: Messages): string[] {
+  const fields: [boolean, string][] = [
+    [was.value !== now.value, m.form.number],
+    [was.format !== now.format, m.form.format],
+    [was.title !== now.title, m.form.title],
+    [was.body !== now.body, m.form.details],
+    [was.lang !== now.lang, m.form.writtenIn],
+    [was.grouped !== now.grouped, m.form.groupThousands],
+    [was.image !== now.image, m.form.image],
+    [was.tags.join() !== now.tags.join(), m.form.categories],
+    [(was.translations ?? []).length !== (now.translations ?? []).length,
+     m.form.translations],
+  ]
+  return fields.filter(([moved]) => moved).map(([, name]) => name)
+}
 
 /* Normalised the same way the API will normalise it, so a tag typed as "Book"
    turns the existing book chip on instead of looking like a second one. The
@@ -119,6 +143,11 @@ export default function PostForm() {
   const vocab = useAsync(() => api.tags(), [])
   const [author, setAuthor] = useState(nickname.get())
   const [err, setErr] = useState('')
+  /* Somebody else saved while this form was open. Its own state and not an
+     error string: an error is what went wrong with the request, and this is a
+     thing that happened to the entry -- the draft is fine, the base has moved,
+     and pressing Save again is the answer. */
+  const [clash, setClash] = useState<string[] | null>(null)
   const [busy, setBusy] = useState(false)
   /* a 5 MB upload over a slow line is several seconds in which the field
      looked exactly as it did before the file was picked */
@@ -161,6 +190,7 @@ export default function PostForm() {
     e.preventDefault()
     setBusy(true)
     setErr('')
+    setClash(null)
     nickname.set(author)
     const payload = {
       value,
@@ -187,7 +217,22 @@ export default function PostForm() {
         : await api.create(payload)
       nav(`/p/${saved.id}`)
     } catch (e) {
-      setErr(errorText(e))
+      /* A 409 is the API refusing a save built on a copy of the entry that
+         somebody has since replaced. The draft is not the problem and must
+         not be thrown away, so: fetch the entry as it now stands, move the
+         base on to it -- which is what makes the next press land -- and say
+         which fields moved. Every other refusal is a sentence to show. */
+      if (editing && post && e instanceof ApiError && e.status === 409) {
+        try {
+          const fresh = await api.post(Number(id))
+          setPost(fresh)
+          setClash(whatMoved(post, fresh, m))
+        } catch {
+          setErr(errorText(e))   // the entry is unreachable; say what it said
+        }
+      } else {
+        setErr(errorText(e))
+      }
       setBusy(false)
     }
   }
@@ -530,6 +575,20 @@ export default function PostForm() {
         {err && (
           <p className="err" role="alert">
             {err}
+          </p>
+        )}
+
+        {/* An .err, because the save really was refused, and above the buttons
+            because pressing one again is what answers it. The words carry the
+            other half -- the draft is still here -- since nothing about a red
+            box says so. It reuses that style rather than minting a class: the
+            page already has one voice for "this needs you". */}
+        {clash && (
+          <p className="err" role="alert">
+            {m.form.conflict(clash)}{' '}
+            <a href={`/p/${id}`} target="_blank" rel="noreferrer">
+              {m.form.conflictCompare}
+            </a>
           </p>
         )}
 

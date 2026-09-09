@@ -106,6 +106,9 @@ export const FR: Messages = {
     uploading: 'Téléversement…', nickname: 'Votre pseudonyme',
     editorHint: 'enregistré comme éditeur, et non comme auteur', noAccountHint: 'sans compte ni mot de passe',
     saving: 'Enregistrement…', publishing: 'Publication…', saveChanges: 'Enregistrer les modifications',
+    conflict: (fields: string[]) =>
+      `Quelqu’un d’autre a enregistré cette entrée pendant que vous l’aviez ouverte, en modifiant : ${fields.length ? fields.join(', ') : 'quelque chose qui ne se voit pas ici'}. Rien de ce que vous avez écrit n’est perdu — appuyez de nouveau sur Enregistrer les modifications pour écrire votre version par-dessus la leur, ou`,
+    conflictCompare: 'lisez d’abord la leur ↗',
     publish: 'Publier',
     cc0: (editing: boolean) => `${editing ? 'L’enregistrement' : 'La publication'} place cette contribution sous CC0. Tout le monde peut la réutiliser à n’importe quelle fin sans demander d’autorisation.`,
     history: 'Historique', historyHint: 'restaurez une version antérieure à cette même adresse', current: 'actuelle',

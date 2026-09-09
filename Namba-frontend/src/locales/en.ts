@@ -122,6 +122,12 @@ export const EN = {
     uploading: 'Uploading…', nickname: 'Your nickname', editorHint: 'recorded as the editor, not the author',
     noAccountHint: 'no account, no password', saving: 'Saving…', publishing: 'Publishing…',
     saveChanges: 'Save changes', publish: 'Publish',
+    /* Somebody else's save landed first. The draft is untouched, which is
+       the half a reader needs told: the API refused the write, it did not
+       take a version of the entry away. */
+    conflict: (fields: string[]) =>
+      `Somebody else saved this entry while you had it open, changing ${fields.length ? fields.join(', ') : 'nothing you can see'}. Nothing you typed is lost — press Save changes again to write your version over theirs, or`,
+    conflictCompare: 'read theirs first ↗',
     cc0: (editing: boolean) => `${editing ? 'Saving' : 'Publishing'} releases this contribution under CC0. Anyone may reuse it for any purpose without asking.`,
     history: 'History', historyHint: 'restore an earlier version at this same address', current: 'current',
     translations: 'Translations', translationsHint: 'this entry in other languages',

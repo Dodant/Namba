@@ -93,6 +93,9 @@ export const JA: Messages = {
     uploading: 'アップロード中…', nickname: 'ニックネーム', editorHint: '作成者ではなく編集者として記録',
     noAccountHint: 'アカウント・パスワード不要', saving: '保存中…', publishing: '公開中…',
     saveChanges: '変更を保存', publish: '公開',
+    conflict: (fields: string[]) =>
+      `この項目を開いている間に別の人が保存しました。変更された箇所: ${fields.length ? fields.join('、') : '画面に見えない部分'}。入力した内容は残っています — もう一度「変更を保存」を押すと上書きされます。`,
+    conflictCompare: '先に相手の内容を見る ↗',
     cc0: (editing: boolean) => `${editing ? '保存すると' : '公開すると'}、この投稿はCC0で公開されます。誰でも許可なく、あらゆる目的に再利用できます。`,
     history: '履歴', historyHint: 'このURLの以前の版を復元', current: '現在',
     translations: '翻訳', translationsHint: 'この項目を別の言語で記述',
