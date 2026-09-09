@@ -233,6 +233,18 @@ def guard(request: Request, con=Depends(get_db)):
 
 
 # --- models -------------------------------------------------------------
+def nick(typed):
+    """The name a write is filed under.
+
+    There are no accounts here, so this is a string somebody typed and nothing
+    more -- but a blank one has to become a word, or a byline reads as a field
+    that failed to load rather than as an anonymous contribution. Every write
+    below asked the same question in the same breath, several of them twice in
+    one function.
+    """
+    return typed.strip() or "anonymous"
+
+
 def _clean_tags(v):
     """Normalise, then check the shape. Lower-cased so Book and book cannot
     become two tags for one idea, whitespace collapsed so "sci  fi" and
@@ -263,7 +275,53 @@ def _clean_tags(v):
     return out
 
 
-class PostIn(BaseModel):
+class PostRules(BaseModel):
+    """The four checks a create and an edit answer identically.
+
+    Only the field *types* differ between the two below -- a create requires a
+    value and a title, an edit sends whichever fields it touched -- and the
+    rules about what those characters may be are the same rules. They lived in
+    both classes, byte for byte, which is two places to fix a rule that has one
+    reason. `check_fields=False` because the fields themselves are declared by
+    the subclasses; this class is never validated on its own.
+    """
+
+    # min_length counts characters and "   " has three of them, while the
+    # writes below store `value.strip()` and `title.strip()`. Without this a
+    # form submitted with spaces in both was a 201 holding an empty title under
+    # an empty number -- a blank row on the index whose link is /n/, which
+    # matches no route, on a wiki where nothing removes an entry. Checked here
+    # rather than by stripping on the way in: a poster who typed only spaces
+    # meant to type something, and a 422 says so. An edit sends `None` for a
+    # field it is not touching, which is the `is not None` here.
+    @field_validator("value", "title", check_fields=False)
+    @classmethod
+    def not_blank(cls, v):
+        if v is not None and not v.strip():
+            raise ValueError("must not be blank")
+        return v
+
+    @field_validator("lang", check_fields=False)
+    @classmethod
+    def blank_lang(cls, v):
+        return (v.strip() or None) if v is not None else None
+
+    # None only reaches here from PostPatch, where an absent list means "leave
+    # the tags alone". PostIn's `List[str]` refuses a null before this runs.
+    @field_validator("tags", check_fields=False)
+    @classmethod
+    def check_tags(cls, v):
+        return v if v is None else _clean_tags(v)
+
+    @field_validator("format", check_fields=False)
+    @classmethod
+    def known_format(cls, v):
+        if v is not None and v not in FORMATS:
+            raise ValueError(f"format must be one of {FORMATS}")
+        return v
+
+
+class PostIn(PostRules):
     value: str = Field(min_length=1, max_length=32)
     number_locale: Optional[str] = Field(default=None, max_length=16)
     format: Optional[str] = None
@@ -275,39 +333,8 @@ class PostIn(BaseModel):
     lang: Optional[str] = Field(default=None, max_length=40)
     grouped: bool = False
 
-    # min_length counts characters and "   " has three of them, while the
-    # writes below store `value.strip()` and `title.strip()`. Without this a
-    # form submitted with spaces in both was a 201 holding an empty title under
-    # an empty number -- a blank row on the index whose link is /n/, which
-    # matches no route, on a wiki where nothing removes an entry. Checked here
-    # rather than by stripping on the way in: a poster who typed only spaces
-    # meant to type something, and a 422 says so.
-    @field_validator("value", "title")
-    @classmethod
-    def not_blank(cls, v):
-        if v is not None and not v.strip():
-            raise ValueError("must not be blank")
-        return v
 
-    @field_validator("lang")
-    @classmethod
-    def blank_lang(cls, v):
-        return (v.strip() or None) if v is not None else None
-
-    @field_validator("tags")
-    @classmethod
-    def check_tags(cls, v):
-        return _clean_tags(v)
-
-    @field_validator("format")
-    @classmethod
-    def known_format(cls, v):
-        if v is not None and v not in FORMATS:
-            raise ValueError(f"format must be one of {FORMATS}")
-        return v
-
-
-class PostPatch(BaseModel):
+class PostPatch(PostRules):
     value: Optional[str] = Field(default=None, min_length=1, max_length=32)
     number_locale: Optional[str] = Field(default=None, max_length=16)
     format: Optional[str] = None
@@ -318,31 +345,6 @@ class PostPatch(BaseModel):
     tags: Optional[List[str]] = None
     lang: Optional[str] = Field(default=None, max_length=40)
     grouped: Optional[bool] = None
-
-    # the same rule as PostIn: absent is fine, three spaces is not
-    @field_validator("value", "title")
-    @classmethod
-    def not_blank(cls, v):
-        if v is not None and not v.strip():
-            raise ValueError("must not be blank")
-        return v
-
-    @field_validator("lang")
-    @classmethod
-    def blank_lang(cls, v):
-        return (v.strip() or None) if v is not None else None
-
-    @field_validator("tags")
-    @classmethod
-    def check_tags(cls, v):
-        return v if v is None else _clean_tags(v)
-
-    @field_validator("format")
-    @classmethod
-    def known_format(cls, v):
-        if v is not None and v not in FORMATS:
-            raise ValueError(f"format must be one of {FORMATS}")
-        return v
 
 
 class TranslationIn(BaseModel):
@@ -708,6 +710,7 @@ def list_comments(post_id: int, con=Depends(get_db)):
 def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
     value, grouped = ungroup(p.value, p.grouped, p.number_locale)
     value, fmt, key = resolve_format(value, p.format, con)
+    author = nick(p.author)
     ts = now()
     with con:
         cur = con.execute(
@@ -715,7 +718,7 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
                                   lang, grouped, created_at, updated_at)
                VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (value, fmt, key, p.title.strip(), p.body, p.image,
-             p.author.strip() or "anonymous", p.lang, int(grouped), ts, ts),
+             author, p.lang, int(grouped), ts, ts),
         )
         write_tags(con, cur.lastrowid, p.tags)
         post_id = cur.lastrowid
@@ -723,7 +726,7 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
         # which is the whole reason the log is its own table and not a column on
         # revisions. Without this row a spammer's first twenty entries would be
         # invisible to the abuse view.
-        events.record(con, "CREATE", client=who, who=p.author.strip() or "anonymous",
+        events.record(con, "CREATE", client=who, who=author,
                       target_type="post", target_id=post_id, value=value)
     return fetch_one(con, post_id)
 
@@ -742,8 +745,9 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
     # language, and one of them may already be a tab on this entry
     if "lang" in sent and says_it_twice(p.lang, [t["lang"] for t in current["translations"]]):
         raise HTTPException(422, "the entry already has a version in that language")
+    editor = nick(p.author)
     with con:
-        rev = snapshot(con, post_id, p.author.strip() or "anonymous")
+        rev = snapshot(con, post_id, editor)
         # the box has to be settled before the value is, since it decides
         # whether separators in what was typed are stripped or kept
         grouped = p.grouped if "grouped" in sent else bool(current["grouped"])
@@ -769,7 +773,7 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
                 p.image if "image" in sent else current["image"],
                 p.lang if "lang" in sent else current["lang"],
                 int(grouped),
-                p.author.strip() or "anonymous",
+                editor,
                 now(), post_id,
             ),
         )
@@ -778,7 +782,7 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         # which fields were sent, not which actually changed: the diff between
         # the snapshot and the row is where "changed" is answered, and there is
         # no point storing a worse copy of it here
-        events.record(con, "EDIT", client=who, who=p.author.strip() or "anonymous",
+        events.record(con, "EDIT", client=who, who=editor,
                       target_type="post", target_id=post_id, revision_id=rev,
                       fields=sorted(sent))
     return fetch_one(con, post_id)
@@ -803,7 +807,7 @@ def restore_revision(
     if row is None:
         raise HTTPException(404, "revision not found")
     old = json.loads(row["snapshot"])
-    author = body.author.strip() or "anonymous"
+    author = nick(body.author)
     alive = con.execute("SELECT 1 FROM posts WHERE id = ?", (post_id,)).fetchone()
     rev = None
     with con:
@@ -874,7 +878,7 @@ def put_translation(
     # not leave a revision behind saying somebody replaced the entry
     if says_it_twice(t.lang, [post["lang"]]):
         raise HTTPException(422, "the entry is already written in that language")
-    who = t.author.strip() or "anonymous"
+    who = nick(t.author)
     ts = now()
     with con:
         rev = snapshot(con, post_id, who)  # a translation is content, so undoable
@@ -902,8 +906,9 @@ def delete_translation(
     who=Depends(guard),
     con=Depends(get_db),
 ):
+    editor = nick(author)
     with con:
-        rev = snapshot(con, post_id, author.strip() or "anonymous")
+        rev = snapshot(con, post_id, editor)
         cur = con.execute(
             "DELETE FROM translations WHERE id = ? AND post_id = ?", (tr_id, post_id)
         )
@@ -917,9 +922,9 @@ def delete_translation(
         # form offers.
         if not cur.rowcount:
             raise HTTPException(404, "translation not found")
-        events.record(con, "UNTRANSLATE", client=who,
-                      who=author.strip() or "anonymous", target_type="post",
-                      target_id=post_id, revision_id=rev, translation=tr_id)
+        events.record(con, "UNTRANSLATE", client=who, who=editor,
+                      target_type="post", target_id=post_id, revision_id=rev,
+                      translation=tr_id)
     return fetch_one(con, post_id)
 
 
@@ -959,14 +964,15 @@ def add_comment(post_id: int, c: CommentIn, who=Depends(guard), con=Depends(get_
     -- the caller has the new state without a second request.
     """
     fetch_one(con, post_id)  # 404 if the entry is gone
+    author = nick(c.author)
     with con:
         con.execute(
             "INSERT INTO comments (post_id, author, body, created_at) VALUES (?,?,?,?)",
-            (post_id, c.author.strip() or "anonymous", c.body, now()),
+            (post_id, author, c.body, now()),
         )
         # no revision_id: a comment takes no snapshot, which is the same reason
         # it is not on fetch_one
-        events.record(con, "COMMENT", client=who, who=c.author.strip() or "anonymous",
+        events.record(con, "COMMENT", client=who, who=author,
                       target_type="post", target_id=post_id)
     return list_comments(post_id, con)
 
@@ -1004,18 +1010,19 @@ def request_deletion(
     fetch_one(con, post_id)  # 404 on a missing or already hidden entry
     if _already_open(con, "delete_requests", post_id, who, "PENDING"):
         raise HTTPException(409, "you have already asked about this entry")
+    asked_by = nick(r.author)
     with con:
         cur = con.execute(
             """INSERT INTO delete_requests
                    (post_id, reason, detail, requested_by, ip_hash, ua_hash,
                     client_hash, created_at)
                VALUES (?,?,?,?,?,?,?,?)""",
-            (post_id, r.reason, r.detail.strip(), r.author.strip() or "anonymous",
+            (post_id, r.reason, r.detail.strip(), asked_by,
              who["ip_hash"], who["ua_hash"], who["client_hash"], now()),
         )
-        events.record(con, "DELETE_REQUEST", client=who,
-                      who=r.author.strip() or "anonymous", target_type="request",
-                      target_id=cur.lastrowid, post=post_id, reason=r.reason)
+        events.record(con, "DELETE_REQUEST", client=who, who=asked_by,
+                      target_type="request", target_id=cur.lastrowid,
+                      post=post_id, reason=r.reason)
     return {"id": cur.lastrowid, "status": "PENDING"}
 
 
