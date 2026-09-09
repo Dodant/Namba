@@ -276,16 +276,21 @@ def test_the_site_has_one_name():
     root = os.path.join(db.DIR, os.pardir, "Namba-frontend")
     page = open(os.path.join(root, "index.html"), encoding="utf-8").read()
     app = open(os.path.join(root, "src", "App.tsx"), encoding="utf-8").read()
-    ui = open(os.path.join(root, "src", "uiLocale.tsx"), encoding="utf-8").read()
     in_html = re.search(r"<title>(.*?)</title>", page, re.S)
     in_app = re.search(r"const SITE_TITLE = '(.*?)'", app)
     assert in_html, "index.html has no <title> -- og_head rewrites that tag by regex"
     assert in_app, "App.tsx has no SITE_TITLE"
     assert in_html.group(1) == in_app.group(1), (in_html.group(1), in_app.group(1))
     assert in_html.group(1) == seo_locale.words("en")["site_title"]
+    # One file per locale under src/locales/, named by the same code this
+    # dictionary is keyed on -- so a locale the front end dropped is a missing
+    # file here rather than a title that quietly stopped being checked.
     for locale, text in seo_locale.TEXT.items():
         title = text["site_title"]
-        assert f"siteTitle: '{title}'" in ui, (locale, title)
+        path = os.path.join(root, "src", "locales", f"{locale}.ts")
+        assert os.path.isfile(path), f"no {locale}.ts, but seo_locale still writes {locale}"
+        words = open(path, encoding="utf-8").read()
+        assert f"siteTitle: '{title}'" in words, (locale, title)
 
 
 def test_localized_metadata():

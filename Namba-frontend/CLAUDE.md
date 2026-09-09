@@ -12,7 +12,12 @@ state that stands in for accounts. **`format.ts` is the other direction**: how
 a stored string reads on screen and how a typed one comes back — a number's
 punctuation, a numeral's size class, a date's distance from now, a markdown
 body read as prose. It imports nothing, which is the sign the seam was real.
-**`uiLocale.tsx` is the words**, and the provider that picks a language.
+**`uiLocale.tsx` is the provider** that picks a language, remembers it and
+mirrors it to the cookie the server reads. The words themselves are seven
+files under **`src/locales/`**, collected by `index.ts` the way `src/guide/`
+collects the rules page — same reason, too: `MESSAGES` is typed
+`Record<UiLocale, Messages>` and `Messages` is `typeof EN`, so a locale with
+no map, or a map missing a key, does not compile.
 
 `FORMATS`, `TAG_MAX`, `TAGS_PER_POST` and the seven moderation vocabularies
 stay in `api.ts` whatever else moves: they are the hand-synced table in the
@@ -154,11 +159,14 @@ value, never the formatted display string.
 The interface picker is always present because it describes what this bundle
 can render. The entry-text picker is populated from `/api/languages` because it
 describes what contributors have translated. Adding an interface locale is a
-line in `UI_LOCALES` and a message map in `src/uiLocale.tsx`, and nothing else:
-that list is the union type, the footer's `<option>`s, the saved-value check
-and the `navigator.language` match, all of which used to be separate copies of
-the same seven codes. Adding a content language remains data, not a frontend
-release.
+file in `src/locales/`, a line in `UI_LOCALES` and a line in `MESSAGES` — both
+in `src/locales/index.ts` — and nothing else: that list is the union type, the
+footer's `<option>`s, the saved-value check and the `navigator.language` match,
+all of which used to be separate copies of the same seven codes. **A new key
+goes into `en.ts` first**, because that is what `Messages` is read off; the
+other six then fail to compile until they answer it, which is the check this
+app has instead of a test runner. Adding a content language remains data, not
+a frontend release.
 
 Punctuation that belongs to a language belongs in its strings. The space
 before the CC0 sentence is in `cc0After` for the four locales that want one,
@@ -171,7 +179,8 @@ is a locale set to keep in step disguised as a styling decision.
 locale. The navigation words only help a reader move around: Add opens the form
 and Search submits a query. The detailed search `aria-label` stays localized,
 as do actions whose outcome matters — Publish, Save, Delete, Restore, linking,
-reporting and every confirmation. `GLOBAL_NAV` and `GLOBAL_TERMS` hold the
+reporting and every confirmation. `GLOBAL_NAV` and `GLOBAL_TERMS` in
+`src/locales/shared.ts` hold the
 shared words that otherwise live in locale maps; API, Markdown and CC0 are
 proper technical names already written directly. There is no About control
 today; if one is added, it belongs with this vocabulary too.

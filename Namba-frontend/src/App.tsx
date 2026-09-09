@@ -11,7 +11,8 @@ import PostPage from './pages/PostPage'
 import PostForm from './pages/PostForm'
 import Guide from './pages/Guide'
 import { useAsync } from './useAsync'
-import { UI_LOCALES, UiProvider, useUi, type UiLocale } from './uiLocale'
+import { UI_LOCALES, type UiLocale } from './locales'
+import { UiProvider, useUi } from './uiLocale'
 
 /* A wiki's "show me anything". A route rather than an onClick, so it can be
    linked, bookmarked and opened in a new tab -- and so the wait and the

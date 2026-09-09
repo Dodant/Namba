@@ -1,0 +1,132 @@
+import { fmtCount } from '../format'
+import { GLOBAL_NAV, GLOBAL_TERMS } from './shared'
+import type { Messages } from './en'
+
+/** Spanish (Español). */
+export const ES: Messages = {
+  siteTitle: 'Namba — una wiki sobre números',
+  tagline: 'Una wiki abierta sobre números',
+  common: {
+    loading: 'Cargando…', backToIndex: 'Volver al índice.', addFirst: 'Añade la primera entrada.',
+    anonymous: 'anónimo', cancel: 'Cancelar', save: 'Guardar', edit: 'editar', restore: 'Restaurar',
+    by: (name: string) => `por ${name === 'anonymous' ? 'anónimo' : name}`,
+    edited: (when: string, name?: string | null) =>
+      `editado ${when}${name ? ` por ${name === 'anonymous' ? 'anónimo' : name}` : ''}`,
+    entries: (n: number) => `${fmtCount(n, 'es')} ${n === 1 ? 'entrada' : 'entradas'}`,
+    tags: (n: number) => `${fmtCount(n, 'es')} ${n === 1 ? 'etiqueta' : 'etiquetas'}`,
+    subject: (abbr: boolean, n = 1) => abbr
+      ? (n === 1 ? 'abreviatura' : 'abreviaturas')
+      : n === 1 ? 'número' : 'números',
+  },
+  format: {
+    INTEGER: 'Entero', DECIMAL: 'Decimal', MIXED: 'Mixto', TIME: 'Hora', ABBR: 'Abreviatura',
+  },
+  buckets: {
+    '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',
+    '1000': '1.000 – 9.999', '10000+': '10.000 o más',
+  },
+  header: {
+    searchLabel: 'Buscar en la wiki por número, título o texto',
+    ...GLOBAL_NAV, backToTop: 'Volver arriba',
+  },
+  random: {
+    failed: (error: string) => `No se pudo elegir una entrada — ${error}.`,
+    empty: 'Aún no hay entradas entre las que elegir.',
+  },
+  footer: {
+    cc0Before: 'Todo lo escrito aquí se publica bajo',
+    cc0After: ' — es de dominio público. Puedes copiarlo, citarlo o reutilizarlo sin permiso ni atribución. La autoría se conserva para registrar quién lo escribió primero.',
+    privacy: 'No necesitas una cuenta. No guardamos direcciones IP ni cadenas de agente de usuario sin procesar; solo conservamos hashes con sal para evitar abusos y aplicar bloqueos.',
+    guidelines: 'Guía para las entradas', source: GLOBAL_TERMS.github, apiOpen: 'abierta y sin clave.',
+    interfaceLanguage: 'Idioma de la interfaz', contentLanguage: 'Contenido de las entradas',
+    interfaceAria: 'Idioma de la interfaz', contentAria: 'Idioma preferido de las entradas',
+    asWritten: 'Texto original',
+    translatedCount: (lang: string, n: number) => `${lang} · ${fmtCount(n, 'es')} ${n === 1 ? 'traducción' : 'traducciones'}`,
+  },
+  home: {
+    seeMore: 'Ver más',
+    hasImage: 'con imagen', feedIntro: 'Entradas y ediciones recientes, de más nuevas a más antiguas.',
+    empty: 'Aún no hay entradas.', entryKinds: 'Formato de la entrada', categories: 'Categorías', all: 'Todas',
+    foldedEntries: (n: number) => `${fmtCount(n, 'es')} ${n === 1 ? 'entrada' : 'entradas'}`,
+    bandCount: (subjects: number, subject: string, entries: number) =>
+      `${fmtCount(subjects, 'es')} ${subject} · ${fmtCount(entries, 'es')} ${entries === 1 ? 'entrada' : 'entradas'}`,
+  },
+  browse: {
+    category: 'Categoría', search: GLOBAL_TERMS.search,
+    summary: (n: number, abbr: boolean) =>
+      `${n === 1 ? 'Una entrada explica' : `${fmtCount(n, 'es')} entradas explican`} ${abbr ? 'esta abreviatura' : 'este número'}.`,
+    addMeaning: '+ Añadir otro significado',
+    emptyValue: (value: string) => `Aún no hay entradas para ${value}.`,
+    giveMeaning: 'Añade un significado.', emptyTag: (tag: string) => `Aún no hay entradas con la etiqueta ${tag}.`,
+    noMatches: (q: string) => `No hay resultados para «${q}». Prueba con otra palabra o`,
+    addNewEntry: 'añade una entrada nueva.',
+  },
+  post: {
+    openFailed: (error: string) => `No se pudo abrir esta entrada — ${error}.`,
+    usedToSay: 'Contenido anterior',
+    restoreHelp: 'Aquí no se pierde nada. Al restaurarla, la entrada vuelve a aparecer en esta misma dirección y los enlaces existentes siguen funcionando.',
+    language: 'Idioma', original: (lang?: string | null) => lang ? `Original (${lang})` : 'Original',
+    showCredits: 'Mostrar autoría', hideCredits: 'Ocultar autoría', edit: 'Editar',
+    writtenBy: (name: string, when: string) => `Escrito por ${name} · ${when}`,
+    lastEditedBy: (name: string, when: string) => `Última edición de ${name} · ${when}`,
+    translationCredit: (lang: string, author: string, editor: string | null, when: string) =>
+      `${lang}: traducción de ${author}${editor ? `, última edición de ${editor}` : ''} · ${when}`,
+    originalCredit: (lang?: string | null) => lang ? `Escrito originalmente en ${lang}` : 'Versión original',
+    editPromise: 'Cualquiera puede editar; se conservan todas las versiones para que nada se pierda.',
+    noDetails: 'Aún no hay detalles.', sayMeaning: 'Explica qué significa.', related: 'Entradas relacionadas',
+    editHistory: 'Historial de ediciones', current: 'actual', noEdits: 'Aún no hay ediciones.',
+    comments: 'Comentarios', nickname: 'Tu alias', saySomething: 'Escribe un comentario',
+    commentLimit: 'máximo 300 caracteres', commentPlaceholder: '¿Qué opinas?',
+    posting: 'Publicando…', postComment: 'Publicar', more: (n: number) => `${fmtCount(n, 'es')} más`,
+    noComments: 'Aún no hay comentarios.', deleted: 'eliminado', editedBy: (name: string) => `editado por ${name}`,
+  },
+  form: {
+    editTitle: 'Editar entrada', addTitle: 'Añadir una entrada',
+    editIntro: (owner: string) => `Cualquiera puede editar esta entrada${owner ? `, aunque la haya escrito ${owner}` : ''}. La versión reemplazada permanece en el historial y ${owner || 'el autor original'} conserva la autoría.`,
+    addIntro: 'Una entrada por significado. Si 42 ya existe, esta entrada se añade como otro significado en lugar de reemplazarlo.',
+    guidelines: 'Guía para las entradas', fixedValue: (noun: string) => `fijo — otro ${noun} requiere otra entrada`,
+    number: 'Número', abbreviation: 'Abreviatura', groupThousands: 'Usar separadores de miles',
+    format: 'Formato', autoDetect: 'Detectar automáticamente', title: 'Título', titleHint: 'a qué se refiere',
+    titlePlaceholder: 'Guía del autoestopista galáctico', details: 'Detalles',
+    detailsHint: 'opcional — por qué es este valor y qué significa',
+    detailsPlaceholder: 'La respuesta a la pregunta definitiva sobre la vida, el universo y todo lo demás.',
+    markdown: 'Puedes usar Markdown: **negrita**, *cursiva*, [enlaces](https://…), listas, títulos y tablas. Una sola pulsación de Enter crea un salto de línea.',
+    writtenIn: 'Escrito en', categories: 'Categorías',
+    categoryHint: (n: number) => `hasta ${fmtCount(n, 'es')} — una película basada en un libro puede usar ambas`,
+    newCategoryAria: 'Nombre de una categoría nueva', newCategory: 'o crea una categoría', add: 'Añadir',
+    image: 'Imagen', imageHint: 'opcional — jpg, png, gif o webp, hasta 5 MB', remove: 'Eliminar',
+    uploading: 'Subiendo…', nickname: 'Tu alias', editorHint: 'constará como editor, no como autor',
+    noAccountHint: 'sin cuenta ni contraseña', saving: 'Guardando…', publishing: 'Publicando…',
+    saveChanges: 'Guardar cambios', publish: 'Publicar',
+    cc0: (editing: boolean) => `Al ${editing ? 'guardar' : 'publicar'}, esta contribución se libera bajo CC0. Cualquiera puede reutilizarla para cualquier fin sin pedir permiso.`,
+    history: 'Historial', historyHint: 'restaura una versión anterior en esta misma dirección', current: 'actual',
+    translations: 'Traducciones', translationsHint: 'esta entrada en otros idiomas',
+    editTranslation: 'Editar traducción', addTranslation: '+ Añadir traducción',
+    requiredTranslation: 'El idioma y el título son obligatorios.',
+    removeTranslationConfirm: (lang: string) => `¿Quieres eliminar la traducción en ${lang}? Permanecerá en el historial de la entrada.`,
+    language: 'Idioma', languageHint: 'idioma de esta traducción', pickOne: 'Elige uno…',
+    translationTitleHint: 'título de la entrada en este idioma', optionalMarkdown: 'opcional — también puedes usar Markdown aquí',
+    addThisTranslation: 'Añadir traducción', removeTranslation: 'Eliminar traducción',
+    related: 'Entradas relacionadas', relatedHint: 'otros números que conviene consultar junto a este', unlink: 'Desvincular',
+    linkSearchAria: 'Buscar en la wiki una entrada para vincular',
+    linkSearchPlaceholder: 'Buscar en la wiki — p. ej., Regreso al futuro', searching: 'Buscando…',
+    search: GLOBAL_TERMS.search, link: 'Vincular', noMatches: 'No hay resultados.',
+  },
+  flag: {
+    heading: 'Avisar de un problema', kindAria: 'Tipo de problema', report: 'Hay un error',
+    remove: 'Debe eliminarse', reportLead: 'Envía un aviso a los moderadores. La entrada seguirá visible.',
+    removeLead: 'Pide a un moderador que elimine esta entrada. Si se aprueba, se ocultará y podrá restaurarse.',
+    reported: 'Aviso enviado. Un moderador lo revisará.', requested: 'Solicitud de eliminación enviada. Un moderador la revisará.',
+    whatWrong: 'Cuál es el problema', pickOne: 'Elige uno…', details: 'Detalles', detailHint: 'opcional, hasta 1000 caracteres',
+    removePlaceholder: '¿Por qué debería eliminarse esta entrada?', reportPlaceholder: '¿Qué debería decir en su lugar?',
+    nickname: 'Tu alias', sending: 'Enviando…', askRemoval: 'Solicitar eliminación', reportIt: 'Enviar aviso',
+  },
+  reasons: {
+    DUPLICATE: 'Duplica otra entrada', INCORRECT: 'La información es incorrecta',
+    NO_SOURCE: 'No hay una fuente fiable', SOURCE: 'La fuente es incorrecta o falta',
+    SPAM: 'Contenido no deseado', AD: 'Publicidad', ABUSE: 'Contenido ofensivo o que incita al odio',
+    COPYRIGHT: 'Problema de derechos de autor', VANDALISM: 'Vandalismo', OTHER: 'Otro problema',
+  },
+  guide: { readIn: 'Idioma de la guía', addEntry: 'Añadir una entrada.' },
+  notFound: 'No hay nada aquí.',
+}
