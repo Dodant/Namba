@@ -651,13 +651,37 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
    in one product should not be two designs. */
 .ix-pop {
   max-width: min(56ch, calc(100vw - 32px));
-  padding: 11px 14px; border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 15px; border: 1px solid var(--line); border-radius: var(--radius);
   background: var(--panel); color: var(--ink);
-  font-size: 16px; line-height: 1.45; text-wrap: pretty;
   box-shadow: 0 10px 28px rgb(23 23 18 / 0.12);
 }
-.ix-pop b { font-weight: 500; }
-.ix-pop span { color: var(--muted); font-weight: 300; }
+.ix-pop p { margin: 0; }
+/* The numeral leads, as it does in the row -- but here it is a fact about the
+   entry rather than the column the page is read down, so it sits inline with
+   the title, small, in the treatment every other numeral in this app has:
+   mono, tabular, accent. Not a link: this box is something to read, and the
+   row behind it still has both. */
+.ix-pop-head {
+  display: flex; align-items: baseline; gap: 9px;
+  font-size: 16.5px; line-height: 1.35;
+}
+.ix-pop-head .num {
+  flex: none;
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+  font-size: 13px; font-weight: 600; letter-spacing: -0.02em; color: var(--accent);
+}
+.ix-pop-head b { font-weight: 500; }
+/* --line, the same as the box's own border and as the rule across a band
+   head: this is a line meant to be seen, not the whisper --rule-soft draws
+   between the rows of a panel, where the rhythm of repeating it is what makes
+   it read. One weight, twice, in one box. The blurb under it is a paragraph
+   at last -- on the row it was the tail of a sentence the title started,
+   because a row is one line. */
+.ix-pop-body {
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line);
+  color: var(--muted); font-weight: 300;
+  font-size: 15.5px; line-height: 1.5; text-wrap: pretty;
+}
 /* Where it sits is the one part that is not free. A top-layer box's containing
    block is the viewport, so it cannot be placed against the row it came from
    without anchor positioning -- and `popovertarget` makes the button that

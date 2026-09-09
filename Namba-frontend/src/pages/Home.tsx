@@ -407,9 +407,22 @@ function Index({ lang }: { lang: string }) {
                       >
                         {m.home.seeMore}
                       </button>
+                      {/* The row again, laid out with the room a layer has
+                          and the row does not: the number it is filed under
+                          -- a column out there, a fact about the entry in
+                          here -- then the title, then a rule, then the blurb
+                          as a paragraph rather than the tail of a sentence.
+                          Which is the whole reason it is worth opening: the
+                          line it replaces reads the same three things as one
+                          run-on that did not fit. */}
                       <div className="ix-pop" id={`ix-pop-${e.id}`} popover="auto">
-                        <b>{mark(e.title, rx)}</b>
-                        {e.body && <> — <span>{mark(plain(e.body), rx)}</span></>}
+                        <p className="ix-pop-head">
+                          <span className="num">{shown}</span>
+                          <b>{mark(e.title, rx)}</b>
+                        </p>
+                        {e.body && (
+                          <p className="ix-pop-body">{mark(plain(e.body), rx)}</p>
+                        )}
                       </div>
                       <span className="ix-like">
                         <Like post={e} />
