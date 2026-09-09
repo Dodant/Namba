@@ -20,7 +20,7 @@ import admin_api
 import db
 import events
 import seo
-from db import get_db, now
+from db import get_db, now, writing
 from store import (
     LIVE, fetch_one, guard_public, resolve_format, section_where, shape,
     snapshot, ungroup, write_tags, write_translations,
@@ -717,10 +717,17 @@ def list_comments(post_id: int, con=Depends(get_db)):
 @app.post("/api/posts", status_code=201)
 def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
     value, grouped = ungroup(p.value, p.grouped, p.number_locale)
-    value, fmt, key = resolve_format(value, p.format, con)
     author = nick(p.author)
     ts = now()
-    with con:
+    with writing(con):
+        # Inside the lock, because this is a read that decides. `resolve_format`
+        # asks what spelling a sibling ABBR already chose and stores this one if
+        # there is none -- so `ufo` and `UFO` arriving together both used to see
+        # no sibling and both store, which is the two `/a/` pages for one word
+        # that CLAUDE.md spends three paragraphs preventing, with no login to
+        # merge them afterwards. A UNIQUE index cannot say it: several entries
+        # under one word is normal.
+        value, fmt, key = resolve_format(value, p.format, con)
         cur = con.execute(
             """INSERT INTO posts (value, format, sort_key, title, body, image, author,
                                   lang, grouped, created_at, updated_at)
@@ -751,14 +758,14 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
     sent.pop("number_locale", None)
     sent.pop("base_updated_at", None)
     editor = nick(p.author)
-    with con:
+    with writing(con):
         rev = snapshot(con, post_id, editor)
-        # Read here and not before the block. That INSERT is what takes SQLite's
-        # write lock, so from this line to the commit no other writer can get
-        # in and what this row says stays true. Read outside, it is a row from
-        # before the lock -- and every column the UPDATE fills in from it is a
-        # column an edit that arrived in between wrote, being handed back its
-        # old value.
+        # Read here and not before the block. The lock is held from the top of
+        # it, so from this line to the commit no other writer can get in and
+        # what this row says stays true. Read outside, it is a row from before
+        # the lock -- and every column the UPDATE fills in from it is a column
+        # an edit that arrived in between wrote, being handed back its old
+        # value.
         current = fetch_one(con, post_id)
         # the same rule from the other side -- "Written in" is a menu of every
         # language, and one of them may already be a tab on this entry. Also in
@@ -833,17 +840,23 @@ def restore_revision(
     who=Depends(guard),
     con=Depends(get_db),
 ):
-    guard_public(con, post_id)
-    row = con.execute(
-        "SELECT snapshot FROM revisions WHERE id = ? AND post_id = ?", (rev_id, post_id)
-    ).fetchone()
-    if row is None:
-        raise HTTPException(404, "revision not found")
-    old = json.loads(row["snapshot"])
     author = nick(body.author)
-    alive = con.execute("SELECT 1 FROM posts WHERE id = ?", (post_id,)).fetchone()
-    rev = None
-    with con:
+    with writing(con):
+        # All three deciding reads inside the lock. `alive` is the one that has
+        # to be: it chooses between UPDATE and INSERT, and read outside it could
+        # answer about a row that `admin.py purge` removed a moment later --
+        # then the UPDATE matches nothing, the event says a restore happened and
+        # the entry is still gone.
+        guard_public(con, post_id)
+        row = con.execute(
+            "SELECT snapshot FROM revisions WHERE id = ? AND post_id = ?",
+            (rev_id, post_id),
+        ).fetchone()
+        if row is None:
+            raise HTTPException(404, "revision not found")
+        old = json.loads(row["snapshot"])
+        alive = con.execute("SELECT 1 FROM posts WHERE id = ?", (post_id,)).fetchone()
+        rev = None
         if alive:
             rev = snapshot(con, post_id, author)  # restoring is itself undoable
             con.execute(
@@ -906,14 +919,18 @@ def put_translation(
     post_id: int, t: TranslationIn, client=Depends(guard), con=Depends(get_db)
 ):
     """Add this entry in another language, or rewrite the one already there."""
-    post = fetch_one(con, post_id)  # 404 if the post is gone
-    # before the snapshot, not inside it: a request that changes nothing must
-    # not leave a revision behind saying somebody replaced the entry
-    if says_it_twice(t.lang, [post["lang"]]):
-        raise HTTPException(422, "the entry is already written in that language")
     who = nick(t.author)
     ts = now()
-    with con:
+    with writing(con):
+        post = fetch_one(con, post_id)  # 404 if the post is gone
+        # Before the snapshot, so a request that changes nothing leaves no
+        # revision saying somebody replaced the entry -- and inside the lock,
+        # which is what `edit_post` does with the same check. Outside it, an
+        # edit setting `posts.lang` to this language commits in between and the
+        # entry ends up written twice in one language, which is the one thing
+        # this rule exists to stop.
+        if says_it_twice(t.lang, [post["lang"]]):
+            raise HTTPException(422, "the entry is already written in that language")
         rev = snapshot(con, post_id, who)  # a translation is content, so undoable
         # UNIQUE(post_id, lang) turns a second write in the same language into an
         # edit. author is the first writer and stays put, as it does on a post.
@@ -940,7 +957,9 @@ def delete_translation(
     con=Depends(get_db),
 ):
     editor = nick(author)
-    with con:
+    with writing(con):
+        # No fetch_one of its own: snapshot() reads through it, so a missing or
+        # hidden entry is a 404 from in here.
         rev = snapshot(con, post_id, editor)
         cur = con.execute(
             "DELETE FROM translations WHERE id = ? AND post_id = ?", (tr_id, post_id)
@@ -971,16 +990,16 @@ def like(post_id: int, _=Depends(guard), con=Depends(get_db)):
     # nothing about the entry, and at one row per tap the abuse view would be
     # nothing but likes -- the limiter is what answers a farmed count, and it
     # already has.
-    fetch_one(con, post_id)  # before the counter moves, not after
-    with con:
+    with writing(con):
+        fetch_one(con, post_id)  # before the counter moves, not after
         con.execute("UPDATE posts SET likes = likes + 1 WHERE id = ?", (post_id,))
     return {"likes": fetch_one(con, post_id)["likes"]}
 
 
 @app.delete("/api/posts/{post_id}/like")
 def unlike(post_id: int, _=Depends(guard), con=Depends(get_db)):
-    fetch_one(con, post_id)
-    with con:
+    with writing(con):
+        fetch_one(con, post_id)
         con.execute(
             "UPDATE posts SET likes = MAX(likes - 1, 0) WHERE id = ?", (post_id,)
         )
@@ -996,9 +1015,12 @@ def add_comment(post_id: int, c: CommentIn, who=Depends(guard), con=Depends(get_
     rather than the one row, the way linking and translating hand back the post
     -- the caller has the new state without a second request.
     """
-    fetch_one(con, post_id)  # 404 if the entry is gone
     author = nick(c.author)
-    with con:
+    with writing(con):
+        # Inside, because `comments` has a foreign key on `post_id`: read
+        # outside and a purge in between turns this into an integrity error and
+        # a 500, where the answer the caller should get is the 404 this raises.
+        fetch_one(con, post_id)
         con.execute(
             "INSERT INTO comments (post_id, author, body, created_at) VALUES (?,?,?,?)",
             (post_id, author, c.body, now()),
@@ -1040,11 +1062,16 @@ def request_deletion(
     """Ask for an entry to go. Nobody can take one away, including whoever wrote
     it, so this is the only route that leads there -- and what it leads to is a
     person reading it, not a state change."""
-    fetch_one(con, post_id)  # 404 on a missing or already hidden entry
-    if _already_open(con, "delete_requests", post_id, who, "PENDING"):
-        raise HTTPException(409, "you have already asked about this entry")
     asked_by = nick(r.author)
-    with con:
+    with writing(con):
+        fetch_one(con, post_id)  # 404 on a missing or already hidden entry
+        # `_already_open` is the deciding read here, and the reason it cannot be
+        # a UNIQUE index is in its own docstring. Inside the lock it is the
+        # constraint it was standing in for: two requests sent together used to
+        # both find nothing pending and both land, which is the count of
+        # *people* it exists to keep honest.
+        if _already_open(con, "delete_requests", post_id, who, "PENDING"):
+            raise HTTPException(409, "you have already asked about this entry")
         cur = con.execute(
             """INSERT INTO delete_requests
                    (post_id, reason, detail, requested_by, ip_hash, ua_hash,
@@ -1067,10 +1094,10 @@ def report(post_id: int, r: ReportIn, who=Depends(guard), con=Depends(get_db)):
     and deliberately not with the reports themselves. They are addressed to the
     operator, and a public list of them is a second place to write abuse.
     """
-    fetch_one(con, post_id)
-    if _already_open(con, "reports", post_id, who, "OPEN"):
-        raise HTTPException(409, "you have already reported this entry")
-    with con:
+    with writing(con):
+        fetch_one(con, post_id)
+        if _already_open(con, "reports", post_id, who, "OPEN"):
+            raise HTTPException(409, "you have already reported this entry")
         cur = con.execute(
             """INSERT INTO reports (post_id, reason, detail, ip_hash, ua_hash,
                                     client_hash, created_at)
@@ -1091,27 +1118,37 @@ def report(post_id: int, r: ReportIn, who=Depends(guard), con=Depends(get_db)):
 def add_link(post_id: int, link: LinkIn, who=Depends(guard), con=Depends(get_db)):
     if link.other_id == post_id:
         raise HTTPException(400, "a post cannot link to itself")
-    fetch_one(con, post_id)
-    fetch_one(con, link.other_id)
     a, b = sorted((post_id, link.other_id))
-    with con:
-        con.execute("INSERT OR IGNORE INTO post_links (a_id, b_id) VALUES (?,?)", (a, b))
-        events.record(con, "LINK", client=who, target_type="post",
-                      target_id=post_id, other=link.other_id)
+    with writing(con):
+        # Both, inside: `post_links` has a foreign key on each end, and OR
+        # IGNORE would swallow a violation as silently as it swallows the
+        # duplicate it is there for.
+        fetch_one(con, post_id)
+        fetch_one(con, link.other_id)
+        cur = con.execute(
+            "INSERT OR IGNORE INTO post_links (a_id, b_id) VALUES (?,?)", (a, b))
+        # Only if something was actually linked -- the same guard `remove_link`
+        # below carries, and its comment named the asymmetry from the other
+        # side. OR IGNORE means pressing Link on a pair that is already linked
+        # is a no-op, and every one of those was a row in an append-only log
+        # counting towards the client's writes in /api/admin/abuse, which is
+        # the number a block gets decided on.
+        if cur.rowcount:
+            events.record(con, "LINK", client=who, target_type="post",
+                          target_id=post_id, other=link.other_id)
     return get_post(post_id, con)
 
 
 @app.delete("/api/posts/{post_id}/links/{other_id}")
 def remove_link(post_id: int, other_id: int, who=Depends(guard), con=Depends(get_db)):
-    fetch_one(con, post_id)
     a, b = sorted((post_id, other_id))
-    with con:
+    with writing(con):
+        fetch_one(con, post_id)
         cur = con.execute("DELETE FROM post_links WHERE a_id = ? AND b_id = ?", (a, b))
         # Only if something was actually unlinked. `events` is append-only by
         # design, so a row for a link that was never there cannot be tidied up
         # later -- and it counts towards the client's writes in /api/admin/abuse,
-        # which is the number a block gets decided on. The sibling routes here
-        # already guard on rowcount; this one did not.
+        # which is the number a block gets decided on.
         if cur.rowcount:
             events.record(con, "UNLINK", client=who, target_type="post",
                           target_id=post_id, other=other_id)

@@ -35,6 +35,8 @@ import events  # noqa: E402
 import main  # noqa: E402
 import seo  # noqa: E402
 import seo_locale  # noqa: E402
+import sqlite3  # noqa: E402
+import store  # noqa: E402
 from numfmt import FORMATS, bucket_of, grouped_value, is_abbr, parse_number  # noqa: E402
 
 # The write limiter counts per IP, and the whole suite is one IP making a
@@ -2562,6 +2564,135 @@ def test_purge_takes_the_words_that_asked_for_it():
                         assert needle not in str(val), (table, col, needle)
     finally:
         con.close()
+
+
+def test_every_write_decides_inside_the_lock():
+    """One rule for all twelve public writes: the read a route decides on runs
+    with the write lock already held.
+
+    The rule needs stating because `with con:` is not it. Python's sqlite3 in
+    legacy isolation mode issues its BEGIN before the first *write*, so a SELECT
+    earlier in the block holds nothing -- and in WAL that never fails, it just
+    answers about the database as it was. `db.writing` takes the lock up front.
+
+    Probed rather than reasoned about, and probed from *outside*: at the moment
+    of the deciding read a second connection tries to take the write lock with
+    no timeout, and being refused is the whole assertion. `con.in_transaction`
+    cannot say this -- it is true of a deferred transaction as well, which is
+    the transaction that holds nothing. Only another writer being turned away
+    proves the lock is there.
+
+    The *first* probed call in each request is that route's deciding read. A
+    later `fetch_one` runs after the commit to build the response, which is why
+    it is the first call that is checked and not all of them.
+    """
+    seen, log = set(), []
+
+    def held():
+        """Whether somebody is holding the write lock at this instant."""
+        spy = sqlite3.connect(db.DB_PATH, timeout=0)
+        try:
+            spy.execute("BEGIN IMMEDIATE")
+            spy.rollback()
+            return False
+        except sqlite3.OperationalError:
+            return True
+        finally:
+            spy.close()
+
+    def watch(name, fn):
+        def probe(*a, **k):
+            seen.add(name)
+            log.append((name, held()))
+            return fn(*a, **k)
+        return probe
+
+    where = [(main, "fetch_one"), (store, "fetch_one"), (main, "resolve_format"),
+             (main, "_already_open"), (main, "guard_public")]
+    real = [(mod, name, getattr(mod, name)) for mod, name in where]
+    for mod, name in where:
+        setattr(mod, name, watch(name, dict((n, f) for _, n, f in real)[name]))
+
+    c = TestClient(main.app)
+    try:
+        def locked(what, call):
+            """Run one write and report where its first deciding read ran."""
+            log.clear()
+            res = call()
+            assert log, f"{what} decided on nothing -- the probe saw no read"
+            assert log[0][1] is True, (what, log[:3])
+            return res
+
+        a = locked("create", lambda: c.post("/api/posts", json={
+            "value": "1123", "title": "A fig tree", "tags": ["plants"]}).json())
+        b = locked("create", lambda: c.post("/api/posts", json={
+            "value": "1124", "title": "The one beside it"}).json())
+        pid, other = a["id"], b["id"]
+
+        locked("edit", lambda: c.patch(f"/api/posts/{pid}",
+                                      json={"body": "figs", "author": "hesse"}))
+        locked("translate", lambda: c.put(f"/api/posts/{pid}/translations", json={
+            "lang": "Korean", "title": "무화과", "body": "나무"}))
+        tr = c.get(f"/api/posts/{pid}").json()["translations"][0]["id"]
+        locked("untranslate",
+               lambda: c.delete(f"/api/posts/{pid}/translations/{tr}"))
+        locked("like", lambda: c.post(f"/api/posts/{pid}/like"))
+        locked("unlike", lambda: c.delete(f"/api/posts/{pid}/like"))
+        locked("comment", lambda: c.post(f"/api/posts/{pid}/comments",
+                                        json={"body": "it is a fig"}))
+        locked("link", lambda: c.post(f"/api/posts/{pid}/links",
+                                     json={"other_id": other}))
+        locked("unlink", lambda: c.delete(f"/api/posts/{pid}/links/{other}"))
+        locked("delete-request", lambda: c.post(
+            f"/api/posts/{pid}/delete-request", json={"reason": "OTHER"}))
+        locked("report", lambda: c.post(f"/api/posts/{pid}/report",
+                                       json={"reason": "SPAM"}))
+        rev = c.get(f"/api/posts/{pid}/revisions").json()[0]["id"]
+        locked("restore", lambda: c.post(
+            f"/api/posts/{pid}/revisions/{rev}/restore", json={"author": "hesse"}))
+    finally:
+        for mod, name, fn in real:
+            setattr(mod, name, fn)
+
+    # ...and the probe reached every kind of deciding read there is, so none of
+    # the twelve passed by touching nothing
+    assert seen == {"fetch_one", "resolve_format", "_already_open",
+                    "guard_public"}, seen
+
+
+def test_linking_a_pair_twice_is_one_event():
+    """`INSERT OR IGNORE` makes a second Link on the same pair a no-op, and an
+    append-only log must not carry a row for a no-op.
+
+    `remove_link`'s comment named this asymmetry from the other side -- "the
+    sibling routes here already guard on rowcount; this one did not" -- and by
+    then it was `add_link` that did not. It counts: /api/admin/abuse totals a
+    client's writes, and that total is what a block gets decided on.
+    """
+    c = TestClient(main.app)
+    x = c.post("/api/posts", json={"value": "8001", "title": "one end"}).json()
+    y = c.post("/api/posts", json={"value": "8002", "title": "the other"}).json()
+
+    def links():
+        con = db.connect()
+        try:
+            return con.execute(
+                """SELECT COUNT(*) FROM events
+                   WHERE action = 'LINK' AND target_id = ?""", (x["id"],)
+            ).fetchone()[0]
+        finally:
+            con.close()
+
+    assert c.post(f"/api/posts/{x['id']}/links",
+                  json={"other_id": y["id"]}).status_code == 201
+    assert links() == 1
+    # same pair, same answer, and the caller cannot tell -- which is the point:
+    # it is already linked, so 201 is true
+    assert c.post(f"/api/posts/{x['id']}/links",
+                  json={"other_id": y["id"]}).status_code == 201
+    assert links() == 1, "a link that was already there wrote a second row"
+    assert [r["id"] for r in
+            c.get(f"/api/posts/{x['id']}").json()["related"]] == [y["id"]]
 
 
 def test_a_500_leaves_a_row_in_the_log():

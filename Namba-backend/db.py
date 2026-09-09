@@ -1,6 +1,7 @@
 """SQLite access. No ORM -- stdlib sqlite3 is enough at this size."""
 import os
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -299,6 +300,52 @@ def get_db():
         yield con
     finally:
         con.close()
+
+
+@contextmanager
+def writing(con):
+    """A transaction that holds the write lock from its first line, not its
+    first write.
+
+    `with con:` is not this, and the difference is the whole reason this exists.
+    Python's sqlite3 in its legacy isolation mode issues `BEGIN DEFERRED` before
+    the first INSERT, UPDATE or DELETE -- so a SELECT that runs earlier in the
+    block, even one the block was opened for, runs with no lock held at all. In
+    WAL that is not an error and never fails: it is a read of the database as it
+    was, answered while another writer commits over it, and the route then
+    decides on what it read. `BEGIN IMMEDIATE` takes the lock up front, so
+    everything from here to the commit sees one database and no other writer
+    gets in.
+
+    Moving the read in without this is worse than leaving it out, which is why
+    the two halves are one change. A deferred transaction that reads and then
+    writes has to *upgrade* its lock, and two of them doing it together is a
+    deadlock SQLite cannot wait out: the second gets SQLITE_BUSY at once and
+    `busy_timeout` does not apply, so the pair that used to race quietly starts
+    answering "database is locked" with a 500 instead. Measured on two
+    concurrent creates of the same abbreviation: with the read outside the
+    transaction, two spellings were stored in three of eight trials; with it
+    inside a deferred one, no split and a 500; with this, one spelling and no
+    error.
+
+    Use it for a write that *decides* -- a 404 on a row that has to still be
+    there, a duplicate check, a format that depends on what a sibling entry
+    already chose. A write that only appends does not need it, and `with con:`
+    is the right amount of ceremony for one INSERT.
+
+    ponytail: this serializes writers for the length of the block, including
+    the reads inside it. Readers are untouched -- that is what WAL bought -- and
+    at twenty writes a minute per address the wait is theoretical; the 5s
+    busy_timeout is what answers it if it ever is not. Do not put file or
+    network I/O in here.
+    """
+    con.execute("BEGIN IMMEDIATE")
+    try:
+        yield con
+    except BaseException:
+        con.rollback()
+        raise
+    con.commit()
 
 
 def now():

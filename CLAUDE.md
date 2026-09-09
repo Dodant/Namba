@@ -268,6 +268,31 @@ hand-copied vocabulary and a branch beside every existing one.
   stdout traceback, which is untouched because Starlette re-raises after
   calling a handler, answers with what input.
 
+- **A write that decides holds the lock while it decides.** `db.writing(con)`
+  is the transaction every one of the twelve public write routes opens, and it
+  is `BEGIN IMMEDIATE` rather than `with con:` for a reason that is easy to get
+  wrong: Python's sqlite3 in legacy isolation mode begins its transaction
+  before the first *write*, so a SELECT earlier in the block holds nothing at
+  all. In WAL that never fails — it answers about the database as it was, while
+  another writer commits over it, and the route then decides on what it read.
+  That is where two spellings of one abbreviation came from, and it was real
+  rather than theoretical: two concurrent creates of the same word stored both
+  in three of eight trials.
+
+  **Moving the read inside without the `IMMEDIATE` is worse than leaving it
+  out**, which is why they are one change. A deferred transaction that reads
+  and then writes must upgrade its lock, two of them together is a deadlock
+  SQLite cannot wait out, and `busy_timeout` does not apply to an upgrade — so
+  the quiet race becomes a 500 saying "database is locked". `test_every_write_
+  decides_inside_the_lock` asserts the rule from outside: at each route's
+  deciding read a second connection tries to take the write lock and has to be
+  refused. `con.in_transaction` cannot stand in for that, because it is true of
+  the deferred transaction that holds nothing.
+
+  A write that only *appends* does not need it — `/api/upload` records an event
+  and decides nothing, and `with con:` is the right amount of ceremony for one
+  INSERT. The rule is about deciding, not about writing.
+
 - **One process, and that is a requirement rather than a default.** The three
   limiters that stand between an open wiki and a script — `main._writes`,
   `auth._attempts`, `auth._mfa_attempts` — are `defaultdict`s in process
