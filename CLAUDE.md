@@ -115,6 +115,20 @@ hand-copied vocabulary and a branch beside every existing one.
   means here, and `admin.py purge` is the one hard delete, in the shell,
   for the removal a law requires. Do not add a delete route back.
 
+  **A purge reaches the words that asked for it, too.** A removal request
+  usually restates the very number, address or name it wants taken down, so
+  `delete_requests.detail` and `reports.detail` go with the entry — *blanked*,
+  and the rows kept, because the record that somebody asked and an operator
+  agreed is exactly why those two tables carry no foreign key on `post_id`. It
+  finishes the job rather than moving it: nothing else stores that text, since
+  both write routes hand `reason` to the log and never the prose.
+  `decision_note` is the one exception and it is an operator's discipline
+  instead of a line of code — `events.meta` holds a copy of the note and that
+  table cannot be touched, so redacting one of two copies would look finished
+  without being finished. **The data a removal is for does not go in a
+  decision note.** `test_purge_takes_the_words_that_asked_for_it` sweeps every
+  column of every table for the sentences it filed.
+
   **The other way content disappeared was a save, and `base_updated_at` is
   what closed it.** The edit form fills itself from the entry and sends every
   field back, so a save is a read-modify-write with a person-sized gap in the
@@ -210,9 +224,10 @@ hand-copied vocabulary and a branch beside every existing one.
 - **`events` is append-only, and that costs something.** Nothing in this
   codebase issues an UPDATE or a DELETE against it, which is what makes it an
   audit log an operator cannot quietly tidy up after themselves in. The price
-  is paid by `admin.py purge`: it takes the entry, its snapshots and its
-  picture, and leaves the entry's event rows holding the nickname typed, three
-  salted hashes and whatever is in `meta`. So the one hard delete does not
+  is paid by `admin.py purge`: it takes the entry, its snapshots, its picture
+  and the free text of any request or report about it, and leaves the entry's
+  event rows holding the nickname typed, three salted hashes and whatever is in
+  `meta`. So the one hard delete does not
   reach everything about a purged entry, and there is no retention sweep
   expiring the hashes either. Both were weighed and declined — a wiki this
   size gets more out of a log nobody can edit than out of a redaction. Neither

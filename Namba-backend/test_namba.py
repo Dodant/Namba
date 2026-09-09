@@ -2493,6 +2493,59 @@ def test_comments():
                     "post_tags": 0}, left
 
 
+def test_purge_takes_the_words_that_asked_for_it():
+    """A removal request restates what it wants removed -- the number, the
+    address, the name -- so `purge` blanks the two free-text columns and keeps
+    their rows. The row is the record that somebody asked and an operator
+    agreed, which is why the schema leaves the foreign key off in the first
+    place; the prose is the thing the purge was for.
+
+    The sweep at the end is the assertion worth having. `detail` is the only
+    place either sentence lives -- both write routes hand `reason` to events and
+    never this -- so a copy turning up in any column of any table is a purge
+    that stopped short, and this notices without being told where to look.
+    """
+    c = TestClient(main.app)
+    pid = c.post("/api/posts",
+                 json={"value": "0117", "title": "A telephone number"}).json()["id"]
+
+    asked = "take this down, 0117-33-5-244 is my house"
+    said = "that is my address in the body, flat four Lammermoor Terrace"
+    assert c.post(f"/api/posts/{pid}/delete-request",
+                  json={"reason": "OTHER", "detail": asked,
+                        "author": "thom"}).status_code == 201
+    assert c.post(f"/api/posts/{pid}/report",
+                  json={"reason": "ABUSE", "detail": said}).status_code == 201
+
+    admin.purge(pid)
+
+    con = db.connect()
+    try:
+        req = con.execute("SELECT * FROM delete_requests WHERE post_id = ?",
+                          (pid,)).fetchone()
+        rep = con.execute("SELECT * FROM reports WHERE post_id = ?",
+                          (pid,)).fetchone()
+        assert req is not None and rep is not None, "both rows outlive the entry"
+        assert (req["detail"], rep["detail"]) == ("", ""), \
+            (req["detail"], rep["detail"])
+
+        # what is left is still a decision to read: who asked, for what reason,
+        # about which entry, and where it stood when the entry went
+        assert (req["post_id"], req["reason"], req["requested_by"],
+                req["status"]) == (pid, "OTHER", "thom", "PENDING")
+        assert (rep["post_id"], rep["reason"], rep["status"]) == (pid, "ABUSE", "OPEN")
+
+        tables = [r["name"] for r in con.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'")]
+        for table in tables:
+            for row in con.execute(f"SELECT * FROM {table}"):
+                for col, val in dict(row).items():
+                    for needle in (asked, said):
+                        assert needle not in str(val), (table, col, needle)
+    finally:
+        con.close()
+
+
 def test_upload_gc_keeps_what_history_points_at():
     """A picture is not orphaned just because no live entry shows it: a revision
     snapshot holds the path a restore hands back, a body can carry one in

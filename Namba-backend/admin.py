@@ -22,9 +22,10 @@ whoever holds shell access *is* the operator and there is nobody to rate-limit.
 It is for the removal a law requires -- a phone number, an address, a face. An
 edit cannot do that job: snapshot() copies the old body into `revisions` and
 /api/posts/{id}/revisions serves it to anyone, so blanking a field only moves
-the data one click away. A purge takes the entry, its snapshots and its picture
-together, and the ON DELETE CASCADE on post_tags, post_links, translations and
-comments is what earns its keep here.
+the data one click away. A purge takes the entry, its snapshots, its picture and
+the free text of any request or report about it together, and the ON DELETE
+CASCADE on post_tags, post_links, translations and comments is what earns its
+keep here.
 
 The account commands are here for the same reason and not as a convenience:
 **there is no signup route.** The back office has a login and nothing that
@@ -80,9 +81,28 @@ def set_status(post_id, status):
 
 
 def purge(post_id):
-    """Remove an entry, its history and its picture. Not reversible.
+    """Remove an entry, its history, its picture and the words that asked for
+    it. Not reversible.
 
     Returns the picture filename if one was removed, else None.
+
+    The words are `delete_requests.detail` and `reports.detail`, and they are
+    here because of what a removal request usually says: it restates the very
+    number, address or name it is asking to have taken down. A purge run for
+    that request and leaving those two columns is the same failure this command
+    exists to prevent, one table over. They are **blanked and the rows kept** --
+    the row is the record that a removal was asked for and granted, which is the
+    line worth having if the decision is ever questioned, and the schema leaves
+    the foreign key off precisely so it outlives the entry. Nothing else holds
+    `detail`: the two write routes hand `reason` to events and never this, so
+    blanking it here is a complete removal rather than another copy moved one
+    click away.
+
+    `decision_note` is left alone, and that is the one place to be careful by
+    hand instead. It is the same free text, but `events.meta` has a copy of it,
+    and that table cannot be touched -- see below. Redacting one of the two
+    copies would look finished without being finished, so the rule is the
+    operator's: **the data a removal is for does not go in a decision note.**
 
     **What it does not take is the entry's rows in `events`.** They keep the
     nickname that was typed, the three salted hashes behind each write, and
@@ -107,6 +127,10 @@ def purge(post_id):
             # bare DELETE FROM posts leaves behind the body a purge was for.
             con.execute("DELETE FROM revisions WHERE post_id = ?", (post_id,))
             con.execute("DELETE FROM posts WHERE id = ?", (post_id,))
+            con.execute("UPDATE delete_requests SET detail = '' WHERE post_id = ?",
+                        (post_id,))
+            con.execute("UPDATE reports SET detail = '' WHERE post_id = ?",
+                        (post_id,))
         # The picture goes only once nothing names it any more: a body can carry
         # the same path in markdown, and so can another entry's snapshot.
         # referenced() is asked *after* the delete, so it answers about what is
