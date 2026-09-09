@@ -289,12 +289,13 @@ sanitiser config to get wrong.
   row gets. The numeral keeps the app's treatment (mono, tabular, accent) but
   is not a link: the box is something to read, and the row behind it still has
   both links. **One rule, and where it goes is the point.** The numeral and the
-  title are a thing and its name, so they get 3px of air and nothing else —
+  title are a thing and its name, so they get 4px of air and nothing else —
   small mono accent over a serif title is already two voices. The line falls
   between the title and the blurb, which is where the box really divides: what
-  an entry *is*, and what it means. `--line` and 9px either side of it, the
-  same line a band head draws, not the `--rule-soft` whisper between the rows
-  of a `.panel` that reads by repeating.
+  an entry *is*, and what it means. `--line`, the same line a band head draws
+  rather than the `--rule-soft` whisper between the rows of a `.panel`, with
+  6px above and 5px below — the line belongs to the blurb under it, not to the
+  space between two things.
 
   Each of those three paragraphs owns its own margin, and there is **no
   `.ix-pop p { margin: 0 }`** over them. There was, and it is (0,1,1) against a
