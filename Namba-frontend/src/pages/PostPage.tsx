@@ -376,41 +376,6 @@ function Comments({ id }: { id: string }) {
             noun, and what is left to say is how many. */}
         {!!said?.length && <span className="n">{fmtCount(said.length, locale)}</span>}
       </summary>
-      <div className="cmt-form">
-        <div className="field">
-          <label htmlFor={fid('nick')}>{m.post.nickname}</label>
-          <input
-            id={fid('nick')}
-            value={author}
-            onChange={(e) => setAuthor(e.target.value)}
-            placeholder={m.common.anonymous}
-            maxLength={40}
-          />
-        </div>
-        <div className="field">
-          <label htmlFor={fid('say')}>
-            {m.post.saySomething}{' '}
-            {/* 300 is COMMENT_MAX in main.py, hand-copied the way every other
-                field cap is -- past it the API answers 422 rather than trimming */}
-            <span className="hint">{m.post.commentLimit}</span>
-          </label>
-          <textarea
-            id={fid('say')}
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder={m.post.commentPlaceholder}
-            maxLength={300}
-          />
-        </div>
-        <button
-          type="button"
-          className="btn primary"
-          disabled={busy || !body.trim()}
-          onClick={say}
-        >
-          {busy ? m.post.posting : m.post.postComment}
-        </button>
-      </div>
       {err && (
         <p className="err" role="alert">
           {err}
@@ -435,6 +400,47 @@ function Comments({ id }: { id: string }) {
       ) : (
         <p className="quiet">{m.post.noComments}</p>
       )}
+      {/* Reading stays first. The composer is a deliberate next step rather
+          than the largest thing on a short entry, and native details retains
+          keyboard semantics without adding open state to this component. */}
+      <details className="cmt-compose">
+        <summary className="ix-fold">{m.post.saySomething}</summary>
+        <div className="cmt-form">
+          <div className="field">
+            <label htmlFor={fid('nick')}>{m.post.nickname}</label>
+            <input
+              id={fid('nick')}
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
+              placeholder={m.common.anonymous}
+              maxLength={40}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor={fid('say')}>
+              {m.post.saySomething}{' '}
+              {/* 300 is COMMENT_MAX in main.py, hand-copied the way every other
+                  field cap is -- past it the API answers 422 rather than trimming */}
+              <span className="hint">{m.post.commentLimit}</span>
+            </label>
+            <textarea
+              id={fid('say')}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder={m.post.commentPlaceholder}
+              maxLength={300}
+            />
+          </div>
+          <button
+            type="button"
+            className="btn primary"
+            disabled={busy || !body.trim()}
+            onClick={say}
+          >
+            {busy ? m.post.posting : m.post.postComment}
+          </button>
+        </div>
+      </details>
     </details>
   )
 }
@@ -450,4 +456,3 @@ const cmt = (c: Comment, locale = 'en') => (
     </span>
   </div>
 )
-
