@@ -247,8 +247,20 @@ function Index({ lang }: { lang: string }) {
      `.ix-link`, and the fragment it returns has no element to hang one on. */
   useEffect(() => {
     const measure = () => {
-      for (const el of document.querySelectorAll<HTMLElement>('.ix-link'))
-        el.classList.toggle('cut', el.scrollWidth > el.clientWidth + 1)
+      const links = [...document.querySelectorAll<HTMLElement>('.ix-link')]
+      /* Clear first, and that is the whole of this. `See more` costs the line
+         about 60px, so measuring while it is on screen asks "does this fit in
+         the space left after the button", which a cut row can only ever answer
+         yes to -- the control was making the case for its own existence and no
+         row ever gave it back. Widening the window did not release one, and
+         neither did the pass below: a row marked while the fallback font was
+         still showing stayed marked once Newsreader arrived narrower. So every
+         pass starts from a row with nothing at the end of it and asks the
+         question that was meant: is anything hidden at all. */
+      links.forEach((el) => el.classList.remove('cut'))
+      // read all, then write all -- interleaving them is a layout per row
+      const over = links.map((el) => el.scrollWidth > el.clientWidth + 1)
+      links.forEach((el, i) => el.classList.toggle('cut', over[i]))
     }
     measure()
     document.fonts.ready.then(measure)
