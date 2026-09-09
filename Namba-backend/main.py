@@ -119,20 +119,19 @@ async def _nosniff(request, call_next):
 def _unhandled(request: Request, exc: Exception):
     """A 500 leaves a row in the log an operator already reads.
 
-    Before this, an unhandled exception went to the container's stdout and
-    nowhere else, and the evidence that it is not enough is in this codebase:
-    `write_head`'s comment records a backslash in a title answering that page
-    with a 500 "for good" -- it lived, quietly, until somebody happened to
-    type one. `events` is the log this repo already has, append-only, with a
-    back office drawing it; the dashboard's activity list asks for `kind=all`,
-    so an ERROR row appears there with no front-end change at all.
+    Without it an unhandled exception goes to the container's stdout and
+    nowhere an operator looks, and a route that fails only on some input -- a
+    backslash in a title, say -- is found by the reader who types it rather
+    than by the log. `events` is the log this repo already has, append-only,
+    with a back office drawing it; the dashboard's activity list asks for
+    `kind=all`, so an ERROR row appears there with no front-end change at all.
 
     **What goes in `meta` is the exception's type, the route's pattern and the
     file and line it came from -- and never the message or the path as typed.**
-    The message can quote what a stranger wrote (that is exactly what the
-    `re.error` above did) and `meta` is in the one table `purge` cannot reach,
-    which is the decision A5 settled: content does not go somewhere a removal
-    cannot follow it. So this log answers *what is breaking and where*, and the
+    The message can quote what a stranger wrote (a `re.error` quotes the
+    pattern, and the pattern may be a title) and `meta` is in the one table
+    `purge` cannot reach: content does not go somewhere a removal cannot
+    follow it (ADR-0004). So this log answers *what is breaking and where*, and the
     stdout traceback -- unchanged, because Starlette re-raises after calling a
     handler -- answers *with what input*.
 
@@ -193,10 +192,10 @@ def uploads_bytes():
 # this ever runs behind more than one worker.
 _writes = defaultdict(list)
 WRITE_LIMIT, WINDOW = 20, 60
-# When to throw away the addresses that have stopped writing. Nothing here
-# expired a key, only the timestamps inside one, so every IP hash that ever
-# posted stayed in the dict for the life of the process -- a slow leak on the
-# one structure that is per-worker and never looked at again. Swept in bulk
+# When to throw away the addresses that have stopped writing. Only the
+# timestamps inside a key expire on their own, so without this every IP hash
+# that ever posted stays in the dict for the life of the process -- a slow leak
+# on the one structure that is per-worker and never looked at again. Swept in bulk
 # rather than per request because the sweep is O(keys) and the common case is
 # a dict of forty. Nothing is lost by dropping a key: an absent one and one
 # holding an empty list are the same answer, since a defaultdict rebuilds it.
@@ -762,7 +761,7 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
     with writing(con):
         # Inside the lock, because this is a read that decides. `resolve_format`
         # asks what spelling a sibling ABBR already chose and stores this one if
-        # there is none -- so `ufo` and `UFO` arriving together both used to see
+        # there is none -- so `ufo` and `UFO` arriving together would both see
         # no sibling and both store, which is the two `/a/` pages for one word
         # that CLAUDE.md spends three paragraphs preventing, with no login to
         # merge them afterwards. A UNIQUE index cannot say it: several entries
@@ -908,8 +907,8 @@ def restore_revision(
                  author, now(), post_id),
             )
         else:
-            # The post's row is gone, which only entries removed by the DELETE
-            # route that used to exist can be: nothing removes a row now.
+            # The post's row is gone. Nothing in this codebase removes a row, so
+            # only a snapshot older than that rule can reach here (ADR-0002).
             # Snapshots outliving the post is the entire point of the revisions
             # table, so restore has to be able to put one back -- under its
             # original id, or every revision row and inbound link would be
@@ -925,26 +924,10 @@ def restore_revision(
             # cannot give them back. A resurrected entry is the entry, its tags
             # and its translations, and no talk and no links.
             #
-            # This branch is the one place in the file that answers for data no
-            # code here can produce any more, so how to tell whether any of it
-            # exists: the route shipped 2026-08-18 (b6fac29) with a Delete
-            # button on every entry page and was gone by 2026-08-20 (dc5a6d1),
-            # and the first Dockerfile and deploy workflow are both dated
-            # 2026-09-01 -- ten days later. So nothing that could create one of
-            # these ever ran anywhere but a developer's machine, and that
-            # machine's namba.db has five of them. The question for production
-            # is therefore only whether its database was ever a copy of that
-            # file, and one query says so:
-            #
-            #   SELECT COUNT(*) FROM revisions r WHERE NOT EXISTS
-            #       (SELECT 1 FROM posts p WHERE p.id = r.post_id);
-            #
-            # Zero and this branch, `guard_public`'s absent-passes rule and
-            # PostPage's recovery view -- 64 lines measured -- can go together.
-            # Non-zero and they stay, and `revisions.author = 'deleted'` on the
-            # last snapshot of each is the old route's own fingerprint, so a
-            # count with none of those came from something else and is a
-            # different question.
+            # This branch answers for rows no code here can produce. Whether
+            # production holds any is one query, and ADR-0002 carries it beside
+            # the decision that keeps this branch, `guard_public`'s
+            # absent-passes rule and PostPage's recovery view until it is run.
             con.execute(
                 """INSERT INTO posts (id, value, format, sort_key, title, body, image,
                                       lang, grouped, author, edited_by, likes,
@@ -1136,7 +1119,7 @@ def request_deletion(
         fetch_one(con, post_id)  # 404 on a missing or already hidden entry
         # `_already_open` is the deciding read here, and the reason it cannot be
         # a UNIQUE index is in its own docstring. Inside the lock it is the
-        # constraint it was standing in for: two requests sent together used to
+        # constraint it stands in for; outside it, two requests sent together
         # both find nothing pending and both land, which is the count of
         # *people* it exists to keep honest.
         if _already_open(con, "delete_requests", post_id, who, "PENDING"):

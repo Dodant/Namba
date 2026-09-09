@@ -5,12 +5,10 @@ import main -- main imports it, to include the router. Everything in this file
 is about a `posts` row and the four tables hanging off it; the routes and the
 models stay where they were.
 
-`ungroup` and `resolve_format` are here for that same reason and no other. They
-started in main.py, beside the only two writes that settled a value, and moved
-down the day the back office got a third -- an operator correcting a number.
-How a value is spelled and which format it is filed under has to be answered
-identically by all three, and the alternative to sharing them was a second copy
-in a module that may not import the first.
+`ungroup` and `resolve_format` are here for that same reason and no other:
+three writes settle a value -- create, edit and the operator's renumber -- and
+the third is in a module that may not import `main`. How a value is spelled and
+which format it is filed under has to be answered identically by all three.
 """
 import json
 
@@ -151,11 +149,11 @@ def guard_public(con, post_id):
     """404 unless this entry is on the wiki, for the reads that are keyed on a
     post id rather than joined to one.
 
-    A row that is simply *absent* passes. Entries removed by the DELETE route
-    that used to exist have no row at all, and their snapshots are the only
-    copy left of them -- so the recovery path has to stay open to those, while a
-    hidden entry's history stays shut. Nothing can reach that state any more:
-    no route removes a row.
+    A row that is simply *absent* passes. A snapshot whose entry row is gone is
+    the only copy left of that entry, so the recovery path stays open to those
+    while a hidden entry's history stays shut. Nothing in this codebase removes
+    a row; ADR-0002 says where such snapshots come from and how to tell whether
+    any exist.
     """
     row = con.execute("SELECT status FROM posts WHERE id = ?", (post_id,)).fetchone()
     if row is not None and row["status"] != LIVE:

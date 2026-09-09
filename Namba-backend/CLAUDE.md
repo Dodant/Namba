@@ -63,8 +63,8 @@ the sitemap.
   outlive the post. Every edit and every restore snapshots first; **hiding does
   not**, because nothing about the entry changed except whether the wiki shows
   it, and `show` is the undo. Adding `REFERENCES posts(id) ON DELETE CASCADE`
-  would silently make `admin.py purge` unrecoverable and, worse, quietly turn
-  the rows left by the `DELETE` route that used to exist into nothing.
+  would silently make `admin.py purge` unrecoverable and turn the snapshots
+  whose entry row is gone into nothing (ADR-0003).
 - **`comments` is the same decision inverted, on purpose.** It *does* have the
   foreign key and it *does* cascade, because talk beside an entry has nothing to
   recover. Hiding an entry does not fire it — the row stays, so the talk is
@@ -109,8 +109,8 @@ the sitemap.
   row written before the column has `NULL` and keeps it: backfilling the
   Korean-titled seed entries would be the importer correcting its source.
 - **Which language a list reads in is the caller's, not the endpoint's.**
-  `/api/numbers` used to hardcode English; both list endpoints now take `lang`
-  and run it through `_in_lang()`, and no `lang` substitutes nothing. A post
+  Both list endpoints take `lang` and run it through `_in_lang()`; no `lang`
+  substitutes nothing, and neither endpoint assumes English. A post
   with no translation in that language keeps its own title and body — that
   fallback is the feature, not a gap. `fetch_one` deliberately does **not**
   translate: the single-post view has a tab strip, and switching there is the
@@ -183,9 +183,9 @@ the sitemap.
   never takes one from argv.** argv is refused because it would sit in the shell
   history. The pipe branch exists because `getpass` cannot turn echo off without
   a tty — `docker exec`, a deploy script, or Claude Code's own `!` shell — and
-  raised `termios.error` and then `EOFError` on top of it, printing a traceback
-  instead of saying what was wrong. It now says which of the two to use and that
-  a pipe costs you the history a terminal does not.
+  raises `termios.error` there; the branch reads one line instead and, when
+  nothing arrives, says which of the two to use and that a pipe costs you the
+  history a terminal does not.
 - **TOTP enrollment and recovery are shell-only.** `admin.py totp-enroll` shows
   a manual setup key only on an interactive terminal, verifies one current code
   before committing it, and revokes sessions. The key is derived with HMAC from
@@ -238,8 +238,8 @@ the sitemap.
 - **`hidden` travels all the way down into `snapshot()`.** It reads through
   `fetch_one`, so without it an operator reverting vandalism gets a 404 in the
   middle of their own restore — an entry worth reverting is usually one they took
-  down first. This was a real bug caught by `test_admin_content_and_dashboard`,
-  not a hypothetical.
+  down first. `test_admin_content_and_dashboard` restores a hidden entry to
+  hold it.
 - **The number itself is an operator's edit, and the only route that is.**
   `POST /api/admin/posts/{id}/value` is the one place `posts.value` is changed
   on purpose. The wiki's own form keeps that field read-only, because `/n/42`
@@ -253,10 +253,10 @@ the sitemap.
   `author`, and leaves a `CONTENT_RENUMBER` row pointing at the revision. It
   answers 409 rather than writing a revision that changes nothing.
 
-  Which is what moved `ungroup` and `resolve_format` down into `store.py`: with
-  a third write, and that one in a module that may not import `main`, the
-  alternative was a second answer to how a value is spelled and which format it
-  is filed under. The format travels with the value because it has to -- 1969
+  Which is why `ungroup` and `resolve_format` live in `store.py`: three writes
+  settle a value, one of them in a module that may not import `main`, and a
+  second answer to how a value is spelled and which format it is filed under is
+  two addresses for one entry. The format travels with the value because it has to -- 1969
   retyped as 10:04 is a TIME, and an entry deliberately filed as Mixed must not
   jump to `/a/` the first time a typo in it is fixed, so the panel sends the
   format it is showing.
@@ -285,19 +285,16 @@ the sitemap.
 - **`set_admin_active` refuses only self-revocation, and that is deliberate.**
   `require_super` means whoever is asking is a live super admin, so revoking
   anybody *else* always leaves at least them. A separate "not the last super
-  admin" check existed for one commit, could never fire, and was deleted — a
-  guard that reads as protection and is unreachable is worse than none. Locking
-  the door stays possible from a shell, which is the right place for it.
-- **The duplicate finder is keyed on the body, and that took three tries.**
-  Grouping by title put "Time" at the top of the real wiki — five people writing
-  about five different numbers called Time, which is the wiki working. Counting
-  distinct bodies beside the title did not save it either: all five have no body,
-  so they shared the empty string and scored as maximum repetition. A shared
-  title is simply not evidence here and a shared paragraph is, so the title
-  version is gone rather than patched again, and `length(trim(body)) > 20` keeps
-  the empty ones out. Title-only spam is caught by the client counts, which is
-  the tool that fits it: one visitor, twelve creates, ten minutes.
-  `test_admin_content_and_dashboard` holds all three cases.
+  admin" check could never fire, and a guard that reads as protection and is
+  unreachable is worse than none, so there is not one. Locking the door stays
+  possible from a shell, which is the right place for it.
+- **The duplicate finder is keyed on the body, never the title.** Five people
+  writing about five different numbers called Time is the wiki working, so a
+  shared title is not evidence here; a shared paragraph is, and
+  `length(trim(body)) > 20` keeps the empty bodies — which every title-only
+  entry shares — from scoring as repetition. Title-only spam is caught by the
+  client counts, which is the tool that fits it: one visitor, twelve creates,
+  ten minutes. `test_admin_content_and_dashboard` holds all three cases.
 - **`events` is append-only, and that is the feature.** Nothing in this codebase
   issues an `UPDATE` or a `DELETE` against it. An audit log an operator can tidy
   up after themselves in is not an audit log, so do not add a route that edits
@@ -522,8 +519,9 @@ the sitemap.
 ## No ORM
 
 Do not add SQLAlchemy, SQLModel, Alembic or a migration tool. Schema lives in
-`db.SCHEMA` as `CREATE TABLE IF NOT EXISTS` and runs at import. To change it,
-edit the DDL and reseed.
+`db.SCHEMA` as `CREATE TABLE IF NOT EXISTS` and runs at import; a new column
+is a guarded `ALTER TABLE` in `db.init()`, and a rule about what a column
+holds is Pydantic, not a `CHECK` (ADR-0022).
 
 ## Trust boundaries — do not thin these out
 
@@ -579,8 +577,8 @@ there. The operator's half has a login, and the notes above are the whole of it.
   It is per-worker; run one worker or move it to redis. Reads are not limited
   and are not identified — there is nothing to record about a page view. Past
   `KEEP_CLIENTS` keys the dict drops the ones whose last write is outside the
-  window: only the timestamps *inside* a key used to expire, so a long-lived
-  worker kept an entry for every address that ever wrote. `auth._attempts` does
+  window, so a long-lived worker does not keep an entry for every address that
+  ever wrote. `auth._attempts` does
   the same two lines for the login limiter and repeats them rather than sharing
   — `auth` may not import `main`.
 - Likes are a bare counter, and rate limited like every other write. The

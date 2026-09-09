@@ -193,9 +193,9 @@ def write_head(page: str, *, title=None, desc=None, canonical=None,
     Both substitutions pass a callable rather than a string, and that is not a
     style choice: re.sub reads a *string* replacement for group references, so
     a title carrying a backslash -- "C:\\1\\2" is a fine thing to write an entry
-    about -- raised `invalid group reference` and answered this page with a 500
-    for good. html.escape does not touch a backslash and should not; it is
-    escaping for HTML, and this was a regex problem wearing its clothes.
+    about -- would raise `invalid group reference` and answer this page with a
+    500 on every load. html.escape does not touch a backslash and should not;
+    it escapes for HTML, and this is a regex problem wearing its clothes.
     """
     # The first response has to identify its language before React runs. This
     # is also what crawlers and assistive technology read; the client keeps it

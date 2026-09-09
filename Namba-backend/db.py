@@ -322,12 +322,10 @@ def writing(con):
     the two halves are one change. A deferred transaction that reads and then
     writes has to *upgrade* its lock, and two of them doing it together is a
     deadlock SQLite cannot wait out: the second gets SQLITE_BUSY at once and
-    `busy_timeout` does not apply, so the pair that used to race quietly starts
-    answering "database is locked" with a 500 instead. Measured on two
-    concurrent creates of the same abbreviation: with the read outside the
-    transaction, two spellings were stored in three of eight trials; with it
-    inside a deferred one, no split and a 500; with this, one spelling and no
-    error.
+    `busy_timeout` does not apply, so a pair that races quietly with the read
+    outside a transaction answers "database is locked" with a 500 with it
+    inside a deferred one. ADR-0007 has the measurement, on two concurrent
+    creates of one abbreviation.
 
     Use it for a write that *decides* -- a 404 on a row that has to still be
     there, a duplicate check, a format that depends on what a sibling entry
@@ -447,8 +445,8 @@ def init():
         # its source, which is the wiki's job and not this file's.
         if "lang" not in have:
             con.execute("ALTER TABLE posts ADD COLUMN lang TEXT")
-        # Tags were upper-cased until they became free-form; lower() is the
-        # rule now, so rows written under the old one move with it. Idempotent:
+        # lower() is the rule for a tag; rows written under an upper-case one
+        # move with it. Idempotent:
         # after the first pass nothing matches. The delete goes first because
         # (post_id, tag) is the primary key -- a post holding both BOOK and
         # book cannot have the first renamed onto the second.

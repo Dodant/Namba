@@ -845,18 +845,14 @@ def abuse(
     # several numbers, which is what an advert looks like on a wiki about
     # numbers.
     #
-    # Keyed on the *body*, and that took two tries. Grouping by title put "Time"
-    # at the top of the real wiki -- five people writing about five different
-    # numbers called Time, which is not spam, it is the wiki working. Counting
-    # distinct bodies beside the title did not save it either: all five have no
-    # body at all, so they shared one and scored worse. A shared title is simply
-    # not evidence here, and a shared paragraph is: nobody writes the same forty
-    # words about 42 and about 1,024 by coincidence.
-    #
-    # So the title heuristic is gone rather than patched a third time. Title-only
-    # spam -- the same short title under a dozen numbers with nothing in them --
-    # is caught by the client counts above, which is the tool that actually fits
-    # it: one visitor, twelve creates, ten minutes.
+    # Keyed on the *body*, never the title. Five people writing about five
+    # different numbers called Time is not spam, it is the wiki working, so a
+    # shared title is not evidence here; a shared paragraph is, since nobody
+    # writes the same forty words about 42 and about 1,024 by coincidence. The
+    # length floor keeps empty bodies -- which every title-only entry shares --
+    # from scoring as repetition. Title-only spam, the same short title under a
+    # dozen numbers with nothing in them, is caught by the client counts above,
+    # which is the tool that fits it: one visitor, twelve creates, ten minutes.
     dupes = con.execute(
         """SELECT substr(body, 1, 90) AS said, COUNT(*) AS entries,
                   COUNT(DISTINCT lower(title)) AS titles, GROUP_CONCAT(id) AS ids

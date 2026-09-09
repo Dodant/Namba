@@ -57,7 +57,8 @@ _attempts = defaultdict(list)
 _mfa_attempts = defaultdict(list)
 LOGIN_LIMIT, LOGIN_WINDOW = 5, 60
 # When the dict is big enough to be worth emptying of the clients that stopped
-# knocking. Nothing expired a key before, only the timestamps inside one.
+# knocking. Only the timestamps inside a key expire on their own; this is
+# what expires the key.
 KEEP_CLIENTS = 10_000
 
 
@@ -91,8 +92,8 @@ DUMMY = hash_password(secrets.token_hex(16))
 
 def _limit(bucket, ip_hash):
     cutoff = time.monotonic() - LOGIN_WINDOW
-    # the same unbounded-dict sweep main.guard does, written out again rather
-    # than shared: auth may not import main (main imports this), and a helper
+    # the same unbounded-dict sweep main.guard does, repeated rather than
+    # shared: auth may not import main (main imports this), and a helper
     # in db.py for two lines about a rate limiter would be a worse home than
     # either. This dict grows a key per address that ever reached the login
     # form, which on a panel only an operator uses is mostly crawlers.
