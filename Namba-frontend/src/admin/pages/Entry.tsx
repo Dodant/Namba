@@ -41,6 +41,24 @@ const MOVES: Record<string, {
    could never match -- so the mapping is written out and the CSS names it. */
 const SIGN: Record<string, string> = { '-': 'dl-out', '+': 'dl-in', '@': 'dl-at' }
 
+/** One line of a diff: what a field was, and what it is now.
+
+    The three of them -- the changed columns, the tags and the languages --
+    drew the same four spans, and the only difference is how each turns its
+    value into a string. A tag list joins on a comma; a column is whatever was
+    in it; both answer an em dash when there is nothing. `admin.css` names
+    these four classes and this is the one place that writes them. */
+function Changed({ name, before, after }: { name: string; before: string; after: string }) {
+  return (
+    <div className="dfield">
+      <span className="dname">{name}</span>
+      <span className="dwas">{before}</span>
+      <span className="dsep">→</span>
+      <span className="dnow">{after}</span>
+    </div>
+  )
+}
+
 /** One entry, as only an operator can see it.
 
     This is the page that justifies `hidden=True` existing: a hidden entry has
@@ -299,28 +317,26 @@ export default function Entry() {
               ) : (
                 <div className="diff">
                   {diff.fields.map((f) => (
-                    <div className="dfield" key={f.name}>
-                      <span className="dname">{f.name}</span>
-                      <span className="dwas">{String(f.before ?? '—')}</span>
-                      <span className="dsep">→</span>
-                      <span className="dnow">{String(f.after ?? '—')}</span>
-                    </div>
+                    <Changed
+                      key={f.name}
+                      name={f.name}
+                      before={String(f.before ?? '—')}
+                      after={String(f.after ?? '—')}
+                    />
                   ))}
                   {diff.tags.before.join() !== diff.tags.after.join() && (
-                    <div className="dfield">
-                      <span className="dname">tags</span>
-                      <span className="dwas">{diff.tags.before.join(', ') || '—'}</span>
-                      <span className="dsep">→</span>
-                      <span className="dnow">{diff.tags.after.join(', ') || '—'}</span>
-                    </div>
+                    <Changed
+                      name="tags"
+                      before={diff.tags.before.join(', ') || '—'}
+                      after={diff.tags.after.join(', ') || '—'}
+                    />
                   )}
                   {diff.translations.before.join() !== diff.translations.after.join() && (
-                    <div className="dfield">
-                      <span className="dname">languages</span>
-                      <span className="dwas">{diff.translations.before.join(', ') || '—'}</span>
-                      <span className="dsep">→</span>
-                      <span className="dnow">{diff.translations.after.join(', ') || '—'}</span>
-                    </div>
+                    <Changed
+                      name="languages"
+                      before={diff.translations.before.join(', ') || '—'}
+                      after={diff.translations.after.join(', ') || '—'}
+                    />
                   )}
                   {!!diff.body.length && (
                     <pre className="dbody">

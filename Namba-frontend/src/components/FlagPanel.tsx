@@ -14,16 +14,8 @@ import { useUi } from '../uiLocale'
    A toggle rather than two panels: the fields are identical apart from the
    reason list and the nickname, and two collapsible sections in a rail that
    already has two is a rail nobody reads to the bottom of. */
-const KINDS = [
-  {
-    key: 'report' as const,
-    reasons: REPORT_REASONS,
-  },
-  {
-    key: 'remove' as const,
-    reasons: DELETE_REASONS,
-  },
-]
+type Kind = 'report' | 'remove'
+const KINDS = ['report', 'remove'] as const
 
 /** The third fold in the rail, after how the entry got here and what people
     make of it.
@@ -38,7 +30,7 @@ export default function FlagPanel({ id }: { id: number | string }) {
   const { m } = useUi()
   const uid = useId()
   const fid = (name: string) => `${uid}-${name}`
-  const [kind, setKind] = useState<'report' | 'remove'>('report')
+  const [kind, setKind] = useState<Kind>('report')
   const [reason, setReason] = useState('')
   const [detail, setDetail] = useState('')
   const [author, setAuthor] = useState(nickname.get())
@@ -46,12 +38,12 @@ export default function FlagPanel({ id }: { id: number | string }) {
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const mode = KINDS.find((k) => k.key === kind)!
+  const reasons = kind === 'remove' ? DELETE_REASONS : REPORT_REASONS
 
   /* Switching sides clears the reason rather than keeping it: four of the ten
      reasons are in both lists, so keeping it would silently carry "Vandalism"
      across while dropping "An advertisement", which reads as a bug. */
-  function pick(next: 'report' | 'remove') {
+  function pick(next: Kind) {
     setKind(next)
     setReason('')
     setErr('')
@@ -95,13 +87,13 @@ export default function FlagPanel({ id }: { id: number | string }) {
           <div className="flag-kind" role="group" aria-label={m.flag.kindAria}>
             {KINDS.map((k) => (
               <button
-                key={k.key}
+                key={k}
                 type="button"
-                className={`btn ${k.key === kind ? 'on' : ''}`}
-                aria-pressed={k.key === kind}
-                onClick={() => pick(k.key)}
+                className={`btn ${k === kind ? 'on' : ''}`}
+                aria-pressed={k === kind}
+                onClick={() => pick(k)}
               >
-                {k.key === 'remove' ? m.flag.remove : m.flag.report}
+                {k === 'remove' ? m.flag.remove : m.flag.report}
               </button>
             ))}
           </div>
@@ -115,7 +107,7 @@ export default function FlagPanel({ id }: { id: number | string }) {
                 onChange={(e) => setReason(e.target.value)}
               >
                 <option value="">{m.flag.pickOne}</option>
-                {mode.reasons.map((r) => (
+                {reasons.map((r) => (
                   <option key={r} value={r}>
                     {m.reasons[r]}
                   </option>

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useLayoutEffect, useRef } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   ABBR_BUCKETS, api, BUCKETS, entryPath, fmtCount, fmtDate, FORMATS,
@@ -386,95 +386,9 @@ function Index({ lang }: { lang: string }) {
                 <span className="n">{bandCount(band.items, shownFormat, m)}</span>
               </summary>
               <ol className="index">
-                {band.items.map((n: NumberEntry) => {
-                  const rx = marker(n, locale)
-                  const shown = showValue(n.value, n.grouped, locale)
-                  const rows = n.entries.map((e) => (
-                    // the like sits outside the link: a button inside an
-                    // anchor is invalid, and both want the same click
-                    <div className="ix-e" key={e.id}>
-                      <Link className="ix-link" to={`/p/${e.id}`}>
-                        <span className="ix-t">{mark(e.title, rx)}</span>
-                        {e.image && <Photo label={m.home.hasImage} />}
-                        {e.body && (
-                          <span className="ix-b"> — {mark(plain(e.body), rx)}</span>
-                        )}
-                      </Link>
-                      {/* The way through when the line was cut, and it opens
-                          the line rather than going anywhere -- the title next
-                          to it is already the link to the entry, so a second
-                          one here was the same click twice.
-
-                          popovertarget and [popover], so the browser owns the
-                          layer: the top layer, light dismiss on a click
-                          outside, Escape, and one open at a time, none of it
-                          written here. Same argument as the <details> above.
-                          index.css shows the button only on a .ix-link the
-                          effect marked, so a row that fits carries no control
-                          at all -- not on screen and not in the a11y tree,
-                          since display: none takes it out of both. */}
-                      <button
-                        className="ix-more"
-                        popoverTarget={`ix-pop-${e.id}`}
-                      >
-                        {m.home.seeMore}
-                      </button>
-                      {/* The row again, laid out with the room a layer has
-                          and the row does not: the number it is filed under
-                          over the title, the way every hero in this app is
-                          shaped, and then the blurb as a paragraph rather than
-                          the tail of a sentence the title started. Which is
-                          the whole reason it is worth opening -- the line it
-                          replaces reads those three things as one run-on that
-                          did not fit. */}
-                      <div className="ix-pop" id={`ix-pop-${e.id}`} popover="auto">
-                        <p className="ix-pop-num">{shown}</p>
-                        <p className="ix-pop-title">{mark(e.title, rx)}</p>
-                        {e.body && (
-                          <p className="ix-pop-body">{mark(plain(e.body), rx)}</p>
-                        )}
-                      </div>
-                      <span className="ix-like">
-                        <Like post={e} />
-                      </span>
-                    </div>
-                  ))
-                  return (
-                  <li className="ix" key={`${n.format}-${n.value}`}>
-                    <Link
-                      className={`ix-num ${numSize(shown)}`}
-                      to={entryPath(n.value, n.format)}
-                    >
-                      {shown}
-                    </Link>
-                    {/* <details> and not a piece of state, the same as the
-                        band above it: the browser owns the collapse and gets
-                        the keyboard and the screen reader right for free.
-
-                        Open, so a fold never hides an entry from a reader who
-                        did not ask -- it is there to be closed by someone who
-                        wants past this number, and the summary says what
-                        closing it costs. The numeral stays outside it: it is
-                        a link to /n/:value, and a link inside a summary is one
-                        click that has to be two things. */}
-                    {n.entries.length > FOLD_OVER ? (
-                      <details className="ix-titles" open>
-                        <summary className="ix-fold">{m.home.foldedEntries(n.entries.length)}</summary>
-                        {/* the rows need a box of their own in here. A
-                            <details> puts everything after the summary into
-                            one anonymous content box, so the column's gap
-                            falls between the summary and that box rather than
-                            between the rows inside it, and a folded number
-                            drew its entries 4px tighter than every other row
-                            on the page. */}
-                        <div className="ix-list">{rows}</div>
-                      </details>
-                    ) : (
-                      <div className="ix-titles">{rows}</div>
-                    )}
-                  </li>
-                  )
-                })}
+                {band.items.map((row) => (
+                  <IndexRow key={`${row.format}-${row.value}`} row={row} />
+                ))}
               </ol>
             </details>
           ),
@@ -486,5 +400,109 @@ function Index({ lang }: { lang: string }) {
         </p>
       )}
     </>
+  )
+}
+
+
+/** One entry filed under a number: the line, the layer behind it, and the like.
+
+    Its own component because a row is three things at once -- a line clipped
+    to one line, a popover that lays the same entry out with the room a layer
+    has, and the button that opens the second from the first -- and written
+    inline it put a hundred lines and three more levels of nesting between a
+    band and the numerals it bands. */
+function IndexEntry(
+  { entry, shownValue, mark }:
+  {
+    entry: NumberEntry['entries'][number]
+    /** the number as the row above it draws it: the layer leads with it, the
+        way every hero in this app does, which is the shape a row cannot take */
+    shownValue: string
+    /** lights up this number in a title or a blurb, written and spelled */
+    mark: (text: string) => ReactNode
+  },
+) {
+  const { m } = useUi()
+  return (
+    // the like sits outside the link: a button inside an anchor is invalid,
+    // and both want the same click
+    <div className="ix-e">
+      <Link className="ix-link" to={`/p/${entry.id}`}>
+        <span className="ix-t">{mark(entry.title)}</span>
+        {entry.image && <Photo label={m.home.hasImage} />}
+        {entry.body && <span className="ix-b"> — {mark(plain(entry.body))}</span>}
+      </Link>
+      {/* The way through when the line was cut, and it opens the line rather
+          than going anywhere -- the title next to it is already the link to
+          the entry, so a second one here was the same click twice.
+
+          popovertarget and [popover], so the browser owns the layer: the top
+          layer, light dismiss on a click outside, Escape, and one open at a
+          time, none of it written here. Same argument as the <details> above.
+          index.css shows the button only on a .ix-link the effect marked, so a
+          row that fits carries no control at all -- not on screen and not in
+          the a11y tree, since display: none takes it out of both. */}
+      <button className="ix-more" popoverTarget={`ix-pop-${entry.id}`}>
+        {m.home.seeMore}
+      </button>
+      {/* The row again, laid out with the room a layer has and the row does
+          not: the number it is filed under over the title, and then the blurb
+          as a paragraph rather than the tail of a sentence the title started.
+          Which is the whole reason it is worth opening -- the line it replaces
+          reads those three things as one run-on that did not fit. */}
+      <div className="ix-pop" id={`ix-pop-${entry.id}`} popover="auto">
+        <p className="ix-pop-num">{shownValue}</p>
+        <p className="ix-pop-title">{mark(entry.title)}</p>
+        {entry.body && <p className="ix-pop-body">{mark(plain(entry.body))}</p>}
+      </div>
+      <span className="ix-like">
+        <Like post={entry} />
+      </span>
+    </div>
+  )
+}
+
+/** One number, and every meaning filed under it. */
+function IndexRow({ row }: { row: NumberEntry }) {
+  const { locale, m } = useUi()
+  const rx = marker(row, locale)
+  const shownValue = showValue(row.value, row.grouped, locale)
+  const entries = row.entries.map((entry) => (
+    <IndexEntry
+      key={entry.id}
+      entry={entry}
+      shownValue={shownValue}
+      mark={(text) => mark(text, rx)}
+    />
+  ))
+
+  return (
+    <li className="ix">
+      <Link className={`ix-num ${numSize(shownValue)}`} to={entryPath(row.value, row.format)}>
+        {shownValue}
+      </Link>
+      {/* <details> and not a piece of state, the same as the band above it:
+          the browser owns the collapse and gets the keyboard and the screen
+          reader right for free.
+
+          Open, so a fold never hides an entry from a reader who did not ask --
+          it is there to be closed by someone who wants past this number, and
+          the summary says what closing it costs. The numeral stays outside it:
+          it is a link to /n/:value, and a link inside a summary is one click
+          that has to be two things. */}
+      {row.entries.length > FOLD_OVER ? (
+        <details className="ix-titles" open>
+          <summary className="ix-fold">{m.home.foldedEntries(row.entries.length)}</summary>
+          {/* the rows need a box of their own in here. A <details> puts
+              everything after the summary into one anonymous content box, so
+              the column's gap falls between the summary and that box rather
+              than between the rows inside it, and a folded number drew its
+              entries 4px tighter than every other row on the page. */}
+          <div className="ix-list">{entries}</div>
+        </details>
+      ) : (
+        <div className="ix-titles">{entries}</div>
+      )}
+    </li>
   )
 }
