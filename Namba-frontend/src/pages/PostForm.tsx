@@ -7,6 +7,7 @@ import {
 import {
   canGroupValue, canonicalNumber, cleanNumberInput, fmtDate, showValue,
 } from '../format'
+import ExistingEntries from '../components/ExistingEntries'
 import { useAsync } from '../useAsync'
 import { revisionBy, useUi } from '../uiLocale'
 
@@ -280,6 +281,9 @@ export default function PostForm() {
                 }
               }}
             />
+            {!editing && (
+              <ExistingEntries value={value} format={format} locale={locale} />
+            )}
             {/* under the number it rewrites, not a third column in the row:
                 the row is two fields wide, and a column that came and went as
                 you chose a format re-measured Number and Format underneath the

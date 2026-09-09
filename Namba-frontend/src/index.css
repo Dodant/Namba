@@ -1376,6 +1376,20 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    the number rather than a box to type one in -- the hard border above is
    what says "type here", and this is the only field that ever drops it */
 .num-field input:read-only { border-color: var(--line); cursor: default; }
+/* The lookup belongs to the number field: it answers the value being typed,
+   not the entry as a whole. A quiet inset keeps it helpful without competing
+   with the title field that follows. */
+.existing {
+  margin-top: 2px; padding: 10px 13px 11px;
+  border-left: 2px solid var(--accent); background: var(--accent-soft);
+  color: var(--ink-soft); font-size: 14px; line-height: 1.45;
+}
+.existing-lead { margin: 0; }
+.existing-value { color: var(--accent); font-family: var(--mono); font-weight: 600; }
+.existing ul { margin: 6px 0 0; padding-left: 18px; }
+.existing li { margin: 2px 0; }
+.existing a:not(.existing-value) { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+.existing-more { display: inline-block; margin-top: 5px; color: var(--accent) !important; }
 .select { position: relative; }
 .select select { appearance: none; padding-right: 34px; }
 .select::after {
