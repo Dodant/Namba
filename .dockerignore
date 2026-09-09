@@ -1,0 +1,25 @@
+# The image is the API and the built front end; nothing else in the checkout
+# belongs in it. A local build in particular must not bake in the developer's
+# database, upload directory or secret.key -- the Dockerfile copies
+# Namba-backend/ whole, and without this list it would.
+.git
+.github
+.gstack
+.claude
+.playwright-mcp
+docs
+*.md
+*.png
+Namba-frontend/node_modules
+Namba-frontend/src
+Namba-frontend/public
+Namba-frontend/*.json
+Namba-frontend/*.ts
+Namba-frontend/*.html
+Namba-backend/.venv
+Namba-backend/__pycache__
+Namba-backend/namba.db*
+Namba-backend/secret.key
+Namba-backend/uploads
+Namba-backend/backups
+Namba-backend/test_namba.py
