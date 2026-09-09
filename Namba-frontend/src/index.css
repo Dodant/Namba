@@ -666,11 +666,11 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
    is read down and one line is all a row gets. Not a link: this box is
    something to read, and the row behind it still has both.
 
-   No rule between these two and 3px of air: small mono accent over a serif
+   No rule between these two and 4px of air: small mono accent over a serif
    title is already two voices, and the pair is one thing and its name rather
    than two sections. The rule below them is where the box does divide. */
 .ix-pop-num {
-  margin: 0 0 3px;
+  margin: 0 0 4px;
   font-family: var(--mono); font-variant-numeric: tabular-nums;
   font-size: 17px; font-weight: 600; letter-spacing: -0.02em;
   line-height: 1.25; color: var(--accent);
@@ -681,9 +681,11 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
    what it *means* are the two halves worth drawing a line between. --line, the
    same as the box's own border and the rule across a band head: this one is
    meant to be seen, unlike the --rule-soft whisper between the rows of a
-   .panel, which reads by repeating. Equal air either side of it. */
+   .panel, which reads by repeating. A little more air above it than below:
+   the line belongs to the blurb it introduces rather than sitting midway
+   between two things. */
 .ix-pop-body {
-  margin: 9px 0 0; padding-top: 9px; border-top: 1px solid var(--line);
+  margin: 6px 0 0; padding-top: 5px; border-top: 1px solid var(--line);
   color: var(--muted); font-weight: 300;
   font-size: 15.5px; line-height: 1.5; text-wrap: pretty;
 }
