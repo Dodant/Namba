@@ -274,12 +274,11 @@ def _ask_password():
     argv stays refused: a password on a command line is a password in the shell
     history, for as long as that file lives. The other two are both real.
 
-    A terminal is the normal case, and getpass hides the typing. A pipe is the
-    case this was written for after the fact -- provisioning an operator over
-    `docker exec`, from a deploy script, or through a shell with no tty at all,
-    where getpass cannot turn echo off and raises `termios.error` and then
-    EOFError on top of it. It used to do exactly that and print a traceback
-    instead of saying what was wrong.
+    A terminal is the normal case, and getpass hides the typing. A pipe is for
+    provisioning an operator over `docker exec`, from a deploy script, or
+    through a shell with no tty at all -- there getpass cannot turn echo off and
+    raises `termios.error` with an EOFError on top of it, so without this branch
+    the command answers a traceback instead of saying what was wrong.
 
     Whatever feeds the pipe owns the question of where the password came from;
     the note below says so, because a pipe *does* put it in the history that a

@@ -1,23 +1,18 @@
-# Pinned exactly, transitive dependencies included, because this file is what
-# both the CI suite and the Dockerfile install: an unpinned line means the image
-# that ships is not the one the tests passed on. `fastapi` alone does not settle
-# it -- its own requirement is `starlette>=0.46.0` with no ceiling, so a
-# starlette major release would land in production on the next push with nothing
-# in this repo changed.
+# Both the CI suite and the Dockerfile install this file, so an unpinned line
+# means the image that ships is not the one the tests passed on. Transitives are
+# pinned too: `fastapi` asks for `starlette>=0.46.0` with no ceiling.
 #
-# Regenerate the whole file when a version here is deliberately moved, so the
-# closure stays a resolved set rather than a hand-edited one:
+# Moving a version means regenerating the whole file, so the closure stays a
+# resolved set rather than a hand-edited one, then running test_namba.py on it:
 #
 #   uv venv --python 3.11 /tmp/pin && VIRTUAL_ENV=/tmp/pin uv pip install \
 #     'fastapi==X' 'uvicorn[standard]==X' 'python-multipart==X' 'httpx==X' \
 #     && VIRTUAL_ENV=/tmp/pin uv pip freeze | sort
-#
-# then run test_namba.py against that environment before committing it.
 
-# The four that are actually asked for. httpx is the odd one: nothing imports
-# it, it is what starlette's TestClient runs on, so it is here for the suite and
-# rides into the image unused. (Starlette 1.6 warns that it wants httpx2 there
-# now -- a move to make on purpose, not by drift, which is the point of the pin.)
+# The four that are actually asked for. Nothing imports httpx: it is what
+# starlette's TestClient runs on, so it is here for the suite and rides into the
+# image unused. Starlette 1.6 wants httpx2 there now -- a move to make on
+# purpose rather than by drift, which is what the pin is for.
 fastapi==0.141.1
 uvicorn[standard]==0.52.3
 python-multipart==0.0.32

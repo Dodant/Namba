@@ -22,10 +22,9 @@ const KINDS = ['report', 'remove'] as const
 
     It belongs on the read page for the reason the comment box does: it writes
     something *beside* the entry rather than changing it, so it does not go to
-    `/edit` with the controls that do. And it is the whole replacement for the
-    Delete button the edit form used to carry -- deleting stopped being one
-    stranger's click and became a request, which is a thing that needs somewhere
-    to be typed. */
+    `/edit` with the controls that do. It is also the whole of what this wiki
+    has instead of a Delete button: a deletion is requested here, in words,
+    rather than taken by one stranger's click. */
 export default function FlagPanel({ id }: { id: number | string }) {
   const { m } = useUi()
   const uid = useId()

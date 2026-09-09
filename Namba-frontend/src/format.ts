@@ -1,31 +1,10 @@
-/** How a stored value reads on screen, and how a typed one comes back.
+/** How a stored value reads on screen, and how a typed one comes back: a
+    number's punctuation, a numeral's size class, a date's distance from now, a
+    markdown body read as prose, and which runs of text *are* a given number.
 
-    Split out of `api.ts` because that file is the wire -- the vocabularies the
-    backend mirrors, the shapes it answers with, and the client that talks to
-    it -- and none of this touches it. What is in here turns a string the
-    database holds into characters a person reads, and back: a number's
-    punctuation, a numeral's size class, a date's distance from now, and a
-    markdown body read as prose.
-
-    It is the twin of `numfmt.py` on the other side, and deliberately not a
-    hand-copy of it: the server settles what a value *is* and this settles how
-    it *looks*, so the two answer different questions about the same string.
-    The one rule they share is that a value never becomes a JavaScript
-    `Number`, and the comment on `canonicalNumber` below says why.
-
-    `FORMATS` and the seven moderation vocabularies stay in `api.ts`. They are
-    the hand-synced table in the root `CLAUDE.md`, and
-    `test_the_two_apps_still_agree` reads that file by name.
-
-    `marker` reads a value the other way round -- given one, which runs of text
-    *are* it -- which is the same question about the same string, so it lives
-    here beside the punctuation it has to allow for. It takes the two fields it
-    reads rather than a `NumberEntry`, so this file still imports nothing.
-
-    Every function here is covered by `format.test.ts`, which runs on
-    `node --test` with no test framework and no build step: they are pure, they
-    take a string and return one, and that is the whole reason the file exists.
-*/
+    Two rules hold the whole file. A value never becomes a JavaScript `Number`
+    -- `canonicalNumber` says why -- and nothing in here imports anything.
+    `format.test.ts` covers every function. */
 
 /* String arithmetic, not Number or parseFloat: an entry may be 20 digits long,
    past the point where JavaScript can round-trip every integer. Intl is asked
@@ -254,8 +233,8 @@ export function fmtDate(s: string, locale = 'en') {
     Deliberately not a parser: a preview only has to stop "**bold**" and "## "
     showing up as punctuation, and the entry page renders the real thing a
     click away. Underscores are only stripped when they wrap a word, so
-    snake_case survives. Collapsing whitespace matters as much as the marks --
-    a body with blank lines used to sprawl down a feed row. */
+    snake_case survives. Collapsing whitespace matters as much as the marks:
+    a body with blank lines otherwise sprawls down a feed row. */
 export const plain = (md: string) =>
   md
     .replace(/```[\s\S]*?```/g, ' ')

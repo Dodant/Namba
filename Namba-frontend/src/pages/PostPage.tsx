@@ -14,9 +14,9 @@ import { revisionBy, useUi } from '../uiLocale'
 
 /* A table in an entry is written by a stranger and can be any width, so it
    scrolls inside its own box rather than scrolling the page. The box has to
-   wrap the table -- a <table> cannot be its own scroll port without giving up
-   being a table box, which is what this used to do in CSS and what costs a
-   screen reader its rows and columns. Only the markdown knows when there is a
+   wrap the table -- set to scroll in CSS, a <table> gives up being a table box
+   and costs a screen reader its rows and columns. Only the markdown knows
+   when there is a
    table at all, so the wrapper is handed to it here. */
 const MD: Components = {
   table: ({ node: _node, ...rest }) => (   // node is react-markdown's, not the DOM's
@@ -26,10 +26,10 @@ const MD: Components = {
   ),
 }
 
-/* A read route reads. Every write this page used to carry inline -- adding a
-   language, rewriting one, unlinking a related entry, restoring a revision --
-   now lives at /p/:id/edit, and what is left here is one Edit link, at the end
-   of the meta row.
+/* A read route reads. Every write to the entry -- adding a language, rewriting
+   one, unlinking a related entry, restoring a revision -- lives at
+   /p/:id/edit, and what is left here is one Edit link, at the end of the meta
+   row.
 
    Three exceptions, all of them writes *beside* the entry rather than to it:
    the like, the comment box, and the flag panel. And the recovery view below,
@@ -179,9 +179,9 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
           </Link>
         </div>
 
-        {/* who wrote it, who changed it, and who wrote the tab in front. All
-            of it used to sit in the meta row and under the actions, where it
-            was the first thing on the page and the last thing anyone read */}
+        {/* who wrote it, who changed it, and who wrote the tab in front --
+            folded, because in the meta row it was the first thing on the page
+            and the last thing anyone read */}
         {credits && (
           <div className="credits">
             <span>

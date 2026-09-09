@@ -14,34 +14,25 @@ on:
       - '**/*.md'
       - 'docs/**'
       - '*.png'
-  # Deliberately unfiltered, unlike the push above: a branch protection rule
-  # waits for a named check, and a run skipped by paths-ignore never reports
-  # one, so a docs-only pull request would sit waiting for a check that will
-  # never arrive. Two spare minutes of runner is the cheaper end of that trade.
+  # Unfiltered, unlike the push above: a run skipped by paths-ignore reports no
+  # check, so a docs-only pull request waits on one that never arrives.
   pull_request:
   workflow_dispatch:
 
 concurrency:
-  # Per ref rather than one queue for the whole repo: a second deploy while one
-  # is mid-flight would race the same container, and main is always the same
-  # ref so those still serialise -- but a pull request only ever races itself,
-  # and queueing one behind a deploy is how the checks stop being the fast
-  # feedback they exist to be. A superseded run of a branch is also not worth a
-  # runner.
+  # Per ref: two deploys still serialise, since main is always the same ref, but
+  # a pull request no longer queues behind one.
   group: namba-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# The two writes belong to the deploy job alone. A pull request's run needs
-# neither GHCR nor an OIDC token, and granting them at the top of the file
-# hands them to every job that ever gets added below.
+# The two writes belong to the deploy job alone: granting them here hands them
+# to every job added below, and a pull request needs neither.
 permissions:
   contents: read
 
 jobs:
-  # The four checks from CLAUDE.md, as their own job so that a pull request runs
-  # them. They used to be the first half of the deploy job, which meant they ran
-  # only on a push to main: a failure was something you found out about after
-  # merging it, and a branch had nothing to report to a protection rule.
+  # The four checks from CLAUDE.md, as their own job so a pull request runs them
+  # and has a named check to report to a protection rule.
   checks:
     runs-on: ubuntu-latest
     steps:
@@ -86,10 +77,8 @@ jobs:
           pip install -q -r requirements.txt
           python test_namba.py
 
-      # Handed to the deploy job rather than built there a second time. The
-      # alternative is another npm ci and another build, which is a minute of
-      # runner and a second chance for the image to carry a front end no suite
-      # ever saw.
+      # Handed to the deploy job, so the image cannot carry a front end no
+      # suite has seen.
       - uses: actions/upload-artifact@v4
         if: github.event_name != 'pull_request'
         with:

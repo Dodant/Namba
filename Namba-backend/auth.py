@@ -219,12 +219,10 @@ def set_cookie(response, request, token):
     the wide-open `allow_origins` harmless here, and `test_admin_accounts`
     asserts it.
 
-    This used to claim the second layer was the JSON content type, "since it
-    costs a preflight another origin cannot pass". It does cost a preflight and
-    the preflight *passes* -- `allow_headers=["*"]` answers `content-type` with
-    a 200 for any origin that asks. So that layer never existed. The defence is
-    the two above and nothing else, which is worth knowing before anybody
-    reaches for `allow_credentials` believing there is one in reserve.
+    Those two are the whole defence. The JSON content type is not a third: it
+    costs a preflight, but `allow_headers=["*"]` answers `content-type` with a
+    200 for any origin that asks, so the preflight passes. Worth knowing before
+    reaching for `allow_credentials` believing there is one in reserve.
 
     Secure follows the scheme the request arrived on, so this works on
     http://localhost without a flag and is set in production without one.

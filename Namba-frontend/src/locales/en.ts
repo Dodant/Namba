@@ -47,9 +47,8 @@ export const EN = {
     /* The leading space is load-bearing and belongs to the sentence, not to
        the component: this half follows the CC0 link, and only a language that
        puts a space before a word wants one. Korean, Japanese and Chinese
-       continue straight off the link with a particle. It used to be a
-       `locale === 'en' || 'es' || 'fr' || 'de'` ternary in App.tsx -- a fifth
-       locale set to keep in step, and one that read as a styling decision. */
+       continue straight off the link with a particle. In the component it
+       would be a locale set to keep in step, reading as a styling decision. */
     cc0After: ' — public domain. Take it, quote it, or feed it to a machine; no permission or credit is needed. The byline remains to record who wrote it first.',
     privacy: 'No account is required. Raw IP addresses and user-agent strings are not stored; salted hashes are kept to prevent abuse and enforce blocks.',
     guidelines: 'Entry guidelines', source: GLOBAL_TERMS.github, apiOpen: 'open, no key.',

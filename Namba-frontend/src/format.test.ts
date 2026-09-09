@@ -1,19 +1,9 @@
 /** What the comments in `format.ts` claim, as assertions.
 
-    `node --test`, which is the platform's own runner: every function in that
-    file takes a string and returns one, so there is nothing to render, nothing
-    to mock and no reason to install a framework to find out. Node strips the
-    types on the way in -- the same `erasableSyntaxOnly` the tsconfig already
-    demands is what makes that possible -- so this file is also typechecked by
-    `tsc -b` along with everything else under src/.
-
-    It is deliberately not a test per branch. What is pinned here is the small
-    set of rules those functions exist to keep, each of which is a sentence
-    written in the source that nothing was checking: an invalid grouping is
-    content, a value never becomes a Number, punctuation follows the interface
-    locale while identity does not, and a number lights up where it is the whole
-    number and nowhere else.
-*/
+    Not a test per branch: what is pinned is the set of rules those functions
+    exist to keep -- an invalid grouping is content, a value never becomes a
+    Number, punctuation follows the interface locale while identity does not,
+    and a number lights up where it is the whole number and nowhere else. */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {

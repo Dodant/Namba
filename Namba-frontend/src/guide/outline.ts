@@ -77,12 +77,10 @@ export type GuideDoc = {
      which is three paragraphs in any language that has tried to say it in
      one. A single-paragraph lede renders exactly as it did. */
   lede: string
-  /* The two column heads every subject table wears. They used to be spelled
-     in Guide.tsx, which was fine while English was the only language and a
-     bug the moment it was not: eight Korean tables under "An entry / Not an
-     entry" are eight tables half in the wrong language. Two words, and they
-     are the page's own words rather than the wiki's, so they belong in the
-     file that supplies the rest of them. */
+  /* The two column heads every subject table wears. Here and not in
+     Guide.tsx, because they are the page's own words rather than the wiki's:
+     spelled in the component, eight Korean tables sit under "An entry / Not
+     an entry" and are eight tables half in the wrong language. */
   columns: readonly [string, string]
   /* Shown only on a translation the English guide has moved past, so it is
      the one sentence a reader of it most needs and the one most likely to be

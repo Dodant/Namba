@@ -242,11 +242,10 @@ def og_tags(title, desc, url, kind, base, image=None, locale="en"):
     og:description and og:image when its own are missing, so a second copy of
     each would be three more lines saying the same thing.
 
-    Always the large card now, because there is always an image: an entry's own
-    picture when it has one, and OG_CARD when it does not. It used to be the
-    small "summary" card with no picture at all, which described every page on
-    the site -- a pasted link came out a bare grey rectangle with the title
-    beside it.
+    Always the large card, because there is always an image: an entry's own
+    picture when it has one, and OG_CARD when it does not. The small "summary"
+    card would describe every page on the site, and a pasted link comes out of
+    it a bare grey rectangle with the title beside it.
 
     og:image:alt only for the fallback. It says what that card actually reads,
     which is a thing this file knows. An entry's uploaded picture has no alt

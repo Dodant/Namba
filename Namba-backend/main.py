@@ -467,11 +467,9 @@ def list_numbers(
     sql.append("WHERE " + " AND ".join(where))
     sql.append("ORDER BY p.sort_key IS NULL, p.sort_key, p.value, p.id")
 
-    # Which language to read the index in is the reader's, not this endpoint's:
-    # it used to hardcode English because 20 seeded entries are titled in Korean
-    # and were unreadable to whoever wrote that. One flat lookup rather than a
-    # join per row; the whole table is small and the join would need
-    # de-duplicating anyway.
+    # Which language to read the index in is the reader's, not this endpoint's.
+    # One flat lookup rather than a join per row; the whole table is small and
+    # the join would need de-duplicating anyway.
     shown_in = _in_lang(con, lang)
 
     out = []
@@ -860,10 +858,10 @@ def delete_translation(
             "DELETE FROM translations WHERE id = ? AND post_id = ?", (tr_id, post_id)
         )
         # Inside the block, not after it. Raising out here is what rolls the
-        # snapshot back: the 404 used to be thrown once `with con` had already
-        # committed, so a delete of a translation that was never there left a
-        # revision behind saying somebody replaced the entry. Nothing had
-        # happened, and the rows that stand between vandalism and permanent
+        # snapshot back: thrown once `with con` has committed, a 404 for a
+        # translation that was never there leaves a revision behind saying
+        # somebody replaced the entry. Nothing happened, and the rows that
+        # stand between vandalism and permanent
         # loss are the wrong table to leave noise in -- REVISIONS_SHOWN is 50,
         # and every phantom pushes a real version out of the window the edit
         # form offers.

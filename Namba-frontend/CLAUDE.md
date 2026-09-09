@@ -140,19 +140,14 @@ Node has run TypeScript directly since type stripping stopped being a flag.
 `erasableSyntaxOnly` in the tsconfigs is what keeps that true; it was already
 on before there were tests.
 
-The tests are typechecked by `tsconfig.node.json`, not `tsconfig.app.json`,
-and that is the whole reason a second project exists here. The app's `types`
-is `["vite/client"]` on purpose: adding `"node"` to it to satisfy
-`import { test } from 'node:test'` would also put `process`, `Buffer` and
-`NodeJS.Timeout` into the type environment of code that ships to a browser,
-and the last of those is how `setTimeout` quietly stops returning a `number`.
-A `.test.ts` file therefore belongs in `src/`, beside what it tests, and is
-excluded from the app project.
+A `.test.ts` lives in `src/` beside what it tests and is typechecked by
+`tsconfig.node.json` rather than the app's project — the header on that file
+says why, and it is a reason not to undo.
 
 A component test would need a renderer and a DOM, which is a dependency and a
 config file for what the typecheck and one build already catch. If one is ever
-worth it, that is the conversation to have then, not a framework installed
-now against the possibility.
+worth it, that is the conversation to have then, not a framework installed now
+against the possibility.
 
 **`-b` is not optional there.** `tsconfig.json` is a solution file — `"files":
 []` and two `references` — so a bare `tsc --noEmit` has nothing in its own file

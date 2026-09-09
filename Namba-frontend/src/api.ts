@@ -131,12 +131,9 @@ export type Translation = {
 
 /** How a tag is written on screen: lower-case, as stored and as typed.
 
-    It used to sentence-case (MOVIE -> Movie) with a rule keeping short ones
-    shouting (TV -> TV), because storage was upper-case and something had to
-    turn it back into a word. Lower-case storage makes both unnecessary and
-    the second one impossible -- "tv" cannot be told from a two-letter word.
-    Still a function, and still lower-casing: /t/:tag can arrive from an old
-    upper-case link, and the label is the one place that decides. */
+    Still a function, and still lower-casing, now that storage is lower-case
+    too: /t/:tag can arrive from an old upper-case link, and this is the one
+    place that decides how a tag reads. */
 export const tagLabel = (t: string) => t.toLowerCase()
 
 /** A tag can hold a space now, and 한국어 is a fine tag. Same reason
