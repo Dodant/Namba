@@ -523,17 +523,16 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 }
 .tabs.fmts::-webkit-scrollbar { display: none; }
 .tabs.fmts a { flex: none; }
-/* Abbreviation to the right end. Four of these tabs read digits and the
-   fifth reads letters -- UFO, CSI, NASA -- which is the one division in
-   FORMATS that decides how a value is read, sorted and addressed, and a row
-   of five evenly spaced tabs says there is no such division.
-
-   An auto margin rather than a gap or a separator, because it is exactly the
-   rule that does nothing when there is nothing to spend: below about 460 the
-   strip overflows, free space goes negative, and the margin resolves to 0 --
-   so the tab falls back in beside the others and scrolls with them instead of
-   opening a gap nobody can see the far side of. */
-.tabs.fmts a.apart { margin-left: auto; }
+/* Four tabs read numbers; the fifth reads letters -- UFO, CSI, NASA. That
+   distinction matters, but an auto margin made Abbreviation look like an
+   unrelated action at the far end of a wide row. A compact divider keeps all
+   five in one tab group while still marking the change of section. It also
+   travels with the strip on a narrow screen, unlike a viewport-only cue. */
+.tabs.fmts a.apart { position: relative; margin-left: 12px; }
+.tabs.fmts a.apart::before {
+  content: ''; position: absolute; left: -7px; top: 10px; bottom: 10px;
+  width: 1px; background: var(--line);
+}
 
 .index { list-style: none; margin: 0; padding: 0; }
 .ix {
