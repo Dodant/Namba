@@ -22,5 +22,8 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  /* They run on Node, so they are typechecked by tsconfig.node.json with Node's
+     types; here they would only fail to find `node:test`. */
+  "exclude": ["src/**/*.test.ts"]
 }

@@ -1,3 +1,9 @@
+/* Everything in this repo that runs on Node rather than in a browser: vite's own
+   config, and the tests, which are `node --test` over the pure functions in
+   src/. They are a separate project from the app for one reason -- `types`.
+   Adding "node" to tsconfig.app.json would put process, Buffer and
+   NodeJS.Timeout into the type environment of code that ships to a browser,
+   which is how `setTimeout` quietly stops returning a number. */
 {
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
@@ -19,5 +25,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts", "src/**/*.test.ts"]
 }

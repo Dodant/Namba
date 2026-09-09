@@ -4,7 +4,7 @@ import {
   ABBR_BUCKETS, api, BUCKETS, entryPath, FORMATS, isAbbr, tagLabel, tagPath,
   type Format, type NumberEntry, type Post,
 } from '../api'
-import { fmtCount, fmtDate, numSize, plain, showValue } from '../format'
+import { fmtCount, fmtDate, marker, numSize, plain, showValue } from '../format'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
 import { useUi, type Messages } from '../uiLocale'
@@ -20,80 +20,6 @@ const Photo = ({ label }: { label: string }) => (
           stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
   </svg>
 )
-
-/* what a number looks like when it is spelled out. The short entries are Greek
-   and Latin roots, which is why they only ever match at the start of a word:
-   "hepta" in Heptapod is a seven, "bi" in Bible is not a two -- and the
-   two-letter roots are left out entirely because that is a fight they lose.
-   ponytail: a cardinal can still light up inside a bigger number word, so the
-   lookahead below fends off the pairs that actually collide (six/sixteen). */
-const WORDS: Record<number, string[]> = {
-  1: ['one', 'first', 'single', 'mono'],
-  2: ['two', 'second', 'twice', 'double', 'duo'],
-  3: ['three', 'third', 'tri'],
-  4: ['four', 'quad', 'tetra'],
-  5: ['five', 'fifth', 'penta', 'quint'],
-  6: ['six', 'hexa'],
-  7: ['seven', 'hepta', 'sept'],
-  8: ['eighth', 'eight', 'oct'],
-  9: ['nine', 'ninth', 'nona', 'ennea'],
-  10: ['ten', 'deca'],
-  11: ['eleven', 'hendeca'],
-  12: ['twelve', 'twelfth', 'dozen', 'dodeca'],
-  13: ['thirteen'],
-  14: ['fourteen'],
-  15: ['fifteen'],
-  16: ['sixteen'],
-  17: ['seventeen'],
-  18: ['eighteen'],
-  19: ['nineteen'],
-  20: ['twenty', 'icosa'],
-  30: ['thirty'],
-  40: ['forty'],
-  50: ['fifty'],
-  60: ['sixty', 'sexa'],
-  70: ['seventy'],
-  80: ['eighty'],
-  90: ['ninety'],
-  100: ['hundred', 'cent', 'hecto'],
-  200: ['bicentennial'],
-  1000: ['thousand', 'kilo', 'millenni'],
-  10000: ['myriad'],
-  1000000: ['million', 'mega'],
-}
-
-/* Escaped, because "3.14" and "11/22/63" are regex if you let them be, and
-   bounded, because a value lights up where it is the whole number and nowhere
-   else: the 2 in "The Two Popes (2019)" is the first digit of a year, and
-   "Catch-22" is not two of this entry's twos. \b is what says so -- it falls
-   between a word character and anything else, so it finds no seam inside a run
-   of digits, and none is exactly what should match there.
-
-   Conditional, because \b needs a word character on our side of it to be a
-   boundary at all: a value ending in punctuation would be asking for a seam
-   that cannot exist and would never match anything again. */
-const whole = (s: string) =>
-  (/^\w/.test(s) ? '\\b' : '') +
-  s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
-  (/\w$/.test(s) ? '\\b' : '')
-
-/* the number as written and the number as spelled, in one pass. Only INTEGER
-   rows get words, since a TIME sort_key of 100 is 01:40, not a hundred.
-   The optional "th" swallows the regular ordinals -- sixth, tenth, hundredth --
-   so they light up whole; the irregular ones are spelled out in WORDS, and the
-   longest form goes first so "eighth" wins over "eight". */
-function marker({ value, format }: NumberEntry, locale: string) {
-  const words = format === 'INTEGER' ? (WORDS[Number(value)] ?? []) : []
-  const grouped = showValue(value, true, locale)
-  const alts = [
-    whole(value),
-    ...(grouped === value ? [] : [whole(grouped)]),
-    ...[...words]
-      .sort((a, b) => b.length - a.length)
-      .map((w) => `\\b${w}(?:th)?(?!teen|ty)`),
-  ]
-  return new RegExp(`(${alts.join('|')})`, 'gi')
-}
 
 /* split on a single capture group: odd slots are the matches, and they keep the
    text's own casing, so "Hepta" stays "Hepta" */
