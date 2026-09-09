@@ -63,6 +63,10 @@ COMMENT_MAX = 300
 # REVISIONS_SHOWN makes: the rows all stay, the response is capped.
 COMMENTS_SHOWN = 200
 
+# For the built bundle only -- see the asset branch of spa() for why the prefix
+# is the condition and not the directory.
+ASSET_CACHE = {"Cache-Control": "public, max-age=31536000, immutable"}
+
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 db.init()
 
@@ -1194,7 +1198,17 @@ def spa(path: str, request: Request, con=Depends(get_db)):
     if path:
         target = os.path.realpath(os.path.join(DIST, path))
         if target.startswith(os.path.realpath(DIST) + os.sep) and os.path.isfile(target):
-            return FileResponse(target)
+            # Vite writes the content hash into the name -- main-Dbx1uZXh.js --
+            # so a URL under /assets/ can only ever answer with these bytes and
+            # a new build is a new URL, which is the whole condition a year of
+            # `immutable` needs. On the prefix rather than on the branch,
+            # because nothing else in dist/ is hashed: index.html, og.png and
+            # the favicon keep their names across deploys, and a year on those
+            # is a stale app nobody can reload their way out of. Without this
+            # the returning visitor still asks about every file it already
+            # has and collects a 304 for each.
+            return FileResponse(target, headers=ASSET_CACHE
+                                if path.startswith("assets/") else None)
     # This file owns where the built document is; seo.py owns what head goes
     # into it, which is why it is read here and passed in rather than opened
     # over there.

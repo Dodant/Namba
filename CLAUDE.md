@@ -183,6 +183,22 @@ hand-copied vocabulary and a branch beside every existing one.
   by that choice. Every localized response varies on both the UI cookie and
   `Accept-Language`; canonical URLs remain locale-neutral.
 
+  **The price of that is a document no shared cache can hold, and it is
+  structural rather than a setting to tune.** `Vary: Cookie` keys the response
+  on the whole cookie header, and every returning visitor sends a `namba_cid`
+  of their own, so the cache key is one visitor wide; a first visit also
+  carries `Set-Cookie`, which most caches refuse to store on its own. Taking
+  the cookie off the document closes the second and not the first — the cookie
+  is still *sent* — so it buys nothing, and the only thing that would is moving
+  the locale out of the cookie and into the path (`/de/n/42`), which is the
+  locale-neutral canonical URL above traded away. **So: if a CDN or an nginx
+  `proxy_cache` is ever put in front of this, it has to bypass the document and
+  cache `/assets/` alone.** The bundle is where the bytes are and it is already
+  immutable — Vite hashes the names, and `ASSET_CACHE` in `main.py` says a
+  year. The document is cheap to answer: `/` and `/guide` and every path that
+  falls through to `noindex` run no query at all, and only `/n/`, `/a/`, `/t/`
+  and `/p/{id}` read the database for their `<head>`.
+
   **An `ABBR` word has one stored spelling for exactly that reason.** `ufo`,
   `Ufo` and `UFO` are one word, and with no accounts there is nobody to merge
   three pages about it afterwards. The spelling is the first writer's, not

@@ -363,7 +363,15 @@ def test_share_card():
         "http://testserver/p/%d" % p["id"]]
 
     # every asset is still an asset, and the api still answers first
-    assert c.get("/assets/app.js").text == "console.log(1)"
+    asset = c.get("/assets/app.js")
+    assert asset.text == "console.log(1)"
+    # the bundle's name carries its content hash, so this is the one place a
+    # year is safe -- and the two files beside it that keep their names across
+    # deploys must not get it, or a deploy is a stale app for everyone holding
+    # the old one
+    assert asset.headers["cache-control"] == "public, max-age=31536000, immutable"
+    for keeps_its_name in ("/", "/index.html"):
+        assert "cache-control" not in c.get(keeps_its_name).headers, keeps_its_name
     assert c.get("/api/tags").status_code == 200
     assert c.get(f"/p/{p['id']}999").text.count("og:title") == 0, "unknown id got a card"
     # ...but a mistyped *endpoint* is not a page. The catch-all used to hand it
