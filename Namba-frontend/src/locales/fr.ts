@@ -139,4 +139,5 @@ export const FR: Messages = {
   },
   guide: { readIn: 'Langue du guide', addEntry: 'Ajouter une entrée.' },
   notFound: 'Il n’y a rien ici.',
+  broke: 'Cette page n’a pas pu être affichée.',
 }

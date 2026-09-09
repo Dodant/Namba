@@ -135,4 +135,5 @@ export const DE: Messages = {
   },
   guide: { readIn: 'Sprache der Richtlinien', addEntry: 'Eintrag hinzufügen.' },
   notFound: 'Hier ist nichts.',
+  broke: 'Diese Seite konnte nicht dargestellt werden.',
 }

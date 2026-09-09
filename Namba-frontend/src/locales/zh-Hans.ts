@@ -118,4 +118,5 @@ export const ZH_HANS: Messages = {
   },
   guide: { readIn: '指南语言', addEntry: '添加条目。' },
   notFound: '找不到此页面。',
+  broke: '无法显示此页面。',
 }

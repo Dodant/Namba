@@ -145,6 +145,7 @@ export const EN = {
   },
   guide: { readIn: 'Read these rules in', addEntry: 'Add an entry.' },
   notFound: 'Nothing here.',
+  broke: 'This page could not be drawn.',
 }
 
 export type Messages = typeof EN

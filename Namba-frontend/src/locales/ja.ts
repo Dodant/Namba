@@ -119,4 +119,5 @@ export const JA: Messages = {
   },
   guide: { readIn: 'ガイドラインの言語', addEntry: '項目を追加する。' },
   notFound: 'ページが見つかりません。',
+  broke: 'このページを表示できませんでした。',
 }

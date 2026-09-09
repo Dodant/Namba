@@ -115,4 +115,5 @@ export const KO: Messages = {
   },
   guide: { readIn: '지침 언어', addEntry: '항목 추가하기.' },
   notFound: '페이지를 찾을 수 없습니다.',
+  broke: '이 페이지를 그릴 수 없습니다.',
 }

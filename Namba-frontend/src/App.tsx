@@ -1,4 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  Component, useEffect, useLayoutEffect, useRef, useState,
+  type ReactNode,
+} from 'react'
 import {
   BrowserRouter, Link, Route, Routes, useLocation, useNavigate, useNavigationType,
   useSearchParams,
@@ -464,26 +467,28 @@ function Wiki() {
         <SiteTitle />
         <Header />
         <main>
-          <Routes>
-            <Route path="/" element={<Home lang={lang} />} />
-            <Route path="/n/:value" element={<Browse mode="number" lang={lang} />} />
-            <Route path="/a/:value" element={<Browse mode="abbr" lang={lang} />} />
-            <Route path="/t/:tag" element={<Browse mode="tag" lang={lang} />} />
-            <Route path="/search" element={<Browse mode="search" lang={lang} />} />
-            <Route path="/random" element={<Random />} />
-            <Route path="/p/:id" element={<PostPage contentLang={lang} />} />
-            <Route path="/p/:id/edit" element={<PostForm />} />
-            <Route path="/new" element={<PostForm />} />
-            <Route path="/guide" element={<Guide />} />
-            <Route
-              path="*"
-              element={
-                <p className="empty">
-                  <NotFound />
-                </p>
-              }
-            />
-          </Routes>
+          <Guarded>
+            <Routes>
+              <Route path="/" element={<Home lang={lang} />} />
+              <Route path="/n/:value" element={<Browse mode="number" lang={lang} />} />
+              <Route path="/a/:value" element={<Browse mode="abbr" lang={lang} />} />
+              <Route path="/t/:tag" element={<Browse mode="tag" lang={lang} />} />
+              <Route path="/search" element={<Browse mode="search" lang={lang} />} />
+              <Route path="/random" element={<Random />} />
+              <Route path="/p/:id" element={<PostPage contentLang={lang} />} />
+              <Route path="/p/:id/edit" element={<PostForm />} />
+              <Route path="/new" element={<PostForm />} />
+              <Route path="/guide" element={<Guide />} />
+              <Route
+                path="*"
+                element={
+                  <p className="empty">
+                    <NotFound />
+                  </p>
+                }
+              />
+            </Routes>
+          </Guarded>
         </main>
         <Footer lang={lang} onLang={pickLang} />
         <ToTop />
@@ -495,6 +500,55 @@ function Wiki() {
 function NotFound() {
   const { m } = useUi()
   return <>{m.notFound} <Link to="/">{m.common.backToIndex}</Link></>
+}
+
+/* The other way a page fails: not "there is nothing here" but "this threw".
+
+   react-markdown, remark-gfm and remark-breaks run on a body a stranger
+   typed, and with no accounts there is nobody to ask what they meant. Without
+   a boundary anywhere in the app, one throw in there unmounted the whole tree
+   and left the reader a white document -- no header, no footer, no way out but
+   the back button.
+
+   Around <Routes> and not around .wrap, which is the whole design: the header,
+   the search box and the footer are drawn by components that did not throw, so
+   they stay, and the reader can leave. What breaks is the page.
+
+   The fallback is a function component so it can read the locale, which a
+   class cannot; the class holds nothing but the latch. Reporting the throw to
+   the server is deliberately not here -- that would be a new public write
+   route on an open API with no key, which is a larger decision than this. The
+   50 that reaches `events` (main.py's handler) covers the server's half. */
+class Latch extends Component<{ children: ReactNode }, { broke: boolean }> {
+  state = { broke: false }
+  static getDerivedStateFromError() {
+    return { broke: true }
+  }
+  render() {
+    return this.state.broke ? <Broke /> : this.props.children
+  }
+}
+
+function Broke() {
+  const { m } = useUi()
+  return (
+    <p className="empty" role="alert">
+      {m.broke} <Link to="/">{m.common.backToIndex}</Link>
+    </p>
+  )
+}
+
+/* A boundary latches: once it has caught, it renders the fallback until it is
+   remounted -- so without this, "Back to the index" changed the address and
+   left the same apology on screen, and the site looked broken for good.
+
+   ponytail: keyed on the path, which remounts the page subtree on every
+   navigation and not only after a throw. It costs nothing here because every
+   route refetches on its own params anyway; if a page ever needs to keep state
+   across a navigation, this becomes a reset on the broken branch only. */
+function Guarded({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation()
+  return <Latch key={pathname}>{children}</Latch>
 }
 
 export default function App() {

@@ -129,4 +129,5 @@ export const ES: Messages = {
   },
   guide: { readIn: 'Idioma de la guía', addEntry: 'Añadir una entrada.' },
   notFound: 'No hay nada aquí.',
+  broke: 'No se ha podido mostrar esta página.',
 }
