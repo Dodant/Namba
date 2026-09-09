@@ -87,6 +87,13 @@ the sitemap.
   the same, crediting whoever pressed Restore. New columns need the guarded
   `ALTER TABLE` in `db.init()` too — `CREATE TABLE IF NOT EXISTS` skips existing
   databases.
+- **`PostIn` and `PostPatch` differ in their field types and in nothing else.**
+  What a value, a title, a tag list and a format may contain is the same
+  question for a create and for an edit, and the four validators answering it
+  were written out twice, byte for byte. They are on `PostRules`, which both
+  inherit, with `check_fields=False` because the subclasses declare the fields.
+  A new rule about a field goes there once; a new *field* goes on whichever of
+  the two is sending it.
 - **In `PostPatch`, an absent field and an explicit `null` are different.**
   `edit_post` reads `model_dump(exclude_unset=True)` to tell them apart, because
   every field defaults to `None` and treating that as "unchanged" made

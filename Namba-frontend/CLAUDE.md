@@ -26,11 +26,20 @@ a distinct overlay or compact state rather than acting as general controls.
 They define the same custom property names with different values on purpose, and
 one document loading both would be neither.
 
-`req`, `qs` and `json` are shared from `src/api.ts`, so one place knows how
-FastAPI reports an error. The panel also imports moderation vocabularies,
+`req`, `qs`, `json` and `errorText` are shared from `src/api.ts`, so one place
+knows how FastAPI reports an error and one place decides what a thrown thing
+reads as. The panel also imports moderation vocabularies,
 reason labels and `tagLabel` there, plus `fmtDate` and `showValue`, because
 "2 days ago" and `1,234` should read the same on both sides of the product. `src/admin/api.ts` adds the operator's shapes and
 nothing else.
+
+Three files, not two, because a module that exports both a component and a
+hook loses fast refresh for both. `src/admin/ui.tsx` is the panel's parts --
+`Table`, `Badge`, `Hash`, `When`, `Empty`, `Pager`, `NoteField`, `Confirm`,
+`Drawer` -- and `src/admin/state.ts` is the two hooks every page repeats,
+`useUrlFilters` and `useAction`. Put a hook in `state.ts` and a component in
+`ui.tsx`; `useDialog` stays private inside `ui.tsx` because only `Confirm` and
+`Drawer` use it.
 
 Getting there in development needs a rewrite, because `/admin` is a router path
 and `admin.html` is a file: a small `configureServer` middleware in
@@ -54,7 +63,15 @@ every link in the panel is wrong in one of them.
   triage controls. The search *box* is local until Enter commits — typing into
   the query fires a request per keystroke and puts every prefix of the word in
   the history. Any URL-filter change clears `offset`, because page 4 of the old
-  filter is not page 4 of the new one.
+  filter is not page 4 of the new one — and that rule lives in `useUrlFilters`
+  in `state.ts` rather than in each page, which is where three of the five
+  hand-rolled copies of it had quietly lost it. Pass `offset` in the same call
+  to page without resetting; the `Pager` is the only caller that does.
+- **A decision is `useAction`.** Nine handlers wrote out the same `setBusy(true)`
+  / try / `setErr` / `finally setBusy(false)`. It takes the page's error setter
+  rather than owning one, because `Entry` draws that string twice — on the page
+  and inside a modal, which makes the page behind it unreadable — and it does
+  not clear the error on the way in, since only two callers want that.
 - **One entry is a page, not a drawer.** The diff needs the width, and an
   operator working a queue has to be able to send one to somebody. Reports use
   a drawer for their details; requests and blocks use confirmation dialogs for
@@ -120,9 +137,18 @@ value, never the formatted display string.
 
 The interface picker is always present because it describes what this bundle
 can render. The entry-text picker is populated from `/api/languages` because it
-describes what contributors have translated. Add interface copy to every map in
-`src/uiLocale.tsx`; adding a content language remains data, not a frontend
+describes what contributors have translated. Adding an interface locale is a
+line in `UI_LOCALES` and a message map in `src/uiLocale.tsx`, and nothing else:
+that list is the union type, the footer's `<option>`s, the saved-value check
+and the `navigator.language` match, all of which used to be separate copies of
+the same seven codes. Adding a content language remains data, not a frontend
 release.
+
+Punctuation that belongs to a language belongs in its strings. The space
+before the CC0 sentence is in `cc0After` for the four locales that want one,
+because Korean, Japanese and Chinese continue straight off the link with a
+particle — it was a `locale === 'en' || 'es' || …` ternary in `App.tsx`, which
+is a locale set to keep in step disguised as a styling decision.
 
 `Recent`, `Random`, `+ Add`, visible `Search…`/`Search` labels, `GitHub`, `API`,
 `Markdown` and `CC0` are one compact English product vocabulary in every
@@ -267,8 +293,11 @@ sanitiser config to get wrong.
   Newsreader arrives after the first paint and is wider than the fallback it
   replaces — measuring only on mount marks the wrong rows on a cold load. It
   queries the document rather than a ref, since `Index` returns a fragment
-  with nothing to hang one on and is the only thing in the app that renders an
-  `.ix-link`. **Below 560 the word goes and the clipped line is the whole
+  with nothing to hang one on and `IndexEntry`, the only thing in the app that
+  renders an `.ix-link`, is one per entry and would need a ref each.
+  `IndexEntry` and `IndexRow` are the row and the number it is filed under,
+  split out of `Index` because a band, a numeral, a fold, a line, a popover
+  and a like written inline was six levels of nesting in one return. **Below 560 the word goes and the clipped line is the whole
   signal**: 288px is a numeral, a title and a like already, and "See more" is
   55 of them.
 
@@ -384,7 +413,10 @@ sanitiser config to get wrong.
   guard in there — the one that stands down once the reader starts scrolling —
   would be reading a position mid-flight.
 - `PostCard.tsx` must export only components (fast refresh). Shared helpers like
-  `fmtDate` and `entryPath` live in `api.ts`.
+  `fmtDate` and `entryPath` live in `api.ts`; a helper that needs the locale's
+  words takes `Messages` and lives in `uiLocale.tsx`, which is where
+  `revisionBy` is — `PostForm` and `PostPage` had a copy each of the rule that
+  a revision authored by "deleted" says so rather than "edited by deleted".
 - **Every date is relative.** `fmtDate` is "4 minutes ago", "2 days ago",
   "5 months ago" — the same scale a feed uses, because every date on this wiki
   is a byline in a list, an edit in a history or a remark under an entry, and
