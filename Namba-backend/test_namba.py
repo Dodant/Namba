@@ -3068,6 +3068,49 @@ def test_the_database_has_one_timestamp_format():
 
 
 
+def test_a_session_that_expired_does_not_stay_in_the_table():
+    """Signing in sweeps the sessions that have run out.
+
+    Nothing else does. `end_session` takes the one being signed out of and
+    `admin.py` takes an account's when it is revoked, so without this every
+    session ever issued stays for the life of the database -- rows that
+    cannot authenticate anything (the join carries `expires_at > ?`) and are
+    only a list of when somebody was signed in. Swept on login because that is
+    the write that adds one and it is rare.
+    """
+    con = db.connect()
+    try:
+        with con:
+            # straight in, rather than through admin.add_admin: that makes the
+            # first account a SUPER_ADMIN, and this test wants an id to hang a
+            # session on rather than to be the wiki's first operator
+            who = con.execute(
+                """INSERT INTO admins (email, password_hash, created_at)
+                   VALUES ('sweeper@x.test', 'x', ?)""", (db.now(),)).lastrowid
+            con.execute("DELETE FROM admin_sessions")
+            con.execute(
+                """INSERT INTO admin_sessions (token_hash, admin_id, created_at,
+                                               expires_at, ip_hash)
+                   VALUES ('deadhash', ?, '2026-01-01T00:00:00+00:00',
+                           '2026-01-02T00:00:00+00:00', 'x')""", (who,))
+        assert con.execute("SELECT COUNT(*) FROM admin_sessions").fetchone()[0] == 1
+        with con:
+            auth.start_session(con, who, "live")
+        left = [r[0] for r in con.execute("SELECT token_hash FROM admin_sessions")]
+        assert "deadhash" not in left, left
+        assert len(left) == 1, left
+    finally:
+        # and out again, because the whole suite shares one database and
+        # `add_admin` makes the *first* account a SUPER_ADMIN -- an operator
+        # left here by this test is one `test_admin_accounts` would not be.
+        # The session goes with it: admin_sessions cascades on admins(id).
+        with con:
+            con.execute("DELETE FROM admins WHERE email = 'sweeper@x.test'")
+        con.close()
+
+
+
+
 def test_connection_crosses_threads():
     """FastAPI opens the connection on one threadpool thread and runs the
     endpoint on another. TestClient funnels everything through a single portal

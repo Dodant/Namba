@@ -170,7 +170,18 @@ def _token_hash(token):
 
 def start_session(con, admin_id, ip_hash):
     """A new session. Returns the token to put in the cookie -- the only time it
-    exists in plaintext anywhere."""
+    exists in plaintext anywhere.
+
+    The expired ones go first, and this is the only thing that removes them:
+    `end_session` takes the one being signed out of and `admin.py` takes an
+    account's when it is revoked, so without a sweep every session ever issued
+    stays for the life of the database. None of them can authenticate anything
+    -- `session_admin`'s join carries `expires_at > ?` -- so what they are is a
+    record of when somebody was signed in, which `events` already holds. Here
+    rather than on a timer because this is the write that adds one, and an
+    operator signs in rarely enough that the cost is nothing.
+    """
+    con.execute("DELETE FROM admin_sessions WHERE expires_at <= ?", (db.now(),))
     token = secrets.token_urlsafe(32)
     ends = (datetime.now(timezone.utc) + timedelta(days=SESSION_DAYS)
             ).isoformat(timespec="seconds")
