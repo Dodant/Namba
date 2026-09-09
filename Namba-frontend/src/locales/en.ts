@@ -26,6 +26,12 @@ export const EN = {
     tags: (n: number) => `${fmtCount(n, 'en')} ${n === 1 ? 'tag' : 'tags'}`,
     subject: (abbr: boolean, n = 1): string =>
       abbr ? (n === 1 ? 'abbreviation' : 'abbreviations') : n === 1 ? 'number' : 'numbers',
+    /* The like's accessible name: what pressing it does, and the count it
+       carries. A locale's own sentence, because the alternative was a
+       `locale === 'ko'` ternary in the component -- a locale set to keep in
+       step, in the one place that cannot see this file. */
+    like: (on: boolean, n: number) =>
+      `${on ? 'Unlike' : 'Like'} — ${fmtCount(n, 'en')} ${n === 1 ? 'like' : 'likes'}`,
   },
   format: {
     INTEGER: 'Integer', DECIMAL: 'Decimal', MIXED: 'Mixed', TIME: 'Time', ABBR: 'Abbreviation',

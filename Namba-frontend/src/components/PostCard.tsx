@@ -7,7 +7,7 @@ import { useUi } from '../uiLocale'
 /* Takes the two fields it uses rather than a whole Post, so the number index
    can hand it a bare entry. */
 export function Like({ post }: { post: { id: number; likes: number } }) {
-  const { locale } = useUi()
+  const { locale, m } = useUi()
   const [n, setN] = useState(post.likes)
   const [on, setOn] = useState(() => liked.has(post.id))
 
@@ -24,9 +24,7 @@ export function Like({ post }: { post: { id: number; likes: number } }) {
     }
   }
 
-  const says = locale === 'ko'
-    ? `${on ? '좋아요 취소' : '좋아요'} — ${fmtCount(n, locale)}개`
-    : `${on ? 'Unlike' : 'Like'} — ${fmtCount(n, locale)} ${n === 1 ? 'like' : 'likes'}`
+  const says = m.common.like(on, n)
 
   return (
     <button

@@ -17,6 +17,8 @@ export const DE: Messages = {
     subject: (abbr: boolean, n = 1) => abbr
       ? (n === 1 ? 'Abkürzung' : 'Abkürzungen')
       : n === 1 ? 'Zahl' : 'Zahlen',
+    like: (on: boolean, n: number) =>
+      `${on ? 'Gefällt mir nicht mehr' : 'Gefällt mir'} — ${fmtCount(n, 'de')} ${n === 1 ? 'Like' : 'Likes'}`,
   },
   format: {
     INTEGER: 'Ganzzahl', DECIMAL: 'Dezimalzahl', MIXED: 'Gemischt', TIME: 'Uhrzeit', ABBR: 'Abkürzung',

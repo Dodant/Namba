@@ -15,6 +15,8 @@ export const JA: Messages = {
       : `${when}に編集`,
     entries: (n: number) => `${fmtCount(n, 'ja')}件`, tags: (n: number) => `${fmtCount(n, 'ja')}個のタグ`,
     subject: (abbr: boolean) => abbr ? '略語' : '数字',
+    like: (on: boolean, n: number) =>
+      `${on ? 'いいねを取り消す' : 'いいね'} — ${fmtCount(n, 'ja')}件`,
   },
   format: { INTEGER: '整数', DECIMAL: '小数', MIXED: '混合', TIME: '時刻', ABBR: '略語' },
   buckets: {

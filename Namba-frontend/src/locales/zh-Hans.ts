@@ -15,6 +15,8 @@ export const ZH_HANS: Messages = {
       `${when}编辑${name ? ` · ${name === 'anonymous' ? '匿名用户' : name}` : ''}`,
     entries: (n: number) => `${fmtCount(n, 'zh-Hans')}个条目`, tags: (n: number) => `${fmtCount(n, 'zh-Hans')}个标签`,
     subject: (abbr: boolean) => abbr ? '缩写' : '数字',
+    like: (on: boolean, n: number) =>
+      `${on ? '取消点赞' : '点赞'} — ${fmtCount(n, 'zh-Hans')}个`,
   },
   format: { INTEGER: '整数', DECIMAL: '小数', MIXED: '混合', TIME: '时间', ABBR: '缩写' },
   buckets: {

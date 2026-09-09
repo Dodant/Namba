@@ -13,6 +13,8 @@ export const KO: Messages = {
     edited: (when: string, name?: string | null) => `${when} 수정${name ? ` · ${name === 'anonymous' ? '익명' : name}` : ''}`,
     entries: (n: number) => `항목 ${fmtCount(n, 'ko')}개`, tags: (n: number) => `태그 ${fmtCount(n, 'ko')}개`,
     subject: (abbr: boolean) => abbr ? '약어' : '숫자',
+    like: (on: boolean, n: number) =>
+      `${on ? '좋아요 취소' : '좋아요'} — ${fmtCount(n, 'ko')}개`,
   },
   format: { INTEGER: '정수', DECIMAL: '소수', MIXED: '혼합형', TIME: '시각', ABBR: '약어' },
   buckets: {
