@@ -127,7 +127,12 @@ def test_the_two_apps_still_agree():
         """
         m = re.search(rf"export const {name}\b[^=]*=\s*\[(.*?)\]", src, re.S)
         assert m, f"{name} is not in api.ts at all"
-        body = m.group(1).replace("null", "None").strip().rstrip(",")
+        # `...'ABC'` is JavaScript spread and `*'ABC'` is Python unpacking, and
+        # over a string they mean the same thing, so ABBR_BUCKETS reads with the
+        # same eval as the other eight. None of these lists contains an
+        # ellipsis in a literal, which is the only thing this would eat.
+        body = (m.group(1).replace("null", "None").replace("...", "*")
+                .strip().rstrip(","))
         return tuple(eval(f"[{body}]", {"__builtins__": {}}))  # noqa: S307
 
     def number(name):
@@ -152,6 +157,30 @@ def test_the_two_apps_still_agree():
     labels = set(re.findall(r"^  (\w+): '", src, re.M))
     for reason in set(db.DELETE_REASONS) | set(db.REPORT_REASONS):
         assert reason in labels, f"REASON_LABEL has nothing to say about {reason}"
+
+    # The bands an index is cut into. Not a vocabulary either side stores, which
+    # is why it was not in the table: `bucket_of` computes the label and the two
+    # lists over there are what Home.tsx renders, one band per member, each
+    # filtered by `n.bucket === b`. So a label this function can return and that
+    # list does not carry is not a missing menu item -- it is entries that are
+    # on the wiki and on no page. The other direction is a heading with nothing
+    # under it, which is why this compares sets rather than one inclusion.
+    #
+    # The band's *words* need no check: `m.buckets` is keyed by `typeof
+    # BUCKETS[number]`, so a label with no prose does not compile.
+    integers = {bucket_of(k) for k in
+                (0, 1, 9, 10, 99, 100, 999, 1000, 9999, 10000, 10 ** 9, -42)}
+    assert integers == set(listed("BUCKETS")), (integers, listed("BUCKETS"))
+    abbrs = {bucket_of(None, "ABBR", c) for c in
+             string.ascii_uppercase + string.ascii_lowercase + string.digits}
+    assert abbrs == set(listed("ABBR_BUCKETS")), (abbrs, listed("ABBR_BUCKETS"))
+    # and only those two formats band at all, or a list would render one band
+    # per row -- TIME sorts by minutes past midnight, where a magnitude means
+    # nothing, and Decimal and Mixed sort by string and read as one list
+    for fmt in ("TIME", "DECIMAL", "MIXED"):
+        assert bucket_of(100, fmt) is None, fmt
+    assert bucket_of(None, "ABBR", "...") is None, "no letter and no digit, no band"
+    assert bucket_of(None, "ABBR", ".NET") == "N", "a band comes off the first letter"
 
 
 def test_recent_sort():

@@ -35,10 +35,23 @@ package). **Change one, change the other:**
 | the 5 formats | `numfmt.py` `FORMATS` | `src/api.ts` `FORMATS` |
 | the two tag limits | `main.py` `TAG_MAX`, `TAGS_PER_POST` | `src/api.ts`, same names |
 | the moderation vocabularies | `db.py` `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`, `REQUEST_STATUSES`, `REPORT_STATUSES`, `BLOCK_TYPES`, `BLOCK_HOURS` | `src/api.ts`, same names |
+| the index's bands | `numfmt.py` `bucket_of` — computed, not listed | `src/api.ts` `BUCKETS`, `ABBR_BUCKETS` |
 
 `test_the_two_apps_still_agree` in `test_namba.py` reads `src/api.ts` and checks
 every row of that table, so "change one, change the other" is a thing the suite
-notices rather than a thing you remember. It parses the TypeScript; it does not
+notices rather than a thing you remember.
+
+The last row is the odd one and worth reading twice. The other three are lists
+on both sides; that one is a **function** on this side and a list on the other,
+so there is nothing to compare literally — the test calls `bucket_of` across
+every branch and compares the set of labels it can return against the set the
+front end carries. It matters more than the rows above it, too. A vocabulary
+that drifts costs a menu item. A band that drifts costs *entries*: `Home.tsx`
+renders one band per member of those lists and fills each with
+`rows.filter(n => n.bucket === b)`, so a label the front end does not carry is
+entries that are on the wiki and on no page. The comparison is a set equality
+in both directions, because the other way round is a heading with nothing
+under it. It parses the TypeScript; it does not
 generate either side from the other, because moving the pair in one commit is
 the design and codegen is what this repo declined.
 
