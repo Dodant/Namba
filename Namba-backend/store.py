@@ -226,6 +226,34 @@ def write_tags(con, post_id, tags):
     )
 
 
+def apply_snapshot(con, post_id, old, editor):
+    """Put a snapshot's fields back onto an entry, with its tags and its
+    translations.
+
+    Every restore is this: the wiki's own, the operator's, and the resurrect
+    branch once it has put the row back. Three copies of one UPDATE is three
+    places to remember when a column is added, and the column that gets
+    forgotten is the one nobody notices a restore dropping.
+
+    `author` is not in it, deliberately. The first writer is never
+    overwritten, so a restore credits whoever pressed it in `edited_by` --
+    which is what `editor` is, and what makes an operator's restore read as
+    theirs.
+    """
+    con.execute(
+        """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
+                            image=?, lang=?, grouped=?, edited_by=?, updated_at=?
+           WHERE id=?""",
+        (old["value"], old["format"], old["sort_key"], old["title"], old["body"],
+         old["image"], old.get("lang"), int(old.get("grouped") or 0), editor,
+         now(), post_id),
+    )
+    write_tags(con, post_id, old.get("tags", []))
+    # a snapshot from before translations existed has none, and restoring it
+    # says so -- the ones dropped are in the snapshot the restore just took
+    write_translations(con, post_id, old.get("translations", []))
+
+
 def write_translations(con, post_id, rows):
     """Put a snapshot's translations back, ids and all, so links to them hold."""
     con.execute("DELETE FROM translations WHERE post_id = ?", (post_id,))

@@ -23,8 +23,8 @@ import events
 import seo
 from db import UPLOAD_DIR, get_db, nfc, now, writing
 from store import (
-    LIVE, Text, fetch_one, guard_public, resolve_format, section_where, shape,
-    snapshot, ungroup, write_tags, write_translations,
+    LIVE, Text, apply_snapshot, fetch_one, guard_public, resolve_format,
+    section_where, shape, snapshot, ungroup, write_tags,
 )
 from numfmt import FORMATS, bucket_of
 
@@ -896,14 +896,6 @@ def restore_revision(
         rev = None
         if alive:
             rev = snapshot(con, post_id, author)  # restoring is itself undoable
-            con.execute(
-                """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
-                                    image=?, lang=?, grouped=?, edited_by=?,
-                                    updated_at=? WHERE id=?""",
-                (old["value"], old["format"], old["sort_key"], old["title"], old["body"],
-                 old["image"], old.get("lang"), int(old.get("grouped") or 0),
-                 author, now(), post_id),
-            )
         else:
             # The post's row is gone. Nothing in this codebase removes a row, so
             # only a snapshot older than that rule can reach here (ADR-0002).
@@ -926,20 +918,17 @@ def restore_revision(
             # production holds any is one query, and ADR-0002 carries it beside
             # the decision that keeps this branch, `guard_public`'s
             # absent-passes rule and PostPage's recovery view until it is run.
+            # Only what apply_snapshot cannot write: the id it comes back
+            # under, the first writer, the likes it had and the day it was
+            # created. Every other column is the snapshot, filled in below.
             con.execute(
-                """INSERT INTO posts (id, value, format, sort_key, title, body, image,
-                                      lang, grouped, author, edited_by, likes,
+                """INSERT INTO posts (id, value, format, title, author, likes,
                                       created_at, updated_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (post_id, old["value"], old["format"], old["sort_key"], old["title"],
-                 old["body"], old["image"], old.get("lang"),
-                 int(old.get("grouped") or 0), old["author"], author,
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (post_id, old["value"], old["format"], old["title"], old["author"],
                  old.get("likes", 0), old["created_at"], now()),
             )
-        write_tags(con, post_id, old.get("tags", []))
-        # a snapshot from before translations existed has none, and restoring it
-        # says so -- the ones dropped are in the snapshot this restore just took
-        write_translations(con, post_id, old.get("translations", []))
+        apply_snapshot(con, post_id, old, author)
         events.record(con, "RESTORE", client=who, who=author, target_type="post",
                       target_id=post_id, revision_id=rev, restored=rev_id,
                       resurrected=not alive)

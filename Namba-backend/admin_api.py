@@ -779,16 +779,7 @@ def admin_restore(
     label = f"operator {who['email']}"
     with con:
         rev = store.snapshot(con, post_id, label, hidden=True)
-        con.execute(
-            """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
-                                image=?, lang=?, grouped=?, edited_by=?, updated_at=?
-               WHERE id=?""",
-            (old["value"], old["format"], old["sort_key"], old["title"], old["body"],
-             old["image"], old.get("lang"), int(old.get("grouped") or 0), label,
-             db.now(), post_id),
-        )
-        store.write_tags(con, post_id, old.get("tags", []))
-        store.write_translations(con, post_id, old.get("translations", []))
+        store.apply_snapshot(con, post_id, old, label)
         events.record(con, "CONTENT_REVERT", client=events.client_of(request),
                       admin_id=who["id"], target_type="post", target_id=post_id,
                       revision_id=rev, restored=rev_id, note=body.note.strip())
