@@ -14,32 +14,44 @@ on:
       - '**/*.md'
       - 'docs/**'
       - '*.png'
+  # Deliberately unfiltered, unlike the push above: a branch protection rule
+  # waits for a named check, and a run skipped by paths-ignore never reports
+  # one, so a docs-only pull request would sit waiting for a check that will
+  # never arrive. Two spare minutes of runner is the cheaper end of that trade.
+  pull_request:
   workflow_dispatch:
 
 concurrency:
-  # A second deploy while one is mid-flight would race the same container.
-  group: deploy-namba
-  cancel-in-progress: false
+  # Per ref rather than one queue for the whole repo: a second deploy while one
+  # is mid-flight would race the same container, and main is always the same
+  # ref so those still serialise -- but a pull request only ever races itself,
+  # and queueing one behind a deploy is how the checks stop being the fast
+  # feedback they exist to be. A superseded run of a branch is also not worth a
+  # runner.
+  group: namba-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# The two writes belong to the deploy job alone. A pull request's run needs
+# neither GHCR nor an OIDC token, and granting them at the top of the file
+# hands them to every job that ever gets added below.
 permissions:
   contents: read
-  packages: write
-  id-token: write
 
 jobs:
-  deploy:
+  # The four checks from CLAUDE.md, as their own job so that a pull request runs
+  # them. They used to be the first half of the deploy job, which meant they ran
+  # only on a push to main: a failure was something you found out about after
+  # merging it, and a branch had nothing to report to a protection rule.
+  checks:
     runs-on: ubuntu-latest
-    # The deploy role's trust policy names this environment. Without it the
-    # OIDC subject does not match and the assume-role fails.
-    environment: production
     steps:
       - uses: actions/checkout@v5
 
-      # Checks from CLAUDE.md: build the frontend first so backend tests can
-      # inspect the built documents and assets.
+      # 24, not 22: `node --test` runs the front end's .ts files directly, which
+      # needs the version where type stripping stopped being a flag.
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
           cache-dependency-path: Namba-frontend/package-lock.json
 
@@ -53,9 +65,13 @@ jobs:
           npx tsc -b --noEmit
           npx oxlint src
 
-      # Before the image, because the Dockerfile copies dist/ rather than
-      # building it: no node in the image, and the built front end is what the
-      # API serves.
+      - name: Front end suite
+        working-directory: Namba-frontend
+        run: npm test
+
+      # Before the backend suite, which reads the built documents and assets,
+      # and before the image, which copies dist/ rather than building it: there
+      # is no node in the image and the built front end is what the API serves.
       - name: Build front end
         working-directory: Namba-frontend
         run: npm run build
@@ -69,6 +85,40 @@ jobs:
         run: |
           pip install -q -r requirements.txt
           python test_namba.py
+
+      # Handed to the deploy job rather than built there a second time. The
+      # alternative is another npm ci and another build, which is a minute of
+      # runner and a second chance for the image to carry a front end no suite
+      # ever saw.
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: dist
+          path: Namba-frontend/dist
+          retention-days: 1
+
+  deploy:
+    needs: checks
+    # A pull request stops at the checks. Nothing below this line may run
+    # against production for code that is not on main yet.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    # The deploy role's trust policy names this environment. Without it the
+    # OIDC subject does not match and the assume-role fails.
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+
+      # The front end the checks job built and the suite then read. No node
+      # here: the Dockerfile copies dist/, it does not build it.
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: Namba-frontend/dist
 
       # ── image ─────────────────────────────────────────────────────────────
       - name: Log in to GHCR
