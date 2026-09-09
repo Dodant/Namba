@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { errorText, fmtDate } from '../../api'
 import { adm, type Block, type Page } from '../api'
+import { useAction } from '../state'
 import { Confirm, Empty, Hash, Pager, Table, When } from '../ui'
 
 const PER = 100
@@ -16,7 +17,7 @@ export default function Blocks() {
   const [offset, setOffset] = useState(0)
   const [got, setGot] = useState<Page<Block> | null>(null)
   const [err, setErr] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busy, run] = useAction(setErr)
   const [ask, setAsk] = useState<Block | null>(null)
 
   function load() {
@@ -28,18 +29,13 @@ export default function Blocks() {
 
   useEffect(load, [live, offset])
 
-  async function lift() {
+  function lift() {
     if (!ask) return
-    setBusy(true)
-    try {
+    run(async () => {
       await adm.liftBlock(ask.id)
       setAsk(null)
       load()
-    } catch (e) {
-      setErr(errorText(e))
-    } finally {
-      setBusy(false)
-    }
+    })
   }
 
   return (

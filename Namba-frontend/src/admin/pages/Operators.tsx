@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { errorText } from '../../api'
 import { adm, type Operator, type Role, type Who } from '../api'
+import { useAction } from '../state'
 import { Badge, Confirm, Empty, Table, When } from '../ui'
 
 const FLOOR = 12
@@ -18,7 +19,7 @@ const FLOOR = 12
 export default function Operators({ who }: { who: Who }) {
   const [rows, setRows] = useState<Operator[] | null>(null)
   const [err, setErr] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busy, run] = useAction(setErr)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<Role>('ADMIN')
@@ -33,36 +34,26 @@ export default function Operators({ who }: { who: Who }) {
 
   useEffect(load, [])
 
-  async function make(e: React.FormEvent) {
+  function make(e: React.FormEvent) {
     e.preventDefault()
     if (busy) return
-    setBusy(true)
     setErr('')
-    try {
+    run(async () => {
       await adm.addAdmin({ email: email.trim(), password, role })
       setEmail('')
       setPassword('')
       setRole('ADMIN')
       load()
-    } catch (x) {
-      setErr(errorText(x))
-    } finally {
-      setBusy(false)
-    }
+    })
   }
 
-  async function flip() {
+  function flip() {
     if (!ask) return
-    setBusy(true)
-    try {
+    run(async () => {
       await adm.setAdminActive(ask.id, !ask.active)
       setAsk(null)
       load()
-    } catch (x) {
-      setErr(errorText(x))
-    } finally {
-      setBusy(false)
-    }
+    })
   }
 
   return (

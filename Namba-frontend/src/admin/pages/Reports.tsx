@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { errorText, REASON_LABEL, REPORT_STATUSES, showValue } from '../../api'
 import { adm, type Page, type Report, type ReportGroup } from '../api'
-import { Badge, Confirm, Drawer, Empty, Hash, Pager, Table, When } from '../ui'
+import { useAction, useUrlFilters } from '../state'
+import {
+  Badge, Confirm, Drawer, Empty, Hash, NoteField, Pager, Table, When,
+} from '../ui'
 
 const PER = 50
 
@@ -29,17 +32,16 @@ const DECIDE = {
     The individual reports open in a drawer rather than on a page: reading them
     is a paragraph, and a page would cost the operator their place in the queue. */
 export default function Reports({ onChange }: { onChange: () => void }) {
-  const [params, setParams] = useSearchParams()
+  const { get, set, offset } = useUrlFilters()
   const [got, setGot] = useState<Page<ReportGroup> | null>(null)
   const [err, setErr] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busy, run] = useAction(setErr)
   const [open, setOpen] = useState<ReportGroup | null>(null)
   const [detail, setDetail] = useState<Report[] | null>(null)
   const [ask, setAsk] = useState<{ row: ReportGroup; how: keyof typeof DECIDE } | null>(null)
   const [note, setNote] = useState('')
 
-  const status = params.get('status') ?? 'OPEN'
-  const offset = Number(params.get('offset') ?? 0)
+  const status = get('status', 'OPEN')
 
   function load() {
     setGot(null)
@@ -56,21 +58,16 @@ export default function Reports({ onChange }: { onChange: () => void }) {
     adm.reportDetail(open.post_id).then(setDetail, (e) => setErr(errorText(e)))
   }, [open])
 
-  async function decide() {
+  function decide() {
     if (!ask) return
-    setBusy(true)
-    try {
+    run(async () => {
       await adm.decideReports(ask.row.post_id, ask.how, note)
       setAsk(null)
       setOpen(null)
       setNote('')
       load()
       onChange()
-    } catch (e) {
-      setErr(errorText(e))
-    } finally {
-      setBusy(false)
-    }
+    })
   }
 
   return (
@@ -87,12 +84,7 @@ export default function Reports({ onChange }: { onChange: () => void }) {
           <select
             id="rp-status"
             value={status}
-            onChange={(e) => {
-              const p = new URLSearchParams(params)
-              p.set('status', e.target.value)
-              p.delete('offset')
-              setParams(p)
-            }}
+            onChange={(e) => set({ status: e.target.value })}
           >
             {REPORT_STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -172,11 +164,7 @@ export default function Reports({ onChange }: { onChange: () => void }) {
             total={got.total}
             limit={PER}
             offset={offset}
-            onGo={(next) => {
-              const p = new URLSearchParams(params)
-              p.set('offset', String(next))
-              setParams(p)
-            }}
+            onGo={(next) => set({ offset: String(next) })}
           />
         </>
       ) : (
@@ -261,15 +249,12 @@ export default function Reports({ onChange }: { onChange: () => void }) {
               <b>{ask.row.title ?? `entry ${ask.row.post_id}`}</b>
             </p>
             <p>{DECIDE[ask.how].says}</p>
-            <div className="field">
-              <label htmlFor="rp-note">Why (kept in the log, and on each report)</label>
-              <input
-                id="rp-note"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="What you did about it, if anything"
-              />
-            </div>
+            <NoteField
+              label="Why (kept in the log, and on each report)"
+              value={note}
+              onChange={setNote}
+              placeholder="What you did about it, if anything"
+            />
           </>
         )}
       </Confirm>

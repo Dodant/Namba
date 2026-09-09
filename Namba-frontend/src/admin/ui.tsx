@@ -1,9 +1,54 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { fmtDate } from '../api'
 
 /** The parts every page in the panel is made of. Small on purpose: a table, a
     badge, a hash, a timestamp and an empty state, which between them are most
-    of what a back office is. */
+    of what a back office is. The two hooks every page also repeats -- the
+    filters that live in the URL and the busy-and-error dance around a decision
+    -- are in `state.ts`, because a module that exports a component and a hook
+    costs the panel its fast refresh. */
+
+/** Keep a native <dialog> in step with the boolean that owns it.
+
+    `showModal()` is imperative and the panel's state is not, so something has
+    to bridge them -- and `Confirm` and `Drawer` below had the same ref and the
+    same effect, letter for letter. */
+function useDialog(open: boolean) {
+  const box = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const d = box.current
+    if (!d) return
+    if (open && !d.open) d.showModal()
+    if (!open && d.open) d.close()
+  }, [open])
+  return box
+}
+
+/** The reason an operator gives for what they just did.
+
+    Its own component because six confirmations ask for one and they are the
+    same field every time, down to the `.field` wrapper -- what differs is the
+    sentence over it, which is what says where the note ends up: on the block,
+    on the request, on each report. Every one of them is optional, and every
+    one of them is read by the next operator, which is the whole argument for
+    asking. */
+export function NoteField(
+  { label, value, placeholder, onChange }:
+  { label: string; value: string; placeholder: string; onChange: (v: string) => void },
+) {
+  const id = useId()
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <input
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+    </div>
+  )
+}
 
 /** A status word. Four tones and no more: fine, waiting, wrong, and neutral for
     anything that is just a fact. Which word maps to which tone is decided in
@@ -150,14 +195,7 @@ export function Confirm(
     onOk: () => void
   },
 ) {
-  const box = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    const d = box.current
-    if (!d) return
-    if (open && !d.open) d.showModal()
-    if (!open && d.open) d.close()
-  }, [open])
+  const box = useDialog(open)
 
   return (
     <dialog
@@ -198,14 +236,7 @@ export function Drawer(
   { open, title, children, onClose }:
   { open: boolean; title: ReactNode; children: ReactNode; onClose: () => void },
 ) {
-  const box = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    const d = box.current
-    if (!d) return
-    if (open && !d.open) d.showModal()
-    if (!open && d.open) d.close()
-  }, [open])
+  const box = useDialog(open)
 
   return (
     <dialog

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { errorText, POST_STATUSES, showValue } from '../../api'
 import { adm, type Page, type Row } from '../api'
+import { useUrlFilters } from '../state'
 import { Badge, Empty, Pager, Table, When } from '../ui'
 
 const PER = 50
@@ -24,19 +25,18 @@ const SORTS = [
     makes for its feed toggle: a view of "everything flagged, oldest first"
     survives a reload, can be bookmarked, and can be sent to somebody. */
 export default function Content() {
-  const [params, setParams] = useSearchParams()
+  const { get, set, offset } = useUrlFilters()
   const [got, setGot] = useState<Page<Row> | null>(null)
   const [err, setErr] = useState('')
   /* The box is local and the URL is the committed search: typing straight into
      the query would fire a request per keystroke and put every prefix of the
      word in the history. Enter commits. */
-  const [box, setBox] = useState(params.get('q') ?? '')
+  const [box, setBox] = useState(get('q'))
 
-  const q = params.get('q') ?? ''
-  const status = params.get('status') ?? 'ALL'
-  const flagged = params.get('flagged') === '1'
-  const sort = params.get('sort') ?? 'updated'
-  const offset = Number(params.get('offset') ?? 0)
+  const q = get('q')
+  const status = get('status', 'ALL')
+  const flagged = get('flagged') === '1'
+  const sort = get('sort', 'updated')
 
   useEffect(() => {
     setGot(null)
@@ -44,19 +44,6 @@ export default function Content() {
     adm.posts({ q, status, flagged: flagged ? 1 : undefined, sort, limit: PER, offset })
       .then(setGot, (e) => setErr(errorText(e)))
   }, [q, status, flagged, sort, offset])
-
-  /* Every filter change resets the window. Page 4 of the old filter is not
-     page 4 of the new one, and landing on an empty page reads as "nothing
-     matched" when the answer was three rows back. */
-  function set(next: Record<string, string | null>) {
-    const p = new URLSearchParams(params)
-    for (const [k, v] of Object.entries(next)) {
-      if (v === null || v === '') p.delete(k)
-      else p.set(k, v)
-    }
-    if (!('offset' in next)) p.delete('offset')
-    setParams(p)
-  }
 
   return (
     <div className="page">

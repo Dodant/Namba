@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { errorText, REASON_LABEL, REQUEST_STATUSES, showValue } from '../../api'
 import { adm, type Page, type QueuedRequest } from '../api'
-import { Badge, Confirm, Empty, Hash, Pager, Table, When } from '../ui'
+import { useAction, useUrlFilters } from '../state'
+import { Badge, Confirm, Empty, Hash, NoteField, Pager, Table, When } from '../ui'
 
 const PER = 50
 
@@ -32,15 +33,14 @@ const DECIDE = {
     there is no Delete button anywhere on the wiki: this is the only route that
     leads to an entry coming down, and what it leads to is a person reading it. */
 export default function Requests({ onChange }: { onChange: () => void }) {
-  const [params, setParams] = useSearchParams()
+  const { get, set, offset } = useUrlFilters()
   const [got, setGot] = useState<Page<QueuedRequest> | null>(null)
   const [err, setErr] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busy, run] = useAction(setErr)
   const [ask, setAsk] = useState<{ row: QueuedRequest; how: keyof typeof DECIDE } | null>(null)
   const [note, setNote] = useState('')
 
-  const status = params.get('status') ?? 'PENDING'
-  const offset = Number(params.get('offset') ?? 0)
+  const status = get('status', 'PENDING')
 
   function load() {
     setGot(null)
@@ -51,10 +51,9 @@ export default function Requests({ onChange }: { onChange: () => void }) {
 
   useEffect(load, [status, offset])
 
-  async function decide() {
+  function decide() {
     if (!ask) return
-    setBusy(true)
-    try {
+    run(async () => {
       await adm.decideRequest(ask.row.id, ask.how, note)
       setAsk(null)
       setNote('')
@@ -64,11 +63,7 @@ export default function Requests({ onChange }: { onChange: () => void }) {
          requests on that entry too, so the count does not move by one and
          guessing it would be a guess. */
       onChange()
-    } catch (e) {
-      setErr(errorText(e))
-    } finally {
-      setBusy(false)
-    }
+    })
   }
 
   return (
@@ -85,12 +80,7 @@ export default function Requests({ onChange }: { onChange: () => void }) {
           <select
             id="rq-status"
             value={status}
-            onChange={(e) => {
-              const p = new URLSearchParams(params)
-              p.set('status', e.target.value)
-              p.delete('offset')
-              setParams(p)
-            }}
+            onChange={(e) => set({ status: e.target.value })}
           >
             {REQUEST_STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -173,11 +163,7 @@ export default function Requests({ onChange }: { onChange: () => void }) {
             total={got.total}
             limit={PER}
             offset={offset}
-            onGo={(next) => {
-              const p = new URLSearchParams(params)
-              p.set('offset', String(next))
-              setParams(p)
-            }}
+            onGo={(next) => set({ offset: String(next) })}
           />
         </>
       ) : (
@@ -207,15 +193,12 @@ export default function Requests({ onChange }: { onChange: () => void }) {
               {ask.row.detail && ` — ${ask.row.detail}`}
             </p>
             <p>{DECIDE[ask.how].says}</p>
-            <div className="field">
-              <label htmlFor="rq-note">Why (kept in the log, and on the request)</label>
-              <input
-                id="rq-note"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Read by the next operator, and by you in a month"
-              />
-            </div>
+            <NoteField
+              label="Why (kept in the log, and on the request)"
+              value={note}
+              onChange={setNote}
+              placeholder="Read by the next operator, and by you in a month"
+            />
           </>
         )}
       </Confirm>

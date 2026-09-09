@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BLOCK_HOURS, BLOCK_HOURS_LABEL, errorText } from '../../api'
 import { adm, type Abuse as Signal, type AbuseRow } from '../api'
-import { Confirm, Empty, Hash, Table, When } from '../ui'
+import { useAction } from '../state'
+import { Confirm, Empty, Hash, NoteField, Table, When } from '../ui'
 
 /* Windows an operator actually asks about: what is happening now, what happened
    while I was asleep, what happened this week. */
@@ -30,7 +31,7 @@ export default function Abuse() {
   const [least, setLeast] = useState(5)
   const [got, setGot] = useState<Signal | null>(null)
   const [err, setErr] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busy, run] = useAction(setErr)
   const [ask, setAsk] = useState<{ row: AbuseRow; kind: 'ip' | 'client' } | null>(null)
   const [hours, setHours] = useState<number | null>(24)
   const [why, setWhy] = useState('')
@@ -43,21 +44,16 @@ export default function Abuse() {
 
   useEffect(load, [minutes, least])
 
-  async function block() {
+  function block() {
     if (!ask) return
     const target = ask.kind === 'ip' ? ask.row.ip_hash : ask.row.a_client
     if (!target) return
-    setBusy(true)
-    try {
+    run(async () => {
       await adm.addBlock({ type: ask.kind, target_hash: target, reason: why, hours })
       setAsk(null)
       setWhy('')
       load()
-    } catch (e) {
-      setErr(errorText(e))
-    } finally {
-      setBusy(false)
-    }
+    })
   }
 
   return (
@@ -254,15 +250,12 @@ export default function Abuse() {
                 ))}
               </select>
             </div>
-            <div className="field">
-              <label htmlFor="bk-why">Why (kept on the block and in the log)</label>
-              <input
-                id="bk-why"
-                value={why}
-                onChange={(e) => setWhy(e.target.value)}
-                placeholder="Shown to them when a write is refused"
-              />
-            </div>
+            <NoteField
+              label="Why (kept on the block and in the log)"
+              value={why}
+              onChange={setWhy}
+              placeholder="Shown to them when a write is refused"
+            />
           </>
         )}
       </Confirm>

@@ -4,7 +4,8 @@ import {
   errorText, FORMATS, fmtDate, showValue, tagLabel, type Format, type PostStatus,
 } from '../../api'
 import { ACTION_LABEL, adm, type Diff, type FullPost, type Rev } from '../api'
-import { Badge, Confirm, Empty, Hash, Table, When } from '../ui'
+import { useAction } from '../state'
+import { Badge, Confirm, Empty, Hash, NoteField, Table, When } from '../ui'
 
 /* What each button does, what it says while asking, and what survives it. The
    last part is the one that matters: on this wiki hiding an entry keeps its
@@ -54,7 +55,7 @@ export default function Entry() {
   const [err, setErr] = useState('')
   const [ask, setAsk] = useState<keyof typeof MOVES | null>(null)
   const [note, setNote] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busy, run] = useAction(setErr)
   /* Which revision the diff is against. 'live' is the entry as it stands, and
      it is the default because "what did the last person change" is the question
      this page gets asked ninety per cent of the time. */
@@ -83,24 +84,18 @@ export default function Entry() {
     adm.diff(id, pick, 'live').then(setDiff, (e) => setErr(errorText(e)))
   }, [id, pick])
 
-  async function move() {
+  function move() {
     if (!ask) return
-    setBusy(true)
-    try {
+    run(async () => {
       await adm.setStatus(id, MOVES[ask].to, note)
       setAsk(null)
       setNote('')
       load()
-    } catch (e) {
-      setErr(errorText(e))
-    } finally {
-      setBusy(false)
-    }
+    })
   }
 
-  async function renumber() {
-    setBusy(true)
-    try {
+  function renumber() {
+    run(async () => {
       await adm.renumber(id, num, numFmt, note)
       setRenaming(false)
       setNote('')
@@ -110,17 +105,12 @@ export default function Entry() {
          longer than the one on screen. */
       load()
       setPick(null)
-    } catch (e) {
-      setErr(errorText(e))
-    } finally {
-      setBusy(false)
-    }
+    })
   }
 
-  async function revert() {
+  function revert() {
     if (!reverting) return
-    setBusy(true)
-    try {
+    run(async () => {
       await adm.revert(id, reverting.id, note)
       setReverting(null)
       setNote('')
@@ -129,11 +119,7 @@ export default function Entry() {
          the entry. */
       load()
       setPick(null)
-    } catch (e) {
-      setErr(errorText(e))
-    } finally {
-      setBusy(false)
-    }
+    })
   }
 
   if (err && !post)
@@ -455,15 +441,12 @@ export default function Entry() {
         onOk={move}
       >
         <p>{ask && MOVES[ask].says}</p>
-        <div className="field">
-          <label htmlFor="mv-note">Why (kept in the log)</label>
-          <input
-            id="mv-note"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Optional, and read by the next operator"
-          />
-        </div>
+        <NoteField
+          label="Why (kept in the log)"
+          value={note}
+          onChange={setNote}
+          placeholder="Optional, and read by the next operator"
+        />
       </Confirm>
 
       <Confirm
@@ -524,15 +507,12 @@ export default function Entry() {
             ))}
           </select>
         </div>
-        <div className="field">
-          <label htmlFor="rn-note">Why (kept in the log)</label>
-          <input
-            id="rn-note"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Optional, and read by the next operator"
-          />
-        </div>
+        <NoteField
+          label="Why (kept in the log)"
+          value={note}
+          onChange={setNote}
+          placeholder="Optional, and read by the next operator"
+        />
       </Confirm>
 
       <Confirm
@@ -553,15 +533,12 @@ export default function Entry() {
           kept — reverting adds to the history rather than rewriting it, so this
           is undoable the same way anything else here is.
         </p>
-        <div className="field">
-          <label htmlFor="rv-note">Why (kept in the log)</label>
-          <input
-            id="rv-note"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Optional"
-          />
-        </div>
+        <NoteField
+          label="Why (kept in the log)"
+          value={note}
+          onChange={setNote}
+          placeholder="Optional"
+        />
       </Confirm>
     </div>
   )
