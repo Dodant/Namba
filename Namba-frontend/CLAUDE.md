@@ -294,8 +294,9 @@ sanitiser config to get wrong.
   between the title and the blurb, which is where the box really divides: what
   an entry *is*, and what it means. `--line`, the same line a band head draws
   rather than the `--rule-soft` whisper between the rows of a `.panel`, with
-  6px above and 5px below — the line belongs to the blurb under it, not to the
-  space between two things.
+  6px above it and 10px below — nearer the title, so it reads as closing the
+  numeral-and-title pair rather than as a divider parked midway between two
+  halves.
 
   Each of those three paragraphs owns its own margin, and there is **no
   `.ix-pop p { margin: 0 }`** over them. There was, and it is (0,1,1) against a
