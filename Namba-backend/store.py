@@ -15,9 +15,25 @@ in a module that may not import the first.
 import json
 
 from fastapi import HTTPException
+from pydantic import BaseModel, field_validator
 
-from db import now
+from db import nfc, now
 from numfmt import bucket_of, canonical_value, is_abbr, parse_number
+
+
+class Text(BaseModel):
+    """The base every request model on both APIs inherits.
+
+    One rule: text arrives in the normal form the database stores (db.nfc).
+    Before validation, so a length cap counts the composed string and a
+    vocabulary check sees the spelling the column holds. Lists of strings --
+    tags -- are folded element by element; nothing else is touched.
+    """
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def one_normal_form(cls, v):
+        return nfc(v)
 
 # The only status a visitor ever sees. Thirteen reads in main.py carry it -- the
 # index, the list endpoint the feed and the search share, one entry, the two
@@ -202,7 +218,7 @@ def write_tags(con, post_id, tags):
     """
     clean = []
     for t in tags:
-        t = " ".join(str(t).split()).lower()
+        t = " ".join(nfc(str(t)).split()).lower()
         if t and t not in clean:
             clean.append(t)
     con.execute("DELETE FROM post_tags WHERE post_id = ?", (post_id,))

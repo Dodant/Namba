@@ -18,18 +18,19 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
 
 import auth
 import db
 import events
 import numfmt
 import store
+from store import Text
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
-class LoginIn(BaseModel):
+class LoginIn(Text):
     email: str = Field(min_length=3, max_length=200)
     password: str = Field(min_length=1, max_length=200)
 
@@ -77,7 +78,7 @@ def login(body: LoginIn, request: Request, con=Depends(db.get_db)):
     return {"mfa_required": True, "challenge": token}
 
 
-class TotpIn(BaseModel):
+class TotpIn(Text):
     challenge: str = Field(min_length=32, max_length=200)
     code: str = Field(pattern=r"^\d{6}$")
 
@@ -172,7 +173,7 @@ def _page(con, sql, args, limit, offset):
     return {"total": total, "rows": [dict(r) for r in rows]}
 
 
-class DecideIn(BaseModel):
+class DecideIn(Text):
     decision: str = Field(max_length=20)
     note: str = Field(default="", max_length=1000)
 
@@ -316,7 +317,7 @@ def decide_reports(
 
 
 # --- blocked clients ----------------------------------------------------
-class BlockIn(BaseModel):
+class BlockIn(Text):
     type: str = Field(max_length=10)
     target_hash: str = Field(min_length=16, max_length=64)
     reason: str = Field(default="", max_length=200)
@@ -506,6 +507,7 @@ def list_all_posts(
     badge is drawn from it.
     """
     where, args = [], []
+    q = db.nfc(q)
     if status != "ALL":
         if status not in db.POST_STATUSES:
             raise HTTPException(422, f"status must be ALL or one of {db.POST_STATUSES}")
@@ -646,7 +648,7 @@ def diff(
     }
 
 
-class StatusIn(BaseModel):
+class StatusIn(Text):
     status: str = Field(max_length=20)
     note: str = Field(default="", max_length=1000)
 
@@ -680,7 +682,7 @@ def set_post_status(
     return {"id": post_id, "status": body.status, "was": was["status"]}
 
 
-class ValueIn(BaseModel):
+class ValueIn(Text):
     value: str = Field(min_length=1, max_length=32)
     format: Optional[str] = None
     note: str = Field(default="", max_length=1000)
@@ -748,7 +750,7 @@ def set_post_value(
     return store.fetch_one(con, post_id, hidden=True)
 
 
-class AdminRestoreIn(BaseModel):
+class AdminRestoreIn(Text):
     note: str = Field(default="", max_length=1000)
 
 
@@ -868,7 +870,7 @@ def abuse(
 
 
 # --- operator accounts --------------------------------------------------
-class AdminIn(BaseModel):
+class AdminIn(Text):
     email: str = Field(min_length=3, max_length=200)
     password: str = Field(min_length=12, max_length=200)
     role: str = "ADMIN"
@@ -915,7 +917,7 @@ def add_admin_route(
     return {"id": cur.lastrowid, "email": body.email.strip(), "role": body.role}
 
 
-class ActiveIn(BaseModel):
+class ActiveIn(Text):
     active: bool
 
 

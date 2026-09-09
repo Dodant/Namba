@@ -2410,6 +2410,54 @@ def test_api_round_trip():
     tags = {t["tag"]: t["count"] for t in c.get("/api/tags").json()}
     assert tags["movie"] == 1 and "anime" not in tags, tags
 
+    # Text is stored in one Unicode normal form. macOS hands over Korean typed
+    # in some apps, and every file name, as decomposed jamo; the same word in
+    # composed form is a different string to SQLite, so without this "한국어"
+    # was two tags, two languages and a search that missed. Every string a
+    # write takes -- tags, values, titles, bodies, languages, nicknames -- and
+    # every query parameter a read filters on goes through the same fold.
+    import unicodedata
+    nfc, nfd = "한국어", unicodedata.normalize("NFD", "한국어")
+    assert nfc != nfd, "the test needs two spellings to start from"
+    ko1 = c.post("/api/posts", json={"value": "3", "title": "세", "tags": [nfc]}).json()
+    ko2 = c.post("/api/posts", json={"value": "4", "title": unicodedata.normalize("NFD", "네"),
+                                     "tags": [nfd]}).json()
+    assert ko2["title"] == "네" and unicodedata.is_normalized("NFC", ko2["title"]), ko2["title"]
+    korean = [t for t in c.get("/api/tags").json()
+              if unicodedata.normalize("NFC", t["tag"]) == nfc]
+    assert korean == [{"tag": nfc, "count": 2}], korean
+    assert len(c.get("/api/posts", params={"tag": nfd}).json()) == 2, "a decomposed filter"
+    assert len(c.get("/api/posts", params={"q": unicodedata.normalize("NFD", "네")}).json()) >= 1, \
+        "a decomposed search misses a composed title"
+    def korean_rows():
+        return [l for l in c.get("/api/languages").json()
+                if unicodedata.normalize("NFC", l["lang"]) == nfc]
+    before = sum(l["count"] for l in korean_rows())
+    c.put(f"/api/posts/{ko1['id']}/translations", json={"lang": nfc, "title": "k"})
+    c.put(f"/api/posts/{ko2['id']}/translations", json={"lang": nfd, "title": "k"})
+    assert korean_rows() == [{"lang": nfc, "count": before + 2}], korean_rows()
+    # a value too: /n/ is a query on the column, and two spellings are two pages
+    v = c.post("/api/posts", json={"value": unicodedata.normalize("NFD", "1960년"),
+                                   "title": "x"}).json()
+    assert v["value"] == "1960년" and unicodedata.is_normalized("NFC", v["value"])
+    assert len(c.get("/api/posts", params={"value": unicodedata.normalize("NFD", "1960년"),
+                                           "section": "number"}).json()) == 1
+    # rows written before the rule are folded once, at startup, the way the
+    # lower-case tag rule reached its own past -- and a post carrying the word
+    # both ways keeps one row, since (post_id, tag) is the primary key
+    con = db.connect()
+    with con:
+        con.execute("INSERT INTO post_tags (post_id, tag) VALUES (?, ?)", (ko1["id"], nfd))
+        con.execute("UPDATE posts SET title = ? WHERE id = ?",
+                    (unicodedata.normalize("NFD", "네"), ko2["id"]))
+    con.close()
+    db.init()
+    con = db.connect()
+    assert [r[0] for r in con.execute("SELECT tag FROM post_tags WHERE post_id = ?",
+                                      (ko1["id"],))] == [nfc]
+    assert con.execute("SELECT title FROM posts WHERE id = ?", (ko2["id"],)).fetchone()[0] == "네"
+    con.close()
+
 
 def test_hidden_is_invisible():
     """Hiding an entry takes it off the wiki, not out of one view of it.

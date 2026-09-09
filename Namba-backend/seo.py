@@ -25,6 +25,7 @@ from urllib.parse import quote, unquote
 from fastapi.responses import HTMLResponse
 
 import seo_locale
+from db import nfc
 from numfmt import grouped_value
 from store import LIVE, section_where
 
@@ -165,7 +166,7 @@ def path_seg(request, prefix: str) -> Optional[str]:
     rest = raw.decode("utf-8", "replace").split("?", 1)[0].lstrip("/")
     if not rest.startswith(prefix) or "/" in rest[len(prefix):]:
         return None
-    return unquote(rest[len(prefix):]) or None
+    return nfc(unquote(rest[len(prefix):])) or None
 
 
 def json_ld(data) -> str:

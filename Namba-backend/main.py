@@ -21,9 +21,9 @@ import admin_api
 import db
 import events
 import seo
-from db import get_db, now, writing
+from db import get_db, nfc, now, writing
 from store import (
-    LIVE, fetch_one, guard_public, resolve_format, section_where, shape,
+    LIVE, Text, fetch_one, guard_public, resolve_format, section_where, shape,
     snapshot, ungroup, write_tags, write_translations,
 )
 from numfmt import FORMATS, bucket_of
@@ -311,7 +311,7 @@ def _clean_tags(v):
     return out
 
 
-class PostRules(BaseModel):
+class PostRules(Text):
     """The four checks a create and an edit answer identically.
 
     Only the field *types* differ between the two below -- a create requires a
@@ -400,7 +400,7 @@ class PostPatch(PostRules):
     grouped: Optional[bool] = None
 
 
-class TranslationIn(BaseModel):
+class TranslationIn(Text):
     lang: str = Field(min_length=1, max_length=40)
     title: str = Field(min_length=1, max_length=200)
     body: str = Field(default="", max_length=5000)
@@ -415,7 +415,7 @@ class TranslationIn(BaseModel):
         return v
 
 
-class CommentIn(BaseModel):
+class CommentIn(Text):
     """Something said beside an entry.
 
     No edit and no delete in this first version. With no accounts a Remove
@@ -437,7 +437,7 @@ class CommentIn(BaseModel):
         return v
 
 
-class FlagIn(BaseModel):
+class FlagIn(Text):
     """What a visitor sends instead of pressing a button that removes things.
 
     The shape of a delete request and of a report are the same shape; only the
@@ -487,7 +487,7 @@ def _in_lang(con, lang, ids=None):
     if not lang or ids == []:
         return {}
     sql = "SELECT post_id, title, body FROM translations WHERE lang = ?"
-    args = [lang]
+    args = [nfc(lang)]
     if ids is not None:
         sql += " AND post_id IN (%s)" % ",".join("?" * len(ids))
         args += ids
@@ -556,7 +556,7 @@ def list_numbers(
     args = [BLURB + 1]
     if tag:
         sql.append("JOIN post_tags t ON t.post_id = p.id AND t.tag = ?")
-        args.append(tag.lower())
+        args.append(nfc(tag).lower())
     # A hidden entry gets no vote on how its number is written either: the row
     # is grouped only when every entry filed under it asked for separators, and
     # one taken down for vandalism was still voting against them.
@@ -614,6 +614,8 @@ def list_posts(
     offset: int = Query(default=0, ge=0),
     con=Depends(get_db),
 ):
+    # the filters read the column, so they are folded the way the column is
+    value, tag, q = nfc(value), nfc(tag), nfc(q)
     sql = ["SELECT p.* FROM posts p"]
     args = []
     where = []
@@ -866,7 +868,7 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
     return fetch_one(con, post_id)
 
 
-class RestoreIn(BaseModel):
+class RestoreIn(Text):
     author: str = Field(default="anonymous", max_length=40)
 
 
@@ -1023,7 +1025,7 @@ def delete_translation(
     who=Depends(guard),
     con=Depends(get_db),
 ):
-    editor = nick(author)
+    editor = nick(nfc(author))
     with writing(con):
         # No fetch_one of its own: snapshot() reads through it, so a missing or
         # hidden entry is a 404 from in here.

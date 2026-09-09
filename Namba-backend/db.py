@@ -1,6 +1,7 @@
 """SQLite access. No ORM -- stdlib sqlite3 is enough at this size."""
 import os
 import sqlite3
+import unicodedata
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
@@ -358,6 +359,36 @@ def now():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def nfc(value):
+    """Text as this database stores it: Unicode normal form C.
+
+    A property of the TEXT columns, like `now()` is of the date ones. Some
+    apps on macOS hand over Korean as decomposed jamo, and every file name
+    does; composed and decomposed are different strings to SQLite, so without
+    one form "한국어" is two tags, two languages and a search that misses.
+    Every string a write takes goes through this (`store.Text`), and so does
+    every parameter a read filters on. A list is folded element by element;
+    anything that is not text comes back as it was.
+    """
+    if isinstance(value, str):
+        return unicodedata.normalize("NFC", value)
+    if isinstance(value, list):
+        return [nfc(v) for v in value]
+    return value
+
+
+# Every column a stranger's text lands in, for the one-time fold in init().
+# Snapshots are left alone: `revisions.snapshot` is JSON and a restore writes
+# it back through `store`, which folds on the way.
+TEXT_COLUMNS = (
+    ("posts", "id", ("value", "title", "body", "author", "edited_by", "lang")),
+    ("translations", "id", ("lang", "title", "body", "author", "edited_by")),
+    ("comments", "id", ("author", "body")),
+    ("delete_requests", "id", ("detail", "requested_by")),
+    ("reports", "id", ("detail",)),
+)
+
+
 # The one character LIKE patterns are escaped with. Backslash is the usual
 # pick and would have to be doubled in every Python string and every SQL
 # literal here; "!" is neither special to LIKE nor to either language, so both
@@ -427,6 +458,29 @@ def init():
                  WHERE o.post_id = post_tags.post_id AND o.tag = lower(post_tags.tag))"""
         )
         con.execute("UPDATE post_tags SET tag = lower(tag) WHERE tag <> lower(tag)")
+
+        # Text is stored in one normal form (see nfc()); rows written before
+        # the rule are folded here, once. Idempotent for the same reason the
+        # pass above is: after the first run nothing differs. SQLite has no
+        # normalize(), so the rows are read and the ones that change written
+        # back -- a few thousand rows is milliseconds. Tags first and by hand,
+        # because (post_id, tag) is the primary key and a post holding the
+        # word both ways cannot have one renamed onto the other.
+        for post_id, tag in con.execute("SELECT post_id, tag FROM post_tags").fetchall():
+            if nfc(tag) != tag:
+                con.execute("DELETE FROM post_tags WHERE post_id = ? AND tag = ?",
+                            (post_id, tag))
+                con.execute("INSERT OR IGNORE INTO post_tags (post_id, tag) VALUES (?, ?)",
+                            (post_id, nfc(tag)))
+        for table, key, cols in TEXT_COLUMNS:
+            rows = con.execute(
+                f"SELECT {key}, {', '.join(cols)} FROM {table}").fetchall()
+            for row in rows:
+                folded = [nfc(row[c]) for c in cols]
+                if folded != [row[c] for c in cols]:
+                    con.execute(
+                        f"UPDATE {table} SET {', '.join(c + ' = ?' for c in cols)} "
+                        f"WHERE {key} = ?", (*folded, row[key]))
 
         # 0 on every existing row: nothing gets separators it did not ask for
         if "grouped" not in have:

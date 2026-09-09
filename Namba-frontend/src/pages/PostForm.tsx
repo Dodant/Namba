@@ -47,7 +47,7 @@ const groupable = (f: string) => f !== 'MIXED' && f !== 'TIME' && f !== 'ABBR'
    turns the existing book chip on instead of looking like a second one. The
    API is still the one that decides -- this only keeps the form honest. */
 function toggleTag(tags: Tag[], raw: Tag, keep = false) {
-  const t = raw.trim().replace(/\s+/g, ' ').toLowerCase()
+  const t = raw.normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase()
   if (!t) return tags
   if (tags.includes(t)) return keep ? tags : tags.filter((x) => x !== t)
   return tags.length >= TAGS_PER_POST ? tags : [...tags, t]

@@ -8,7 +8,7 @@ FastAPI over stdlib `sqlite3`. Fourteen Python files, including the test suite:
 | `seo.py` | the `<head>` written for a crawler, and the locale it is written in |
 | `admin_api.py` | the back office's routes, under `/api/admin` |
 | `store.py` | reading and writing one entry — the pieces both APIs need |
-| `db.py` | schema, `connect()`, `get_db()`, `now()` |
+| `db.py` | schema, `connect()`, `get_db()`, `now()`, `nfc()` |
 | `events.py` | who a request is from, as hashes, and the log of what they did |
 | `auth.py` | operator passwords, sessions and the `require_admin` dependency |
 | `numfmt.py` | value parsing |
@@ -550,6 +550,18 @@ there. The operator's half has a login, and the notes above are the whole of it.
   content type binding is the `nosniff` header the `_nosniff` middleware puts
   on every response. Content sniffing was the whole attack; a magic-number
   check would be the larger, later answer.
+- **Text is stored in one Unicode normal form, and `db.nfc()` is the fold.**
+  Every request model on both APIs inherits `store.Text`, whose one validator
+  runs it over every string and list of strings before anything else looks;
+  every parameter a read filters on (`value`, `tag`, `q`, `lang`, a path
+  segment in `seo.path_seg`) goes through the same function, and
+  `write_tags` folds too so a restore cannot write an old spelling back.
+  `db.init()` folds rows written before the rule, once, the way the
+  lower-case tag pass does. Composed and decomposed Korean are two strings
+  to SQLite, and without this "한국어" was two tags, two languages and a
+  search that missed -- some macOS apps and every file name hand over the
+  decomposed form. `test_api_round_trip` holds the write, the read filters
+  and the startup fold.
 - Pydantic length caps on every field. Tags are checked for shape, not
   membership — there is no `TAGS` list any more. `_clean_tags()` folds case and
   whitespace, refuses a blank and a slash, and holds `TAG_MAX` (24) and
