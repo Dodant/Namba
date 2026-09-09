@@ -162,6 +162,13 @@ export default function PostForm() {
     nickname.set(author)
     const payload = {
       value,
+      /* Two people can have this form open, filled from the entry as it was
+         when each of them opened it -- and it sends every field on every save,
+         so without this the second to press Publish writes their copy of the
+         fields they never touched over the other's edit, silently. `post` is
+         the entry as loaded and every panel action below replaces it, so this
+         moves whenever the server says the entry did. */
+      ...(editing && post ? { base_updated_at: post.updated_at } : {}),
       ...(!editing ? { number_locale: locale } : {}),
       format: format || null,
       title,

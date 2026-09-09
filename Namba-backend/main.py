@@ -287,6 +287,13 @@ class PostIn(PostRules):
 
 
 class PostPatch(PostRules):
+    # The entry as the sender last saw it -- MediaWiki calls this
+    # `basetimestamp`. Optional, and that is the promise rather than the
+    # omission: a write without one behaves as it always did, because this is an
+    # open API with no key and forcing a read-then-write on `curl` would charge
+    # everyone for a problem the edit form has. The form does have it, though,
+    # and always sends this.
+    base_updated_at: Optional[str] = Field(default=None, max_length=40)
     value: Optional[str] = Field(default=None, min_length=1, max_length=32)
     number_locale: Optional[str] = Field(default=None, max_length=16)
     format: Optional[str] = None
@@ -678,21 +685,32 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
 
 @app.patch("/api/posts/{post_id}")
 def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db)):
-    current = fetch_one(con, post_id)
     # Which fields the caller actually sent. For image, null is a value -- it
     # is how the form removes one -- and defaulting it to None made "unchanged"
     # and "clear this" the same request, so Remove quietly did nothing.
     sent = p.model_dump(exclude_unset=True)
-    # Input grammar, not entry content: it must not appear as a changed field
-    # in the audit log or a revision diff.
+    # Input grammar and the sender's idea of what they are editing, neither of
+    # which is entry content: they must not appear as changed fields in the
+    # audit log or a revision diff.
     sent.pop("number_locale", None)
-    # the same rule from the other side -- "Written in" is a menu of every
-    # language, and one of them may already be a tab on this entry
-    if "lang" in sent and says_it_twice(p.lang, [t["lang"] for t in current["translations"]]):
-        raise HTTPException(422, "the entry already has a version in that language")
+    sent.pop("base_updated_at", None)
     editor = nick(p.author)
     with con:
         rev = snapshot(con, post_id, editor)
+        # Read here and not before the block. That INSERT is what takes SQLite's
+        # write lock, so from this line to the commit no other writer can get
+        # in and what this row says stays true. Read outside, it is a row from
+        # before the lock -- and every column the UPDATE fills in from it is a
+        # column an edit that arrived in between wrote, being handed back its
+        # old value.
+        current = fetch_one(con, post_id)
+        # the same rule from the other side -- "Written in" is a menu of every
+        # language, and one of them may already be a tab on this entry. Also in
+        # here now, so the tab it checks for cannot appear between the check and
+        # the write.
+        if "lang" in sent and says_it_twice(
+                p.lang, [t["lang"] for t in current["translations"]]):
+            raise HTTPException(422, "the entry already has a version in that language")
         # the box has to be settled before the value is, since it decides
         # whether separators in what was typed are stripped or kept
         grouped = p.grouped if "grouped" in sent else bool(current["grouped"])
@@ -707,10 +725,17 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
             fmt, key = current["format"], current["sort_key"]
         # author is the first writer and stays put -- on an open wiki, an edit
         # by a stranger must not erase who the entry came from.
-        con.execute(
+        # The conflict check is the last clause and nothing else: one statement,
+        # so there is no read for another writer to slip past. A NULL base skips
+        # it. rowcount is then 0 in exactly one case -- the entry moved on since
+        # the sender read it -- because a row that is missing or hidden already
+        # raised out of fetch_one above, and SQLite counts a row it matched even
+        # when every value it wrote was the same.
+        done = con.execute(
             """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
                                 image=?, lang=?, grouped=?, edited_by=?,
-                                updated_at=? WHERE id=?""",
+                                updated_at=? WHERE id=?
+                            AND (? IS NULL OR updated_at = ?)""",
             (
                 value, fmt, key,
                 p.title.strip() if p.title is not None else current["title"],
@@ -720,8 +745,15 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
                 int(grouped),
                 editor,
                 now(), post_id,
+                p.base_updated_at, p.base_updated_at,
             ),
         )
+        if not done.rowcount:
+            # Inside the block, which is what rolls the snapshot back: a refused
+            # edit must not leave a revision saying somebody replaced the entry.
+            raise HTTPException(
+                409, "somebody else edited this entry since you opened it -- "
+                     "reload the page and apply your change again")
         if p.tags is not None:
             write_tags(con, post_id, p.tags)
         # which fields were sent, not which actually changed: the diff between

@@ -114,6 +114,26 @@ hand-copied vocabulary and a branch beside every existing one.
   it is that the click does not exist. `admin.py hide` is what moderation
   means here, and `admin.py purge` is the one hard delete, in the shell,
   for the removal a law requires. Do not add a delete route back.
+
+  **The other way content disappeared was a save, and `base_updated_at` is
+  what closed it.** The edit form fills itself from the entry and sends every
+  field back, so a save is a read-modify-write with a person-sized gap in the
+  middle: two people who open `/p/42/edit` a minute apart both hold a complete
+  copy, and the second to press Publish used to write their copy of the fields
+  they never touched over the first one's edit, with no error anywhere. None of
+  the defences above reach that, because the loss is a *write*.
+  `PATCH /api/posts/{id}` now takes the entry's `updated_at` as the sender last
+  saw it and answers 409 if it has moved, which is what MediaWiki calls
+  `basetimestamp`. The refusal is raised inside the transaction that took the
+  snapshot, so a rejected save leaves no revision claiming somebody replaced
+  the entry. `test_two_editors_do_not_undo_each_other` is the whole story.
+
+  It is **optional**, and that is the promise rather than an omission: a write
+  with no base behaves as it always did. This is an open API with no key, and
+  requiring a read before a write would charge every `curl` for a problem the
+  form has. Whole seconds, like every date here, so two saves inside one second
+  still race — what this catches is the gap that loses work, not the one that
+  needs a thread scheduler.
 - **`author` is the first writer and is never overwritten.** An edit records the
   editor in `edited_by` instead. Without this, a stranger correcting a typo takes
   over the byline, which on an open wiki is most edits. `test_api_round_trip`

@@ -178,6 +178,13 @@ export type Comment = {
 }
 
 export type PostInput = {
+  /** The entry as this client last saw it, sent on an edit so the API can
+      refuse a save built on a copy somebody has since changed. Only the edit
+      form has it, and only the edit form needs it: the API accepts a write
+      without one, because it has no key and a `curl` should not have to read
+      before it writes. `updated_at` off the entry, which is what the form
+      already holds in `post`. */
+  base_updated_at?: string
   value: string
   /** How a value typed in the public form spells its decimal and grouping
       separators. The API stores one locale-neutral value either way. */

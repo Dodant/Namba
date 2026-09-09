@@ -183,6 +183,97 @@ def test_the_two_apps_still_agree():
     assert bucket_of(None, "ABBR", ".NET") == "N", "a band comes off the first letter"
 
 
+def test_two_editors_do_not_undo_each_other():
+    """A save from a copy that has since been edited is refused, not applied.
+
+    This is the one way content disappears from a wiki whose whole premise is
+    that nothing does. There is no delete route, `author` is never overwritten
+    and every edit snapshots -- and none of that helps here, because the loss
+    is a *write*: the edit form fills itself from the entry and then sends every
+    field back, so a save is a read-modify-write with a person-sized gap in the
+    middle. Two people who open the form a minute apart both hold a complete
+    copy, and the second to save writes their copy of the fields they never
+    touched over the first one's edit. Nothing errors. The wiki just quietly
+    says what the loser of a race said.
+
+    `base_updated_at` is the entry as the sender last saw it, which is what
+    MediaWiki calls `basetimestamp`. Whole seconds, like every date in this
+    database, so two saves inside one second still race -- what this catches is
+    the gap that loses work rather than the gap that needs a thread scheduler.
+
+    Optional, and that is the promise being kept rather than an omission: a
+    write with no base behaves as it always did. This is an open API with no
+    key, and forcing a two-step on `curl` would be charging everyone for a
+    problem the form has.
+    """
+    c = TestClient(main.app)
+    made = c.post("/api/posts", json={
+        "value": "108", "title": "Beads on a mala", "author": "ananda",
+        "body": "one for each bead", "tags": ["myth"],
+    }).json()
+    pid = made["id"]
+
+    # Backdated so the two saves below cannot land in the same second, which is
+    # the resolution of every date here and therefore of this check.
+    opened_at = "2026-01-01T00:00:00+00:00"
+    con = db.connect()
+    with con:
+        con.execute("UPDATE posts SET updated_at = ? WHERE id = ?", (opened_at, pid))
+    con.close()
+
+    # two people open /p/{id}/edit and both hold this
+    opened = c.get(f"/api/posts/{pid}").json()
+    assert opened["updated_at"] == opened_at
+    form = {k: opened[k] for k in
+            ("value", "format", "title", "body", "image", "lang", "grouped")}
+
+    # the first one fixes the title
+    first = c.patch(f"/api/posts/{pid}", json={
+        **form, "title": "Beads on a japamala", "author": "sariputta",
+        "base_updated_at": opened_at,
+    })
+    assert first.status_code == 200, first.text
+    assert first.json()["title"] == "Beads on a japamala"
+
+    revisions = len(c.get(f"/api/posts/{pid}/revisions").json())
+    events_before = len(_events())
+
+    # the second saves their own copy, minutes later, having only touched the
+    # body -- but sending the title they read before the fix
+    late = c.patch(f"/api/posts/{pid}", json={
+        **form, "body": "one bead for each name", "author": "upali",
+        "base_updated_at": opened_at,
+    })
+    assert late.status_code == 409, late.text
+
+    now = c.get(f"/api/posts/{pid}").json()
+    assert now["title"] == "Beads on a japamala", "the first edit was written back"
+    assert now["body"] == "one for each bead", "the refused edit was applied anyway"
+    assert now["edited_by"] == "sariputta"
+    # a refused write leaves nothing: no snapshot of a state that never was, and
+    # nothing in the log. The refusal happens inside the transaction that took
+    # the snapshot, which is what rolls it back.
+    assert len(c.get(f"/api/posts/{pid}/revisions").json()) == revisions
+    assert len(_events()) == events_before
+    assert c.get(f"/api/posts/{pid}").json()["tags"] == ["myth"], \
+        "the refused write still rewrote the tags"
+
+    # ...and the same save goes through once it is sent from what stands now
+    fresh = c.get(f"/api/posts/{pid}").json()
+    ok = c.patch(f"/api/posts/{pid}", json={
+        **form, "title": fresh["title"], "body": "one bead for each name",
+        "author": "upali", "base_updated_at": fresh["updated_at"],
+    })
+    assert ok.status_code == 200, ok.text
+    assert ok.json() == {**ok.json(), "title": "Beads on a japamala",
+                         "body": "one bead for each name"}
+
+    # no base, no check -- an API client that never read the entry still writes
+    blind = c.patch(f"/api/posts/{pid}", json={"body": "108 beads", "author": "kassapa"})
+    assert blind.status_code == 200, blind.text
+    assert blind.json()["body"] == "108 beads"
+
+
 def test_recent_sort():
     """The feed is last touched, not first written -- an edit to an old entry
     has to come back to the top, or most of what happens on a wiki never shows.
