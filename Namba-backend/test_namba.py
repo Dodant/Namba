@@ -3005,6 +3005,37 @@ def test_backup_is_a_consistent_copy():
     assert not os.path.exists(made), "the oldest copy was kept past --keep"
 
 
+def test_upload_does_not_hold_the_event_loop():
+    """`upload` is a plain `def`, so Starlette runs it in the threadpool.
+
+    It is the heaviest route here and every part of it is blocking: it stats
+    every file in the uploads directory, writes up to 5 MB, and opens a
+    transaction. In an `async def` all three run *on* the event loop, and
+    every other request waits behind them -- which on this wiki is every page
+    load, since /p/42 reads the database for its own <head>.
+
+    Asserted on the function rather than by timing two requests: TestClient
+    funnels everything through one portal thread, so the timing test that
+    would show it cannot be written here.
+    """
+    import inspect
+
+    assert not inspect.iscoroutinefunction(main.upload), \
+        "upload runs its blocking I/O on the event loop"
+    # and it still works, which is the half the assertion above cannot see
+    c = TestClient(main.app)
+    r = c.post("/api/upload", files={"file": ("x.png", b"\x89PNG" * 20, "image/png")})
+    assert r.status_code == 200, r.text
+    name = r.json()["url"]
+    assert name.startswith("/uploads/") and name.endswith(".png"), name
+    assert os.path.getsize(os.path.join(main.UPLOAD_DIR, os.path.basename(name))) == 80
+    # the cap still bites, which is the read that has to happen before the write
+    big = c.post("/api/upload", files={"file": ("b.png", b"x" * (main.MAX_UPLOAD + 1),
+                                                "image/png")})
+    assert big.status_code == 413, big.status_code
+
+
+
 def test_connection_crosses_threads():
     """FastAPI opens the connection on one threadpool thread and runs the
     endpoint on another. TestClient funnels everything through a single portal

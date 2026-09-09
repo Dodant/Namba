@@ -1208,12 +1208,21 @@ def remove_link(post_id: int, other_id: int, who=Depends(guard), con=Depends(get
 
 
 @app.post("/api/upload")
-async def upload(file: UploadFile = File(...), who=Depends(guard),
-                 con=Depends(get_db)):
+def upload(file: UploadFile = File(...), who=Depends(guard), con=Depends(get_db)):
+    """A picture, before the entry that will show it.
+
+    A plain `def`, so Starlette runs it in the threadpool. Every part of this
+    is blocking -- the directory is stat'd, up to 5 MB is written, a
+    transaction is opened -- and in an `async def` all three would run *on*
+    the event loop with every other request waiting behind them. On this wiki
+    that is every page load, since /p/42 reads the database for its own
+    <head>. `file.file` is the underlying blocking handle, which is what a
+    sync route reads from.
+    """
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in ALLOWED_EXT:
         raise HTTPException(400, f"allowed types: {', '.join(sorted(ALLOWED_EXT))}")
-    data = await file.read(MAX_UPLOAD + 1)
+    data = file.file.read(MAX_UPLOAD + 1)
     if len(data) > MAX_UPLOAD:
         raise HTTPException(413, "max 5 MB")
     # 507, not 413: the file is fine, the wiki is full. Say so, or the poster
