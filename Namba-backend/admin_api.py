@@ -560,35 +560,30 @@ def all_revisions(post_id: int, _=Depends(auth.require_admin), con=Depends(db.ge
     because a snapshot is the whole entry and the edit form opens with the list;
     here it is the page and an entry fought over is exactly the one to look at.
 
-    The snapshots do not come with it. They are read to pull the title out as a
-    label and then dropped: fifty whole entries is megabytes, and the diff route
-    below fetches the two that are actually being looked at. `number`
-    is the position in this list, not a column -- it only means anything in the
-    order it is read in.
+    The snapshots do not come with it, and are not read either: SQLite pulls
+    the two label fields out of the stored JSON, so a fought-over entry's
+    history is a list of labels rather than a megabyte of whole entries parsed
+    to draw them. The diff route below fetches the two actually being looked
+    at. `number` is the position in this list, not a column -- it only means
+    anything in the order it is read in.
 
     The event beside each one is what turns "someone" into an action and a
     client hash. LEFT, because revisions written before `events` existed have
     no row, and they are the oldest history there is.
     """
     rows = con.execute(
-        """SELECT r.id, r.author, r.at, r.snapshot, e.action, e.ip_hash,
-                  e.client_hash, e.admin_id, a.email AS by
+        """SELECT r.id, r.author, r.at, e.action, e.ip_hash,
+                  e.client_hash, e.admin_id, a.email AS by,
+                  json_extract(r.snapshot, '$.title') AS title,
+                  json_extract(r.snapshot, '$.value') AS value
            FROM revisions r
            LEFT JOIN events e ON e.revision_id = r.id
            LEFT JOIN admins a ON a.id = e.admin_id
            WHERE r.post_id = ? ORDER BY r.id DESC""",
         (post_id,),
     ).fetchall()
-    out = []
-    for i, r in enumerate(rows):
-        snap = json.loads(r["snapshot"])
-        out.append({
-            "id": r["id"], "number": len(rows) - i, "author": r["author"],
-            "at": r["at"], "action": r["action"] or "EDIT", "ip_hash": r["ip_hash"],
-            "client_hash": r["client_hash"], "admin_id": r["admin_id"], "by": r["by"],
-            "title": snap.get("title"), "value": snap.get("value"),
-        })
-    return out
+    return [dict(r, number=len(rows) - i, action=r["action"] or "EDIT")
+            for i, r in enumerate(rows)]
 
 
 # `edited_by` is deliberately not here: every edit changes it, so it appeared in

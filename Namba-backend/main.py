@@ -715,20 +715,19 @@ def list_revisions(post_id: int, con=Depends(get_db)):
     1000 renders as 1000 in a history whose entry shows 1,000.
     """
     guard_public(con, post_id)
+    # The three fields, asked for by name. SQLite reads them out of the stored
+    # JSON, so an entry fought over five hundred times is not five hundred
+    # whole entries parsed in Python to draw fifty labels. A key a snapshot
+    # does not carry comes back NULL, which is what `.get()` answered.
     rows = con.execute(
-        """SELECT id, author, at, snapshot FROM revisions WHERE post_id = ?
-           ORDER BY id DESC LIMIT ?""",
+        """SELECT id, author, at,
+                  json_extract(snapshot, '$.title')   AS title,
+                  json_extract(snapshot, '$.value')   AS value,
+                  json_extract(snapshot, '$.grouped') AS grouped
+           FROM revisions WHERE post_id = ? ORDER BY id DESC LIMIT ?""",
         (post_id, REVISIONS_SHOWN),
     ).fetchall()
-    out = []
-    for r in rows:
-        snap = json.loads(r["snapshot"])
-        out.append({
-            "id": r["id"], "author": r["author"], "at": r["at"],
-            "title": snap.get("title"), "value": snap.get("value"),
-            "grouped": bool(snap.get("grouped")),
-        })
-    return out
+    return [dict(r, grouped=bool(r["grouped"])) for r in rows]
 
 
 @app.get("/api/posts/{post_id}/comments")

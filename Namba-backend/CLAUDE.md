@@ -273,11 +273,13 @@ the sitemap.
   and the entry worth opening is the fought-over one with the most revisions to
   join. It is a plain `CREATE INDEX IF NOT EXISTS` inside `SCHEMA`, so unlike a
   new *column* it reaches existing databases with no `ALTER` pass.
-- **The admin revisions list does not ship snapshots.** It reads them to pull a
-  title out as a label and drops them: fifty whole entries is megabytes, and
-  `/diff` fetches the two actually being looked at. `number` is the
-  position in that list rather than a column — it only means anything in the
-  order it is read in.
+- **Neither revisions list ships snapshots, and neither reads one.** Both ask
+  SQLite for the label fields with `json_extract`, so a fought-over entry's
+  history costs a few hundred bytes a row rather than a whole entry parsed in
+  Python to draw a title. `/diff` fetches the two versions actually being
+  looked at. `number` is the position in the admin list rather than a column —
+  it only means anything in the order it is read in. A key a snapshot does not
+  carry comes back `NULL`, which is what `snap.get()` answered.
 - **The diff answers fields and body separately.** A changed sort key inside a
   unified text diff is unreadable, and "the number was quietly changed" — the
   thing an operator is usually hunting — is a field, not a line. `difflib`
