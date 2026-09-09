@@ -1,7 +1,7 @@
 /* oxlint-disable react/only-export-components -- the provider and its hook share
    one private context; splitting them would export that implementation detail. */
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { fmtCount } from './api'
+import { fmtCount } from './format'
 
 /** Every interface locale, in the order the footer's picker offers them, each
     under the name it calls itself.

@@ -3,7 +3,22 @@
 React 19 + Vite + TypeScript. **Two documents**: the wiki (`index.html` →
 `src/`) and the back office (`admin.html` → `src/admin/`). The wiki is
 `src/api.ts` plus five pages and two components; the back office is its own
-shell, its own stylesheet and a page per thing an operator does. Dev server
+shell, its own stylesheet and a page per thing an operator does.
+
+Three files at the root of `src/` are not components, and they split three ways
+worth knowing. **`api.ts` is the wire**: the vocabularies the backend mirrors,
+the shapes it answers with, the client that talks to it, and the browser-local
+state that stands in for accounts. **`format.ts` is the other direction**: how
+a stored string reads on screen and how a typed one comes back — a number's
+punctuation, a numeral's size class, a date's distance from now, a markdown
+body read as prose. It imports nothing, which is the sign the seam was real.
+**`uiLocale.tsx` is the words**, and the provider that picks a language.
+
+`FORMATS`, `TAG_MAX`, `TAGS_PER_POST` and the seven moderation vocabularies
+stay in `api.ts` whatever else moves: they are the hand-synced table in the
+root `CLAUDE.md`, and `test_the_two_apps_still_agree` opens that file by name.
+
+Dev server
 proxies `/api`, `/uploads`, `/docs` and `/openapi.json` to `127.0.0.1:8000`
 (`vite.config.ts`) — no CORS config needed locally.
 
@@ -29,7 +44,8 @@ one document loading both would be neither.
 `req`, `qs`, `json` and `errorText` are shared from `src/api.ts`, so one place
 knows how FastAPI reports an error and one place decides what a thrown thing
 reads as. The panel also imports moderation vocabularies,
-reason labels and `tagLabel` there, plus `fmtDate` and `showValue`, because
+reason labels and `tagLabel` there, and `fmtDate` and `showValue` from
+`src/format.ts`, because
 "2 days ago" and `1,234` should read the same on both sides of the product. `src/admin/api.ts` adds the operator's shapes and
 nothing else.
 
@@ -255,7 +271,7 @@ sanitiser config to get wrong.
   the value right-aligned in a fixed 104px column so the numerals line up down
   the page. It reads like the source `Memorable Numbers.md` on purpose. Values
   longer than 7 characters get `.long` and shrink rather than widening the
-  column for every "7" — the class comes from `numSize()` in `api.ts`, shared
+  column for every "7" — the class comes from `numSize()` in `format.ts`, shared
   with the feed rows, the cards and both heroes, because one font size either
   shouts at "7" or breaks on "1960년 4월 16일 오후 3시" and a viewport clamp
   cannot tell those apart. The Integer tab bands by magnitude and the
@@ -412,8 +428,9 @@ sanitiser config to get wrong.
   with it: a fragment load would animate down the page, and the `scrollY`
   guard in there — the one that stands down once the reader starts scrolling —
   would be reading a position mid-flight.
-- `PostCard.tsx` must export only components (fast refresh). Shared helpers like
-  `fmtDate` and `entryPath` live in `api.ts`; a helper that needs the locale's
+- `PostCard.tsx` must export only components (fast refresh). `entryPath` lives
+  in `api.ts` beside the vocabulary it reads, `fmtDate` in `format.ts`; a
+  helper that needs the locale's
   words takes `Messages` and lives in `uiLocale.tsx`, which is where
   `revisionBy` is — `PostForm` and `PostPage` had a copy each of the rule that
   a revision authored by "deleted" says so rather than "edited by deleted".
@@ -1103,7 +1120,8 @@ That is also where the `<head>` comes from — all of it, for every route.
 Setting it from React is not an option and never was: a crawler does not run the
 JS that would do it, so the head has to arrive already written. **Nothing in this
 app should try** to create those metadata tags in React. `canonicalNumber`
-in `src/` normalizes numeric values; it has no relation to canonical URL tags.
+in `src/format.ts` normalizes numeric values; it has no relation to canonical
+URL tags.
 
 `Namba-backend/seo.py`'s `index_html()` writes a title, description,
 canonical, `og:`/`twitter:`

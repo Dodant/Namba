@@ -383,7 +383,7 @@ the sitemap.
   inside an attribute — and everything in the JSON-LD has its `<` escaped,
   because `</script>` inside a JSON string ends the block for the HTML parser
   whatever the JSON makes of it. `og_summary()` is a simpler cousin of
-  `plain()` in the front end's `api.ts`; they are deliberately not kept in
+  `plain()` in the front end's `format.ts`; they are deliberately not kept in
   step, since one feeds a preview row and the other a meta tag and nobody sees
   both at once.
 

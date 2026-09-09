@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { errorText, showValue } from '../../api'
+import { errorText } from '../../api'
+import { showValue } from '../../format'
 import { adm, type Event, type Stats } from '../api'
 import { LogTable } from '../log'
 import { Empty } from '../ui'

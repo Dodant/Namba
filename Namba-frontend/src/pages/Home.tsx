@@ -1,10 +1,10 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  ABBR_BUCKETS, api, BUCKETS, entryPath, fmtCount, fmtDate, FORMATS,
-  isAbbr, numSize, plain, showValue, tagLabel, tagPath,
+  ABBR_BUCKETS, api, BUCKETS, entryPath, FORMATS, isAbbr, tagLabel, tagPath,
   type Format, type NumberEntry, type Post,
 } from '../api'
+import { fmtCount, fmtDate, numSize, plain, showValue } from '../format'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
 import { useUi, type Messages } from '../uiLocale'

@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  api, entryPath, fmtCount, fmtDate, liked, numSize, plain, showValue, tagLabel, tagPath,
-  type Post,
-} from '../api'
+import { api, entryPath, liked, tagLabel, tagPath, type Post } from '../api'
+import { fmtCount, fmtDate, numSize, plain, showValue } from '../format'
 import { useUi } from '../uiLocale'
 
 /* Takes the two fields it uses rather than a whole Post, so the number index

@@ -4,9 +4,9 @@ import { Link, useParams } from 'react-router-dom'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import {
-  api, entryPath, errorText, fmtCount, fmtDate, nickname, numSize, plain, showValue,
-  tagLabel, tagPath, type Comment, type Revision,
+  api, entryPath, errorText, nickname, tagLabel, tagPath, type Comment, type Revision,
 } from '../api'
+import { fmtCount, fmtDate, numSize, plain, showValue } from '../format'
 import FlagPanel from '../components/FlagPanel'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'

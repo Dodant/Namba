@@ -1,5 +1,6 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { api, canonicalNumber, numSize, showValue, tagLabel } from '../api'
+import { api, tagLabel } from '../api'
+import { canonicalNumber, numSize, showValue } from '../format'
 import PostCard from '../components/PostCard'
 import { useAsync } from '../useAsync'
 import { useUi } from '../uiLocale'

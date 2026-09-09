@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import {
-  errorText, FORMATS, fmtDate, showValue, tagLabel, type Format, type PostStatus,
-} from '../../api'
+import { errorText, FORMATS, tagLabel, type Format, type PostStatus } from '../../api'
+import { fmtDate, showValue } from '../../format'
 import { ACTION_LABEL, adm, type Diff, type FullPost, type Rev } from '../api'
 import { useAction } from '../state'
 import { Badge, Confirm, Empty, Hash, NoteField, Table, When } from '../ui'

@@ -1,10 +1,12 @@
 import { useEffect, useId, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
-  api, canGroupValue, canonicalNumber, cleanNumberInput, errorText, fmtDate, FORMATS,
-  LANG_CODE, langLabel, nickname, showValue, TAG_MAX, tagLabel, TAGS_PER_POST,
-  type Format, type Post, type Revision, type Tag, type Translation,
+  api, errorText, FORMATS, LANG_CODE, langLabel, nickname, TAG_MAX, tagLabel,
+  TAGS_PER_POST, type Format, type Post, type Revision, type Tag, type Translation,
 } from '../api'
+import {
+  canGroupValue, canonicalNumber, cleanNumberInput, fmtDate, showValue,
+} from '../format'
 import { useAsync } from '../useAsync'
 import { revisionBy, useUi } from '../uiLocale'
 

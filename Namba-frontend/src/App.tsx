@@ -3,7 +3,8 @@ import {
   BrowserRouter, Link, Route, Routes, useLocation, useNavigate, useNavigationType,
   useSearchParams,
 } from 'react-router-dom'
-import { api, canonicalNumber, contentLanguage, showValue } from './api'
+import { api, contentLanguage } from './api'
+import { canonicalNumber, showValue } from './format'
 import Home from './pages/Home'
 import Browse from './pages/Browse'
 import PostPage from './pages/PostPage'

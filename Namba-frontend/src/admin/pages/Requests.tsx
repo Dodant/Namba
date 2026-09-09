@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { errorText, REASON_LABEL, REQUEST_STATUSES, showValue } from '../../api'
+import { errorText, REASON_LABEL, REQUEST_STATUSES } from '../../api'
+import { showValue } from '../../format'
 import { adm, type Page, type QueuedRequest } from '../api'
 import { useAction, useUrlFilters } from '../state'
 import { Badge, Confirm, Empty, Hash, NoteField, Pager, Table, When } from '../ui'

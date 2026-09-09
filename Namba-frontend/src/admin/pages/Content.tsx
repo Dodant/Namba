@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { errorText, POST_STATUSES, showValue } from '../../api'
+import { errorText, POST_STATUSES } from '../../api'
+import { showValue } from '../../format'
 import { adm, type Page, type Row } from '../api'
 import { useUrlFilters } from '../state'
 import { Badge, Empty, Pager, Table, When } from '../ui'

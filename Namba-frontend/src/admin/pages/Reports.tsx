@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { errorText, REASON_LABEL, REPORT_STATUSES, showValue } from '../../api'
+import { errorText, REASON_LABEL, REPORT_STATUSES } from '../../api'
+import { showValue } from '../../format'
 import { adm, type Page, type Report, type ReportGroup } from '../api'
 import { useAction, useUrlFilters } from '../state'
 import {

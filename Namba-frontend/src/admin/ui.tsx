@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
-import { fmtDate } from '../api'
+import { fmtDate } from '../format'
 
 /** The parts every page in the panel is made of. Small on purpose: a table, a
     badge, a hash, a timestamp and an empty state, which between them are most

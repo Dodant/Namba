@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { errorText, fmtDate } from '../../api'
+import { errorText } from '../../api'
+import { fmtDate } from '../../format'
 import { adm, type Block, type Page } from '../api'
 import { useAction } from '../state'
 import { Confirm, Empty, Hash, Pager, Table, When } from '../ui'
