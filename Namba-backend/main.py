@@ -74,8 +74,13 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 db.init()
 
 app = FastAPI(title="Namba")
+# Readable from any origin, writable from this one. A JSON write from another
+# site preflights, and this answers a preflight for anything but a read with a
+# 400 -- the first of the two layers `guard` describes. Credentials stay off:
+# the admin cookie is SameSite=Strict, and the two together would undo both.
 app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
+    CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "HEAD", "OPTIONS"],
+    allow_headers=["*"],
 )
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
@@ -213,11 +218,24 @@ def guard(request: Request, con=Depends(get_db)):
     what happened has them without asking twice -- which is why the writes below
     take it as `who=` rather than throwing it away in `_=`.
 
-    Counting is keyed on the *hash* now rather than the address. Same behaviour,
-    and the raw IP stops sitting in a process dict for the lifetime of the
-    worker. Reads go through nothing: there is nothing to record about a page
-    view, and reading this wiki is meant to cost nothing at all.
+    Counting is keyed on the hash rather than the address, so no raw IP sits
+    in a process dict. Reads go through nothing: there is nothing to record
+    about a page view, and reading this wiki is meant to cost nothing at all.
+
+    A write from another site is refused first. Every count below is per
+    address and assumes an attacker has few of them; a page elsewhere that
+    writes here through its visitors' browsers has all of theirs, and a block
+    aimed at it lands on the visitors. CORS closes the preflighted path (a JSON
+    body). This closes the other one -- a body with no content type or a
+    multipart form never preflights -- by reading `Sec-Fetch-Site`, which
+    every current browser attaches and no other client does. curl sends
+    nothing and is still welcome, which is what "open, no key" means.
+    `same-site` passes: chiral.kr and namba.chiral.kr are one site.
     """
+    if request.headers.get("sec-fetch-site") == "cross-site":
+        raise HTTPException(
+            403, "This API is written to from its own pages, not from another "
+                 "site's. Reading is open to everyone.")
     who = events.client_of(request)
     # The harder no goes first. One query per write, which at twenty a minute is
     # noise; a cached set with a TTL is the next step and is not needed yet.

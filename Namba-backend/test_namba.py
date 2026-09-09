@@ -1430,19 +1430,77 @@ def test_admin_accounts():
     assert not cors.kwargs.get("allow_credentials"), \
         "allow_credentials would hand the admin session to any origin"
 
-    # ...and it really is the only layer under SameSite. The docstring in
-    # auth.py used to offer the JSON content type as a second one, "since it
-    # costs a preflight another origin cannot pass". It costs one and the
-    # preflight passes, which this pins so the claim cannot come back: what
-    # stops the attack is the two lines above, not the 200 below.
+    # ...and the JSON content type is not a layer under SameSite for the admin
+    # session either way: the preflight below is refused now (see
+    # test_cross_site_writes_are_refused), and a refused preflight only stops a
+    # browser. What protects the admin cookie is the two lines above.
     pre = c.options("/api/admin/posts/1/status", headers={
         "origin": "https://evil.test",
         "access-control-request-method": "POST",
         "access-control-request-headers": "content-type",
     })
-    assert pre.status_code == 200 and pre.headers["access-control-allow-origin"] == "*"
+    assert pre.status_code == 400, pre.status_code
 
     admin.set_active(email, False)
+
+
+def test_cross_site_writes_are_refused():
+    """The API is readable from any origin and writable from this one.
+
+    Every guard on the public half counts per IP hash, which assumes an
+    attacker has few addresses. A page on another site that writes to this
+    API through its visitors' browsers has every one of their addresses, and a
+    block aimed at it lands on the visitors. Two layers close that, because
+    a browser has two ways to send a cross-origin write:
+
+    * a JSON body carries a content type that forces a preflight, and CORS
+      answers a preflight for anything but a read with 400;
+    * a body with no content type, or a multipart form, is a "simple request"
+      and never preflights -- so `guard` refuses `Sec-Fetch-Site: cross-site`,
+      which every current browser attaches and nothing else does.
+
+    Neither touches a client that is not a browser: curl sends no
+    Sec-Fetch-Site and does not preflight, which is what "open, no key" means.
+    """
+    c = TestClient(main.app)
+    origin = {"origin": "https://evil.test"}
+
+    # reads are open to every origin, preflighted or not
+    pre = c.options("/api/posts", headers={**origin,
+                                           "access-control-request-method": "GET"})
+    assert pre.status_code == 200 and pre.headers["access-control-allow-origin"] == "*"
+    got = c.get("/api/posts", headers=origin)
+    assert got.status_code == 200 and got.headers["access-control-allow-origin"] == "*"
+
+    # a preflight for a write is refused, whatever the route
+    for method, path in (("POST", "/api/posts"), ("PATCH", "/api/posts/1"),
+                         ("PUT", "/api/posts/1/translations"),
+                         ("DELETE", "/api/posts/1/like"), ("POST", "/api/upload")):
+        pre = c.options(path, headers={**origin, "access-control-request-method": method,
+                                       "access-control-request-headers": "content-type"})
+        # a browser fails the preflight on the status alone; the header says
+        # which methods this API will ever grant an origin, and it is reads
+        assert pre.status_code == 400, (method, path, pre.status_code)
+        assert method not in pre.headers.get("access-control-allow-methods", ""), \
+            (method, path, pre.headers.get("access-control-allow-methods"))
+
+    # the simple-request path: a browser says where the request came from,
+    # and a write from another site is refused before the limiter counts it
+    body = {"value": "5", "title": "from somewhere else"}
+    for site in ("cross-site",):
+        r = c.post("/api/posts", json=body, headers={"sec-fetch-site": site})
+        assert r.status_code == 403, (site, r.status_code, r.text)
+    for site in ("same-origin", "same-site", "none"):
+        r = c.post("/api/posts", json=body, headers={"sec-fetch-site": site})
+        assert r.status_code == 201, (site, r.status_code, r.text)
+    # ...and a client that says nothing -- curl, a script -- is still welcome
+    assert c.post("/api/posts", json=body).status_code == 201
+    # the refusal is the guard's, so it reaches every write the guard does
+    up = c.post("/api/upload", files={"file": ("x.png", b"\x89PNG", "image/png")},
+                headers={"sec-fetch-site": "cross-site"})
+    assert up.status_code == 403, up.status_code
+    assert c.get("/api/posts", headers={"sec-fetch-site": "cross-site"}).status_code == 200, \
+        "reads are never refused; the wiki is open"
 
 
 def test_admin_content_and_dashboard():

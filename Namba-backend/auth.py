@@ -215,14 +215,10 @@ def set_cookie(response, request, token):
 
     The second layer is `allow_credentials` being off, and **it must stay off**:
     a credentialed cross-origin request against `Access-Control-Allow-Origin: *`
-    is refused by the browser before it is sent. That is the whole of what makes
-    the wide-open `allow_origins` harmless here, and `test_admin_accounts`
-    asserts it.
-
-    Those two are the whole defence. The JSON content type is not a third: it
-    costs a preflight, but `allow_headers=["*"]` answers `content-type` with a
-    200 for any origin that asks, so the preflight passes. Worth knowing before
-    reaching for `allow_credentials` believing there is one in reserve.
+    is refused by the browser before it is sent. `test_admin_accounts` asserts
+    it. Those two are the whole defence of the admin session. CORS refusing
+    write preflights (main.py) protects the public half and only stops a
+    browser; it is not a third layer here.
 
     Secure follows the scheme the request arrived on, so this works on
     http://localhost without a flag and is set in production without one.

@@ -361,10 +361,14 @@ The admin session cookie is `SameSite=Strict`, and `Secure` whenever the request
 arrived over https. That is what stands in for a CSRF token — the panel is
 same-origin with the API, so nothing legitimate is a cross-site request — and it
 holds only while CORS credentials stay off. **Do not turn on
-`allow_credentials`**: the wide-open `allow_origins` is harmless precisely
-because a browser will not send this cookie to another origin, and the two
-together would undo both layers at once. `test_admin_accounts` asserts it stays
-off.
+`allow_credentials`**: `allow_origins` is `*` so the API can be read from
+anywhere, and that is harmless precisely because a browser will not send this
+cookie to another origin. `test_admin_accounts` asserts it stays off.
+
+The public API is readable from any origin and writable from this one. CORS
+allows only `GET`, so a JSON write from another site fails its preflight, and
+every write refuses `Sec-Fetch-Site: cross-site`, the header browsers attach to
+the requests that never preflight. `curl` sends neither and is unaffected.
 
 ## Known gaps
 

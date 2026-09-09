@@ -159,18 +159,24 @@ the sitemap.
   and each challenge also keeps its attempts in SQLite so a restart cannot
   refill it.
 - **`SameSite=Strict` is standing in for a CSRF token, and `allow_credentials`
-  must stay off.** Those are the two layers, and there is no third. The admin
-  app is same-origin with the API, so no legitimate request is cross-site and
-  the browser will not attach the session cookie to one; and a *credentialed*
-  cross-origin request against `Access-Control-Allow-Origin: *` is refused by
-  the browser before it leaves. `CORSMiddleware` is wide open on purpose — an
-  open wiki's API should be readable from anywhere — and that is only safe
-  while credentials are off. `test_admin_accounts` asserts it stays off.
-  This entry used to name the JSON content type as a second layer, "since it
-  costs a preflight". It costs one, and the preflight passes:
-  `allow_headers=["*"]` answers `content-type` with a 200 for any origin. The
-  layer was never there, which is exactly the sort of thing to know before
-  turning credentials on in the belief that one is held in reserve.
+  must stay off.** Those are the two layers guarding the admin session, and
+  there is no third. The admin app is same-origin with the API, so no
+  legitimate request is cross-site and the browser will not attach the session
+  cookie to one; and a *credentialed* cross-origin request against
+  `Access-Control-Allow-Origin: *` is refused by the browser before it leaves.
+  `test_admin_accounts` asserts credentials stay off.
+- **The public API is readable from any origin and writable from this one.**
+  Every public guard counts per IP hash and assumes an attacker has few
+  addresses; a page on another site writing here through its visitors'
+  browsers has all of theirs, and a block aimed at it lands on the visitors.
+  Two layers, because a browser has two ways to send a cross-origin write:
+  `CORSMiddleware` allows `GET`, `HEAD` and `OPTIONS` only, so a JSON body's
+  preflight is answered 400; and `guard` refuses `Sec-Fetch-Site: cross-site`,
+  which catches the requests that never preflight (a body with no content
+  type, a multipart form). A client that is not a browser sends neither and is
+  unaffected, which is what "open, no key" means. `same-site` passes so a page
+  on `chiral.kr` may still write to `namba.chiral.kr`.
+  `test_cross_site_writes_are_refused` holds both layers.
 - **`admin.py` asks for a password on a terminal, reads one from a pipe, and
   never takes one from argv.** argv is refused because it would sit in the shell
   history. The pipe branch exists because `getpass` cannot turn echo off without
