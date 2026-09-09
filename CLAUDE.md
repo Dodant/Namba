@@ -71,10 +71,10 @@ SQLite cannot `ALTER` a `CHECK` in afterwards, so the rule would hold on fresh
 installs and be absent on upgraded ones. One enforced rule in Pydantic beats two
 different databases.
 
-There used to be a second row here for the 20 category tags. Tags are
-free-form now: the backend checks a tag's shape, never its membership, and
-`/api/tags` reports the vocabulary actually in use. A format is a parser
-branch and has to be agreed on; a tag never did.
+Tags are not a row in this table. They are free-form: the backend checks a
+tag's shape, never its membership, and `/api/tags` reports the vocabulary in
+use. A format is a parser branch and has to be agreed on; a tag is not
+(ADR-0010).
 
 Four of the five read digits. `ABBR` is the fifth and reads letters — `UFO`,
 `CSI`, `NASA` — and it is a format rather than a `kind` column because
@@ -90,9 +90,8 @@ hand-copied vocabulary and a branch beside every existing one.
   it — do not "fix" the open half by adding auth to it.
 
   There is exactly one exception and it is scoped on purpose: `admins`, the
-  operators. This line used to say "no accounts, ever", and it was revised
-  deliberately rather than quietly, because an operator's decision has to carry
-  a name and be undoable, and neither is possible for nobody. What that buys is
+  operators, because an operator's decision has to carry a name and be undoable,
+  and neither is possible for nobody (ADR-0001). What that buys is
   the back office — a dashboard, moderation, delete requests, reports, blocks,
   an audit log, and the one edit the open half refuses: correcting the number an
   entry is filed under — and what it must never buy is a reader account. There is no
@@ -111,9 +110,9 @@ hand-copied vocabulary and a branch beside every existing one.
   back whole. There is no `DELETE /api/posts/{id}` — the path answers 405 — and
   no delete button anywhere in the front end. An open wiki where one click can
   take a page away has no defence at all, and the fix is not confirming harder:
-  it is that the click does not exist. `admin.py hide` is what moderation
-  means here, and `admin.py purge` is the one hard delete, in the shell,
-  for the removal a law requires. Do not add a delete route back.
+  it is that the click does not exist. Hiding is what moderation means here,
+  and `admin.py purge` is the one hard delete, in the shell, for the removal a
+  law requires. Do not add a delete route (ADR-0002).
 
   **A purge reaches the words that asked for it, too.** A removal request
   usually restates the very number, address or name it wants taken down, so
@@ -129,34 +128,29 @@ hand-copied vocabulary and a branch beside every existing one.
   decision note.** `test_purge_takes_the_words_that_asked_for_it` sweeps every
   column of every table for the sentences it filed.
 
-  **The other way content disappeared was a save, and `base_updated_at` is
-  what closed it.** The edit form fills itself from the entry and sends every
-  field back, so a save is a read-modify-write with a person-sized gap in the
-  middle: two people who open `/p/42/edit` a minute apart both hold a complete
-  copy, and the second to press Publish used to write their copy of the fields
-  they never touched over the first one's edit, with no error anywhere. None of
-  the defences above reach that, because the loss is a *write*.
-  `PATCH /api/posts/{id}` now takes the entry's `updated_at` as the sender last
-  saw it and answers 409 if it has moved, which is what MediaWiki calls
-  `basetimestamp`. The refusal is raised inside the transaction that took the
-  snapshot, so a rejected save leaves no revision claiming somebody replaced
-  the entry. `test_two_editors_do_not_undo_each_other` is the whole story.
+  **A save carries the entry as the sender last saw it, and a save built on a
+  stale copy is refused.** The edit form fills itself from the entry and sends
+  every field back, so a save is a read-modify-write with a person-sized gap in
+  the middle: two people who open `/p/42/edit` a minute apart both hold a
+  complete copy, and without a check the second to press Publish writes their
+  copy of the fields they never touched over the first one's edit, with no
+  error anywhere. None of the defences above reach that, because the loss is a
+  *write*. `PATCH /api/posts/{id}` takes `base_updated_at` and answers 409 if
+  the entry has moved since, which is what MediaWiki calls `basetimestamp`. The
+  refusal is raised inside the transaction that took the snapshot, so a
+  rejected save leaves no revision claiming somebody replaced the entry.
+  `test_two_editors_do_not_undo_each_other` holds it (ADR-0006).
 
-  **And one path still puts an entry back from nothing, for data no code here
-  can produce.** `DELETE /api/posts/{id}` shipped on 2026-08-18 with a Delete
-  button on every entry page, snapshotted with the literal author `deleted` and
-  dropped the row; it was gone by 2026-08-20, and the first Dockerfile and
-  deploy workflow are both dated 2026-09-01. So nothing that could orphan a
-  snapshot ever ran anywhere but a developer's machine — where `namba.db` has
-  five of them, which is why `restore_revision`'s resurrect branch is live code
-  and not dead. The only open question is whether production's database was
-  ever a copy of that file; the count is one query, written out beside the
-  branch, and until somebody runs it the 64 measured lines stay. What comes
-  back is the entry, its tags and its translations. Comments and links cannot:
-  neither is in a snapshot, and both cascade on `posts(id)`.
+  **One path puts an entry back from nothing.** `restore_revision` has a
+  branch for a snapshot whose entry row is gone, a state nothing in this
+  codebase can produce; the development database holds five such rows, and
+  whether production holds any is one query, written out in ADR-0002 beside
+  the decision that keeps the branch until somebody runs it. What comes back is
+  the entry, its tags and its translations. Comments and links cannot: neither
+  is in a snapshot, and both cascade on `posts(id)`.
 
-  It is **optional**, and that is the promise rather than an omission: a write
-  with no base behaves as it always did. This is an open API with no key, and
+  The base is **optional**, and that is the promise rather than an omission: a
+  write with no base is accepted as it stands. This is an open API with no key, and
   requiring a read before a write would charge every `curl` for a problem the
   form has. Whole seconds, like every date here, so two saves inside one second
   still race — what this catches is the gap that loses work, not the one that
@@ -204,7 +198,8 @@ hand-copied vocabulary and a branch beside every existing one.
   the cookie off the document closes the second and not the first — the cookie
   is still *sent* — so it buys nothing, and the only thing that would is moving
   the locale out of the cookie and into the path (`/de/n/42`), which is the
-  locale-neutral canonical URL above traded away. **So: if a CDN or an nginx
+  locale-neutral canonical URL above traded away, or out of the server's
+  decision altogether (ADR-0011). **So: if a CDN or an nginx
   `proxy_cache` is ever put in front of this, it has to bypass the document and
   cache `/assets/` alone.** The bundle is where the bytes are and it is already
   immutable — Vite hashes the names, and `ASSET_CACHE` in `main.py` says a
@@ -246,10 +241,12 @@ hand-copied vocabulary and a branch beside every existing one.
   no accounts there is nobody to rate-limit or ban — `http://169.254.169.254/`
   in a post is an SSRF with a preview attached. Adding it needs a DNS-resolved
   private-IP block that survives redirects, a size cap, a timeout and a cache,
-  and that guard work is larger than the feature. Decided against, not missed.
+  and that guard work is larger than the feature. Decided against, not missed
+  (ADR-0012). The reader's side of the same argument is that an entry's
+  `image` is one of this wiki's uploads and never an outside URL (ADR-0019).
 - **The seed reports, it does not correct.** `seed.py` prints Korean titles and
   the `801.11` typo instead of translating or fixing them. Correcting source data
-  is the wiki's job. Do not add cleanup passes to the importer.
+  is the wiki's job. Do not add cleanup passes to the importer (ADR-0013).
 - **`events` is append-only, and that costs something.** Nothing in this
   codebase issues an UPDATE or a DELETE against it, which is what makes it an
   audit log an operator cannot quietly tidy up after themselves in. The price
@@ -264,11 +261,10 @@ hand-copied vocabulary and a branch beside every existing one.
 
   **A crash is a third kind of row in it, and that is why `anon` says so.**
   `@app.exception_handler(Exception)` in `main.py` appends an `ERROR` row when
-  a request raises, because the alternative was the container's stdout and
-  nothing else — `write_head`'s comment records a backslash in a title
-  answering that page with a 500 until somebody happened to type one. The
-  table's two halves used to be the whole story: `admin_id IS NULL` is a
-  visitor's write, set is an operator's decision. An error is neither, so
+  a request raises, so a route that fails only on some input is found in the
+  log an operator already reads rather than by the reader who happens to type
+  that input (ADR-0004). The table's other two kinds are `admin_id IS NULL`, a
+  visitor's write, and set, an operator's decision. An error is neither, so
   `/api/admin/activity?kind=anon` — the wiki's recent-changes feed — excludes
   it, and so does the dashboard's `writes_1h`, which otherwise counts the
   server falling over as traffic. `kind=all` is what the dashboard asks for,
@@ -286,11 +282,11 @@ hand-copied vocabulary and a branch beside every existing one.
   is `BEGIN IMMEDIATE` rather than `with con:` for a reason that is easy to get
   wrong: Python's sqlite3 in legacy isolation mode begins its transaction
   before the first *write*, so a SELECT earlier in the block holds nothing at
-  all. In WAL that never fails — it answers about the database as it was, while
-  another writer commits over it, and the route then decides on what it read.
-  That is where two spellings of one abbreviation came from, and it was real
-  rather than theoretical: two concurrent creates of the same word stored both
-  in three of eight trials.
+  all. In WAL that never fails — it answers about the database as it stood,
+  while another writer commits over it, and the route then decides on what it
+  read. Two concurrent creates of one abbreviation are the case that shows it:
+  read outside the lock, both see no sibling, both store, and the word has two
+  pages (ADR-0007 has the measurement).
 
   **Moving the read inside without the `IMMEDIATE` is worse than leaving it
   out**, which is why they are one change. A deferred transaction that reads
@@ -317,12 +313,24 @@ hand-copied vocabulary and a branch beside every existing one.
   workers, gunicorn, or a second replica means moving those three out of
   process memory first**, in the same change, or the rule is quietly gone with
   nothing failing. There is no test that can catch it, which is the other
-  reason it is written down.
+  reason it is written down (ADR-0008).
 
 - **Everything readers write is CC0.** Public domain, stated where it is given
   away — a line at the form's Publish button, not only in the footer, because a
   waiver read after the fact is not one. The byline still stands: `author` is a
-  record of who got there first, not a right retained.
+  record of who got there first, not a right retained. The code is MIT
+  (`LICENSE`); the two are different things given away by different people
+  (ADR-0021).
+- **The public API is readable from any origin and writable from its own
+  pages.** CORS grants only reads, and every write refuses
+  `Sec-Fetch-Site: cross-site`; a client that is not a browser sends neither
+  and is unaffected. The guards on the open half all count per address, and a
+  page elsewhere writing here through its visitors' browsers would hold every
+  one of theirs (ADR-0018).
+- **Text is stored in one Unicode normal form.** Every string a write takes
+  and every parameter a read filters on is folded to NFC by `db.nfc()`, so
+  composed and decomposed Korean are one tag, one language and one search hit
+  (ADR-0020).
 ## Working here
 
 Prefer editing what exists over adding files — this is deliberately a small
@@ -340,3 +348,18 @@ Messages follow [Conventional Commits](https://www.conventionalcommits.org):
 period. Types: `feat` `fix` `docs` `style` `refactor` `test` `chore`. Scope is what
 changed (`backend`, `frontend`, `index`, `seed`, `api`) and is dropped when the
 change spans both apps. The body explains why, not what — the diff has the what.
+
+## Writing these notes
+
+The three `CLAUDE.md` files and `README.md` say what holds today, in the
+present tense: the rule, the reason it holds, and the test that notices. How a
+rule came to be — what it replaced, what was tried, what was measured, and
+when — goes in `docs/adr/`, one numbered record per decision, and the note
+points at it (`ADR-0002`). So a note never has to say "used to": when a rule
+changes, the record gets a new entry under *History* and the note is rewritten
+as if the rule had always been so. Dates, line counts and commit hashes belong
+in a record, not in a note or a code comment — a comment that quotes a
+measurement is wrong the next time the code moves, and a record is where a
+measurement can stay true, because it says when it was taken. Every decision
+under *not up for quiet revision* above has a record, and a new one gets its
+record in the same commit as its bullet.

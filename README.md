@@ -162,9 +162,9 @@ restore snapshots the previous state into `revisions` first. That history reads
 down the right-hand column of each entry and is restorable from the entry's edit
 form; the fifty newest are shown, since a snapshot is the whole entry and an
 entry that has been fought over carries hundreds. Those rows deliberately have
-no foreign key — they outlive the post they describe, which is what makes the
-entries removed before `posts.status` existed recoverable too, from the address
-they used to have.
+no foreign key — they outlive the post they describe, which is also what lets an
+entry whose row is gone come back at its own address (ADR-0002 in `docs/adr/`
+says where such rows come from).
 
 Third, nothing takes an entry away. `posts.status` is `ACTIVE`, `HIDDEN` or
 `DELETED`; there is no delete route and no delete button, and a hidden entry
