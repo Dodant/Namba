@@ -69,13 +69,14 @@ go stale the way a table here would.
 
 ## How it fits together
 
-`Namba-backend` — FastAPI over stdlib `sqlite3`, no ORM. Thirteen Python files,
+`Namba-backend` — FastAPI over stdlib `sqlite3`, no ORM. Fifteen Python files,
 including the test suite:
 
 | file | what it holds |
 |---|---|
 | `main.py` | every route, the Pydantic models, the upload and rate limits |
 | `db.py` | connection + schema |
+| `seo.py` | the `<head>` written for a crawler, and the locale it is written in |
 | `store.py` | reading and writing one entry — the pieces both APIs need |
 | `numfmt.py` | `parse_number()` — a display string to a format and a sort key |
 | `seo_locale.py` | localized metadata prose and Open Graph locale codes |
@@ -85,6 +86,7 @@ including the test suite:
 | `auth.py` | operator passwords and sessions — the only login here |
 | `events.py` | who a request is from, as hashes, and the log of what they did |
 | `gc_uploads.py` | the cron job that deletes pictures nothing points at |
+| `backup.py` | the cron job that copies the database somewhere safe, key included |
 | `admin.py` | the operator's commands — accounts, TOTP enrollment, `hide`, `show`, `purge` |
 
 `Namba-frontend` — React + Vite, no state library and no UI kit. `src/api.ts` is
@@ -350,12 +352,19 @@ one worker, or move it to redis. It counts per IP, so a reverse proxy needs
 site shares one allowance.
 
 Two things want a cron entry: `python gc_uploads.py --delete` daily, or abandoned
-uploads accumulate until the 1 GB ceiling stops the wiki taking pictures, and a
-copy of the database somewhere else — anyone can rewrite any entry, and the
-snapshots that undo that live in the same file as the entries. Back up
-`secret.key` next to it: it is what the hashes in `events` and the blocks are
-salted with, and without it they stop matching anything and nothing complains.
-`NAMBA_SECRET` overrides it if you would rather it came from the environment.
+uploads accumulate until the 1 GB ceiling stops the wiki taking pictures, and
+`python backup.py /somewhere/else` daily — anyone can rewrite any entry, and the
+snapshots that undo that live in the same file as the entries. Not `cp`: a WAL
+database is two files while the wiki runs, and a copy of the main one alone is
+missing whatever was written since the last checkpoint. `backup.py` uses
+SQLite's online backup API, brings `secret.key` along — it is what the hashes in
+`events` and the blocks are salted with, and without it they stop matching
+anything and nothing complains — and keeps the newest fourteen copies. Point it
+at another disk, or sync the directory off the box; a copy beside the original
+guards against vandalism, not against the disk. `NAMBA_SECRET` keeps the key in
+the environment instead, and then the environment is what has to be backed up.
+In the container: `docker compose exec namba python backup.py /data/backups`,
+with `/data/backups` synced elsewhere.
 
 The admin session cookie is `SameSite=Strict`, and `Secure` whenever the request
 arrived over https. That is what stands in for a CSRF token — the panel is

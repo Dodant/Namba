@@ -26,7 +26,7 @@ import db
 COOKIE = "namba_cid"
 COOKIE_MAX_AGE = 400 * 24 * 3600   # the ceiling Chrome enforces anyway
 
-_SECRET_PATH = os.path.join(os.path.dirname(os.path.abspath(db.DB_PATH)), "secret.key")
+SECRET_PATH = os.path.join(os.path.dirname(os.path.abspath(db.DB_PATH)), "secret.key")
 
 
 def _secret():
@@ -48,12 +48,12 @@ def _secret():
         # world-readable file and the fix is the whole problem. O_EXCL so two
         # workers starting together cannot each write a different key: the
         # loser falls through to the read below.
-        fd = os.open(_SECRET_PATH, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        fd = os.open(SECRET_PATH, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         with os.fdopen(fd, "wb") as fh:
             fh.write(secrets.token_hex(32).encode())
     except FileExistsError:
         pass
-    with open(_SECRET_PATH, "rb") as fh:
+    with open(SECRET_PATH, "rb") as fh:
         return fh.read().strip()
 
 
