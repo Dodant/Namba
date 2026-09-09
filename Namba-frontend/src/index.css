@@ -624,13 +624,58 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
    Home.tsx: overflow is a measurement and no selector can ask for it. Sized
    and coloured like .ix-like beside it -- the two are the same kind of thing,
    a small mono word at the end of the row -- and flex: none so the line it
-   belongs to is the one that gives up the space. */
+   belongs to is the one that gives up the space.
+
+   Borderless, and it buys the 24px hit floor with padding it hands straight
+   back to the row: the same trade .ix-like makes two rules up, so the target
+   grows and nothing on screen moves. */
 .ix-more {
   display: none; flex: none;
+  padding: 6px 8px; margin: -6px -8px;
+  border: 0; background: none; cursor: pointer;
   font-family: var(--mono); font-size: 10.5px; color: var(--fainter);
 }
 .ix-link.cut + .ix-more { display: block; }
-.ix-more:hover { color: var(--ink); text-decoration: none; }
+.ix-more:hover { color: var(--ink); }
+
+/* What it opens: the whole line, in a layer over the row it came from.
+
+   The browser owns all of it. [popover] with popovertarget puts the box in the
+   top layer -- which is why this needs no z-index, and why the header's is
+   still the only one in this file -- and brings light dismiss, Escape and
+   one-open-at-a-time with it. The same argument the <details> folds make:
+   the platform already knows how a disclosure behaves.
+
+   Its treatment is the select picker's, the one other floating layer in this
+   app -- --panel over a 1px --line, --radius, that shadow. Two floating boxes
+   in one product should not be two designs. */
+.ix-pop {
+  max-width: min(56ch, calc(100vw - 32px));
+  padding: 11px 14px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel); color: var(--ink);
+  font-size: 16px; line-height: 1.45; text-wrap: pretty;
+  box-shadow: 0 10px 28px rgb(23 23 18 / 0.12);
+}
+.ix-pop b { font-weight: 500; }
+.ix-pop span { color: var(--muted); font-weight: 300; }
+/* Where it sits is the one part that is not free. A top-layer box's containing
+   block is the viewport, so it cannot be placed against the row it came from
+   without anchor positioning -- and `popovertarget` makes the button that
+   opened it the implicit anchor, so there is no anchor-name to hand out per
+   row and no ref to take. span-inline-start hangs it leftwards off the
+   button's own edge, which is where the words were cut; flip-block puts it
+   above instead when the row is near the bottom of the window. Without
+   support the UA centres it, which is the same words in a worse place rather
+   than a broken one -- the trade @supports (appearance: base-select) makes
+   further down. No tail on the bubble for the same reason: it cannot follow
+   the flip, and a tail pointing at nothing is worse than none. */
+@supports (position-area: block-end) {
+  .ix-pop {
+    position-area: block-end span-inline-start;
+    margin: 6px 0 0;
+    position-try-fallbacks: flip-block;
+  }
+}
 /* the number itself, wherever it turns up in the title or blurb -- the one
    place the old terracotta still appears */
 .hit { color: var(--hit); font-weight: 600; }

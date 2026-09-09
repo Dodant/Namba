@@ -388,21 +388,29 @@ function Index({ lang }: { lang: string }) {
                           <span className="ix-b"> — {mark(plain(e.body), rx)}</span>
                         )}
                       </Link>
-                      {/* The way through when the line was cut. A second link
-                          to where the first one goes, so it is aria-hidden and
-                          out of the tab order: "see more" in a screen reader's
-                          list of links names nothing, and the row above it
-                          already does. index.css shows it only on a .ix-link
-                          the effect marked, so a row that fits ends in its own
-                          last word. */}
-                      <Link
+                      {/* The way through when the line was cut, and it opens
+                          the line rather than going anywhere -- the title next
+                          to it is already the link to the entry, so a second
+                          one here was the same click twice.
+
+                          popovertarget and [popover], so the browser owns the
+                          layer: the top layer, light dismiss on a click
+                          outside, Escape, and one open at a time, none of it
+                          written here. Same argument as the <details> above.
+                          index.css shows the button only on a .ix-link the
+                          effect marked, so a row that fits carries no control
+                          at all -- not on screen and not in the a11y tree,
+                          since display: none takes it out of both. */}
+                      <button
                         className="ix-more"
-                        to={`/p/${e.id}`}
-                        aria-hidden
-                        tabIndex={-1}
+                        popoverTarget={`ix-pop-${e.id}`}
                       >
                         {m.home.seeMore}
-                      </Link>
+                      </button>
+                      <div className="ix-pop" id={`ix-pop-${e.id}`} popover="auto">
+                        <b>{mark(e.title, rx)}</b>
+                        {e.body && <> — <span>{mark(plain(e.body), rx)}</span></>}
+                      </div>
                       <span className="ix-like">
                         <Like post={e} />
                       </span>
