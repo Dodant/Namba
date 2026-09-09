@@ -7,7 +7,7 @@ import {
 } from '../api'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
-import { useUi } from '../uiLocale'
+import { useUi, type Messages } from '../uiLocale'
 
 /* one path instead of an icon package -- it inherits currentColor and the
    row's font size, so it stays as quiet as the text beside it */
@@ -197,7 +197,7 @@ const FOLD_OVER = 10
    the one that moves as the wiki fills up. Both, because the band folds:
    closed, this line is all it says about itself. The first noun follows the
    format: the Abbreviation band counts abbreviations, not numbers. */
-function bandCount(items: NumberEntry[], format: Format, m: ReturnType<typeof useUi>['m']) {
+function bandCount(items: NumberEntry[], format: Format, m: Messages) {
   const entries = items.reduce((n, item) => n + item.entries.length, 0)
   return m.home.bandCount(
     items.length,

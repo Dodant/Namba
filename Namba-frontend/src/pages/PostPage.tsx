@@ -10,7 +10,7 @@ import {
 import FlagPanel from '../components/FlagPanel'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
-import { useUi } from '../uiLocale'
+import { revisionBy, useUi } from '../uiLocale'
 
 /* A table in an entry is written by a stranger and can be any width, so it
    scrolls inside its own box rather than scrolling the page. The box has to
@@ -82,7 +82,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
                 <li className="rev" key={r.id}>
                   <b>{r.snapshot.title}</b>
                   <span>
-                    {showValue(r.snapshot.value, r.snapshot.grouped, locale)} · {byline(r, m)} · {fmtDate(r.at, locale)}
+                    {showValue(r.snapshot.value, r.snapshot.grouped, locale)} · {revisionBy(r.author, m)} · {fmtDate(r.at, locale)}
                   </span>
                   <button className="btn small" onClick={() => resurrect(r)}>
                     {m.common.restore}
@@ -296,7 +296,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
               <li className="rev" key={r.id}>
                 <b>{r.snapshot.title}</b>
                 <span>
-                  {byline(r, m)} · {fmtDate(r.at, locale)}
+                  {revisionBy(r.author, m)} · {fmtDate(r.at, locale)}
                 </span>
               </li>
             ))}
@@ -451,8 +451,3 @@ const cmt = (c: Comment, locale = 'en') => (
   </div>
 )
 
-/* A delete snapshots under the author "deleted", which reads badly inside a
-   sentence that already says "edited by". If the backend ever words it
-   differently this just falls back to the normal phrasing. */
-const byline = (r: Revision, m: ReturnType<typeof useUi>['m']) =>
-  r.author === 'deleted' ? m.post.deleted : m.post.editedBy(r.author)

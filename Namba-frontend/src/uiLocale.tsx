@@ -3,7 +3,26 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { fmtCount } from './api'
 
-export type UiLocale = 'en' | 'ko' | 'ja' | 'zh-Hans' | 'es' | 'fr' | 'de'
+/** Every interface locale, in the order the footer's picker offers them, each
+    under the name it calls itself.
+
+    One list, because these seven codes had four separate copies: the union
+    type, the footer's `<option>`s, the `saved === 'en' || saved === 'ko' || …`
+    check below, and the chain of `navigator.language.startsWith` beside it.
+    Adding an eighth meant finding all four, and forgetting one was a locale
+    that could be selected and never restored, or restored and never offered.
+    Adding one is now this line and a message map. */
+export const UI_LOCALES = [
+  { code: 'en', name: 'English' },
+  { code: 'ko', name: '한국어' },
+  { code: 'ja', name: '日本語' },
+  { code: 'zh-Hans', name: '简体中文' },
+  { code: 'es', name: 'Español' },
+  { code: 'fr', name: 'Français' },
+  { code: 'de', name: 'Deutsch' },
+] as const
+
+export type UiLocale = (typeof UI_LOCALES)[number]['code']
 
 /* These are wayfinding, not consequential actions. They stay in the compact
    English product vocabulary in every interface locale; the descriptive
@@ -58,7 +77,13 @@ const EN = {
   },
   footer: {
     cc0Before: 'Everything written here is',
-    cc0After: '— public domain. Take it, quote it, or feed it to a machine; no permission or credit is needed. The byline remains to record who wrote it first.',
+    /* The leading space is load-bearing and belongs to the sentence, not to
+       the component: this half follows the CC0 link, and only a language that
+       puts a space before a word wants one. Korean, Japanese and Chinese
+       continue straight off the link with a particle. It used to be a
+       `locale === 'en' || 'es' || 'fr' || 'de'` ternary in App.tsx -- a fifth
+       locale set to keep in step, and one that read as a styling decision. */
+    cc0After: ' — public domain. Take it, quote it, or feed it to a machine; no permission or credit is needed. The byline remains to record who wrote it first.',
     privacy: 'No account is required. Raw IP addresses and user-agent strings are not stored; salted hashes are kept to prevent abuse and enforce blocks.',
     guidelines: 'Entry guidelines', source: GLOBAL_TERMS.github, apiOpen: 'open, no key.',
     interfaceLanguage: 'Interface', contentLanguage: 'Entry text',
@@ -536,7 +561,7 @@ const ES: typeof EN = {
   },
   footer: {
     cc0Before: 'Todo lo escrito aquí se publica bajo',
-    cc0After: '— es de dominio público. Puedes copiarlo, citarlo o reutilizarlo sin permiso ni atribución. La autoría se conserva para registrar quién lo escribió primero.',
+    cc0After: ' — es de dominio público. Puedes copiarlo, citarlo o reutilizarlo sin permiso ni atribución. La autoría se conserva para registrar quién lo escribió primero.',
     privacy: 'No necesitas una cuenta. No guardamos direcciones IP ni cadenas de agente de usuario sin procesar; solo conservamos hashes con sal para evitar abusos y aplicar bloqueos.',
     guidelines: 'Guía para las entradas', source: GLOBAL_TERMS.github, apiOpen: 'abierta y sin clave.',
     interfaceLanguage: 'Idioma de la interfaz', contentLanguage: 'Contenido de las entradas',
@@ -664,7 +689,7 @@ const FR: typeof EN = {
   },
   footer: {
     cc0Before: 'Tout ce qui est écrit ici est publié sous',
-    cc0After: '— et appartient au domaine public. Vous pouvez le copier, le citer ou le réutiliser sans autorisation ni attribution. Le nom de l’auteur reste affiché pour indiquer qui l’a écrit en premier.',
+    cc0After: ' — et appartient au domaine public. Vous pouvez le copier, le citer ou le réutiliser sans autorisation ni attribution. Le nom de l’auteur reste affiché pour indiquer qui l’a écrit en premier.',
     privacy: 'Aucun compte n’est nécessaire. Nous ne conservons ni les adresses IP brutes ni les chaînes d’agent utilisateur ; seuls des hachages salés sont gardés afin de prévenir les abus et d’appliquer les blocages.',
     guidelines: 'Guide des entrées', source: GLOBAL_TERMS.github, apiOpen: 'ouverte, sans clé.',
     interfaceLanguage: 'Langue de l’interface', contentLanguage: 'Contenu des entrées',
@@ -801,7 +826,7 @@ const DE: typeof EN = {
   },
   footer: {
     cc0Before: 'Alles, was hier geschrieben wird, steht unter',
-    cc0After: '— und ist gemeinfrei. Es darf ohne Erlaubnis oder Namensnennung kopiert, zitiert und weiterverwendet werden. Der Autorenname bleibt erhalten, um die ursprüngliche Urheberschaft zu dokumentieren.',
+    cc0After: ' — und ist gemeinfrei. Es darf ohne Erlaubnis oder Namensnennung kopiert, zitiert und weiterverwendet werden. Der Autorenname bleibt erhalten, um die ursprüngliche Urheberschaft zu dokumentieren.',
     privacy: 'Kein Konto erforderlich. Rohe IP-Adressen und User-Agent-Strings werden nicht gespeichert; gesalzene Hashes dienen ausschließlich dazu, Missbrauch zu verhindern und Sperren durchzusetzen.',
     guidelines: 'Richtlinien für Einträge', source: GLOBAL_TERMS.github, apiOpen: 'offen, kein Schlüssel erforderlich.',
     interfaceLanguage: 'Sprache der Benutzeroberfläche', contentLanguage: 'Eintragsinhalte',
@@ -907,26 +932,40 @@ const MESSAGES = { en: EN, ko: KO, ja: JA, 'zh-Hans': ZH_HANS, es: ES, fr: FR, d
 
 const UI_KEY = 'namba.uiLocale'
 const UI_COOKIE = 'namba_ui_locale'
+
+/* zh-Hans is the only code with a region in it, so a browser saying zh-CN or
+   zh-TW is matched on the language subtag alone -- which is what the chain of
+   startsWith this replaced did, one line per locale. */
+const spokenHere = (tag: string) =>
+  UI_LOCALES.find((l) => tag.toLowerCase().startsWith(l.code.split('-')[0]))?.code
+
 export const uiLocale = {
-  get: (): UiLocale => {
-    const saved = localStorage.getItem(UI_KEY)
-    if (saved === 'en' || saved === 'ko' || saved === 'ja' || saved === 'zh-Hans' || saved === 'es' || saved === 'fr' || saved === 'de') return saved
-    const browser = navigator.language.toLowerCase()
-    if (browser.startsWith('ko')) return 'ko'
-    if (browser.startsWith('ja')) return 'ja'
-    if (browser.startsWith('zh')) return 'zh-Hans'
-    if (browser.startsWith('es')) return 'es'
-    if (browser.startsWith('fr')) return 'fr'
-    if (browser.startsWith('de')) return 'de'
-    return 'en'
-  },
+  get: (): UiLocale =>
+    UI_LOCALES.find((l) => l.code === localStorage.getItem(UI_KEY))?.code
+    ?? spokenHere(navigator.language)
+    ?? 'en',
   set: (locale: UiLocale) => localStorage.setItem(UI_KEY, locale),
 }
+
+/** Everything this bundle can say, in one locale. Exported because three
+    components take it as an argument to phrase something, and each of them
+    was spelling the type out as `ReturnType<typeof useUi>['m']`. */
+export type Messages = typeof EN
+
+/** How a revision's author reads in a byline.
+
+    A delete snapshots under the author "deleted", which sits badly inside a
+    sentence that already says "edited by" -- so it becomes the word for it
+    instead. Here rather than in either page because both the read page's
+    history and the edit form's History rail draw the same list, and the two
+    had a copy each. */
+export const revisionBy = (author: string, m: Messages) =>
+  (author === 'deleted' ? m.post.deleted : m.post.editedBy(author))
 
 type UiContextValue = {
   locale: UiLocale
   setLocale: (locale: UiLocale) => void
-  m: typeof EN
+  m: Messages
 }
 
 const UiContext = createContext<UiContextValue | null>(null)

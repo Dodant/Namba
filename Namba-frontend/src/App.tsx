@@ -10,7 +10,7 @@ import PostPage from './pages/PostPage'
 import PostForm from './pages/PostForm'
 import Guide from './pages/Guide'
 import { useAsync } from './useAsync'
-import { UiProvider, useUi, type UiLocale } from './uiLocale'
+import { UI_LOCALES, UiProvider, useUi, type UiLocale } from './uiLocale'
 
 /* A wiki's "show me anything". A route rather than an onClick, so it can be
    linked, bookmarked and opened in a new tab -- and so the wait and the
@@ -380,7 +380,7 @@ function Footer({ lang, onLang }: { lang: string; onLang: (v: string) => void })
       <p>
         {m.footer.cc0Before}{' '}
         <a href="https://creativecommons.org/publicdomain/zero/1.0/">CC0</a>
-        {locale === 'en' || locale === 'es' || locale === 'fr' || locale === 'de' ? ' ' : ''}{m.footer.cc0After}
+        {m.footer.cc0After}
       </p>
       <p>
         {m.footer.privacy}
@@ -410,13 +410,11 @@ function Footer({ lang, onLang }: { lang: string; onLang: (v: string) => void })
               aria-label={m.footer.interfaceAria}
               onChange={(e) => setLocale(e.target.value as UiLocale)}
             >
-              <option value="en">English</option>
-              <option value="ko">한국어</option>
-              <option value="ja">日本語</option>
-              <option value="zh-Hans">简体中文</option>
-              <option value="es">Español</option>
-              <option value="fr">Français</option>
-              <option value="de">Deutsch</option>
+              {UI_LOCALES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.name}
+                </option>
+              ))}
             </select>
           </span>
         </label>

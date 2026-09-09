@@ -6,7 +6,7 @@ import {
   type Format, type Post, type Revision, type Tag, type Translation,
 } from '../api'
 import { useAsync } from '../useAsync'
-import { useUi } from '../uiLocale'
+import { revisionBy, useUi } from '../uiLocale'
 
 /* What the number field takes, and whether separators mean anything, follow
    the format the poster picked. Auto-detect constrains nothing: nothing has
@@ -548,7 +548,7 @@ export default function PostForm() {
                   <div className="panel-main">
                     <span className="panel-t">{r.snapshot.title}</span>
                     <span className="panel-m">
-                      {byline(r, m)} · {fmtDate(r.at, locale)}
+                      {revisionBy(r.author, m)} · {fmtDate(r.at, locale)}
                     </span>
                   </div>
                   {/* type=button and outside the form both, so a restore can
@@ -578,11 +578,6 @@ export default function PostForm() {
   )
 }
 
-/* A delete snapshots under the author "deleted", which reads badly inside a
-   sentence that already says "edited by". If the backend ever words it
-   differently this just falls back to the normal phrasing. */
-const byline = (r: Revision, m: ReturnType<typeof useUi>['m']) =>
-  r.author === 'deleted' ? m.post.deleted : m.post.editedBy(r.author)
 
 /** The entry written again in other languages. Rewriting one opens it in
     place; removing it lives inside that, behind the row rather than beside
