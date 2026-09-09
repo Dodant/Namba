@@ -32,6 +32,7 @@ import auth  # noqa: E402
 import db  # noqa: E402
 import events  # noqa: E402
 import main  # noqa: E402
+import seo  # noqa: E402
 import seo_locale  # noqa: E402
 from numfmt import FORMATS, bucket_of, grouped_value, is_abbr, parse_number  # noqa: E402
 
@@ -543,8 +544,8 @@ def test_head_per_route():
         assert 'name="twitter:card" content="summary_large_image"' in page, path
 
     # -- /guide is the second page here that is not a query, and the only
-    # route besides the front page that _index() indexes on purpose. It has to
-    # carry a title and a blurb of its own: head_home() would give it the
+    # route besides the front page that seo.index_html() indexes on purpose. It
+    # has to carry a title and a blurb of its own: head_home() would give it the
     # site's, and a search result for the rules would then be a duplicate of
     # the front page's.
     page = c.get("/guide").text
@@ -2402,7 +2403,7 @@ def test_the_share_card_is_a_real_png():
     Read by hand out of the IHDR chunk rather than with Pillow, which is not a
     dependency of this app and is not worth becoming one for eight bytes.
     """
-    path = os.path.join(db.DIR, os.pardir, "Namba-frontend", "public", main.OG_CARD)
+    path = os.path.join(db.DIR, os.pardir, "Namba-frontend", "public", seo.OG_CARD)
     assert os.path.isfile(path), f"{path} is gone; every share card is a 404"
     with open(path, "rb") as fh:
         head = fh.read(24)

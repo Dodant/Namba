@@ -1,10 +1,11 @@
 # Namba-backend
 
-FastAPI over stdlib `sqlite3`. Thirteen Python files, including the test suite:
+FastAPI over stdlib `sqlite3`. Fourteen Python files, including the test suite:
 
 | | |
 |---|---|
 | `main.py` | the wiki's routes and models |
+| `seo.py` | the `<head>` written for a crawler, and the locale it is written in |
 | `admin_api.py` | the back office's routes, under `/api/admin` |
 | `store.py` | reading and writing one entry — the pieces both APIs need |
 | `db.py` | schema, `connect()`, `get_db()`, `now()` |
@@ -129,9 +130,20 @@ the sitemap.
   the router, so the arrow only points one way. Everything both need lives
   below them — `db.py` (`get_db`, `now`, the schema and the seven vocabularies),
   `events.py`, `auth.py`, and `store.py` for `fetch_one`, `shape`, `snapshot`,
-  `guard_public`, `write_tags` and `write_translations`. That layering is the
+  `guard_public`, `section_where`, `write_tags` and `write_translations`. That
+  layering is the
   only reason `store.py` exists: put a shared entry helper there, not in
-  `main.py`, or the admin router cannot reach it without a cycle. The router is included where the app is built, well above the catch-all,
+  `main.py`, or the admin router cannot reach it without a cycle.
+
+  **`seo.py` is the same arrow one step further out.** `main.py` imports it and
+  hands it a document, so nothing in it may import main either, and what it
+  needs is below both: `store.py` for `LIVE` and `section_where`, `numfmt.py`
+  for `grouped_value`, `seo_locale.py` for the words. It is four hundred lines
+  that were in `main.py` and had nothing to do with the wiki's API — no route,
+  no model, and no file of its own to read, since `main.py` owns where `dist/`
+  is. Reaching for `main` from in there is the cycle this split exists to make
+  impossible, so if a head ever needs something from the API, that something
+  moves down rather than the import going up. The router is included where the app is built, well above the catch-all,
   because Starlette matches in the order routes are added.
 - **The operator's login is deliberately the smallest correct one.** stdlib
   `hashlib.scrypt` and not bcrypt or passlib; an opaque token and not a JWT,
@@ -348,7 +360,8 @@ the sitemap.
   in `robots.txt` can never be crawled to *find* that meta — an old link to one
   sits in an index as a bare URL for good.
 - **Six routes get their `<head>` written server-side, and everything else is
-  told not to be indexed.** `_index()` is the one place that decides which:
+  told not to be indexed.** `seo.index_html()` is the one place that decides
+  which:
   `/` gets the site's own head, `/n/{value}`, `/a/{value}` and `/t/{tag}` get a
   title, description and `ItemList` naming the entries filed there, `/p/{id}`
   gets `og_head()`, and `/guide` gets its own article summary. The two value
@@ -491,8 +504,11 @@ the sitemap.
 - **`section_where()` is the only thing that tells `/n/` from `/a/`.**
   `list_posts`, `head_number`, `head_abbr` and the sitemap all ask it, so a
   value filed under both sections is two entries at two addresses rather than
-  one entry on two pages. `value_path()` is the same rule going the other way
-  and is the twin of `entryPath()` in `api.ts`. An unknown section filters
+  one entry on two pages. It lives in `store.py` for the reason `ungroup` and
+  `resolve_format` do: two of those four callers are in `main.py` and two are
+  in `seo.py`, and a second answer to which section a row is in would be two
+  addresses for one entry. `value_path()` in `seo.py` is the same rule going
+  the other way and is the twin of `entryPath()` in `api.ts`. An unknown section filters
   nothing rather than 422ing, for the reason an unknown `sort` falls back.
 
 ## No ORM

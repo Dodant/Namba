@@ -768,7 +768,7 @@ gets normalised by the ASGI layer before routing.
 `entryPath()` takes the format as well as the value, because the format is what
 decides the address: `/a/UFO` for an abbreviation, `/n/42` for a number. Take it
 off the row you are drawing — a poster may file `UFO` as Mixed on purpose, and
-that entry is at `/n/UFO`. It is the twin of `value_path()` in `main.py`, which
+that entry is at `/n/UFO`. It is the twin of `value_path()` in `Namba-backend/seo.py`, which
 writes the same link into every canonical and breadcrumb.
 
 Client-side routing decodes the segment correctly, which is why `/n/:value`
@@ -1105,7 +1105,8 @@ JS that would do it, so the head has to arrive already written. **Nothing in thi
 app should try** to create those metadata tags in React. `canonicalNumber`
 in `src/` normalizes numeric values; it has no relation to canonical URL tags.
 
-`main.py`'s `_index()` writes a title, description, canonical, `og:`/`twitter:`
+`Namba-backend/seo.py`'s `index_html()` writes a title, description,
+canonical, `og:`/`twitter:`
 tags and JSON-LD for `/`, `/guide`, `/n/:value`, `/a/:value`, `/t/:tag` and
 `/p/:id`, and marks
 everything else `noindex` — `/search`, `/random`, `/new`, `/p/:id/edit` and the
@@ -1121,7 +1122,7 @@ as a copy of the front page. Two consequences for work in here:
   default, the client titles and all server copies.
 - **`public/og.png` is the share card, and it is the only asset in this repo.**
   Vite copies `public/` into `dist/` untouched, which is the whole reason it
-  exists here rather than as a route in the API. `main.py`'s `OG_CARD` points
+  exists here rather than as a route in the API. `seo.py`'s `OG_CARD` points
   every page at it by name, so renaming or resizing the file breaks the card on
   every share and nothing in this app would notice —
   `test_the_share_card_is_a_real_png` in the backend suite holds it at
@@ -1130,7 +1131,7 @@ as a copy of the front page. Two consequences for work in here:
   behind: it is a flat PNG and cannot follow a theme, let alone dark mode.
 - **A new route is `noindex` until somebody says otherwise**, which is the safe
   way round. If a route added here deserves to be in a search result, it needs a
-  branch in `_index()` — adding the `<Route>` alone is not enough. `/guide` is
+  branch in `seo.index_html()` — adding the `<Route>` alone is not enough. `/guide` is
   the only route that has ever asked: `head_guide()` gives it a title and blurb
   of its own through `write_head()`; using `head_home()` would put a copy of
   the front page in the result. It is in `sitemap()` for the reason

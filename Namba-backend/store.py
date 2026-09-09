@@ -94,6 +94,23 @@ def resolve_format(value, given, con, self_id=None):
     return value, fmt, key
 
 
+def section_where(section, prefix=""):
+    """SQL for "this is an abbreviation" / "this is a number", or None for both.
+
+    /n/ and /a/ are two sections over one column. An entry is one or the other
+    and has exactly one address, so a value filed under both -- somebody
+    choosing Mixed for UFO on purpose -- is two entries at two addresses rather
+    than one entry showing up twice. One function decides it, so the list
+    endpoint, the two <head>s and the sitemap cannot answer differently.
+
+    An unknown section filters nothing, the same way an unknown `sort` falls
+    back rather than 422ing: a typo either side of the wire is a page that
+    shows too much, not a page that breaks.
+    """
+    op = {"number": "!=", "abbr": "="}.get(section or "")
+    return f"{prefix}format {op} 'ABBR'" if op else None
+
+
 def shape(rows, con):
     """Rows -> dicts with tags attached (one query for the whole page)."""
     posts = [dict(r) for r in rows]

@@ -129,9 +129,9 @@ hand-copied vocabulary and a branch beside every existing one.
   **The same UI locale owns the server-rendered metadata around the content.**
   `<html lang>`, `Content-Language`, the site and list prose in titles and
   descriptions, Open Graph locale/text and JSON-LD `WebSite`/`CollectionPage`
-  language use the locale selected by `request_ui_locale()` in `main.py`.
+  language use the locale selected by `request_ui_locale()` in `seo.py`.
   `seo_locale.py` supplies the localized prose and Open Graph locale codes;
-  `main.py` writes the language attributes and headers. Entry titles, bodies
+  `seo.py` writes the language attributes and headers. Entry titles, bodies
   and an Article's stored `inLanguage` remain content and are never translated
   by that choice. Every localized response varies on both the UI cookie and
   `Accept-Language`; canonical URLs remain locale-neutral.
