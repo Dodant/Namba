@@ -3111,6 +3111,30 @@ def test_a_session_that_expired_does_not_stay_in_the_table():
 
 
 
+def test_the_shell_commands_do_not_build_the_app():
+    """`admin.py` and `gc_uploads.py` import no app.
+
+    Both run from a shell and a cron and never serve a request, so neither
+    should have to construct every route -- and run `db.init()` as a side
+    effect -- to find out where the uploads directory is. That is `db.py`'s
+    to answer, beside where the database is.
+
+    In a subprocess, because this suite imports `main` at the top: sys.modules
+    in here has it whatever those two files do.
+    """
+    import subprocess
+    import sys as _sys
+
+    out = subprocess.run(
+        [_sys.executable, "-c",
+         "import sys, admin, gc_uploads; print('main' in sys.modules)"],
+        cwd=db.DIR, capture_output=True, text=True,
+    )
+    assert out.returncode == 0, out.stderr
+    assert out.stdout.strip() == "False", out.stdout or out.stderr
+
+
+
 def test_connection_crosses_threads():
     """FastAPI opens the connection on one threadpool thread and runs the
     endpoint on another. TestClient funnels everything through a single portal

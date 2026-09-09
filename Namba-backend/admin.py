@@ -46,7 +46,7 @@ import auth
 import db
 import events
 import gc_uploads
-from main import UPLOAD_DIR
+from db import UPLOAD_DIR
 
 PASSWORD_MIN = 12
 

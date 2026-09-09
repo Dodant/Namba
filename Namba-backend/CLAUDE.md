@@ -8,7 +8,7 @@ FastAPI over stdlib `sqlite3`. Fifteen Python files, including the test suite:
 | `seo.py` | the `<head>` written for a crawler, and the locale it is written in |
 | `admin_api.py` | the back office's routes, under `/api/admin` |
 | `store.py` | reading and writing one entry — the pieces both APIs need |
-| `db.py` | schema, `connect()`, `get_db()`, `now()`, `nfc()` |
+| `db.py` | schema, `connect()`, `get_db()`, `now()`, `nfc()`, where the files live |
 | `events.py` | who a request is from, as hashes, and the log of what they did |
 | `auth.py` | operator passwords, sessions and the `require_admin` dependency |
 | `numfmt.py` | value parsing |
@@ -32,8 +32,9 @@ nobody to stop a stranger triggering one.
 .venv/bin/uvicorn main:app --reload
 ```
 
-Env overrides: `NAMBA_DB`, `NAMBA_UPLOADS` (the tests use both to stay
-hermetic), `NAMBA_SECRET` (the key the client hashes are salted with -- and if
+Env overrides: `NAMBA_DB` and `NAMBA_UPLOADS`, both read in `db.py` beside
+each other because they answer the same question -- where this install keeps
+what outlives the process (the tests set both to stay hermetic), `NAMBA_SECRET` (the key the client hashes are salted with -- and if
 it is unset, `secret.key` beside the database is generated and used instead).
 `NAMBA_TOTP_SECRET` may provide a separate root for operator TOTP keys; when it
 is unset the same durable installation key is used with domain separation.

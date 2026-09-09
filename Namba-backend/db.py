@@ -7,6 +7,12 @@ from datetime import datetime, timezone
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.environ.get("NAMBA_DB", os.path.join(DIR, "namba.db"))
+# Beside DB_PATH because it is the same question -- where this install keeps
+# what has to outlive the process -- and because the two shell commands that
+# read it, `admin.py purge` and `gc_uploads.py`, would otherwise import
+# `main` for one string and build the whole FastAPI app to get it.
+UPLOAD_DIR = os.environ.get("NAMBA_UPLOADS", os.path.join(DIR, "uploads"))
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS posts (

@@ -14,8 +14,8 @@ import re
 import sys
 import time
 
+from db import UPLOAD_DIR  # imported, not recomputed: one definition of where
 import db
-from main import UPLOAD_DIR  # imported, not recomputed: one definition of where
 
 # Long enough for any form session. A picture younger than this may be sitting in
 # a tab nobody has saved yet, and there is nobody to ask -- no accounts, no

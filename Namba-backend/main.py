@@ -21,7 +21,7 @@ import admin_api
 import db
 import events
 import seo
-from db import get_db, nfc, now, writing
+from db import UPLOAD_DIR, get_db, nfc, now, writing
 from store import (
     LIVE, Text, fetch_one, guard_public, resolve_format, section_where, shape,
     snapshot, ungroup, write_tags, write_translations,
@@ -36,7 +36,6 @@ TAG_MAX = 24
 # honestly is -- five was room to file one number under half the wiki.
 TAGS_PER_POST = 2
 
-UPLOAD_DIR = os.environ.get("NAMBA_UPLOADS", os.path.join(db.DIR, "uploads"))
 # The built front end, served from here in production so that /p/42 can carry
 # its own <head>. Absent in development -- npm run dev serves it and proxies
 # the API, so the routes below simply never match there.
@@ -80,7 +79,6 @@ COMMENTS_SHOWN = 200
 # is the condition and not the directory.
 ASSET_CACHE = {"Cache-Control": "public, max-age=31536000, immutable"}
 
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 db.init()
 
 app = FastAPI(title="Namba")

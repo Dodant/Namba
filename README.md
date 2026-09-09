@@ -75,7 +75,7 @@ including the test suite:
 | file | what it holds |
 |---|---|
 | `main.py` | every route, the Pydantic models, the upload and rate limits |
-| `db.py` | connection + schema |
+| `db.py` | connection, schema, and where the database and uploads live |
 | `seo.py` | the `<head>` written for a crawler, and the locale it is written in |
 | `store.py` | reading and writing one entry — the pieces both APIs need |
 | `numfmt.py` | `parse_number()` — a display string to a format and a sort key |
