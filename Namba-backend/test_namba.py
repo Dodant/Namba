@@ -2276,6 +2276,17 @@ def test_api_round_trip():
     # that state now takes the database directly, which is the point.
     c.patch(f"/api/posts/{slash['id']}",
             json={"title": "November 22", "author": "oswald"})
+    # said beside the entry and linked to another, so what a resurrection can
+    # and cannot give back is on the record here rather than only in a comment
+    c.post(f"/api/posts/{slash['id']}/comments", json={"body": "a Tuesday, in fact"})
+    beside = c.post("/api/posts", json={"value": "11/23/63",
+                                        "title": "the day after"}).json()
+    c.post(f"/api/posts/{slash['id']}/links", json={"other_id": beside["id"]})
+    # both really there first, or the two assertions after the restore pass by
+    # asserting nothing
+    assert len(c.get(f"/api/posts/{slash['id']}/comments").json()) == 1
+    assert [r["id"] for r in
+            c.get(f"/api/posts/{slash['id']}").json()["related"]] == [beside["id"]]
     con = db.connect()
     with con:
         con.execute("DELETE FROM posts WHERE id = ?", (slash["id"],))
@@ -2290,6 +2301,16 @@ def test_api_round_trip():
     assert alive["edited_by"] == "arthur"
     assert alive["tags"] == ["book"], "the tags cascaded away and were not rebuilt"
     assert c.get(f"/api/posts/{slash['id']}").status_code == 200
+
+    # The entry, its tags and its translations come back because a snapshot is
+    # what fetch_one shapes. The talk and the links do not and cannot: neither
+    # is in there -- a comment is not part of the entry, which is why it is not
+    # on fetch_one -- and both tables cascade on posts(id), so the delete took
+    # them. A recovery that looks whole and is not is worth an assertion.
+    assert c.get(f"/api/posts/{slash['id']}/comments").json() == [], \
+        "the talk came back from a snapshot that never held it"
+    assert c.get(f"/api/posts/{slash['id']}").json()["related"] == [], \
+        "the links came back from a snapshot that never held them"
 
     # uploads: extension allowlist, server-generated filename
     assert c.post("/api/upload", files={"file": ("evil.svg", b"<svg/>",

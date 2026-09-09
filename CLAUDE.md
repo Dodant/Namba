@@ -142,6 +142,19 @@ hand-copied vocabulary and a branch beside every existing one.
   snapshot, so a rejected save leaves no revision claiming somebody replaced
   the entry. `test_two_editors_do_not_undo_each_other` is the whole story.
 
+  **And one path still puts an entry back from nothing, for data no code here
+  can produce.** `DELETE /api/posts/{id}` shipped on 2026-08-18 with a Delete
+  button on every entry page, snapshotted with the literal author `deleted` and
+  dropped the row; it was gone by 2026-08-20, and the first Dockerfile and
+  deploy workflow are both dated 2026-09-01. So nothing that could orphan a
+  snapshot ever ran anywhere but a developer's machine — where `namba.db` has
+  five of them, which is why `restore_revision`'s resurrect branch is live code
+  and not dead. The only open question is whether production's database was
+  ever a copy of that file; the count is one query, written out beside the
+  branch, and until somebody runs it the 64 measured lines stay. What comes
+  back is the entry, its tags and its translations. Comments and links cannot:
+  neither is in a snapshot, and both cascade on `posts(id)`.
+
   It is **optional**, and that is the promise rather than an omission: a write
   with no base behaves as it always did. This is an open API with no key, and
   requiring a read before a write would charge every `curl` for a problem the

@@ -876,6 +876,35 @@ def restore_revision(
             # pointing at nothing. There is nothing to snapshot first: the
             # delete already took one. It comes back ACTIVE, by the column's
             # default.
+            #
+            # **What cannot come back is what was never in the snapshot.**
+            # `fetch_one` shapes a post with its tags and its translations, and
+            # those are rebuilt below. Comments and links are not in there --
+            # deliberately, since a comment is not part of the entry -- and both
+            # tables cascade on `posts(id)`, so the delete took them and this
+            # cannot give them back. A resurrected entry is the entry, its tags
+            # and its translations, and no talk and no links.
+            #
+            # This branch is the one place in the file that answers for data no
+            # code here can produce any more, so how to tell whether any of it
+            # exists: the route shipped 2026-08-18 (b6fac29) with a Delete
+            # button on every entry page and was gone by 2026-08-20 (dc5a6d1),
+            # and the first Dockerfile and deploy workflow are both dated
+            # 2026-09-01 -- ten days later. So nothing that could create one of
+            # these ever ran anywhere but a developer's machine, and that
+            # machine's namba.db has five of them. The question for production
+            # is therefore only whether its database was ever a copy of that
+            # file, and one query says so:
+            #
+            #   SELECT COUNT(*) FROM revisions r WHERE NOT EXISTS
+            #       (SELECT 1 FROM posts p WHERE p.id = r.post_id);
+            #
+            # Zero and this branch, `guard_public`'s absent-passes rule and
+            # PostPage's recovery view -- 64 lines measured -- can go together.
+            # Non-zero and they stay, and `revisions.author = 'deleted'` on the
+            # last snapshot of each is the old route's own fingerprint, so a
+            # count with none of those came from something else and is a
+            # different question.
             con.execute(
                 """INSERT INTO posts (id, value, format, sort_key, title, body, image,
                                       lang, grouped, author, edited_by, likes,
