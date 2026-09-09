@@ -681,11 +681,11 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
    what it *means* are the two halves worth drawing a line between. --line, the
    same as the box's own border and the rule across a band head: this one is
    meant to be seen, unlike the --rule-soft whisper between the rows of a
-   .panel, which reads by repeating. A little more air above it than below:
-   the line belongs to the blurb it introduces rather than sitting midway
-   between two things. */
+   .panel, which reads by repeating. It sits nearer the title than the blurb --
+   6px above and 10px below -- so it reads as closing the pair above it rather
+   than as a divider parked midway between two halves. */
 .ix-pop-body {
-  margin: 6px 0 0; padding-top: 5px; border-top: 1px solid var(--line);
+  margin: 6px 0 0; padding-top: 10px; border-top: 1px solid var(--line);
   color: var(--muted); font-weight: 300;
   font-size: 15.5px; line-height: 1.5; text-wrap: pretty;
 }
