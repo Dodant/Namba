@@ -32,10 +32,11 @@ nobody to stop a stranger triggering one.
 .venv/bin/uvicorn main:app --reload
 ```
 
-Env overrides: `NAMBA_DB` and `NAMBA_UPLOADS`, both read in `db.py` beside
-each other because they answer the same question -- where this install keeps
-what outlives the process (the tests set both to stay hermetic), `NAMBA_SECRET` (the key the client hashes are salted with -- and if
-it is unset, `secret.key` beside the database is generated and used instead).
+Env overrides. `NAMBA_DB` and `NAMBA_UPLOADS` are read in `db.py`, beside each
+other because they answer one question: where this install keeps what outlives
+the process. The tests set both to stay hermetic. `NAMBA_SECRET` is the key the
+client hashes are salted with; if it is unset, `secret.key` beside the database
+is generated and used instead.
 `NAMBA_TOTP_SECRET` may provide a separate root for operator TOTP keys; when it
 is unset the same durable installation key is used with domain separation.
 Whichever root was used for enrollment must not be rotated without re-enrolling
