@@ -255,8 +255,15 @@ sanitiser config to get wrong.
   `nowrap` + `ellipsis`, and the way through is `.ix-more` — "See more" at the
   right end, before the like. It is shown by `.ix-link.cut`, which is a class
   an effect in `Index` puts on: whether a line was clipped is a measurement
-  (`scrollWidth > clientWidth`) and no selector can ask for it. That effect
-  re-measures on `resize` and once more on `document.fonts.ready`, because
+  (`scrollWidth > clientWidth`) and no selector can ask for it. **Every pass
+  clears `cut` off every row before it reads one**, and that is not tidiness:
+  the button costs the line about 60px, so measuring while it is on screen asks
+  whether the text fits in the space the button left, which a cut row can only
+  answer yes to. It was arguing for its own existence — no row ever gave it
+  back, not on a widened window and not on the fonts pass below. Read them all
+  and then write them all, too: interleaved, that is a layout per row. That
+  effect re-measures on `resize` and once more on `document.fonts.ready`,
+  because
   Newsreader arrives after the first paint and is wider than the fallback it
   replaces — measuring only on mount marks the wrong rows on a cold load. It
   queries the document rather than a ref, since `Index` returns a fragment
