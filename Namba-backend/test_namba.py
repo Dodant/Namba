@@ -2077,8 +2077,9 @@ def test_api_round_trip():
 
     # the previous version, and who replaced it, are both recoverable
     revs = c.get(f"/api/posts/{a['id']}/revisions").json()
-    assert len(revs) == 1 and revs[0]["snapshot"]["title"].startswith("The Hitch")
+    assert len(revs) == 1 and revs[0]["title"].startswith("The Hitch")
     assert revs[0]["author"] == "vogon"
+    assert "snapshot" not in revs[0], "fifty whole entries would come down the wire"
     restored = c.post(f"/api/posts/{a['id']}/revisions/{revs[0]['id']}/restore",
                       json={"author": "arthur"}).json()
     assert restored["title"] == "The Hitchhiker's Guide to the Galaxy"
@@ -2110,7 +2111,7 @@ def test_api_round_trip():
     con.close()
     assert c.get(f"/api/posts/{slash['id']}").status_code == 404
     dead = c.get(f"/api/posts/{slash['id']}/revisions").json()[0]
-    assert dead["snapshot"]["title"] == "11/22/63"
+    assert dead["title"] == "11/22/63"
     alive = c.post(f"/api/posts/{slash['id']}/revisions/{dead['id']}/restore",
                    json={"author": "arthur"}).json()
     assert alive["id"] == slash["id"] and alive["value"] == "11/22/63"
@@ -2307,10 +2308,17 @@ def test_comments():
     assert "comments" not in c.get(f"/api/posts/{pid}").json()
     assert c.get(f"/api/posts/{pid}/revisions").json() == []
 
-    # ...and not in the snapshot the next edit takes either
+    # ...and not in the snapshot the next edit takes either. Read out of the
+    # column rather than off the wire, because the wire no longer carries a
+    # snapshot at all -- and it is the stored one that a restore reads back.
     c.patch(f"/api/posts/{pid}", json={"title": "Fahrenheit 451 (1953)",
                                        "author": "clarisse"})
-    assert "comments" not in c.get(f"/api/posts/{pid}/revisions").json()[0]["snapshot"]
+    rev_id = c.get(f"/api/posts/{pid}/revisions").json()[0]["id"]
+    con = db.connect()
+    stored = json.loads(con.execute("SELECT snapshot FROM revisions WHERE id = ?",
+                                    (rev_id,)).fetchone()["snapshot"])
+    con.close()
+    assert "comments" not in stored
 
     # hiding the entry hides the talk with it and gives it all back: the row
     # stays, so the foreign key never fires

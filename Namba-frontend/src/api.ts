@@ -154,11 +154,19 @@ export type NumberEntry = {
   entries: { id: number; title: string; body: string; image: boolean; likes: number }[]
 }
 
+/** A version of an entry, as a label rather than a copy of it. The API reads
+    the three fields a history draws out of the stored snapshot and drops the
+    rest: a restore is a POST that reads the snapshot server-side, so the
+    client never held one for a reason. `grouped` comes along because the value
+    reads through it -- 1000 in a history whose entry shows 1,000 is the flag
+    missing, not a different number. */
 export type Revision = {
   id: number
   author: string
   at: string
-  snapshot: Post
+  title: string
+  value: string
+  grouped: boolean
 }
 
 /** Something said beside an entry rather than in it. No `edited_by` and no

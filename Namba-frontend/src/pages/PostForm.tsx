@@ -548,7 +548,7 @@ export default function PostForm() {
               {revs.map((r) => (
                 <div className="panel-row" key={r.id}>
                   <div className="panel-main">
-                    <span className="panel-t">{r.snapshot.title}</span>
+                    <span className="panel-t">{r.title}</span>
                     <span className="panel-m">
                       {revisionBy(r.author, m)} · {fmtDate(r.at, locale)}
                     </span>

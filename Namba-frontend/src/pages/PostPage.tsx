@@ -80,9 +80,9 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
             <ol className="revs">
               {revs.data.map((r) => (
                 <li className="rev" key={r.id}>
-                  <b>{r.snapshot.title}</b>
+                  <b>{r.title}</b>
                   <span>
-                    {showValue(r.snapshot.value, r.snapshot.grouped, locale)} · {revisionBy(r.author, m)} · {fmtDate(r.at, locale)}
+                    {showValue(r.value, r.grouped, locale)} · {revisionBy(r.author, m)} · {fmtDate(r.at, locale)}
                   </span>
                   <button className="btn small" onClick={() => resurrect(r)}>
                     {m.common.restore}
@@ -294,7 +294,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
             </li>
             {revs.data?.map((r) => (
               <li className="rev" key={r.id}>
-                <b>{r.snapshot.title}</b>
+                <b>{r.title}</b>
                 <span>
                   {revisionBy(r.author, m)} · {fmtDate(r.at, locale)}
                 </span>

@@ -598,14 +598,23 @@ def get_post(post_id: int, con=Depends(get_db)):
 
 @app.get("/api/posts/{post_id}/revisions")
 def list_revisions(post_id: int, con=Depends(get_db)):
-    """The newest REVISIONS_SHOWN versions of an entry, each one whole.
+    """The newest REVISIONS_SHOWN versions of an entry, as labels.
 
-    Capped because a snapshot is the entry in full, body and translations and
-    all, and this list is what the edit form opens with: a few hundred edits
-    turned opening the form into a several-megabyte download. Only the response
-    is capped -- the rows stay in the table, since they are the only thing
-    standing between vandalism and permanent loss, and reverting vandalism means
-    reaching for a recent one.
+    Three fields off each snapshot and then the snapshot is dropped, which is
+    also what the back office's own revision list does. What this answers is a
+    history someone is reading -- what the entry was called, which number it was
+    filed under, who and when -- and a restore is a POST that reads the snapshot
+    server-side, so a client never needed one. Shipping them whole meant the
+    edit form opened by downloading fifty complete entries, bodies and
+    translations and all, to draw fifty titles.
+
+    Capped as well as trimmed, because nothing prunes the rows: an entry that
+    has been fought over carries hundreds. Only the response is capped -- the
+    rows stay, since they are the only thing standing between vandalism and
+    permanent loss, and reverting vandalism means reaching for a recent one.
+
+    `grouped` is here because the value reads through it: without the flag,
+    1000 renders as 1000 in a history whose entry shows 1,000.
     """
     guard_public(con, post_id)
     rows = con.execute(
@@ -613,11 +622,15 @@ def list_revisions(post_id: int, con=Depends(get_db)):
            ORDER BY id DESC LIMIT ?""",
         (post_id, REVISIONS_SHOWN),
     ).fetchall()
-    return [
-        {"id": r["id"], "author": r["author"], "at": r["at"],
-         "snapshot": json.loads(r["snapshot"])}
-        for r in rows
-    ]
+    out = []
+    for r in rows:
+        snap = json.loads(r["snapshot"])
+        out.append({
+            "id": r["id"], "author": r["author"], "at": r["at"],
+            "title": snap.get("title"), "value": snap.get("value"),
+            "grouped": bool(snap.get("grouped")),
+        })
+    return out
 
 
 @app.get("/api/posts/{post_id}/comments")
