@@ -3036,6 +3036,38 @@ def test_upload_does_not_hold_the_event_loop():
 
 
 
+def test_the_database_has_one_timestamp_format():
+    """Every date column is written by `db.now()`, seeded rows included.
+
+    Two spellings of one instant sort against each other, because these are
+    TEXT columns compared as text: "…T06:00:00Z" and "…T06:00:00+00:00" are
+    the same second, and 'Z' sorts after '+', so a seeded entry and a written
+    one interleave by their punctuation rather than by their time.
+    """
+    import re
+
+    import seed
+
+    con = db.connect()
+    try:
+        before = {r[0] for r in con.execute("SELECT id FROM posts")}
+        seed.load([{"value": "58", "format": "INTEGER", "sort_key": 58.0,
+                    "title": "seeded", "body": "", "tags": ["book"]}])
+        rows = con.execute(
+            "SELECT created_at, updated_at FROM posts WHERE id NOT IN (%s)"
+            % (",".join("?" * len(before)) or "0"), tuple(before)).fetchall()
+    finally:
+        con.close()
+    assert rows, "the seeder wrote nothing"
+    stamp = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+00:00$")
+    for row in rows:
+        assert stamp.match(row["created_at"]), row["created_at"]
+        assert row["updated_at"] == row["created_at"], dict(row)
+    # the shape db.now() answers with, so the two cannot drift apart
+    assert stamp.match(db.now()), db.now()
+
+
+
 def test_connection_crosses_threads():
     """FastAPI opens the connection on one threadpool thread and runs the
     endpoint on another. TestClient funnels everything through a single portal

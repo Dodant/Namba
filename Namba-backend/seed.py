@@ -70,14 +70,19 @@ def parse(text):
 
 
 def load(entries):
+    stamp = db.now()
     con = db.connect()
     with con:
         for e in entries:
             cur = con.execute(
                 """INSERT INTO posts (value, format, sort_key, title, body, author,
                                       created_at, updated_at)
-                   VALUES (?,?,?,?,?,'seed',strftime('%Y-%m-%dT%H:%M:%SZ','now'),strftime('%Y-%m-%dT%H:%M:%SZ','now'))""",
-                (e["value"], e["format"], e["sort_key"], e["title"], e["body"]),
+                   VALUES (?,?,?,?,?,'seed',?,?)""",
+                # db.now(), not SQLite's strftime: these are TEXT columns
+                # compared as text, and "...Z" and "...+00:00" are the same
+                # second sorting against each other by their punctuation.
+                (e["value"], e["format"], e["sort_key"], e["title"], e["body"],
+                 stamp, stamp),
             )
             for t in e["tags"]:
                 con.execute("INSERT INTO post_tags (post_id, tag) VALUES (?,?)",
