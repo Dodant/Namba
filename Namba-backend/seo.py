@@ -28,7 +28,12 @@ import seo_locale
 from numfmt import grouped_value
 from store import LIVE, section_where
 
-UI_LOCALES = {"en", "ko", "ja", "zh-Hans", "es", "fr", "de"}
+# Derived, not spelled again: a locale the interface offers is exactly one
+# seo_locale has prose for. Written out here, the two lists could disagree, and
+# the disagreement is silent in the direction that matters -- `words()` falls
+# back to English for a locale it does not know, so the page would answer
+# `<html lang="it">` over English text.
+UI_LOCALES = set(seo_locale.TEXT)
 UI_LOCALE_COOKIE = "namba_ui_locale"
 
 

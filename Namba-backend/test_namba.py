@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import string
 import struct
 import tempfile
 import time
@@ -293,6 +294,35 @@ def test_the_site_has_one_name():
         assert f"siteTitle: '{title}'" in words, (locale, title)
 
 
+def test_every_locale_says_the_same_things():
+    """`seo_locale.TEXT` has the guard the front end gets from its type system.
+
+    `MESSAGES` over there is `Record<UiLocale, Messages>` with `Messages =
+    typeof EN`, so a locale missing a line does not compile. Python has no such
+    thing, and the two ways it goes wrong are both quiet: a *missing* key raises
+    a KeyError deep in a <head> writer, and a translation that drops a
+    `{placeholder}` renders a description with a hole in it, because
+    `str.format` is happy to be handed a field it never uses.
+
+    English is the shape the rest are measured against, the same as over there.
+    """
+    en = seo_locale.TEXT["en"]
+
+    def fields(s):
+        return {f for _, f, _, _ in string.Formatter().parse(s) if f}
+
+    assert set(seo_locale.OG_LOCALES) == set(seo_locale.TEXT), \
+        "a locale with prose but no Open Graph code is a KeyError in og_tags"
+    assert seo.UI_LOCALES == set(seo_locale.TEXT), \
+        "UI_LOCALES is derived from TEXT -- if this fails somebody spelled it again"
+
+    for locale, text in seo_locale.TEXT.items():
+        assert set(text) == set(en), (locale, sorted(set(en) ^ set(text)))
+        for key, english in en.items():
+            assert fields(text[key]) == fields(english), \
+                (locale, key, sorted(fields(english)), sorted(fields(text[key])))
+
+
 def test_localized_metadata():
     """Every server-rendered metadata channel follows the UI locale.
 
@@ -301,12 +331,12 @@ def test_localized_metadata():
     description and share-card prose are French.
     """
     c = TestClient(main.app)
-    accept = {
-        "en": "en-US,en;q=0.9", "ko": "ko-KR", "ja": "ja-JP",
-        "zh-Hans": "zh-CN,zh;q=0.9", "es": "es-ES",
-        "fr": "fr-FR", "de": "de-DE",
-    }
-    for locale, header in accept.items():
+    # The header each locale is asked for, derived rather than listed: an
+    # Open Graph code is already a language and a region, which is the shape
+    # Accept-Language wants. Listed, this dict was a fourth copy of the locale
+    # list, and a locale added to TEXT was simply never asked for here.
+    for locale, og in seo_locale.OG_LOCALES.items():
+        header = og.replace("_", "-")
         res = c.get("/", headers={"Accept-Language": header})
         page = res.text
         text = seo_locale.words(locale)
@@ -317,7 +347,8 @@ def test_localized_metadata():
         assert text["site_desc"] in page, locale
         assert (f'property="og:locale" content="{seo_locale.OG_LOCALES[locale]}"'
                 in page), locale
-        assert page.count('property="og:locale:alternate"') == 6, locale
+        assert (page.count('property="og:locale:alternate"')
+                == len(seo_locale.TEXT) - 1), locale
         assert text["image_alt"] in page, locale
         site, = _ld(page)[0]
         assert site["inLanguage"] == locale, (locale, site)
