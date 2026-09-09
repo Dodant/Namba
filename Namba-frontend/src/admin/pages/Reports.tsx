@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { REASON_LABEL, REPORT_STATUSES, showValue } from '../../api'
+import { errorText, REASON_LABEL, REPORT_STATUSES, showValue } from '../../api'
 import { adm, type Page, type Report, type ReportGroup } from '../api'
 import { Badge, Confirm, Drawer, Empty, Hash, Pager, Table, When } from '../ui'
 
@@ -45,7 +45,7 @@ export default function Reports({ onChange }: { onChange: () => void }) {
     setGot(null)
     setErr('')
     adm.reports({ status, limit: PER, offset })
-      .then(setGot, (e: Error) => setErr(e.message))
+      .then(setGot, (e) => setErr(errorText(e)))
   }
 
   useEffect(load, [status, offset])
@@ -53,7 +53,7 @@ export default function Reports({ onChange }: { onChange: () => void }) {
   useEffect(() => {
     if (!open) return setDetail(null)
     setDetail(null)
-    adm.reportDetail(open.post_id).then(setDetail, (e: Error) => setErr(e.message))
+    adm.reportDetail(open.post_id).then(setDetail, (e) => setErr(errorText(e)))
   }, [open])
 
   async function decide() {
@@ -67,7 +67,7 @@ export default function Reports({ onChange }: { onChange: () => void }) {
       load()
       onChange()
     } catch (e) {
-      setErr((e as Error).message)
+      setErr(errorText(e))
     } finally {
       setBusy(false)
     }

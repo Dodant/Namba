@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BLOCK_HOURS, BLOCK_HOURS_LABEL } from '../../api'
+import { BLOCK_HOURS, BLOCK_HOURS_LABEL, errorText } from '../../api'
 import { adm, type Abuse as Signal, type AbuseRow } from '../api'
 import { Confirm, Empty, Hash, Table, When } from '../ui'
 
@@ -38,7 +38,7 @@ export default function Abuse() {
   function load() {
     setGot(null)
     setErr('')
-    adm.abuse({ minutes, least }).then(setGot, (e: Error) => setErr(e.message))
+    adm.abuse({ minutes, least }).then(setGot, (e) => setErr(errorText(e)))
   }
 
   useEffect(load, [minutes, least])
@@ -54,7 +54,7 @@ export default function Abuse() {
       setWhy('')
       load()
     } catch (e) {
-      setErr((e as Error).message)
+      setErr(errorText(e))
     } finally {
       setBusy(false)
     }

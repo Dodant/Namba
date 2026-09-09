@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { REASON_LABEL, REQUEST_STATUSES, showValue } from '../../api'
+import { errorText, REASON_LABEL, REQUEST_STATUSES, showValue } from '../../api'
 import { adm, type Page, type QueuedRequest } from '../api'
 import { Badge, Confirm, Empty, Hash, Pager, Table, When } from '../ui'
 
@@ -46,7 +46,7 @@ export default function Requests({ onChange }: { onChange: () => void }) {
     setGot(null)
     setErr('')
     adm.requests({ status, limit: PER, offset })
-      .then(setGot, (e: Error) => setErr(e.message))
+      .then(setGot, (e) => setErr(errorText(e)))
   }
 
   useEffect(load, [status, offset])
@@ -65,7 +65,7 @@ export default function Requests({ onChange }: { onChange: () => void }) {
          guessing it would be a guess. */
       onChange()
     } catch (e) {
-      setErr((e as Error).message)
+      setErr(errorText(e))
     } finally {
       setBusy(false)
     }

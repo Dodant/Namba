@@ -1,6 +1,7 @@
 /* oxlint-disable react-hooks/exhaustive-deps -- this hook forwards its caller's
    deps array, which is exactly what the rule cannot statically verify. */
 import { useEffect, useState } from 'react'
+import { errorText } from './api'
 
 /** Load-once-per-dep-change fetch state. Used by every page, hence a hook.
 
@@ -24,7 +25,7 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[], keep = false)
     setState((s) => (keep ? { data: s.data, loading: true } : { loading: true }))
     fn().then(
       (data) => alive && setState({ data, loading: false }),
-      (e: Error) => alive && setState({ err: e.message, loading: false }),
+      (e) => alive && setState({ err: errorText(e), loading: false }),
     )
     return () => {
       alive = false

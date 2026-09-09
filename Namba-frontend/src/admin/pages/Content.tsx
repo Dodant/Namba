@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { POST_STATUSES, showValue } from '../../api'
+import { errorText, POST_STATUSES, showValue } from '../../api'
 import { adm, type Page, type Row } from '../api'
 import { Badge, Empty, Pager, Table, When } from '../ui'
 
@@ -42,7 +42,7 @@ export default function Content() {
     setGot(null)
     setErr('')
     adm.posts({ q, status, flagged: flagged ? 1 : undefined, sort, limit: PER, offset })
-      .then(setGot, (e: Error) => setErr(e.message))
+      .then(setGot, (e) => setErr(errorText(e)))
   }, [q, status, flagged, sort, offset])
 
   /* Every filter change resets the window. Page 4 of the old filter is not

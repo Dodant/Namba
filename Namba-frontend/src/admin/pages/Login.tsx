@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { errorText } from '../../api'
 import { adm, type Who } from '../api'
 
 /** The only way in.
@@ -34,7 +35,7 @@ export default function Login({ onIn }: { onIn: (who: Who) => void }) {
         setPassword('')
       }
     } catch (x) {
-      setErr((x as Error).message)
+      setErr(errorText(x))
       if (challenge) setCode('')
       else setPassword('')
     } finally {

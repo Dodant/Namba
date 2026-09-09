@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { showValue } from '../../api'
+import { errorText, showValue } from '../../api'
 import { adm, type Event, type Stats } from '../api'
 import { LogTable } from '../log'
 import { Empty } from '../ui'
@@ -55,7 +55,7 @@ export default function Dashboard(
     onChange()
     adm.activity({ limit: 25 }).then(
       (p) => setFeed(p.rows),
-      (e: Error) => setErr(e.message),
+      (e) => setErr(errorText(e)),
     )
   }, [onChange])
 

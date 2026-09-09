@@ -228,6 +228,16 @@ export async function req<T>(path: string, init?: RequestInit): Promise<T> {
   return res.status === 204 ? (null as T) : res.json()
 }
 
+/** What went wrong, as a line to put in front of a reader.
+
+    `req` above throws an `Error` carrying FastAPI's `detail`, so this is that
+    sentence nearly every time. It exists because a `catch` binding is
+    `unknown`, and every one of the twenty call sites was writing
+    `errorText(e)` -- an assertion, at each of them, that what was
+    thrown is what we throw. It is, until a browser throws something else on a
+    dead connection, and then twenty places are wrong instead of one. */
+export const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e))
+
 export const json = (method: string, body: unknown): RequestInit => ({
   method,
   headers: { 'Content-Type': 'application/json' },

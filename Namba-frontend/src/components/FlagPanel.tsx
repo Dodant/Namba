@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import {
-  api, DELETE_REASONS, nickname, REPORT_REASONS,
+  api, DELETE_REASONS, errorText, nickname, REPORT_REASONS,
 } from '../api'
 import { useUi } from '../uiLocale'
 
@@ -72,7 +72,7 @@ export default function FlagPanel({ id }: { id: number | string }) {
       }
       setSent(kind === 'remove' ? m.flag.requested : m.flag.reported)
     } catch (e) {
-      setErr((e as Error).message)
+      setErr(errorText(e))
     } finally {
       setBusy(false)
     }

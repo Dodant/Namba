@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { errorText } from '../../api'
 import { adm, type Event, type Page } from '../api'
 import { LogTable } from '../log'
 import { Empty, Pager } from '../ui'
@@ -22,7 +23,7 @@ export default function Log({ kind }: { kind: 'anon' | 'admin' }) {
     setGot(null)
     setErr('')
     adm.activity({ kind, limit: PER, offset })
-      .then(setGot, (e: Error) => setErr(e.message))
+      .then(setGot, (e) => setErr(errorText(e)))
   }, [kind, offset])
 
   /* Switching between the two pages has to drop the window with it: page 4 of

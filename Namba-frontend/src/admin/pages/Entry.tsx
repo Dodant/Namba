@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { FORMATS, fmtDate, showValue, tagLabel, type Format, type PostStatus } from '../../api'
+import {
+  errorText, FORMATS, fmtDate, showValue, tagLabel, type Format, type PostStatus,
+} from '../../api'
 import { ACTION_LABEL, adm, type Diff, type FullPost, type Rev } from '../api'
 import { Badge, Confirm, Empty, Hash, Table, When } from '../ui'
 
@@ -69,7 +71,7 @@ export default function Entry() {
 
   const load = useCallback(() => {
     setErr('')
-    adm.post(id).then(setPost, (e: Error) => setErr(e.message))
+    adm.post(id).then(setPost, (e) => setErr(errorText(e)))
     adm.revisions(id).then(setRevs, () => setRevs([]))
   }, [id])
 
@@ -78,7 +80,7 @@ export default function Entry() {
   useEffect(() => {
     if (!pick) return setDiff(null)
     setDiff(null)
-    adm.diff(id, pick, 'live').then(setDiff, (e: Error) => setErr(e.message))
+    adm.diff(id, pick, 'live').then(setDiff, (e) => setErr(errorText(e)))
   }, [id, pick])
 
   async function move() {
@@ -90,7 +92,7 @@ export default function Entry() {
       setNote('')
       load()
     } catch (e) {
-      setErr((e as Error).message)
+      setErr(errorText(e))
     } finally {
       setBusy(false)
     }
@@ -109,7 +111,7 @@ export default function Entry() {
       load()
       setPick(null)
     } catch (e) {
-      setErr((e as Error).message)
+      setErr(errorText(e))
     } finally {
       setBusy(false)
     }
@@ -128,7 +130,7 @@ export default function Entry() {
       load()
       setPick(null)
     } catch (e) {
-      setErr((e as Error).message)
+      setErr(errorText(e))
     } finally {
       setBusy(false)
     }

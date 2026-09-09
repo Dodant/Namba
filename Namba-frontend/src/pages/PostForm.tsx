@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
-  api, canGroupValue, canonicalNumber, cleanNumberInput, fmtDate, FORMATS,
+  api, canGroupValue, canonicalNumber, cleanNumberInput, errorText, fmtDate, FORMATS,
   LANG_CODE, langLabel, nickname, showValue, TAG_MAX, tagLabel, TAGS_PER_POST,
   type Format, type Post, type Revision, type Tag, type Translation,
 } from '../api'
@@ -145,12 +145,12 @@ export default function PostForm() {
 
   useEffect(() => {
     if (!id) return
-    api.post(id).then(fill, (e: Error) => setErr(e.message))
+    api.post(id).then(fill, (e) => setErr(errorText(e)))
   }, [id])
 
   useEffect(() => {
     if (!id) return
-    api.revisions(id).then(setRevs, (e: Error) => setErr(e.message))
+    api.revisions(id).then(setRevs, (e) => setErr(errorText(e)))
   }, [id, revBump])
 
   async function submit(e: React.FormEvent) {
@@ -176,7 +176,7 @@ export default function PostForm() {
         : await api.create(payload)
       nav(`/p/${saved.id}`)
     } catch (e) {
-      setErr((e as Error).message)
+      setErr(errorText(e))
       setBusy(false)
     }
   }
@@ -189,7 +189,7 @@ export default function PostForm() {
     try {
       setImage((await api.upload(file)).url)
     } catch (e) {
-      setErr((e as Error).message)
+      setErr(errorText(e))
     } finally {
       setUploading(false)
     }
@@ -204,7 +204,7 @@ export default function PostForm() {
       if (replaces) fill(next)
       else setPost(next)
     } catch (e) {
-      setErr((e as Error).message)
+      setErr(errorText(e))
     }
   }
 
@@ -702,7 +702,7 @@ function TranslationEditor({
         }),
       )
     } catch (e) {
-      onError((e as Error).message)
+      onError(errorText(e))
     }
   }
 
@@ -713,7 +713,7 @@ function TranslationEditor({
     try {
       onSaved(await api.untranslate(post.id, editing.id, nickname.get() || 'anonymous'))
     } catch (e) {
-      onError((e as Error).message)
+      onError(errorText(e))
     }
   }
 
@@ -825,7 +825,7 @@ function LinkPanel({
       const found = await api.posts({ q, limit: 8 })
       setHits(found.filter((p) => p.id !== post.id))
     } catch (e) {
-      onError((e as Error).message)
+      onError(errorText(e))
     } finally {
       setFinding(false)
     }
@@ -836,7 +836,7 @@ function LinkPanel({
     try {
       onLinked(await fn())
     } catch (e) {
-      onError((e as Error).message)
+      onError(errorText(e))
     }
   }
 

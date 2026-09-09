@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { errorText } from '../../api'
 import { adm, type Operator, type Role, type Who } from '../api'
 import { Badge, Confirm, Empty, Table, When } from '../ui'
 
@@ -27,7 +28,7 @@ export default function Operators({ who }: { who: Who }) {
 
   function load() {
     setRows(null)
-    adm.admins().then(setRows, (e: Error) => setErr(e.message))
+    adm.admins().then(setRows, (e) => setErr(errorText(e)))
   }
 
   useEffect(load, [])
@@ -44,7 +45,7 @@ export default function Operators({ who }: { who: Who }) {
       setRole('ADMIN')
       load()
     } catch (x) {
-      setErr((x as Error).message)
+      setErr(errorText(x))
     } finally {
       setBusy(false)
     }
@@ -58,7 +59,7 @@ export default function Operators({ who }: { who: Who }) {
       setAsk(null)
       load()
     } catch (x) {
-      setErr((x as Error).message)
+      setErr(errorText(x))
     } finally {
       setBusy(false)
     }

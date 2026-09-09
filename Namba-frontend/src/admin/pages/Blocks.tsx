@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fmtDate } from '../../api'
+import { errorText, fmtDate } from '../../api'
 import { adm, type Block, type Page } from '../api'
 import { Confirm, Empty, Hash, Pager, Table, When } from '../ui'
 
@@ -23,7 +23,7 @@ export default function Blocks() {
     setGot(null)
     setErr('')
     adm.blocks({ live: live ? 'true' : 'false', limit: PER, offset })
-      .then(setGot, (e: Error) => setErr(e.message))
+      .then(setGot, (e) => setErr(errorText(e)))
   }
 
   useEffect(load, [live, offset])
@@ -36,7 +36,7 @@ export default function Blocks() {
       setAsk(null)
       load()
     } catch (e) {
-      setErr((e as Error).message)
+      setErr(errorText(e))
     } finally {
       setBusy(false)
     }

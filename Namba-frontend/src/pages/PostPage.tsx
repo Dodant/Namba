@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import {
-  api, entryPath, fmtCount, fmtDate, nickname, numSize, plain, showValue,
+  api, entryPath, errorText, fmtCount, fmtDate, nickname, numSize, plain, showValue,
   tagLabel, tagPath, type Comment, type Revision,
 } from '../api'
 import FlagPanel from '../components/FlagPanel'
@@ -56,7 +56,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
       await api.restore(Number(id), rev.id, nickname.get() || 'anonymous')
       location.reload() // this render came off a 404; start clean
     } catch (e) {
-      setErr((e as Error).message)
+      setErr(errorText(e))
     }
   }
 
@@ -343,7 +343,7 @@ function Comments({ id }: { id: string }) {
 
   useEffect(() => {
     setSaid(null)
-    api.comments(id).then(setSaid, (e: Error) => setErr(e.message))
+    api.comments(id).then(setSaid, (e) => setErr(errorText(e)))
   }, [id])
 
   /* The POST answers with the list, so what came back is the state: no refetch,
@@ -358,7 +358,7 @@ function Comments({ id }: { id: string }) {
       setSaid(await api.comment(id, { author: author.trim() || 'anonymous', body }))
       setBody('')
     } catch (e) {
-      setErr((e as Error).message)
+      setErr(errorText(e))
     } finally {
       setBusy(false)
     }
