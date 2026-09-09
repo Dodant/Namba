@@ -4,7 +4,7 @@ import {
   ABBR_BUCKETS, api, BUCKETS, entryPath, FORMATS, isAbbr, tagLabel, tagPath,
   type Format, type NumberEntry, type Post,
 } from '../api'
-import { fmtCount, fmtDate, marker, numSize, plain, showValue } from '../format'
+import { fmtCount, fmtDate, marker, numSize, plain, plainLines, showValue } from '../format'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
 import { useUi, type Messages } from '../uiLocale'
@@ -378,7 +378,7 @@ function IndexEntry(
       <div className="ix-pop" id={`ix-pop-${entry.id}`} popover="auto">
         <p className="ix-pop-num">{shownValue}</p>
         <p className="ix-pop-title">{mark(entry.title)}</p>
-        {entry.body && <p className="ix-pop-body">{mark(plain(entry.body))}</p>}
+        {entry.body && <p className="ix-pop-body">{mark(plainLines(entry.body))}</p>}
       </div>
       <span className="ix-like">
         <Like post={entry} />

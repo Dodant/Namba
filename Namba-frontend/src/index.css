@@ -687,6 +687,10 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
   margin: 6px 0 0; padding-top: 10px; border-top: 1px solid var(--line);
   color: var(--muted); font-weight: 300;
   font-size: 15.5px; line-height: 1.5; text-wrap: pretty;
+  /* `plainLines()` leaves the author's deliberate newlines in place. This
+     popover has the room the index row lacks, so they are structure rather
+     than whitespace to flatten. */
+  white-space: pre-line;
 }
 /* Where it sits is the one part that is not free. A top-layer box's containing
    block is the viewport, so it cannot be placed against the row it came from

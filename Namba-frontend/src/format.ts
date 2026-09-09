@@ -246,3 +246,20 @@ export const plain = (md: string) =>
     .replace(/[*`~]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
+
+/** The same small Markdown cleanup as `plain`, but for a preview with room to
+    breathe. The index row must remain one line; its See more popover is where
+    a writer's deliberate line breaks can be read back as separate thoughts. */
+export const plainLines = (md: string) =>
+  md
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/^\s{0,3}>\s?/gm, '')
+    .replace(/^\s{0,3}[-*+]\s+/gm, '')
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/(^|\s)_([^_]+)_(?=\s|$)/g, '$1$2')
+    .replace(/[*`~]/g, '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[^\S\r\n]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()

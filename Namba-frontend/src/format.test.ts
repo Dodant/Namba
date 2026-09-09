@@ -8,7 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   canGroupValue, canonicalNumber, cleanNumberInput, fmtCount, fmtDate, marker,
-  numSize, plain, showValue,
+  numSize, plain, plainLines, showValue,
 } from './format.ts'
 
 test('a value typed in any interface locale reaches the API in one spelling', () => {
@@ -107,6 +107,10 @@ test('a markdown body reads back as prose', () => {
   assert.equal(plain('snake_case and _wrapped_'), 'snake_case and wrapped')
   assert.equal(plain('```\ncode\n```\nafter'), 'after')
   assert.equal(plain('a\n\n\nb'), 'a b', 'a body with blank lines otherwise sprawls down a row')
+})
+
+test('a popover preview preserves the writer’s line breaks', () => {
+  assert.equal(plainLines('First line\n\nSecond **line**\r\nThird'), 'First line\n\nSecond line\nThird')
 })
 
 /* marker returns a /g regex and Home.tsx feeds it to String.split, so the
