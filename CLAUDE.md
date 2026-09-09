@@ -22,7 +22,7 @@ Before claiming anything works:
 
 ```sh
 cd Namba-backend  && .venv/bin/python test_namba.py   # asserts, no pytest
-cd Namba-frontend && npx tsc -b --noEmit && npx oxlint src && npm run build
+cd Namba-frontend && npx tsc -b --noEmit && npx oxlint src && npm test && npm run build
 ```
 
 ## Kept in sync by hand

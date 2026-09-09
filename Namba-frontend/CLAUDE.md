@@ -128,8 +128,31 @@ every link in the panel is wrong in one of them.
 
 ```sh
 npm run dev
-npx tsc -b --noEmit && npx oxlint src && npm run build  # all three must be clean
+npx tsc -b --noEmit && npx oxlint src && npm test && npm run build  # all four must be clean
 ```
+
+**`npm test` is `node --test` and nothing else** — no vitest, no jsdom, no
+config. It covers `format.ts`, which is every pure function in the front end:
+a value's punctuation, its size class, a date's distance, a body read back as
+prose, and the regex that lights a number up inside a title. Those take a
+string and return one, so there is nothing to render and nothing to mock, and
+Node has run TypeScript directly since type stripping stopped being a flag.
+`erasableSyntaxOnly` in the tsconfigs is what keeps that true; it was already
+on before there were tests.
+
+The tests are typechecked by `tsconfig.node.json`, not `tsconfig.app.json`,
+and that is the whole reason a second project exists here. The app's `types`
+is `["vite/client"]` on purpose: adding `"node"` to it to satisfy
+`import { test } from 'node:test'` would also put `process`, `Buffer` and
+`NodeJS.Timeout` into the type environment of code that ships to a browser,
+and the last of those is how `setTimeout` quietly stops returning a `number`.
+A `.test.ts` file therefore belongs in `src/`, beside what it tests, and is
+excluded from the app project.
+
+A component test would need a renderer and a DOM, which is a dependency and a
+config file for what the typecheck and one build already catch. If one is ever
+worth it, that is the conversation to have then, not a framework installed
+now against the possibility.
 
 **`-b` is not optional there.** `tsconfig.json` is a solution file — `"files":
 []` and two `references` — so a bare `tsc --noEmit` has nothing in its own file
