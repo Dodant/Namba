@@ -632,6 +632,12 @@ tbody tr.dim:hover td { opacity: 1; }
 .idlink {
   font-family: var(--mono); font-size: 11.5px; margin-right: 6px;
 }
+/* A badge that is a link. The badge keeps its own colour -- the point of it
+   is that ADMIN reads as ADMIN in every table -- so the link underneath
+   carries none of its own and says so on hover instead. */
+.who, .who:hover { text-decoration: none; }
+.who .badge { cursor: pointer; }
+.who:hover .badge { background: var(--accent); color: var(--on-accent); }
 /* the abuse table is twelve columns of counts, so an empty cell says nothing
    rather than saying zero twelve times */
 

@@ -130,10 +130,15 @@ every link in the panel is wrong in one of them.
   writer is a queue with extra steps. It runs in order, counts a 409 as
   "already that" rather than raising, and the ceiling is a page of rows -- the
   `ponytail:` comment in `Content.tsx` names it.
-- **A client hash is a link.** `Hash` takes an optional `to`, and everywhere a
-  visitor's hash is drawn it points at `/changes?ip=…&kind=all`. That is the
-  question four characters of a hash exist to raise, and until the log took
-  filters it had no answer outside the abuse page's window.
+- **Whoever wrote a row is a link back into the log.** `Hash` takes an
+  optional `to`, and everywhere a visitor's hash is drawn -- the log's own
+  From column, the queues, the entry page, abuse, blocks -- it points at
+  `/changes?ip=…&kind=all`. That is the question four characters of a hash
+  exist to raise, and until the log took filters it had no answer outside the
+  abuse page's window. The other half of that column is an operator, so
+  `LogTable`'s `ADMIN` badge is a link too, to `/audit?who=…&kind=admin`:
+  those are the only two things a row can be traced to, because nobody here
+  has a name.
 - **The body is shown as source.** An operator judging vandalism wants the
   characters a stranger typed — a link's real href, a zero-width space, the
   twelve blank lines — not the paragraph they render into. This is the one place

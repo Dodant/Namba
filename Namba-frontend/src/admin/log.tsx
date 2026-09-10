@@ -84,7 +84,22 @@ export function LogTable({ rows }: { rows: Event[] }) {
               )}
             </td>
             <td className="tight">
-              {e.admin_id ? <Badge>ADMIN</Badge> : <Hash value={e.ip_hash} />}
+              {/* Both halves lead back into this same list, narrowed to the
+                  one that wrote the row -- which is the question the column
+                  raises and, before the log took filters, the one it could
+                  not answer. An operator's row filters by the account and a
+                  visitor's by the address, because those are the two things
+                  a row can be traced to: nobody here has a name. */}
+              {e.admin_id ? (
+                <Link className="who" to={`/audit?who=${e.admin_id}&kind=admin`}>
+                  <Badge>ADMIN</Badge>
+                </Link>
+              ) : (
+                <Hash
+                  value={e.ip_hash}
+                  to={e.ip_hash ? `/changes?ip=${e.ip_hash}&kind=all` : undefined}
+                />
+              )}
             </td>
           </tr>
         )
