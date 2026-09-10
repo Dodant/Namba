@@ -1,3 +1,19 @@
+# This file is the source, and SSM holds the copy that runs. Editing it changes
+# nothing on its own -- a deploy runs whatever version is registered as the
+# default, so an edit here reaches production only when somebody registers it:
+#
+#   aws ssm update-document --region ap-northeast-2 --name namba-deploy \
+#       --document-format YAML --document-version '$LATEST' \
+#       --content file://.github/deploy/namba-deploy.ssm.yml
+#   aws ssm update-document-default-version --region ap-northeast-2 \
+#       --name namba-deploy --document-version <the new number>
+#
+# Diff before registering: SSM normalises YAML to JSON, so compare the parsed
+# structures rather than the text, and check that what is registered has not
+# been edited by hand on the box. Rolling back is the second command with the
+# previous number -- versions are kept, so nothing is lost by registering.
+#
+# Registered as v5 on 2026-09-10.
 schemaVersion: '2.2'
 description: >
   Namba deploy -- a fixed procedure rather than a shell. The CI role may run this

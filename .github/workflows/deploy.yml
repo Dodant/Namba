@@ -3,7 +3,9 @@
 # arbitrary shell on a box holding somebody else's production. This one may run
 # exactly one SSM document, `namba-deploy`, whose script is in
 # .github/deploy/namba-deploy.ssm.yml. That file, not this one, is the ceiling
-# on what a compromised workflow here can do to that machine.
+# on what a compromised workflow here can do to that machine -- and it is the
+# *registered* version that runs, not the file, so an edit there is not live
+# until somebody registers it. The command is in that file's own header.
 name: Deploy
 
 on:
