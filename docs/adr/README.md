@@ -14,7 +14,7 @@ the rule it introduces.
 | # | Decision | Status | Since |
 |---|---|---|---|
 | [0001](0001-no-reader-accounts.md) | No reader accounts; operators are the one exception | accepted | 2026-08-18, revised 2026-08-20 |
-| [0002](0002-nothing-removes-an-entry.md) | Nothing removes an entry; purge is a shell command | accepted | 2026-08-20 |
+| [0002](0002-nothing-removes-an-entry.md) | Nothing removes an entry; purge is a shell command | accepted | 2026-08-20, measured 2026-09-10 |
 | [0003](0003-what-outlives-the-entry.md) | Revisions, requests, reports and events outlive the entry; comments and links do not | accepted | 2026-08-20 |
 | [0004](0004-events-is-append-only.md) | `events` is append-only, and a purge does not reach it | accepted | 2026-08-20, amended 2026-09-09 |
 | [0005](0005-a-number-is-a-column.md) | A number is a column, and a value has one spelling | accepted, with open items | 2026-08-18 |

@@ -143,9 +143,10 @@ hand-copied vocabulary and a branch beside every existing one.
 
   **One path puts an entry back from nothing.** `restore_revision` has a
   branch for a snapshot whose entry row is gone, a state nothing in this
-  codebase can produce; the development database holds five such rows, and
-  whether production holds any is one query, written out in ADR-0002 beside
-  the decision that keeps the branch until somebody runs it. What comes back is
+  codebase can produce. Production holds no such row — measured 2026-09-10 and
+  written up in ADR-0002 — so the branch, `guard_public`'s absent-passes rule
+  and `PostPage`'s recovery view now answer for nothing that exists and may go
+  whenever somebody decides to take them. What comes back is
   the entry, its tags and its translations. Comments and links cannot: neither
   is in a snapshot, and both cascade on `posts(id)`.
 
