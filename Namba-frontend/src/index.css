@@ -344,8 +344,13 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
   background: none; text-align: left; cursor: pointer;
   font-size: 14px; line-height: 1.3;
 }
-.search-suggestions :is(a, .search-all):hover {
+.search-suggestions :is(a, .search-all):hover,
+.search-suggestions a.is-active {
   background: var(--accent-soft); color: var(--accent); text-decoration: none;
+}
+.search-suggestions mark {
+  padding: 0; background: color-mix(in srgb, var(--accent) 24%, transparent);
+  color: inherit; font-weight: 700;
 }
 .search-suggestion-value {
   font-family: var(--mono); font-size: 11px; font-variant-numeric: tabular-nums;

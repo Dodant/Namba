@@ -199,6 +199,15 @@ const WORDMARK = (
   </>
 )
 
+function highlightMatches(text: string, query: string): ReactNode {
+  const terms = [...new Set(query.trim().split(/\s+/).filter(Boolean))]
+  if (!terms.length) return text
+  const escaped = terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  return text.split(new RegExp(`(${escaped.join('|')})`, 'gi')).map((part, index) =>
+    index % 2 ? <mark key={index}>{part}</mark> : part,
+  )
+}
+
 function Header({ lang }: { lang: string }) {
   const { locale, m } = useUi()
   const nav = useNavigate()
@@ -206,17 +215,45 @@ function Header({ lang }: { lang: string }) {
   const { pathname } = useLocation()
   const box = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState(() => params.get('q') ?? '')
+  const [activeSuggestion, setActiveSuggestion] = useState(-1)
   /* Rendering suggestion results can wait a moment; typing itself cannot. */
   const deferredQuery = useDeferredValue(query.trim())
   const suggestionQuery = canonicalNumber(deferredQuery, locale).value
   const suggestions = useAsync(
     () => suggestionQuery.length >= 2
-      ? api.posts({ q: suggestionQuery, limit: 5, lang })
+      ? api.posts({ q: suggestionQuery, sort: 'relevance', limit: 5, lang })
       : Promise.resolve([]),
     [suggestionQuery, lang],
   )
 
   useEffect(() => setQuery(params.get('q') ?? ''), [params])
+  useEffect(() => setActiveSuggestion(-1), [suggestionQuery])
+
+  const suggestionPosts = suggestions.data ?? []
+  const hasSuggestions = suggestionQuery.length >= 2 && suggestionPosts.length > 0
+
+  function openSearch() {
+    const q = query.trim()
+    /* an empty box is not a search for nothing: the API drops an empty q and
+       hands back the whole wiki, which arrived under Search and read as a bug. */
+    if (q) nav(`/search?q=${encodeURIComponent(canonicalNumber(q, locale).value)}`)
+  }
+
+  function onSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!hasSuggestions) return
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      const step = e.key === 'ArrowDown' ? 1 : -1
+      setActiveSuggestion((current) => (current + step + suggestionPosts.length) % suggestionPosts.length)
+    } else if (e.key === 'Enter' && activeSuggestion >= 0) {
+      e.preventDefault()
+      const post = suggestionPosts[activeSuggestion]
+      setQuery('')
+      nav(`/p/${post.id}`)
+    } else if (e.key === 'Escape') {
+      setQuery('')
+    }
+  }
 
   /* the pill has always drawn a "/" and nothing has ever listened for one.
      Either the glyph goes or this does, and the glyph is the convention every
@@ -261,12 +298,7 @@ function Header({ lang }: { lang: string }) {
             className="search"
             onSubmit={(e) => {
               e.preventDefault()
-              const q = query.trim()
-            /* an empty box is not a search for nothing: the API drops an empty
-               q and hands back the whole wiki, which arrived under the
-               heading Search: "" and read as a bug. */
-              if (!q) return
-              nav(`/search?q=${encodeURIComponent(canonicalNumber(q, locale).value)}`)
+              openSearch()
             }}
           >
             <span className="slash">/</span>
@@ -285,26 +317,32 @@ function Header({ lang }: { lang: string }) {
               name="q"
               aria-label={m.header.searchLabel}
               aria-controls="search-suggestions"
-              aria-expanded={suggestionQuery.length >= 2 && !!suggestions.data?.length}
+              aria-expanded={hasSuggestions}
               placeholder={m.header.searchPlaceholder}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={onSearchKeyDown}
             />
           </form>
-          {suggestionQuery.length >= 2 && !!suggestions.data?.length && (
+          {hasSuggestions && (
             <div className="search-suggestions" id="search-suggestions" aria-label={m.header.suggestions}>
-              {suggestions.data.map((post) => (
-                <Link key={post.id} to={`/p/${post.id}`} onClick={() => setQuery('')}>
+              {suggestionPosts.map((post, index) => (
+                <Link
+                  key={post.id}
+                  to={`/p/${post.id}`}
+                  className={index === activeSuggestion ? 'is-active' : undefined}
+                  onClick={() => setQuery('')}
+                >
                   <span className="search-suggestion-value">
-                    {showValue(post.value, post.grouped, locale)}
+                    {highlightMatches(showValue(post.value, post.grouped, locale), deferredQuery)}
                   </span>
-                  <span>{post.title}</span>
+                  <span>{highlightMatches(post.title, deferredQuery)}</span>
                 </Link>
               ))}
               <button
                 type="button"
                 className="search-all"
-                onClick={() => nav(`/search?q=${encodeURIComponent(suggestionQuery)}`)}
+                onClick={openSearch}
               >
                 {m.header.allResults}
               </button>

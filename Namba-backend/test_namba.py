@@ -2141,6 +2141,17 @@ def test_api_round_trip():
     assert c.get("/api/posts", params={"q": "_"}).json() == []
     assert len(c.get("/api/posts", params={"q": "battery"}).json()) == 2
 
+    # Several words may appear in a different order, and the compact search
+    # menu must reserve its first places for a value or title over body prose.
+    body = c.post("/api/posts", json={"value": "992", "title": "Elsewhere",
+                                       "body": "moon landing mentioned here"}).json()
+    title = c.post("/api/posts", json={"value": "993", "title": "Moon landing"}).json()
+    value = c.post("/api/posts", json={"value": "moon landing", "title": "A value"}).json()
+    reversed_words = c.get("/api/posts", params={"q": "landing moon"}).json()
+    assert {hit["id"] for hit in reversed_words} >= {body["id"], title["id"], value["id"]}
+    ranked = c.get("/api/posts", params={"q": "moon landing", "sort": "relevance"}).json()
+    assert [hit["id"] for hit in ranked[:3]] == [value["id"], title["id"], body["id"]]
+
     # and the coined one joins the wiki's vocabulary, which is read off the
     # posts rather than a list in main.py
     vocab = {t["tag"]: t["count"] for t in c.get("/api/tags").json()}

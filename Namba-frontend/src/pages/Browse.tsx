@@ -29,7 +29,7 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
           ? { value: raw, section, sort: 'number', lang }
           : mode === 'tag'
             ? { tag, sort: 'number', lang }
-            : { q: query, sort: 'number', lang },
+            : { q: query, sort: 'relevance', lang },
       ),
     [mode, raw, section, tag, query, lang],
   )

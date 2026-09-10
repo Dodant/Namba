@@ -637,19 +637,21 @@ def list_posts(
     if in_section:
         where.append(in_section)
     if q:
-        # EXISTS rather than a join: a post with three translations must still
-        # come back once. Without it, giving a Korean entry an English title
-        # left it unfindable in the language the site is written in.
-        where.append(
-            f"""(p.title LIKE ? ESCAPE '{db.LIKE_ESC}'
-                 OR p.body LIKE ? ESCAPE '{db.LIKE_ESC}'
-                 OR p.value LIKE ? ESCAPE '{db.LIKE_ESC}'
-                 OR EXISTS (SELECT 1 FROM translations t
-                            WHERE t.post_id = p.id
-                              AND (t.title LIKE ? ESCAPE '{db.LIKE_ESC}'
-                                   OR t.body LIKE ? ESCAPE '{db.LIKE_ESC}')))"""
-        )
-        args += [db.like(q)] * 5
+        # Each word must be somewhere in the entry.  A literal phrase is too
+        # strict for a search such as "moon landing": the useful entry may
+        # say "landing on the moon". EXISTS rather than a join still ensures
+        # a post with several translations comes back only once.
+        for term in q.split():
+            where.append(
+                f"""(p.title LIKE ? ESCAPE '{db.LIKE_ESC}'
+                     OR p.body LIKE ? ESCAPE '{db.LIKE_ESC}'
+                     OR p.value LIKE ? ESCAPE '{db.LIKE_ESC}'
+                     OR EXISTS (SELECT 1 FROM translations t
+                                WHERE t.post_id = p.id
+                                  AND (t.title LIKE ? ESCAPE '{db.LIKE_ESC}'
+                                       OR t.body LIKE ? ESCAPE '{db.LIKE_ESC}')))"""
+            )
+            args += [db.like(term)] * 5
     if where:
         sql.append("WHERE " + " AND ".join(where))
     order = {
@@ -666,6 +668,23 @@ def list_posts(
         # the filters: a random MOVIE is a random row of the movies.
         "random": "RANDOM()",
     }.get(sort, "p.id")
+    if q and sort == "relevance":
+        # Results that identify the value or name the whole phrase are the
+        # best autocomplete choices. Body-only mentions remain discoverable,
+        # but never crowd those direct matches out of a short suggestion list.
+        order = f"""CASE
+            WHEN p.value = ? COLLATE NOCASE THEN 0
+            WHEN p.value LIKE ? ESCAPE '{db.LIKE_ESC}' THEN 1
+            WHEN p.title LIKE ? ESCAPE '{db.LIKE_ESC}'
+                 OR EXISTS (SELECT 1 FROM translations t
+                            WHERE t.post_id = p.id
+                              AND t.title LIKE ? ESCAPE '{db.LIKE_ESC}') THEN 2
+            WHEN p.body LIKE ? ESCAPE '{db.LIKE_ESC}'
+                 OR EXISTS (SELECT 1 FROM translations t
+                            WHERE t.post_id = p.id
+                              AND t.body LIKE ? ESCAPE '{db.LIKE_ESC}') THEN 3
+            ELSE 4 END, p.id DESC"""
+        args += [q, db.like(q), db.like(q), db.like(q), db.like(q), db.like(q)]
     sql.append("ORDER BY " + order)
     sql.append("LIMIT ? OFFSET ?")
     args += [limit, offset]
