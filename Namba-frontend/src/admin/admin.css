@@ -208,8 +208,12 @@ td.acts .btn + .btn { margin-left: 5px; }
 /* a title can be any length a stranger types, and one long one must not push
    the columns after it off the table */
 td.wide { max-width: 30ch; }
-td.wide a, td.wide span { display: block; overflow: hidden; text-overflow: ellipsis;
-                          white-space: nowrap; }
+/* Direct children only. Without the `>` this reached the `<span class="num">`
+   *inside* a title link and made it a block of its own, so every row carrying
+   a number and a title was two lines tall -- which is the log, the report
+   queue and the request queue, and half the rows a back office has. */
+td.wide > a, td.wide > span { display: block; overflow: hidden;
+                              text-overflow: ellipsis; white-space: nowrap; }
 
 .sortable { cursor: pointer; user-select: none; }
 .sortable:hover { color: var(--ink); }
@@ -441,8 +445,12 @@ tbody tr.lit:hover { background: var(--accent-soft); }
   margin: 0 0 0 auto; height: 100dvh; max-height: 100dvh;
   width: min(460px, 100vw);
   background: var(--panel); color: var(--ink);
-  display: flex; flex-direction: column;
 }
+/* `[open]`, and it has to be. A closed dialog is hidden by a *user-agent*
+   rule, and cascade origin is settled before specificity -- so a plain
+   `display: flex` here beats it however it is written, and the sheet is drawn
+   in the flow at the foot of every page that can open one. */
+.sheet[open] { display: flex; flex-direction: column; }
 .sheet::backdrop { background: rgba(10, 10, 12, 0.4); }
 .sheet-top {
   display: flex; align-items: flex-start; gap: 10px;
