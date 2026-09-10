@@ -3197,6 +3197,100 @@ def test_the_schema_moves_forward_once():
 
 
 
+def test_a_snapshot_is_its_own_shape():
+    """What a revision stores is a named list of fields, not whatever
+    `fetch_one` answers with.
+
+    The two were one dict, so a key added to the single-post view landed in
+    every snapshot taken from then on -- silently, for good, in the one table
+    nothing rewrites. That is the trap `CLAUDE.md` warns about for comments,
+    and the warning was the only thing holding it.
+
+    The set is asserted literally on purpose: a key added to `fetch_one` must
+    not change it, and a key added to `store.SNAPSHOT_FIELDS` has to be
+    somebody's decision rather than a side effect of one.
+    """
+    c = TestClient(main.app)
+    made = c.post("/api/posts", json={"value": "1123", "title": "before",
+                                      "body": "b", "tags": ["myth"]}).json()
+    c.put(f"/api/posts/{made['id']}/translations",
+          json={"lang": "한국어", "title": "제목"})
+    c.patch(f"/api/posts/{made['id']}", json={"title": "after", "author": "ed"})
+
+    con = db.connect()
+    try:
+        snap = json.loads(con.execute(
+            "SELECT snapshot FROM revisions WHERE post_id = ? ORDER BY id DESC LIMIT 1",
+            (made["id"],)).fetchone()[0])
+        # and out again. The suite shares one database, and a translation left
+        # here is a language in `/api/languages` that `test_api_round_trip`
+        # asserts the whole of. The cascade takes the translation and the tags;
+        # `revisions` has no foreign key, which is the point of it, so those go
+        # by hand -- the same two statements `admin.py purge` runs.
+        with con:
+            con.execute("DELETE FROM revisions WHERE post_id = ?", (made["id"],))
+            con.execute("DELETE FROM posts WHERE id = ?", (made["id"],))
+    finally:
+        con.close()
+    assert set(snap) == {
+        "value", "format", "sort_key", "title", "body", "image", "lang",
+        "grouped", "author", "edited_by", "likes", "created_at", "updated_at",
+        "tags", "translations",
+    }, sorted(snap)
+    # `id` is not one: `revisions.post_id` is the column that says which entry
+    # this was. `status` is not content -- hiding takes no snapshot and a
+    # restore must not put a hidden entry back on the wiki. `bucket` is
+    # computed from the format and the sort key sitting beside it.
+    assert not {"id", "status", "bucket"} & set(snap), sorted(snap)
+    assert snap["title"] == "before" and [t["lang"] for t in snap["translations"]] == ["한국어"]
+
+
+def test_a_snapshot_written_by_an_older_version_still_restores():
+    """A revision from before the shape was named is still a revision.
+
+    Every snapshot in every database today carries `id`, `status` and
+    `bucket`, because it was `fetch_one`'s dict. A restore reads the fields it
+    needs by name and ignores the rest, so the extra keys are inert -- and
+    this is the test that says so, since nothing else in the suite can write
+    one of those rows any more.
+    """
+    c = TestClient(main.app)
+    live = c.post("/api/posts", json={"value": "1124", "title": "as it stands",
+                                      "author": "first"}).json()
+    old = {
+        "id": live["id"], "value": "1124", "format": "INTEGER", "sort_key": 1124.0,
+        "title": "as it was", "body": "the old body", "image": None, "lang": None,
+        "grouped": 0, "author": "first", "edited_by": None, "likes": 3,
+        "status": "ACTIVE", "bucket": "1000", "tags": ["book"],
+        "translations": [], "created_at": live["created_at"],
+        "updated_at": live["updated_at"],
+    }
+    con = db.connect()
+    try:
+        with con:
+            rev = con.execute(
+                "INSERT INTO revisions (post_id, snapshot, author, at) VALUES (?,?,?,?)",
+                (live["id"], json.dumps(old), "first", db.now())).lastrowid
+    finally:
+        con.close()
+
+    back = c.post(f"/api/posts/{live['id']}/revisions/{rev}/restore",
+                  json={"author": "arthur"}).json()
+    assert back["title"] == "as it was", back["title"]
+    assert back["body"] == "the old body" and back["tags"] == ["book"]
+    assert back["author"] == "first", "the first writer is not the restorer"
+    assert back["edited_by"] == "arthur"
+
+    con = db.connect()
+    try:
+        with con:
+            con.execute("DELETE FROM revisions WHERE post_id = ?", (live["id"],))
+            con.execute("DELETE FROM posts WHERE id = ?", (live["id"],))
+    finally:
+        con.close()
+
+
+
 def test_connection_crosses_threads():
     """FastAPI opens the connection on one threadpool thread and runs the
     endpoint on another. TestClient funnels everything through a single portal

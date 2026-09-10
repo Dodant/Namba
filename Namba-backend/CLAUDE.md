@@ -73,8 +73,10 @@ the sitemap.
   hidden and comes back with the entry. The cascade is for `admin.py purge`,
   where taking the talk along is exactly the point (`test_comments` asserts
   both halves). It is also never snapshotted, which is
-  why it is its own endpoint rather than a key on `fetch_one` — anything attached
-  there rides into every revision taken afterwards. `add_comment` leaves
+  why it is its own endpoint rather than a key on `fetch_one`. That used to be
+  the whole guard and is now the second one: `store.SNAPSHOT_FIELDS` names
+  what a revision keeps, so a key added to `fetch_one` no longer rides into
+  every revision taken afterwards (ADR-0023). `add_comment` leaves
   `updated_at` alone for the same reason: a remark is not a rewrite and must not
   carry the entry back up the Recent feed.
 - **Do not delete the picture when the entry goes.** `restore_revision` hands
@@ -453,11 +455,16 @@ the sitemap.
   `count` — each entry carries `id`, `title`, `body` (the first 140 characters,
   with an ellipsis if truncated), `image` (a boolean) and `likes`, without full
   bodies, tags or dates.
-- **Translations ride inside the post snapshot.** `fetch_one` attaches them and
-  `snapshot()` reads through `fetch_one`, which is the whole reason a removed
-  translation is recoverable — and why `restore_revision` calls
-  `write_translations`. Keep them out of `shape()`: the list endpoints must
-  stay lean. `lang` is `COLLATE NOCASE` with `UNIQUE(post_id, lang)`, so the
+- **A snapshot has its own shape, and translations are in it.**
+  `store.SNAPSHOT_FIELDS` plus the tags and the translations is what
+  `snapshot_of()` builds and `snapshot()` stores — not `fetch_one`'s dict,
+  which is the single-post *view* and would make every key added there part of
+  the storage format for good (ADR-0023). Translations being in the list is
+  the whole reason a removed one is recoverable, and why `restore_revision`
+  calls `write_translations`. `id`, `status` and `bucket` are deliberately out:
+  `revisions.post_id` says which entry, hiding is not content, and a bucket is
+  computed from the two fields beside it. Keep translations out of `shape()`
+  all the same: the list endpoints must stay lean. `lang` is `COLLATE NOCASE` with `UNIQUE(post_id, lang)`, so the
   `ON CONFLICT(post_id, lang)` upsert is what makes a rewrite an edit.
 - **`post_links` always stores `a_id < b_id`** (there is a CHECK). Sort the pair
   before insert or delete; read it back with the `UNION` in `get_post`.

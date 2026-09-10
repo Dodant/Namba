@@ -188,6 +188,40 @@ def fetch_one(con, post_id, hidden=False):
     return post
 
 
+# What a revision stores, named rather than taken from whatever `fetch_one`
+# answers with. The two were one dict, and that made the single-post view's
+# shape the storage format: a key added there landed in every snapshot from
+# then on, in the one table nothing rewrites and no migration can reach --
+# which is exactly the trap the note about comments warns of, held by the
+# warning alone.
+#
+# Three columns are deliberately not here. `id` is `revisions.post_id`, which
+# is the column that says which entry a snapshot is of. `status` is not
+# content: hiding an entry takes no snapshot, and a restore must not put a
+# hidden one back on the wiki. `bucket` is computed from the format and the
+# sort key sitting beside it.
+SNAPSHOT_FIELDS = ("value", "format", "sort_key", "title", "body", "image",
+                   "lang", "grouped", "author", "edited_by", "likes",
+                   "created_at", "updated_at")
+
+
+def snapshot_of(post):
+    """One entry as a revision keeps it: the fields above, its tags and its
+    translations.
+
+    Not every field is read back. `apply_snapshot` puts eleven of them on the
+    row and the diff reads seven; `edited_by` and `updated_at` are stored
+    because a snapshot is the entry *as it was*, and a version that cannot say
+    who had last touched it is a worse record for the sake of two columns. The
+    line to hold is that this list changes when somebody means it to.
+    """
+    return {
+        **{field: post[field] for field in SNAPSHOT_FIELDS},
+        "tags": post["tags"],
+        "translations": post["translations"],
+    }
+
+
 def snapshot(con, post_id, author, hidden=False):
     """Store the current state of a post so an edit can be undone.
 
@@ -201,7 +235,7 @@ def snapshot(con, post_id, author, hidden=False):
     post = fetch_one(con, post_id, hidden=hidden)
     cur = con.execute(
         "INSERT INTO revisions (post_id, snapshot, author, at) VALUES (?,?,?,?)",
-        (post_id, json.dumps(post, ensure_ascii=False), author, now()),
+        (post_id, json.dumps(snapshot_of(post), ensure_ascii=False), author, now()),
     )
     return cur.lastrowid
 
@@ -234,6 +268,11 @@ def apply_snapshot(con, post_id, old, editor):
     branch once it has put the row back. Three copies of one UPDATE is three
     places to remember when a column is added, and the column that gets
     forgotten is the one nobody notices a restore dropping.
+
+    It reads what it needs by name and ignores the rest, which is what makes a
+    snapshot written before `SNAPSHOT_FIELDS` existed -- carrying `id`,
+    `status` and `bucket`, because it was `fetch_one`'s whole dict -- restore
+    exactly as it always did.
 
     `author` is not in it, deliberately. The first writer is never
     overwritten, so a restore credits whoever pressed it in `edited_by` --

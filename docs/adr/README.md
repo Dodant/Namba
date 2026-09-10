@@ -34,4 +34,5 @@ the rule it introduces.
 | [0019](0019-a-picture-is-one-of-the-uploads.md) | An entry's picture is one of this wiki's uploads | accepted | 2026-09-09 |
 | [0020](0020-text-is-stored-in-one-normal-form.md) | Text is stored in one Unicode normal form | accepted | 2026-09-09 |
 | [0021](0021-the-content-is-cc0-the-code-is-mit.md) | The content is CC0; the code is MIT | accepted | 2026-08-20, 2026-09-09 |
-| [0022](0022-no-orm.md) | No ORM, no migration tool | accepted | 2026-08-18 |
+| [0022](0022-no-orm.md) | No ORM; anything the DDL cannot reach is a numbered migration | accepted | 2026-08-18, numbered 2026-09-10 |
+| [0023](0023-a-snapshot-has-its-own-shape.md) | A snapshot has its own shape, not `fetch_one`'s | accepted | 2026-09-10 |
