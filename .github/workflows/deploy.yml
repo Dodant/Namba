@@ -42,7 +42,7 @@ jobs:
 
       # 24, not 22: `node --test` runs the front end's .ts files directly, which
       # needs the version where type stripping stopped being a flag.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: npm
@@ -69,7 +69,7 @@ jobs:
         working-directory: Namba-frontend
         run: npm run build
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -81,7 +81,7 @@ jobs:
 
       # Handed to the deploy job, so the image cannot carry a front end no
       # suite has seen.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: github.event_name != 'pull_request'
         with:
           name: dist
@@ -106,7 +106,7 @@ jobs:
 
       # The front end the checks job built and the suite then read. No node
       # here: the Dockerfile copies dist/, it does not build it.
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: Namba-frontend/dist
@@ -121,7 +121,7 @@ jobs:
 
       # The runner's default builder uses the docker driver, which cannot export
       # a cache -- `cache-to: type=gha` below fails outright without this step.
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: Build and push
         uses: docker/build-push-action@v7
