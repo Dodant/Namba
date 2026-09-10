@@ -44,7 +44,6 @@ const NAV: Item[] = [
     about should not pay a tap for it either way. */
 function Rail({ who, stats, onOut }: { who: Who; stats: Stats | null; onOut: () => void }) {
   const { pathname } = useLocation()
-  let group = ''
 
   return (
     <nav className="rail">
@@ -55,9 +54,11 @@ function Rail({ who, stats, onOut }: { who: Who; stats: Stats | null; onOut: () 
         <span className="rail-sub">Back office</span>
       </div>
       <div className="nav">
-        {NAV.map((item) => {
-          const head = item.group && item.group !== group ? item.group : ''
-          group = item.group
+        {NAV.map((item, i) => {
+          /* The heading prints on the first item of each run. Off the previous
+             entry rather than a variable carried across the map: NAV is static,
+             so the neighbour is the same answer without a mutation mid-render. */
+          const head = item.group && item.group !== NAV[i - 1]?.group ? item.group : ''
           const on = item.to === '/' ? pathname === '/' : pathname.startsWith(item.to)
           const n = item.tally && stats ? stats[item.tally] : 0
           return (

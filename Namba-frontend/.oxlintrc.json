@@ -3,6 +3,11 @@
   "plugins": ["react", "typescript", "oxc"],
   "rules": {
     "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    // Every page clears its state before it fetches -- `setGot(null)` and the
+    // rest -- because the alternative is the previous subject's answer under
+    // this subject's heading. `useAsync` makes the same call in a comment of
+    // its own and is exempt only because it writes the updater form.
+    "react/set-state-in-effect": "off"
   }
 }

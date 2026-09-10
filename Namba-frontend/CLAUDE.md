@@ -396,7 +396,12 @@ sanitiser config to get wrong.
   an effect drops a stale `offset` out of the query string and must not rerun
   when the params it writes come back. `uiLocale.tsx` also suppresses
   `react/only-export-components` because the provider and its hook share one
-  context. Keep each suppression tied to its stated reason.
+  context. The fourth is a rule rather than a file: `react/set-state-in-effect`
+  is off in `.oxlintrc.json`. Clearing a page's state before it fetches --
+  `setGot(null)` in every admin list, `setLang` and `setQuery` when the subject
+  changes -- is the call `useAsync` argues for in a comment of its own, and the
+  rule reads each one of them as a mistake; `useAsync` escapes it only by
+  writing the updater form. Keep each suppression tied to its stated reason.
 - `useAsync`'s third argument, `keep`, holds the last answer on screen while
   the next loads. Only `Index` and `Feed` pass it: their deps re-filter one
   list. Do not pass it from a page whose deps name a *subject* — `Browse` and
