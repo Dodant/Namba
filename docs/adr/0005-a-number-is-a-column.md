@@ -20,8 +20,11 @@ decimal. Separators are a display flag, `posts.grouped`; the write form sends
 English `1,000.5` all store as `1000.5`. A grouping pattern that is not strict
 (`1,2,3`) is content and is left alone.
 
-An `ABBR` value has one spelling, the first writer's: a later writer of the
-same word, in any case, adopts what is stored, and `/a/ufo` lands on `UFO`.
+An `ABBR` value is stored as typed, case included, and one word is still one
+page: the `/a/` reads compare `COLLATE NOCASE`, `head_abbr` canonicalises the
+page to the earliest entry's spelling, and the sitemap groups the same way so
+its `<loc>` agrees with that canonical. `/a/ufo`, `/a/Ufo` and `/a/UFO` are
+one list; none of them rewrites a value to get there.
 `ABBR` is Latin letters, digits and `.&/;-` with at least one letter, and is the
 one format that is checked rather than taken at its word, because it is a
 claim about the value and the claim is a stranger's. `/n/` and `/a/` are two
@@ -77,3 +80,31 @@ each spelling is its own `/n/` page.
 - 2026-09-10: answered -- all of them separate, and the rule behind the answer
   written down. No code changed; what changed is that a test now holds it, so
   the next tidy-up cannot fold one of them by accident.
+- 2026-09-10: **one spelling per ABBR word is withdrawn.** `resolve_format`
+  no longer looks a sibling up and no longer rewrites a value; case is part of
+  an abbreviation's spelling, the same as every other format's characters.
+
+  What it cost, measured on production: `DB` (Database, id 306, 2026-09-08)
+  was written first, so `dB` (Decibel, id 597, 2026-09-10) stored as `DB`.
+  Reproduced on a fresh database, and the second half is the part that decided
+  it -- the operator's `POST /api/admin/posts/{id}/value` runs the same
+  `resolve_format`, whose lookup excludes only the entry being edited, so
+  retyping `dB` was rewritten to `DB` and then refused 409 "that is the number
+  it already has". Nobody could file `dB` by any route, including the shell.
+  A wiki whose one correcting route cannot correct a value is worse than two
+  spellings of one word.
+
+  Withdrawing it costs less than it looked, because the fold was doing work
+  two other mechanisms already did. The `/a/` reads were already `COLLATE
+  NOCASE` (`main.py`) and `head_abbr` already canonicalised to `rows[0]`
+  (`seo.py`), so `/a/dB` and `/a/DB` were already one page with one canonical
+  -- the split the fold was defended as preventing did not depend on it. The
+  one real leak was the sitemap's `GROUP BY value, fmt`, which is BINARY and
+  would have offered a crawler two `<loc>`s for that one page; it groups
+  `COLLATE NOCASE` now and takes its spelling from `MIN(id)`, so `<loc>` and
+  canonical agree. `SaaS`/`SAAS` and `IoT`/`IOT` are the same case as
+  `dB`/`DB` and were always the argument against folding to upper.
+
+  Knock-on, recorded in ADR-0007: `resolve_format` was the only read
+  `create_post` decided on, so a create now decides nothing and
+  `test_every_write_decides_inside_the_lock` probes eleven routes, not twelve.

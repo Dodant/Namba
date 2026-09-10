@@ -324,9 +324,10 @@ export default function PostForm() {
                   : KEEP[format]
                     ? e.target.value.replace(KEEP[format], '')
                     : e.target.value
-                /* case is kept: SaaS is spelled SaaS. The API still keeps
-                   ufo and UFO on one page by adopting the spelling already
-                   stored, so what is typed is a proposal, not the address */
+                /* case is kept, here and in the column: SaaS is spelled
+                   SaaS and dB is not DB. ufo and UFO are still one page --
+                   the /a/ reads compare case-insensitively -- so the spelling
+                   is what this writer meant, not a claim on the address */
                 setValue(kept)
                 /* Typing the locale's grouping marks is itself a request to
                    keep displaying them, just as typing 1,000 always was. */

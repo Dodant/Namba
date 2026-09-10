@@ -624,8 +624,10 @@ def list_posts(
     where.append("p.status = ?")
     args.append(LIVE)
     if value is not None:
-        # an abbreviation is one word however a link spells it -- see
-        # resolve_format; a Mixed "gross" and "GROSS" stay two values
+        # This compare is what holds an abbreviation to one page: the stored
+        # spellings may differ in case -- dB and DB -- and either link, in any
+        # case, asks for all of them. A Mixed "gross" and "GROSS" stay two
+        # values, which is why it belongs to the section and not to the column.
         loose = section == "abbr" or (format or "").upper() == "ABBR"
         where.append("p.value = ? COLLATE NOCASE" if loose else "p.value = ?")
         args.append(value)
@@ -775,14 +777,12 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
     author = nick(p.author)
     ts = now()
     with writing(con):
-        # Inside the lock, because this is a read that decides. `resolve_format`
-        # asks what spelling a sibling ABBR already chose and stores this one if
-        # there is none -- so `ufo` and `UFO` arriving together would both see
-        # no sibling and both store, which is the two `/a/` pages for one word
-        # that CLAUDE.md spends three paragraphs preventing, with no login to
-        # merge them afterwards. A UNIQUE index cannot say it: several entries
-        # under one word is normal.
-        value, fmt, key = resolve_format(value, p.format, con)
+        # The one write that decides nothing about another row: `resolve_format`
+        # is pure, an entry under a value that already has ten is normal, and
+        # there is no uniqueness here to race for. So the lock is held for the
+        # three statements below landing together, not for a read -- see
+        # db.writing() and ADR-0007 for the eleven writes where it is the read.
+        value, fmt, key = resolve_format(value, p.format)
         cur = con.execute(
             """INSERT INTO posts (value, format, sort_key, title, body, image, author,
                                   lang, grouped, created_at, updated_at)
@@ -836,9 +836,9 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         if p.value is not None:
             value, grouped = ungroup(p.value, grouped, p.number_locale)
         if p.format:
-            value, fmt, key = resolve_format(value, p.format, con, post_id)
+            value, fmt, key = resolve_format(value, p.format)
         elif p.value is not None:
-            value, fmt, key = resolve_format(value, None, con, post_id)  # value changed, re-derive
+            value, fmt, key = resolve_format(value, None)  # value changed, re-derive
         else:
             fmt, key = current["format"], current["sort_key"]
         # author is the first writer and stays put -- on an open wiki, an edit
@@ -1302,11 +1302,23 @@ def sitemap(request: Request, con=Depends(get_db)):
     # grouped by section as well as by value, because the two are two pages:
     # UFO filed as an abbreviation is /a/UFO and UFO filed as Mixed is /n/UFO,
     # and value_path() is the one place that decides which.
+    #
+    # NOCASE, and the spelling off the earliest row, because a <loc> has to be
+    # the canonical: `dB` and `DB` are two spellings of one abbreviation, /a/
+    # reads them as one list, and head_abbr() canonicalises that list to the
+    # first entry's spelling. Grouped case-sensitively this file would offer a
+    # crawler two URLs for the one page, each pointing the other way. The join
+    # is what picks the spelling -- MIN(id) beside MAX(updated_at) is two
+    # aggregates, and SQLite only promises a bare column follows one of them.
+    # Digits have no case, so folding the number section too changes nothing.
     urls += [(base + seo.value_path(r["fmt"], r["value"]), r["at"])
              for r in con.execute(
-        "SELECT value, MAX(updated_at) AS at, "
-        f"       CASE WHEN {section_where('abbr')} THEN 'ABBR' ELSE '' END AS fmt "
-        "FROM posts WHERE status = ? GROUP BY value, fmt ORDER BY value, fmt",
+        "SELECT p.value, g.at, "
+        f"       CASE WHEN {section_where('abbr', 'p.')} THEN 'ABBR' ELSE '' END AS fmt "
+        "FROM posts p JOIN ("
+        "    SELECT MIN(id) AS id, MAX(updated_at) AS at FROM posts WHERE status = ? "
+        f"    GROUP BY value COLLATE NOCASE, {section_where('abbr')}"
+        ") g ON g.id = p.id ORDER BY p.value, fmt",
         (LIVE,))]
     urls += [(f"{base}t/{seo.enc(r['tag'])}", r["at"]) for r in con.execute(
         "SELECT t.tag, MAX(p.updated_at) AS at FROM post_tags t "

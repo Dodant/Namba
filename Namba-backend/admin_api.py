@@ -782,7 +782,7 @@ def set_post_value(
     # is still how you ask for the display flag. It can be turned on here and
     # not off; taking it off is the wiki's own form, where it is a checkbox.
     value, grouped = store.ungroup(body.value, bool(was["grouped"]))
-    value, fmt, key = store.resolve_format(value, body.format, con, post_id)
+    value, fmt, key = store.resolve_format(value, body.format)
     if (value, fmt, grouped) == (was["value"], was["format"], bool(was["grouped"])):
         raise HTTPException(409, "that is the number it already has")
     label = f"operator {who['email']}"

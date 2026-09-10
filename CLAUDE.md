@@ -220,24 +220,38 @@ hand-copied vocabulary and a branch beside every existing one.
   falls through to `noindex` run no query at all, and only `/n/`, `/a/`, `/t/`
   and `/p/{id}` read the database for their `<head>`.
 
-  **An `ABBR` word has one stored spelling for exactly that reason.** `ufo`,
-  `Ufo` and `UFO` are one word, and with no accounts there is nobody to merge
-  three pages about it afterwards. The spelling is the first writer's, not
-  upper-case: `SaaS` and `IoT` are abbreviations too, and `SAAS` is not how
-  anyone writes them. `resolve_format` settles it, because settling the format
-  is what settles the spelling — a later writer of the same word, in any case,
-  adopts what is already stored, and the `/a/` reads compare `COLLATE NOCASE`
-  so `/a/ufo` still lands on `UFO`. Digits have no case, which is why this
-  never came up for the other four.
+  **An `ABBR` word is one page, and its case is not a spelling to be fixed.**
+  `ufo`, `Ufo` and `UFO` are one word and with no accounts there is nobody to
+  merge three pages about it afterwards — so the *reads* fold case and nothing
+  rewrites what was typed. Three things hold it, none of them a rewrite: the
+  `/a/` reads compare `COLLATE NOCASE`, `head_abbr` canonicalises the page to
+  the earliest entry's spelling, and the sitemap groups the same way so its
+  `<loc>` and that canonical agree. `resolve_format` is therefore pure — it
+  checks `is_abbr` and hands the value back as typed.
+
+  Case is part of an abbreviation and not a way of typing one, which is why
+  the reads fold it and the column does not. `dB` is not `DB`, `kB` is not
+  `KB`, `mAh` is not `MAH`: a decibel and a database are two words that share
+  three letters, and `SaaS` and `IoT` are the same argument from the other
+  side. There is nobody here to ask which was meant. **Do not give
+  `resolve_format` a sibling lookup that rewrites the value** — folding the
+  column hands the word to whoever wrote first *and puts the correction out of
+  reach*, because the operator's renumber settles its value through the same
+  function: the retyped `dB` comes back `DB`, and the "nothing changed" guard
+  then answers 409. That leaves the one route that exists to correct a value
+  unable to correct this one, and it takes the create route's race with it
+  (ADR-0005, ADR-0007). Digits have no case, which is why none of this reaches
+  the other four.
 
   **And `ABBR` is Latin script only — the one format that is checked rather
   than taken at its word.** The other four are ways of *reading* what was
   typed and cannot be wrong about it; this one is a claim *about* the value,
   and on a wiki with no login the claim is a stranger's. `is_abbr` in
-  `numfmt.py` is the rule and `resolve_format` in `main.py` is where it bites,
+  `numfmt.py` is the rule and `resolve_format` in `store.py` is where it bites,
   so both writes hit it. It is not a keyboard preference: `유에프오` and `УФО` are the
   same abbreviation in another alphabet, and one `/a/` page per alphabet is
-  the split the one-spelling rule exists to prevent. An entry still says what it
+  the split the one-page rule exists to prevent — and case-folded reads cannot
+  reach across alphabets the way they reach across `dB` and `DB`. An entry still says what it
   means in any language — `lang` and the translations are untouched by this;
   it is the value that is one spelling.
 
@@ -297,9 +311,18 @@ hand-copied vocabulary and a branch beside every existing one.
   before the first *write*, so a SELECT earlier in the block holds nothing at
   all. In WAL that never fails — it answers about the database as it stood,
   while another writer commits over it, and the route then decides on what it
-  read. Two concurrent creates of one abbreviation are the case that shows it:
-  read outside the lock, both see no sibling, both store, and the word has two
-  pages (ADR-0007 has the measurement).
+  read. Two concurrent translations into one language are the case that shows
+  it: read outside the lock, both see no Korean tab, both write, and the entry
+  has two (ADR-0007 has the measurement).
+
+  Eleven of the twelve decide, and the twelfth is why `resolve_format` being
+  pure is written down here. A create reads nothing it acts on: several
+  entries under one value is normal, and there is no uniqueness to race for.
+  It still opens `db.writing`, because three statements have to land together
+  — but the lock is for the writes, not for a read, and
+  `test_every_write_decides_inside_the_lock` probes the other eleven rather
+  than claiming this one keeps a rule it has nothing to keep. Giving
+  `resolve_format` a lookup again puts the race back.
 
   **Moving the read inside without the `IMMEDIATE` is worse than leaving it
   out**, which is why they are one change. A deferred transaction that reads

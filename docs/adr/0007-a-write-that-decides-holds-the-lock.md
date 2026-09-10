@@ -13,7 +13,7 @@ another writer commits over it, and the route then decides on what it read.
 ## Decision
 
 Every public write that decides — a 404 on a row that has to still be there, a
-duplicate check, a format that depends on what a sibling entry chose — runs
+duplicate check, whether the entry already has a tab in that language — runs
 inside `db.writing(con)`, which is `BEGIN IMMEDIATE`. The lock is held from the
 first line, not the first write. A write that only appends (`/api/upload`)
 uses `with con:`.
@@ -38,3 +38,13 @@ race becomes a 500.
   were stored in three of eight trials. With it inside a deferred transaction,
   no split and a 500 "database is locked". With `BEGIN IMMEDIATE`, one spelling
   and no error.
+- 2026-09-10: the measurement above stands as history but its route no longer
+  decides. ADR-0005 withdrew one-spelling-per-ABBR-word, so `resolve_format`
+  is pure and `create_post` reads nothing it acts on — several entries under
+  one value is normal here and there is no uniqueness to race for. The rule is
+  unchanged; the count is. Eleven of the twelve public writes decide, and
+  `test_every_write_decides_inside_the_lock` probes those eleven: a create
+  would have passed the probe on a pure call, reporting the rule as kept by a
+  route with nothing to keep. `create_post` still opens `writing()` — three
+  statements land together — but for the writes, not for a read. A lookup put
+  back into `resolve_format` puts the 2026-09-09 race back with it.

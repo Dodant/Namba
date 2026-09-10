@@ -60,21 +60,25 @@ def ungroup(value, grouped, locale="en"):
     return value, bool(grouped or typed_grouping)
 
 
-def resolve_format(value, given, con, self_id=None):
+def resolve_format(value, given):
     """(value as stored, format, sort_key). The parsed suggestion, unless the
     poster explicitly picked a format.
 
     It hands the value back because settling the format is what settles how the
-    value is spelled: an ABBR has one spelling per word, so "ufo", "Ufo" and
-    "UFO" are one abbreviation at one address. Same argument `ungroup` makes
-    about commas -- the moment two spellings are storable, /a/UFO and /a/ufo
-    are two pages about one word, and there is no login here to merge them
-    afterwards. The spelling is the first writer's rather than upper-case,
-    because SaaS and IoT are abbreviations too and SAAS is not how anyone
-    writes them: a later writer adopts what is already stored, whatever its
-    status, and only an entry with no sibling keeps what it typed. `self_id`
-    leaves the entry being edited out of that lookup, so the one entry about a
-    word can still correct its own case.
+    value is spelled: `ungroup` takes a separator out because `posts.grouped`
+    puts it back, and an ABBR keeps its case because nothing else does. Case is
+    part of an abbreviation's spelling and not a way of typing it -- `dB` is
+    not `DB`, `kB` is not `KB`, `mAh` is not `MAH` -- so it is stored as typed,
+    the same as every other format. Nobody here can be asked which was meant:
+    a decibel and a database are two words that share three letters, and with
+    no accounts the writer is gone by the time anyone notices.
+
+    One word is still one page, which is the part that does not need a stored
+    spelling to hold. The `/a/` reads compare `COLLATE NOCASE`, so /a/ufo,
+    /a/Ufo and /a/UFO are one list; `head_abbr` writes one canonical for it,
+    the earliest entry's spelling; and the sitemap groups the same way, so the
+    <loc> and the canonical agree. Three mechanisms, none of them a rewrite of
+    what somebody typed (ADR-0005).
 
     It is also where ABBR is checked rather than taken at its word. Every other
     format is a way of reading what was typed and cannot be wrong about it; this
@@ -83,6 +87,10 @@ def resolve_format(value, given, con, self_id=None):
     with what is stored, since the wiki's form keeps the number read-only once
     the entry exists, and an operator's renumber with what they retyped -- so
     this is the one place that catches every one of them.
+
+    Pure, and that is load-bearing: no sibling lookup means a create decides
+    nothing about another row, which is why it is the one write with no
+    deciding read to hold the lock over (ADR-0007).
     """
     fmt, key = parse_number(value)
     if given and given != fmt:
@@ -100,11 +108,6 @@ def resolve_format(value, given, con, self_id=None):
                 422, "an abbreviation is Latin letters, and needs at least one "
                      "-- UFO, CSI, R&D, MP3. Anything else is another format.")
         value = value.strip()
-        first = con.execute(
-            "SELECT value FROM posts WHERE format = 'ABBR' AND value = ? COLLATE NOCASE "
-            "AND id IS NOT ? ORDER BY id LIMIT 1", (value, self_id)).fetchone()
-        if first:
-            value = first["value"]
     return value, fmt, key
 
 

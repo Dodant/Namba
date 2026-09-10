@@ -135,10 +135,11 @@ TIME gets none, because banding 09:41 by its sort key would file it under "100".
 anyone can edit, nothing removes one, all of it CC0. Three things are their own.
 They are read at `/a/UFO` rather than `/n/UFO`, so a value somebody files under
 both sections is two entries at two addresses instead of one showing up twice.
-A word has one stored spelling — the first writer's, so `SaaS` stays `SaaS` —
-and `ufo` typed later lands on `UFO`, because they are one word and with no
-accounts there is nobody to merge two pages about it afterwards — the same
-argument the thousands separator makes one paragraph up. And the value is
+A word is one page whatever case it is written in — `/a/ufo`, `/a/Ufo` and
+`/a/UFO` are the same list, because with no accounts there is nobody to merge
+two pages about one word afterwards. The spelling itself is kept as typed, so
+`SaaS` stays `SaaS` and `dB` is a decibel rather than a database: case is part
+of an abbreviation, not a way of typing one. And the value is
 Latin letters: `R&D`, `Ph.D`, `I/O`, `TL;DR` and `MP3` are fine, `유에프오` and `УФО` are
 the same abbreviation in another alphabet and would be a second page about one
 word.

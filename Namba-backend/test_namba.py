@@ -827,6 +827,20 @@ def test_robots_and_sitemap():
             ElementTree.fromstring(c.get("/sitemap.xml").text).findall(f"{ns}url")]
     assert "http://testserver/a/CSI" not in locs, "a hidden abbreviation was listed"
 
+    # two spellings of one abbreviation are one page, so they are one <loc> --
+    # and it is the spelling the page's own canonical claims, or this file
+    # sends a crawler to a URL that points it somewhere else.
+    c.post("/api/posts", json={"value": "DB", "format": "ABBR", "title": "Database"})
+    c.post("/api/posts", json={"value": "dB", "format": "ABBR", "title": "Decibel"})
+    locs = [u.findtext(f"{ns}loc") for u in
+            ElementTree.fromstring(c.get("/sitemap.xml").text).findall(f"{ns}url")]
+    spelled = [x for x in locs if x.lower() == "http://testserver/a/db"]
+    assert spelled == ["http://testserver/a/DB"], spelled
+    for asked in ("DB", "dB", "db"):
+        page = c.get(f"/a/{asked}").text
+        assert 'rel="canonical" href="http://testserver/a/DB"' in page, asked
+        assert "Decibel" in page and "Database" in page, asked
+
     # a hidden entry keeps its row and must not be handed to a crawler anyway
     admin.set_status(gone["id"], "HIDDEN")
     locs = ElementTree.fromstring(c.get("/sitemap.xml").text).findall(f"{ns}url")
@@ -2010,30 +2024,44 @@ def test_api_round_trip():
     assert t["format"] == "MIXED" and t["sort_key"] is None and t["bucket"] is None
 
     # -- the fifth kind. Letters are an abbreviation, they carry no sort key,
-    # and a word has one spelling: the first writer's. A later "ufo" lands on
-    # the "UFO" already here instead of opening a second page -- the same
-    # argument the separators make -- and it is not folded to upper case,
-    # because SaaS and IoT are abbreviations too and SAAS is not how anyone
-    # writes them.
+    # and the case they were typed in is kept, because case is part of how an
+    # abbreviation is spelled rather than a way of typing it: SaaS and IoT are
+    # abbreviations too, and dB and DB are a decibel and a database.
     u = c.post("/api/posts", json={"value": "UFO", "title": "Unidentified flying object",
                                    "author": "mulder"}).json()
     assert u["value"] == "UFO", u["value"]
     assert u["format"] == "ABBR" and u["sort_key"] is None and u["bucket"] == "U"
     again = c.post("/api/posts", json={"value": "ufo", "title": "the film"}).json()
-    assert again["value"] == "UFO", again["value"]
-    assert len(c.get("/api/posts", params={"value": "UFO"}).json()) == 2, \
-        "the two spellings did not land on the same abbreviation"
+    assert again["value"] == "ufo", "a spelling was rewritten"
+    # what holds one word to one page is the read, not the stored spelling: /a/
+    # compares COLLATE NOCASE, so either spelling asks for both entries
+    for asked in ("UFO", "ufo", "Ufo"):
+        assert {x["id"] for x in c.get("/api/posts", params={
+            "value": asked, "section": "abbr"}).json()} == {u["id"], again["id"]}, asked
     saas = c.post("/api/posts", json={"value": "SaaS", "title": "Software as a service"}).json()
     assert saas["value"] == "SaaS" and saas["format"] == "ABBR", saas
     saas2 = c.post("/api/posts", json={"value": "SAAS", "format": "ABBR", "title": "x"}).json()
-    assert saas2["value"] == "SaaS", "a later writer did not adopt the spelling"
+    assert saas2["value"] == "SAAS", "a later writer had their spelling taken"
     assert len(c.get("/api/posts", params={"value": "saas", "section": "abbr"}).json()) == 2, \
         "the abbr section is not read case-insensitively"
-    # the one entry about a word may still correct its own case: the lookup
-    # leaves the entry being edited out, and nothing else here spells it
+    # the case that says why: an SI unit's case is the unit. Neither writer
+    # can be asked which they meant, so neither is overruled -- and a reader
+    # who follows /a/dB still finds both meanings on the one page.
+    dec = c.post("/api/posts", json={"value": "DB", "format": "ABBR",
+                                     "title": "Database"}).json()
+    bel = c.post("/api/posts", json={"value": "dB", "format": "ABBR",
+                                     "title": "Decibel"}).json()
+    assert (dec["value"], bel["value"]) == ("DB", "dB"), (dec["value"], bel["value"])
+    assert {x["id"] for x in c.get("/api/posts", params={
+        "value": "dB", "section": "abbr"}).json()} == {dec["id"], bel["id"]}
+    # an entry may still correct its own case, and now it may do so with a
+    # sibling in the way -- which is the whole of what was broken
     iot = c.post("/api/posts", json={"value": "IOT", "format": "ABBR", "title": "x"}).json()
     assert c.patch(f"/api/posts/{iot['id']}", json={"value": "IoT", "author": "y"}
                    ).json()["value"] == "IoT"
+    beside = c.post("/api/posts", json={"value": "IOT", "format": "ABBR", "title": "y"}).json()
+    assert c.patch(f"/api/posts/{beside['id']}", json={"value": "IoT", "author": "z"}
+                   ).json()["value"] == "IoT", "a sibling still froze the case"
     # a slash is punctuation an abbreviation carries, and the parser guesses it
     io = c.post("/api/posts", json={"value": "I/O", "title": "input/output"}).json()
     assert io["value"] == "I/O" and io["format"] == "ABBR", io
@@ -2073,18 +2101,20 @@ def test_api_round_trip():
     } == {u["id"], again["id"]}, "?format= is not filtering, or not upper-casing"
     # an unknown section filters nothing rather than 422ing, the same way an
     # unknown sort falls back: a typo either side of the wire shows too much,
-    # it does not break the page
-    assert len(section("banana")) == 3
+    # it does not break the page. Both sections come back -- spelled as asked,
+    # because the NOCASE compare belongs to the abbreviation section and a
+    # Mixed "gross" and "GROSS" are two values.
+    assert section("banana") == {u["id"], mixed["id"]}, section("banana")
 
-    # the format is what settles the spelling, so re-filing an entry adopts
-    # the word's too -- the number field is read-only on an edit and sends no
-    # value at all
+    # re-filing an entry moves which section reads it and leaves the spelling
+    # alone -- the number field is read-only on an edit and sends no value at
+    # all, so there is nothing here for a format to settle but the format
     later = c.post("/api/posts", json={"value": "Ufo", "format": "MIXED",
                                        "title": "not sure yet"}).json()
     assert later["value"] == "Ufo", "MIXED keeps what was typed"
     fixed = c.patch(f"/api/posts/{later['id']}",
                     json={"format": "ABBR", "author": "scully"}).json()
-    assert fixed["value"] == "UFO" and fixed["format"] == "ABBR", fixed
+    assert fixed["value"] == "Ufo" and fixed["format"] == "ABBR", fixed
     assert fixed["author"] == later["author"], "re-filing took the byline over"
     assert fixed["edited_by"] == "scully"
     # re-filing an existing entry is the other way in, and the number field is
@@ -2751,8 +2781,14 @@ def test_purge_takes_the_words_that_asked_for_it():
 
 
 def test_every_write_decides_inside_the_lock():
-    """One rule for all twelve public writes: the read a route decides on runs
-    with the write lock already held.
+    """One rule for the eleven public writes that decide: the read a route
+    decides on runs with the write lock already held.
+
+    Eleven of twelve, because a create decides nothing about another row --
+    `resolve_format` is pure, and an entry under a value that already has ten
+    is normal here. So it is not probed: there is no read to catch it holding,
+    and a probe that fired on a pure call would report the rule as kept by a
+    route that has nothing to keep.
 
     The rule needs stating because `with con:` is not it. Python's sqlite3 in
     legacy isolation mode issues its BEGIN before the first *write*, so a SELECT
@@ -2791,7 +2827,7 @@ def test_every_write_decides_inside_the_lock():
             return fn(*a, **k)
         return probe
 
-    where = [(main, "fetch_one"), (store, "fetch_one"), (main, "resolve_format"),
+    where = [(main, "fetch_one"), (store, "fetch_one"),
              (main, "_already_open"), (main, "guard_public")]
     real = [(mod, name, getattr(mod, name)) for mod, name in where]
     for mod, name in where:
@@ -2807,10 +2843,13 @@ def test_every_write_decides_inside_the_lock():
             assert log[0][1] is True, (what, log[:3])
             return res
 
-        a = locked("create", lambda: c.post("/api/posts", json={
-            "value": "1123", "title": "A fig tree", "tags": ["plants"]}).json())
-        b = locked("create", lambda: c.post("/api/posts", json={
-            "value": "1124", "title": "The one beside it"}).json())
+        # two entries for the eleven writes below to decide about. Not through
+        # locked(): a create is the write with nothing to decide, and the probe
+        # would see no read at all.
+        a = c.post("/api/posts", json={
+            "value": "1123", "title": "A fig tree", "tags": ["plants"]}).json()
+        b = c.post("/api/posts", json={
+            "value": "1124", "title": "The one beside it"}).json()
         pid, other = a["id"], b["id"]
 
         locked("edit", lambda: c.patch(f"/api/posts/{pid}",
@@ -2839,9 +2878,8 @@ def test_every_write_decides_inside_the_lock():
             setattr(mod, name, fn)
 
     # ...and the probe reached every kind of deciding read there is, so none of
-    # the twelve passed by touching nothing
-    assert seen == {"fetch_one", "resolve_format", "_already_open",
-                    "guard_public"}, seen
+    # the eleven passed by touching nothing
+    assert seen == {"fetch_one", "_already_open", "guard_public"}, seen
 
 
 def test_linking_a_pair_twice_is_one_event():
