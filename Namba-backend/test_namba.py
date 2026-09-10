@@ -2453,21 +2453,13 @@ def test_api_round_trip():
     assert v["value"] == "1960년" and unicodedata.is_normalized("NFC", v["value"])
     assert len(c.get("/api/posts", params={"value": unicodedata.normalize("NFD", "1960년"),
                                            "section": "number"}).json()) == 1
-    # rows written before the rule are folded once, at startup, the way the
-    # lower-case tag rule reached its own past -- and a post carrying the word
-    # both ways keeps one row, since (post_id, tag) is the primary key
-    con = db.connect()
-    with con:
-        con.execute("INSERT INTO post_tags (post_id, tag) VALUES (?, ?)", (ko1["id"], nfd))
-        con.execute("UPDATE posts SET title = ? WHERE id = ?",
-                    (unicodedata.normalize("NFD", "네"), ko2["id"]))
-    con.close()
-    db.init()
-    con = db.connect()
-    assert [r[0] for r in con.execute("SELECT tag FROM post_tags WHERE post_id = ?",
-                                      (ko1["id"],))] == [nfc]
-    assert con.execute("SELECT title FROM posts WHERE id = ?", (ko2["id"],)).fetchone()[0] == "네"
-    con.close()
+    # and a post carrying the word both ways keeps one row, since
+    # (post_id, tag) is the primary key. Rows written before the rule are
+    # folded by a migration rather than by every start --
+    # `test_the_schema_moves_forward_once` is where that half lives.
+    both = c.patch(f"/api/posts/{ko1['id']}",
+                   json={"tags": [nfc, nfd], "author": "ed"}).json()
+    assert both["tags"] == [nfc], both["tags"]
 
 
 def test_hidden_is_invisible():
@@ -3143,6 +3135,65 @@ def test_the_shell_commands_do_not_build_the_app():
     )
     assert out.returncode == 0, out.stderr
     assert out.stdout.strip() == "False", out.stdout or out.stderr
+
+
+
+def test_the_schema_moves_forward_once():
+    """`db.init()` runs the steps a database has not seen, and does not ask
+    again.
+
+    Two of them are data passes -- the lower-case tag rule and the NFC fold --
+    and both scan every row of six tables. Asked on every start, as they were,
+    that is a full scan per process on a file that only ever grows. Numbered,
+    they are a line drawn under a database once, recorded in the file itself
+    (`PRAGMA user_version`).
+
+    Its own database, not the suite's: this calls `init()` several times and
+    stamps the version back by hand, which is not a thing to do to the file
+    every other test is reading.
+    """
+    import unicodedata
+
+    was = db.DB_PATH
+    db.DB_PATH = os.path.join(_tmp, "migrations.db")
+    try:
+        # a new file has every column SCHEMA declares and no rows, so it is
+        # stamped at the end of the list rather than walked through it
+        db.init()
+        con = db.connect()
+        latest = len(db.MIGRATIONS)
+        assert latest, "there are no migrations to number"
+        assert con.execute("PRAGMA user_version").fetchone()[0] == latest
+        columns = {r["name"] for r in con.execute("PRAGMA table_info(posts)")}
+        assert {"edited_by", "lang", "grouped", "status"} <= columns, columns
+
+        # a database from before the list was numbered: version 0, and rows in
+        # the shapes the passes exist to fix
+        with con:
+            con.execute("PRAGMA user_version = 0")
+            con.execute(
+                """INSERT INTO posts (id, value, format, title, created_at, updated_at)
+                   VALUES (1, '7', 'INTEGER', 'seven', ?, ?)""", (db.now(), db.now()))
+            con.execute("INSERT INTO post_tags (post_id, tag) VALUES (1, 'BOOK')")
+            con.execute("UPDATE posts SET title = ? WHERE id = 1",
+                        (unicodedata.normalize("NFD", "한국어"),))
+        db.init()
+        assert [r[0] for r in con.execute("SELECT tag FROM post_tags")] == ["book"]
+        assert con.execute("SELECT title FROM posts WHERE id = 1").fetchone()[0] == "한국어"
+        assert con.execute("PRAGMA user_version").fetchone()[0] == latest
+
+        # ...and it is not asked a third time. Nothing can write an unfolded
+        # row through the app any more -- every request model and `write_tags`
+        # fold on the way in -- so the only way to see this is to go behind it,
+        # which is what the next two lines do.
+        with con:
+            con.execute("INSERT INTO post_tags (post_id, tag) VALUES (1, 'FILM')")
+        db.init()
+        assert "FILM" in [r[0] for r in con.execute("SELECT tag FROM post_tags")], \
+            "the pass ran again on a database that had already had it"
+        con.close()
+    finally:
+        db.DB_PATH = was
 
 
 

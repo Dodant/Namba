@@ -17,8 +17,8 @@ that misses the entry it looks for. `COLLATE NOCASE` folds ASCII case only.
 strings before anything else looks. Every parameter a read filters on —
 `value`, `tag`, `q`, `lang`, the path segment the head is built from — goes
 through the same function, and so does `write_tags`, so a restore cannot
-write an old spelling back. `db.init()` folds rows written before the rule,
-once, the way the lower-case tag pass does. The form folds a typed tag too,
+write an old spelling back. A step in `db.MIGRATIONS` folds rows written
+before the rule, once, the way the lower-case tag pass does. The form folds a typed tag too,
 so the chip it lights up is the one the API will store.
 
 ## Consequences

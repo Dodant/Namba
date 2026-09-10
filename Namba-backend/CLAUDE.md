@@ -89,8 +89,8 @@ the sitemap.
   entry is saved and an unsaved form looks exactly like rubbish.
 - **`edit_post` must not touch `author`.** It writes `edited_by` and
   `updated_at`; `author` stays whoever created the entry. `restore_revision` does
-  the same, crediting whoever pressed Restore. New columns need the guarded
-  `ALTER TABLE` in `db.init()` too — `CREATE TABLE IF NOT EXISTS` skips existing
+  the same, crediting whoever pressed Restore. A new column is a step in
+  `db.MIGRATIONS` too — `CREATE TABLE IF NOT EXISTS` skips existing
   databases.
 - **`PostIn` and `PostPatch` differ in their field types and in nothing else.**
   What a value, a title, a tag list and a format may contain is the same
@@ -523,9 +523,19 @@ the sitemap.
 ## No ORM
 
 Do not add SQLAlchemy, SQLModel, Alembic or a migration tool. Schema lives in
-`db.SCHEMA` as `CREATE TABLE IF NOT EXISTS` and runs at import; a new column
-is a guarded `ALTER TABLE` in `db.init()`, and a rule about what a column
-holds is Pydantic, not a `CHECK` (ADR-0022).
+`db.SCHEMA` as `CREATE TABLE IF NOT EXISTS` and runs at import, and a rule
+about what a column holds is Pydantic, not a `CHECK` (ADR-0022).
+
+**Anything the DDL cannot reach is a step in `db.MIGRATIONS`** — a column
+`CREATE TABLE IF NOT EXISTS` skips on a database that exists, or a pass over
+rows written under an older rule. The list is **append-only and in order**: a
+step's position is what the file records as done (`PRAGMA user_version`), so
+inserting one in the middle re-runs the wrong thing on somebody's database. A
+new file is stamped at the end of the list rather than walked through it,
+since SCHEMA already declares every column and there are no rows to fold.
+Write each step idempotent all the same: every database that exists today is
+at version 0 with the work already done by the version of `init()` that asked
+on every start, so the first numbered run has to be a no-op on them.
 
 ## Trust boundaries — do not thin these out
 
@@ -560,8 +570,8 @@ there. The operator's half has a login, and the notes above are the whole of it.
   every parameter a read filters on (`value`, `tag`, `q`, `lang`, a path
   segment in `seo.path_seg`) goes through the same function, and
   `write_tags` folds too so a restore cannot write an old spelling back.
-  `db.init()` folds rows written before the rule, once, the way the
-  lower-case tag pass does. Composed and decomposed Korean are two strings
+  a step in `db.MIGRATIONS` folds rows written before the rule, once, the way
+  the lower-case tag pass does. Composed and decomposed Korean are two strings
   to SQLite, and without this "한국어" was two tags, two languages and a
   search that missed -- some macOS apps and every file name hand over the
   decomposed form. `test_api_round_trip` holds the write, the read filters

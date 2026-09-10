@@ -430,77 +430,121 @@ def connect():
     return con
 
 
+def _columns_added_since_the_first_release(con):
+    """The columns SCHEMA declares that an older database does not have.
+
+    `CREATE TABLE IF NOT EXISTS` skips a database that already exists, so a
+    column added to the DDL above never reaches one. Each still asks before it
+    adds: a database from before this list was numbered may already have any
+    of them, put there by the version of this file that asked every time.
+    """
+    have = {r["name"] for r in con.execute("PRAGMA table_info(posts)")}
+    if "edited_by" not in have:
+        con.execute("ALTER TABLE posts ADD COLUMN edited_by TEXT")
+    # NULL on every existing row, and it stays that way. Guessing that the
+    # Korean-titled seed entries are Korean would be the importer correcting
+    # its source, which is the wiki's job and not this file's.
+    if "lang" not in have:
+        con.execute("ALTER TABLE posts ADD COLUMN lang TEXT")
+    # 0 on every existing row: nothing gets separators it did not ask for
+    if "grouped" not in have:
+        con.execute("ALTER TABLE posts ADD COLUMN grouped INTEGER NOT NULL DEFAULT 0")
+    # ACTIVE on every existing row: a schema change hides nothing
+    if "status" not in have:
+        con.execute("ALTER TABLE posts ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'")
+    admins = {r["name"] for r in con.execute("PRAGMA table_info(admins)")}
+    if "totp_generation" not in admins:
+        con.execute("ALTER TABLE admins ADD COLUMN totp_generation INTEGER")
+    if "totp_last_counter" not in admins:
+        con.execute("ALTER TABLE admins ADD COLUMN totp_last_counter INTEGER")
+
+
+def _tags_are_lower_case(con):
+    """lower() is the rule for a tag; rows written under an upper-case one
+    move with it.
+
+    The delete goes first because (post_id, tag) is the primary key -- a post
+    holding both BOOK and book cannot have the first renamed onto the second.
+    """
+    con.execute(
+        """DELETE FROM post_tags WHERE tag <> lower(tag) AND EXISTS (
+             SELECT 1 FROM post_tags o
+             WHERE o.post_id = post_tags.post_id AND o.tag = lower(post_tags.tag))"""
+    )
+    con.execute("UPDATE post_tags SET tag = lower(tag) WHERE tag <> lower(tag)")
+
+
+def _text_is_one_normal_form(con):
+    """Rows written before `nfc()` was the rule, folded.
+
+    SQLite has no normalize(), so the rows are read and the ones that change
+    are written back. Tags first and by hand, because (post_id, tag) is the
+    primary key and a post holding the word both ways cannot have one renamed
+    onto the other.
+    """
+    for post_id, tag in con.execute("SELECT post_id, tag FROM post_tags").fetchall():
+        if nfc(tag) != tag:
+            con.execute("DELETE FROM post_tags WHERE post_id = ? AND tag = ?",
+                        (post_id, tag))
+            con.execute("INSERT OR IGNORE INTO post_tags (post_id, tag) VALUES (?, ?)",
+                        (post_id, nfc(tag)))
+    for table, key, cols in TEXT_COLUMNS:
+        rows = con.execute(f"SELECT {key}, {', '.join(cols)} FROM {table}").fetchall()
+        for row in rows:
+            folded = [nfc(row[c]) for c in cols]
+            if folded != [row[c] for c in cols]:
+                con.execute(
+                    f"UPDATE {table} SET {', '.join(c + ' = ?' for c in cols)} "
+                    f"WHERE {key} = ?", (*folded, row[key]))
+
+
+# In order, and append-only: a step's number is what a database records as
+# having been done, so inserting one in the middle re-runs the wrong thing
+# somewhere. Two of the three are data passes over every row of six tables,
+# which is why they are numbered rather than asked: on every start they were a
+# full scan per process, on a file that only ever grows.
+#
+# Each is still written to be idempotent, and that is not belt and braces.
+# Every database that exists today is at version 0 with the columns already
+# added and the passes already run, by the version of this file that asked
+# every time -- so the first numbered run has to be a no-op on them rather
+# than an error.
+#
+# This is not a migration tool and must not become one (ADR-0022). It is a
+# list, an integer in the file header, and the loop in init() below.
+MIGRATIONS = (
+    _columns_added_since_the_first_release,
+    _tags_are_lower_case,
+    _text_is_one_normal_form,
+)
+
+
 def init():
     con = connect()
     # WAL rather than the default rollback journal, which lets a writer lock
     # every reader out: /p/42 carries its own <head>, so an entry's page load
     # reads this file before it can answer at all, and one person saving an
-    # entry must not stall everyone reading one. Set here rather than in connect() because the mode lives in the file
-    # header -- it survives the process, so every later connection inherits it.
-    # A writer still waits for a writer; the 5s default busy_timeout covers that.
+    # entry must not stall everyone reading one. Set here rather than in
+    # connect() because the mode lives in the file header -- it survives the
+    # process, so every later connection inherits it. A writer still waits for
+    # a writer; the 5s default busy_timeout covers that.
     con.execute("PRAGMA journal_mode = WAL")
+    # Asked before SCHEMA runs, because after it there is no telling a new file
+    # from an old one. A new file gets every column the DDL declares and has no
+    # rows, so every step above is already true of it and it is stamped at the
+    # end of the list rather than walked through it.
+    fresh = not con.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'posts'"
+    ).fetchone()
     with con:
         con.executescript(SCHEMA)
-        # CREATE TABLE IF NOT EXISTS skips existing databases, so new columns
-        # need their own pass. Cheap and idempotent; no migration tool wanted.
-        have = {r["name"] for r in con.execute("PRAGMA table_info(posts)")}
-        if "edited_by" not in have:
-            con.execute("ALTER TABLE posts ADD COLUMN edited_by TEXT")
-        # NULL on every existing row, and it stays that way. Guessing that the
-        # Korean-titled seed entries are Korean would be the importer correcting
-        # its source, which is the wiki's job and not this file's.
-        if "lang" not in have:
-            con.execute("ALTER TABLE posts ADD COLUMN lang TEXT")
-        # lower() is the rule for a tag; rows written under an upper-case one
-        # move with it. Idempotent:
-        # after the first pass nothing matches. The delete goes first because
-        # (post_id, tag) is the primary key -- a post holding both BOOK and
-        # book cannot have the first renamed onto the second.
-        con.execute(
-            """DELETE FROM post_tags WHERE tag <> lower(tag) AND EXISTS (
-                 SELECT 1 FROM post_tags o
-                 WHERE o.post_id = post_tags.post_id AND o.tag = lower(post_tags.tag))"""
-        )
-        con.execute("UPDATE post_tags SET tag = lower(tag) WHERE tag <> lower(tag)")
-
-        # Text is stored in one normal form (see nfc()); rows written before
-        # the rule are folded here, once. Idempotent for the same reason the
-        # pass above is: after the first run nothing differs. SQLite has no
-        # normalize(), so the rows are read and the ones that change written
-        # back -- a few thousand rows is milliseconds. Tags first and by hand,
-        # because (post_id, tag) is the primary key and a post holding the
-        # word both ways cannot have one renamed onto the other.
-        for post_id, tag in con.execute("SELECT post_id, tag FROM post_tags").fetchall():
-            if nfc(tag) != tag:
-                con.execute("DELETE FROM post_tags WHERE post_id = ? AND tag = ?",
-                            (post_id, tag))
-                con.execute("INSERT OR IGNORE INTO post_tags (post_id, tag) VALUES (?, ?)",
-                            (post_id, nfc(tag)))
-        for table, key, cols in TEXT_COLUMNS:
-            rows = con.execute(
-                f"SELECT {key}, {', '.join(cols)} FROM {table}").fetchall()
-            for row in rows:
-                folded = [nfc(row[c]) for c in cols]
-                if folded != [row[c] for c in cols]:
-                    con.execute(
-                        f"UPDATE {table} SET {', '.join(c + ' = ?' for c in cols)} "
-                        f"WHERE {key} = ?", (*folded, row[key]))
-
-        # 0 on every existing row: nothing gets separators it did not ask for
-        if "grouped" not in have:
-            con.execute(
-                "ALTER TABLE posts ADD COLUMN grouped INTEGER NOT NULL DEFAULT 0"
-            )
-
-        # ACTIVE on every existing row: a schema change hides nothing
-        if "status" not in have:
-            con.execute(
-                "ALTER TABLE posts ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'"
-            )
-
-        admin_have = {r["name"] for r in con.execute("PRAGMA table_info(admins)")}
-        if "totp_generation" not in admin_have:
-            con.execute("ALTER TABLE admins ADD COLUMN totp_generation INTEGER")
-        if "totp_last_counter" not in admin_have:
-            con.execute("ALTER TABLE admins ADD COLUMN totp_last_counter INTEGER")
+        done = len(MIGRATIONS) if fresh else con.execute(
+            "PRAGMA user_version").fetchone()[0]
+        for number, step in enumerate(MIGRATIONS[done:], start=done + 1):
+            step(con)
+            # not a bound parameter: PRAGMA does not take one. It is an int
+            # from enumerate, so there is nothing here to inject.
+            con.execute(f"PRAGMA user_version = {number}")
+        if fresh:
+            con.execute(f"PRAGMA user_version = {len(MIGRATIONS)}")
     con.close()
