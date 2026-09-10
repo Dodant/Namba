@@ -705,8 +705,23 @@ it, because it moves the reader's cursor while the focus stays in the box
 being typed into. The listbox holds options and nothing else — "see all
 results" is a button *beside* it, since it is not one of the entries the
 arrow keys walk. The suggestions close when the query falls under two
-characters or the answer is empty, and **not on blur**: clicking away leaves
-them up, which is a thing to fix in the handler rather than in these roles. Every `Loading…` is a `role="status"` and every error a
+characters or the answer is empty, when the focus leaves the search box, and
+when a search is committed.
+
+**Closing is `focusout` on the wrapper, not `blur` on the input**, and that is
+the part with a trap in it. A click on a suggestion blurs the box *before* the
+click lands, so a handler on the input alone closes the list out from under
+the pointer and the click hits nothing. `focusout` bubbles, so one handler on
+`.search-wrap` covers the box, the options and the button; `relatedTarget`
+says where the focus went, and anything inside the wrapper is still part of
+searching. Null is the page losing focus altogether, which is a leave.
+
+Committing a search closes it too, in `openSearch` rather than on the
+navigation: the focus never leaves the box when Enter is pressed, so there is
+no blur to hang it on, and the five-row version of a page hanging over that
+page is the question asked twice. Typing reopens it, because after Enter the
+box still holds the query that was committed and `onFocus` will not fire
+again. Every `Loading…` is a `role="status"` and every error a
 `role="alert"`, which is what the three pages that blank their list on
 navigation depend on.
 

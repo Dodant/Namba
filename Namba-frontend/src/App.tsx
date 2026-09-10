@@ -216,6 +216,11 @@ function Header({ lang }: { lang: string }) {
   const box = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState(() => params.get('q') ?? '')
   const [activeSuggestion, setActiveSuggestion] = useState(-1)
+  /* Whether the reader is still in the search box. Results alone are not
+     enough to draw the list: they outlive the reader's interest in them, so
+     without this a query typed and then abandoned left a panel hanging over
+     the page until the next navigation. */
+  const [searching, setSearching] = useState(false)
   /* Rendering suggestion results can wait a moment; typing itself cannot. */
   const deferredQuery = useDeferredValue(query.trim())
   const suggestionQuery = canonicalNumber(deferredQuery, locale).value
@@ -230,13 +235,20 @@ function Header({ lang }: { lang: string }) {
   useEffect(() => setActiveSuggestion(-1), [suggestionQuery])
 
   const suggestionPosts = suggestions.data ?? []
-  const hasSuggestions = suggestionQuery.length >= 2 && suggestionPosts.length > 0
+  const hasSuggestions =
+    searching && suggestionQuery.length >= 2 && suggestionPosts.length > 0
 
   function openSearch() {
     const q = query.trim()
     /* an empty box is not a search for nothing: the API drops an empty q and
        hands back the whole wiki, which arrived under Search and read as a bug. */
-    if (q) nav(`/search?q=${encodeURIComponent(canonicalNumber(q, locale).value)}`)
+    if (!q) return
+    /* The shortcut has been taken: the page about to draw is the whole answer,
+       and the five-row version of it hanging over the top is the question
+       asked twice. Closing here rather than on the navigation, because the
+       focus never leaves the box -- there is no blur to hang it on. */
+    setSearching(false)
+    nav(`/search?q=${encodeURIComponent(canonicalNumber(q, locale).value)}`)
   }
 
   function onSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -293,7 +305,20 @@ function Header({ lang }: { lang: string }) {
         <span className="logo-sub">{m.tagline}</span>
       </Link>
       <div className="acts">
-        <div className="search-wrap">
+        {/* focusout, not the input's own blur: it bubbles, so this one
+            handler covers the box, the options and the button under it.
+            `relatedTarget` is where the focus went, and it is inside this
+            wrapper for every move that is still part of searching -- a click
+            on a suggestion focuses the link before the click lands, which is
+            what would otherwise close the list out from under the pointer.
+            Null means the page lost focus entirely, which is a leave. */}
+        <div
+          className="search-wrap"
+          onFocus={() => setSearching(true)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget)) setSearching(false)
+          }}
+        >
           <form
             className="search"
             onSubmit={(e) => {
@@ -334,7 +359,12 @@ function Header({ lang }: { lang: string }) {
               }
               placeholder={m.header.searchPlaceholder}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                // typing is asking again, and the box may still hold the
+                // query that was just committed with Enter
+                setSearching(true)
+              }}
               onKeyDown={onSearchKeyDown}
             />
           </form>
