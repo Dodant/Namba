@@ -439,6 +439,14 @@ def stats(_=Depends(auth.require_admin), con=Depends(db.get_db)):
         "requests_pending": one("""SELECT COUNT(*) FROM delete_requests
                                    WHERE status = 'PENDING'"""),
         "reports_open": one("SELECT COUNT(*) FROM reports WHERE status = 'OPEN'"),
+        # How long the oldest thing has been waiting, which is the number a
+        # queue is actually judged by: two pending requests is nothing and two
+        # pending requests from March is a wiki nobody is minding. NULL when
+        # the queue is empty, so the dashboard can say so rather than say 0.
+        "oldest_request": one("""SELECT MIN(created_at) FROM delete_requests
+                                 WHERE status = 'PENDING'"""),
+        "oldest_report": one("""SELECT MIN(created_at) FROM reports
+                                WHERE status = 'OPEN'"""),
         "edits_24h": one("""SELECT COUNT(*) FROM events
                             WHERE action IN ('EDIT', 'RESTORE') AND at > ?""",
                          _since(24 * 60)),
@@ -450,6 +458,13 @@ def stats(_=Depends(auth.require_admin), con=Depends(db.get_db)):
                               AND at > ?""", _since(60)),
         "blocked": one("""SELECT COUNT(*) FROM blocks WHERE lifted_at IS NULL
                             AND (expires_at IS NULL OR expires_at > ?)""", db.now()),
+        # The log's third kind of row, counted where an operator will see it.
+        # A route that fails only on some input is otherwise found by the
+        # reader who types that input, which is the whole reason the handler
+        # writes the row -- and a number nobody reads is not a row anybody
+        # reads either.
+        "errors_24h": one("""SELECT COUNT(*) FROM events
+                             WHERE action = 'ERROR' AND at > ?""", _since(24 * 60)),
         "comments": one("SELECT COUNT(*) FROM comments"),
     }
 
@@ -457,6 +472,12 @@ def stats(_=Depends(auth.require_admin), con=Depends(db.get_db)):
 @router.get("/activity")
 def activity(
     kind: str = "all",
+    action: Optional[str] = None,
+    admin_id: Optional[int] = None,
+    ip_hash: Optional[str] = None,
+    target_type: Optional[str] = None,
+    target_id: Optional[int] = None,
+    hours: Optional[int] = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     _=Depends(auth.require_admin),
@@ -467,23 +488,57 @@ def activity(
 
     Both joins are LEFT: an audit row outlives the entry it is about and the
     account that made it, and this is exactly the page where somebody goes
-    looking for one that does."""
+    looking for one that does.
+
+    The five filters below are the questions an operator asks of a log rather
+    than of a feed: who did it, what kind of thing, to which entry, from which
+    address, and how far back. Four of the five lead an index --
+    `idx_events_target`, `idx_events_ip`, `idx_events_since` -- and `action` is
+    the one that scans, which at a row per write is the cheap one to lose.
+
+    `ip_hash` is why a hash is worth showing at all: the same one on four
+    entries is a campaign and not four readers agreeing, and this is the read
+    that answers it outside the abuse page's window.
+    """
     # The split is on `admin_id` because the table has two halves: a visitor
     # did something, or an operator decided something. An ERROR is neither, and
     # `anon` is the wiki's recent-changes feed -- a 500 is not a change to the
     # wiki. It stays in `all`, which is what the dashboard asks for, so the
     # errors have a page without one being built for them.
-    where = {"all": "1",
+    kinds = {"all": "1",
              "anon": "e.admin_id IS NULL AND e.action <> 'ERROR'",
-             "admin": "e.admin_id IS NOT NULL"}.get(kind)
-    if where is None:
+             "admin": "e.admin_id IS NOT NULL"}
+    if kind not in kinds:
         raise HTTPException(422, "kind must be all, anon or admin")
+    # Checked here rather than by `Query(ge=1)` so the whole filter set stays
+    # callable as a plain function -- which the crash test does, because
+    # signing an operator in there would make it the first account in the
+    # process and being first is what another test asserts about its own.
+    if hours is not None and not 1 <= hours <= 24 * 366:
+        raise HTTPException(422, "hours must be between 1 and a year")
+    where, args = [kinds[kind]], []
+    # Exact, never LIKE: these are vocabulary and identity, not prose. A
+    # substring match on an action would make CONTENT_DELETE a hit for DELETE
+    # and quietly widen an audit filter an operator is trusting.
+    # target_type comes along with target_id rather than being optional
+    # beside it: `target_id` points at five tables, so id 5 alone is post 5 and
+    # block 5 and admin 5 at once -- and the pair is what `idx_events_target`
+    # leads with, so asking both ways is the correct one and the fast one.
+    for column, value in (("e.action", action), ("e.admin_id", admin_id),
+                          ("e.ip_hash", ip_hash), ("e.target_type", target_type),
+                          ("e.target_id", target_id)):
+        if value not in (None, ""):
+            where.append(f"{column} = ?")
+            args.append(value)
+    if hours:
+        where.append("e.at > ?")
+        args.append(_since(hours * 60))
     sql = f"""SELECT e.*, a.email AS by, p.value, p.title, p.status AS post_status
               FROM events e
               LEFT JOIN admins a ON a.id = e.admin_id
               LEFT JOIN posts p ON p.id = e.target_id AND e.target_type = 'post'
-              WHERE {where} ORDER BY e.id DESC"""
-    return _page(con, sql, (), limit, offset)
+              WHERE {" AND ".join(where)} ORDER BY e.id DESC"""
+    return _page(con, sql, tuple(args), limit, offset)
 
 
 # --- content ------------------------------------------------------------

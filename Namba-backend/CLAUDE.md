@@ -328,6 +328,19 @@ the sitemap.
   `admin_id` is the whole split: `NULL` is a visitor, set is an operator's own
   decision, which is why the activity feed and the audit log are
   one table with two filters rather than two tables of the same shape.
+
+  **The same read answers five more questions**, which is what keeps it one
+  table rather than growing pages: `/api/admin/activity` takes `action`,
+  `admin_id`, `ip_hash`, `target_type` + `target_id` and `hours` beside
+  `kind`. All exact matches, never `LIKE` -- these are vocabulary and
+  identity, and a substring match would make `CONTENT_DELETE` a hit for
+  `DELETE` and quietly widen a filter an operator is trusting. `target_type`
+  travels with `target_id` because that id points at five tables, so id 5
+  alone is post 5 and block 5 and admin 5 at once -- and the pair is what
+  `idx_events_target` leads with, so asking both ways is the correct one and
+  the fast one. `hours` is checked in the body rather than by `Query(ge=1)`,
+  so the whole filter set stays callable as a plain function the way
+  `test_a_500_leaves_a_row_in_the_log` calls it (ADR-0025).
 - **`events.SECRET` must survive a restart or every hash in the database goes
   quiet.** No raw address is stored anywhere — not in `events`, not in the write
   limiter's dict, not in a log line this code writes — so an IP is only ever a

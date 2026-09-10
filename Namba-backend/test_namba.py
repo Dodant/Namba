@@ -1706,7 +1706,13 @@ def test_admin_content_and_dashboard():
     assert st["edits_24h"] >= 1 and st["writes_1h"] >= 1
     assert set(st) == {"numbers", "entries", "hidden", "created_today",
                        "edited_today", "requests_pending", "reports_open",
-                       "edits_24h", "writes_1h", "blocked", "comments"}, st
+                       "oldest_request", "oldest_report",
+                       "edits_24h", "writes_1h", "errors_24h", "blocked",
+                       "comments"}, st
+    # the two ages are NULL rather than 0 when nothing is waiting, because the
+    # dashboard says "nothing waiting" and not "waiting since never"
+    assert (st["oldest_report"] is None) == (st["reports_open"] == 0), st
+    assert (st["oldest_request"] is None) == (st["requests_pending"] == 0), st
 
     # activity and the audit log are the same rows read two ways
     both = ops.get("/api/admin/activity").json()
@@ -1728,6 +1734,35 @@ def test_admin_content_and_dashboard():
     assert ops.get("/api/admin/activity", params={"kind": "sideways"}
                    ).status_code == 422
     assert any(r["title"] for r in both["rows"] if r["target_type"] == "post")
+
+    # ...and the log's five filters, which are what makes it a log rather than
+    # a feed you page through until you find the row.
+    def feed(**p):
+        return ops.get("/api/admin/activity", params=p).json()
+
+    edits = feed(action="EDIT")
+    assert edits["total"] and all(r["action"] == "EDIT" for r in edits["rows"])
+    # exact, not a substring: DELETE must not drag CONTENT_DELETE in with it
+    assert not any(r["action"] == "CONTENT_DELETE" for r in feed(
+        action="DELETE_REQUEST")["rows"])
+    me = mine_only["rows"][0]["admin_id"]
+    mine = feed(kind="admin", admin_id=me)
+    assert mine["total"] and all(r["admin_id"] == me for r in mine["rows"])
+    # an address, which is the read that turns "four reports" into "one person"
+    a_hash = next(r["ip_hash"] for r in anon["rows"] if r["ip_hash"])
+    by_ip = feed(ip_hash=a_hash)
+    assert by_ip["total"] and all(r["ip_hash"] == a_hash for r in by_ip["rows"])
+    assert feed(ip_hash="0" * 64)["total"] == 0
+    # one entry's whole timeline, and the pair is asked for together because
+    # target_id alone is post 1 and block 1 and admin 1 at once
+    mixed = feed(target_id=pid)
+    scoped = feed(target_type="post", target_id=pid)
+    assert scoped["total"] and scoped["total"] <= mixed["total"]
+    assert all(r["target_type"] == "post" and r["target_id"] == pid
+               for r in scoped["rows"])
+    # a window, and one narrow enough to exclude what a wide one includes
+    assert feed(hours=24)["total"] >= feed(hours=24, action="EDIT")["total"]
+    assert ops.get("/api/admin/activity", params={"hours": 0}).status_code == 422
 
     # the abuse view counts; it does not pretend to detect
     ab = ops.get("/api/admin/abuse", params={"minutes": 60, "least": 1}).json()
