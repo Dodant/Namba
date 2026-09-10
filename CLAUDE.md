@@ -171,6 +171,16 @@ hand-copied vocabulary and a branch beside every existing one.
   in the panel), because there it takes a name, a snapshot and an audit row
   with it.
 
+  **Nothing is taken from a value unless something keeps it.** A grouping
+  separator comes out because `posts.grouped` puts it back; a second writer's
+  `ufo` becomes `UFO` because the first writer's spelling is what is stored;
+  text is folded to NFC because the two spellings are the same characters.
+  Everything else is stored as typed, so `007` and `7`, `09:41` and `9:41`,
+  `10:04PM` and `10:04pm`, `3.10` and `3.1` are each two entries at two
+  addresses — the wiki does not decide how somebody writes the number they
+  are writing about. They share a sort key, which is what puts them beside
+  each other on the index rather than on top of each other (ADR-0005).
+
   **Number punctuation follows the interface locale, but number identity does
   not.** The stored spelling and every `/n/` URL remain locale-neutral — no
   grouping and a dot decimal — while the public UI renders that value with the

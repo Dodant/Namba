@@ -41,22 +41,30 @@ level down.
 - `test_the_two_apps_still_agree` holds the five formats and the index bands
   across both apps.
 
-## Open
+## Nothing is taken from a value unless something keeps it
 
-The rule is applied to separators, to ABBR case and to normal form, and to
-nothing else. These pairs are separate pages today, and no decision has been
-taken about them:
+That is the line, and it explains both halves rather than listing exceptions.
 
-| typed | stored | note |
+A grouping separator comes out of the value because `posts.grouped` keeps it
+and puts it back: nothing is lost, it moves to a column. A second writer's
+`ufo` becomes `UFO` because the first writer's spelling is stored and the word
+is not changed by having one of them. Text is folded to NFC because the two
+spellings are the same characters (ADR-0020).
+
+Everything else is stored as it was typed, because nothing here would keep
+what folding it took away:
+
+| typed | stored | why they are separate pages |
 |---|---|---|
-| `7`, `007`, `0007` | three values | `007` may be a different number from `7` |
-| `09:41`, `9:41` | two values | `9:41` is how the keynote time is written |
-| `10:04PM`, `10:04pm`, `10:04 PM`, `22:04` | four values, one sort key | |
-| `3.10`, `3.1` | two values, one sort key | |
+| `7`, `007`, `0007` | three values | `007` is a licence to kill, an area code, a flight number |
+| `09:41`, `9:41` | two values | `9:41` is how a keynote writes it |
+| `10:04PM`, `10:04pm`, `10:04 PM` | three values | the wiki does not decide how somebody writes a time |
+| `3.10`, `3.1` | two values | a trailing zero is a precision somebody meant |
 
-Deciding which of these are identity and which are content is the next step
-for this record, and the decision belongs in `numfmt.py` as one function and a
-table of cases rather than in four regexes.
+They share a sort key, which is what puts them next to each other on the index
+rather than on top of each other. `test_a_value_is_stored_as_it_was_typed`
+holds all four rows, and holds them as *addresses* rather than as parsing:
+each spelling is its own `/n/` page.
 
 ## History
 
@@ -64,5 +72,8 @@ table of cases rather than in four regexes.
 - 2026-08-19: separators become a display flag, `1,000` and `1000` one page.
 - 2026-08-31 (`583d412`): ABBR must be Latin letters; one spelling per word.
 - 2026-09-02 (`840619b`): locale-aware input, locale-neutral storage.
-- 2026-09-09: the open list above recorded, after checking each pair against a
-  fresh database.
+- 2026-09-09: the four pairs recorded as an open question, after checking each
+  against a fresh database.
+- 2026-09-10: answered -- all of them separate, and the rule behind the answer
+  written down. No code changed; what changed is that a test now holds it, so
+  the next tidy-up cannot fold one of them by accident.

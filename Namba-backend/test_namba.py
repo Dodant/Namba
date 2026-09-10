@@ -3291,6 +3291,59 @@ def test_a_snapshot_written_by_an_older_version_still_restores():
 
 
 
+def test_a_value_is_stored_as_it_was_typed():
+    """Two spellings of one quantity are two entries at two addresses.
+
+    `007` is not `7`: it is a licence to kill, an area code, a flight number.
+    `9:41` is not `09:41`: one is how a keynote writes it. `10:04pm` is not
+    `10:04PM`, and `3.10` is not `3.1`, for the weaker version of the same
+    reason -- the wiki does not get to decide how somebody writes the number
+    they are writing about (ADR-0005).
+
+    That is not in tension with the two values this wiki *does* fold. A
+    grouping separator comes out because `posts.grouped` keeps it and puts it
+    back; a second writer's `ufo` becomes `UFO` because the first writer's
+    spelling is what is stored and the word is not changed by having one. The
+    line is that nothing is taken from a value unless something keeps it, and
+    nothing here would keep a leading zero.
+
+    So this is a test about addresses, not about parsing: each of these is its
+    own page, and the sort key they share is what puts them next to each other
+    on the index rather than on top of each other.
+    """
+    c = TestClient(main.app)
+    pairs = [
+        ("INTEGER", ["7000007", "07000007", "007000007"]),
+        ("TIME", ["04:53", "4:53"]),
+        ("TIME", ["10:04PM", "10:04pm", "10:04 PM"]),
+        ("DECIMAL", ["3.170", "3.17"]),
+    ]
+    made = {}
+    for fmt, spellings in pairs:
+        for typed in spellings:
+            got = c.post("/api/posts", json={"value": typed, "title": f"about {typed}"})
+            assert got.status_code == 201, (typed, got.text)
+            entry = got.json()
+            assert entry["value"] == typed, (typed, entry["value"])
+            assert entry["format"] == fmt, (typed, entry["format"])
+            made[typed] = entry
+
+    for fmt, spellings in pairs:
+        # one sort key between them, which is what files them together
+        keys = {made[t]["sort_key"] for t in spellings}
+        assert len(keys) == 1, (spellings, keys)
+        # and one page each, which is what keeps them apart
+        for typed in spellings:
+            here = c.get("/api/posts", params={"value": typed, "section": "number"}).json()
+            assert [p["id"] for p in here] == [made[typed]["id"]], (typed, here)
+
+    # the index bands them as separate numbers, adjacent and not merged
+    rows = c.get("/api/numbers", params={"format": "TIME"}).json()
+    at = [r["value"] for r in rows if r["value"] in ("10:04PM", "10:04pm", "10:04 PM")]
+    assert sorted(at) == ["10:04 PM", "10:04PM", "10:04pm"], at
+
+
+
 def test_connection_crosses_threads():
     """FastAPI opens the connection on one threadpool thread and runs the
     endpoint on another. TestClient funnels everything through a single portal
