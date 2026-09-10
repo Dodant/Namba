@@ -3344,6 +3344,72 @@ def test_a_value_is_stored_as_it_was_typed():
 
 
 
+def test_an_entry_that_never_existed_is_a_404():
+    """404 means there is nothing here and nothing was; 200 means there is
+    something, or something recoverable.
+
+    `guard_public` let *any* absent row pass, and the recovery path needs part
+    of that: a snapshot outliving its entry is the only copy left of it, and
+    `/revisions` is where the recovery view reads it. But "absent" also covers
+    an id nobody ever used, and for those the two routes answered `200 []` --
+    "this entry exists and has no history", about an entry that does not
+    exist.
+
+    So the rule asks the second question rather than dropping the first: a row
+    that is hidden is a 404, a row that is absent with nothing behind it is a
+    404, and a row that is absent with snapshots behind it is exactly the
+    entry the recovery path is for.
+    """
+    c = TestClient(main.app)
+
+    # an id nobody has ever been given
+    for path in ("", "/revisions", "/comments"):
+        got = c.get(f"/api/posts/999999{path}")
+        assert got.status_code == 404, (path, got.status_code, got.text)
+    gone = c.post("/api/posts/999999/revisions/1/restore", json={"author": "x"})
+    assert gone.status_code == 404, gone.status_code
+
+    # a hidden entry: the row is there, and it is nobody's business
+    hidden = c.post("/api/posts", json={"value": "1131", "title": "taken down"}).json()
+    admin.set_status(hidden["id"], "HIDDEN")
+    for path in ("", "/revisions", "/comments"):
+        got = c.get(f"/api/posts/{hidden['id']}{path}")
+        assert got.status_code == 404, (path, got.status_code)
+    admin.set_status(hidden["id"], "ACTIVE")
+
+    # and the one the recovery path is for: the row is gone, the snapshots are
+    # not. Reaching that state takes the database directly, which is the point
+    # -- no route removes a row.
+    orphan = c.post("/api/posts", json={"value": "1132", "title": "before"}).json()
+    c.patch(f"/api/posts/{orphan['id']}", json={"title": "after", "author": "ed"})
+    c.post(f"/api/posts/{orphan['id']}/comments", json={"body": "said beside it"})
+    con = db.connect()
+    try:
+        with con:
+            con.execute("DELETE FROM posts WHERE id = ?", (orphan["id"],))
+
+        assert c.get(f"/api/posts/{orphan['id']}").status_code == 404
+        revs = c.get(f"/api/posts/{orphan['id']}/revisions")
+        assert revs.status_code == 200 and revs.json(), \
+            "the recovery view cannot read what it is offering to restore"
+        assert revs.json()[0]["title"] == "before"
+        # the talk cascaded away with the row, and saying so is not the same
+        # as saying the entry never existed
+        talk = c.get(f"/api/posts/{orphan['id']}/comments")
+        assert talk.status_code == 200 and talk.json() == [], talk.text
+
+        back = c.post(f"/api/posts/{orphan['id']}/revisions/{revs.json()[0]['id']}/restore",
+                      json={"author": "arthur"})
+        assert back.status_code == 200, back.text
+        assert back.json()["title"] == "before"
+    finally:
+        with con:
+            con.execute("DELETE FROM revisions WHERE post_id = ?", (orphan["id"],))
+            con.execute("DELETE FROM posts WHERE id = ?", (orphan["id"],))
+        con.close()
+
+
+
 def test_connection_crosses_threads():
     """FastAPI opens the connection on one threadpool thread and runs the
     endpoint on another. TestClient funnels everything through a single portal

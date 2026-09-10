@@ -235,6 +235,18 @@ the sitemap.
   from them. A stored `FLAGGED` status would go stale the moment a report was
   resolved, and `reports` is already the truth — the test resolves one and
   checks the badge goes with it.
+- **`guard_public` answers "is there anything here" rather than "is there a
+  row".** A 404 from it means there is nothing at this id and nothing was; a
+  200 means there is something, or something recoverable. Three cases: a row
+  that is not `LIVE` is a 404, because an entry an operator took down has a
+  history that is nobody's business until they put it back; an absent row with
+  nothing behind it is a 404, which is the case that used to answer `200 []`
+  and so claimed an entry existed and had no history; an absent row with
+  snapshots behind it passes, because `/api/posts/{id}/revisions` is where
+  `PostPage` reads what it is offering to restore, and a strict rule would
+  close the recovery path by closing the read that draws it. The second query
+  runs only on the absent path. `test_an_entry_that_never_existed_is_a_404`
+  holds all three (ADR-0002).
 - **`/api/admin/posts` is the only list that does not carry `store.LIVE`, and
   `hidden=True` is confined to the back office.** `one_post`, the current side
   of a diff, and the status/restore handlers use it to read moderated entries;

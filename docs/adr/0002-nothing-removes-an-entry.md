@@ -59,12 +59,22 @@ either. The rest of the file: 522 posts, 520 `ACTIVE`, two `DELETED` (110 and
 479, both rows present), 36 revisions, and no id missing from 1 to 522.
 
 So the recovery path -- the resurrect branch in `restore_revision`,
-`guard_public`'s absent-passes rule and `PostPage`'s recovery view, 64 lines
-between them -- answers for nothing that exists here and may go. That has not
-been done; it is a removal to take on purpose rather than as a footnote to a
-measurement. If it is taken, note that a developer database may hold orphans
-this does not cover -- this one had five on 2026-09-09 -- and they become
-unreachable.
+`guard_public` letting an absent row through and `PostPage`'s recovery view --
+answers for nothing that exists here. It is kept anyway. Nothing in this
+codebase can make an orphan, but somebody writing SQL at the file can, and a
+partial restore from a backup can; the repository contemplates going behind
+the app elsewhere, and this is the way back when it happens. A developer
+database already holds five, from before the route that made them was
+removed.
+
+What was not kept is the part of that rule which had nothing to do with
+recovery. "An absent row passes" also covered an id nobody was ever given, so
+`/api/posts/{id}/revisions` and `/comments` answered `200 []` for one -- an
+entry exists here and has no history, about an entry that does not exist.
+`guard_public` now asks the second question on the absent path: snapshots
+behind it and it is the entry the recovery path is for, nothing behind it and
+it is a 404. Two decisions had been sharing one condition, and only one of
+them was worth keeping.
 
 ### The same thing from outside, which agreed
 
@@ -107,5 +117,7 @@ ever created" cannot be seen, only "none of the next 38 is an orphan".
   named above, and kept pending the query.
 - 2026-09-10: answered. Read from outside first, then run against the file:
   no orphaned snapshot, no `author = 'deleted'` row, and no id ever handed out
-  above the highest live one. Removing the recovery path is unblocked; the
-  removal itself is still to be decided.
+  above the highest live one.
+- 2026-09-10: the recovery path kept, and the honesty bug that had been
+  sharing its condition fixed separately. An id nobody was ever given now
+  answers 404 rather than an empty history.

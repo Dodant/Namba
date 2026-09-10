@@ -146,17 +146,35 @@ def shape(rows, con):
 
 
 def guard_public(con, post_id):
-    """404 unless this entry is on the wiki, for the reads that are keyed on a
-    post id rather than joined to one.
+    """404 unless this entry is on the wiki or is recoverable, for the reads
+    keyed on a post id rather than joined to one.
 
-    A row that is simply *absent* passes. A snapshot whose entry row is gone is
-    the only copy left of that entry, so the recovery path stays open to those
-    while a hidden entry's history stays shut. Nothing in this codebase removes
-    a row; ADR-0002 says where such snapshots come from and how to tell whether
-    any exist.
+    A 404 here means there is nothing at this id and nothing was; a 200 means
+    there is something, or something that can be brought back. Three cases and
+    the middle one is the reason this is not one condition:
+
+    * the row is there and not `LIVE` -- an operator took it down, and its
+      history is nobody's business until they put it back;
+    * the row is absent and nothing is behind it -- an id nobody was ever
+      given, which is a 404 and used to be an empty list, an answer that said
+      the entry existed and had no history;
+    * the row is absent and snapshots are behind it -- the one thing the
+      recovery path is for. `/revisions` is where `PostPage` reads what it is
+      offering to put back, so this has to pass or the offer cannot be drawn.
+
+    Nothing in this codebase removes a row, so the third case takes somebody
+    writing SQL at the file. ADR-0002 has the count against production, which
+    is zero, and why the path is kept anyway.
     """
     row = con.execute("SELECT status FROM posts WHERE id = ?", (post_id,)).fetchone()
-    if row is not None and row["status"] != LIVE:
+    if row is not None:
+        if row["status"] != LIVE:
+            raise HTTPException(404, "post not found")
+        return
+    # asked only on the absent path, which is a mistyped id and, once, an
+    # entry somebody is trying to recover
+    if not con.execute("SELECT 1 FROM revisions WHERE post_id = ? LIMIT 1",
+                       (post_id,)).fetchone():
         raise HTTPException(404, "post not found")
 
 
