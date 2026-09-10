@@ -18,7 +18,7 @@ export const JA: Messages = {
     like: (on: boolean, n: number) =>
       `${on ? 'いいねを取り消す' : 'いいね'} — ${fmtCount(n, 'ja')}件`,
   },
-  format: { INTEGER: '整数', DECIMAL: '小数', MIXED: '混合', TIME: '時刻', ABBR: '略語' },
+  format: { INTEGER: '整数', DECIMAL: '小数', MIXED: '混合', TIME: '時刻', CALENDAR: 'カレンダー', ABBR: '略語' },
   buckets: {
     '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',
     '1000': '1,000 – 9,999', '10000+': '10,000以上',

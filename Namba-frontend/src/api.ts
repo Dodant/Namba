@@ -72,7 +72,7 @@ export const LANG_CODE: Record<string, string> = {
 }
 export const langLabel = (l: string) => (LANG_CODE[l] ? `${l} (${LANG_CODE[l]})` : l)
 
-export const FORMATS = ['INTEGER', 'DECIMAL', 'MIXED', 'TIME', 'ABBR'] as const
+export const FORMATS = ['INTEGER', 'DECIMAL', 'MIXED', 'TIME', 'CALENDAR', 'ABBR'] as const
 export type Format = (typeof FORMATS)[number]
 
 /* An abbreviation is the one kind of entry that is not a number, so it decides
@@ -87,6 +87,13 @@ export const BUCKETS = ['1', '10', '100', '1000', '10000+'] as const
    at the end and not the front ASCII order would give them. The keys are
    what the API returns in `bucket`, from bucket_of() in numfmt.py. */
 export const ABBR_BUCKETS: readonly string[] = [...'ABCDEFGHIJKLMNOPQRSTUVW', 'X-Z', '0-9']
+/* The Calendar index bands by month, January to December, and it is the one
+   index where a band with nothing in it is still drawn: the twelve are a
+   calendar, and a year missing August reads as a bug rather than as an empty
+   month. Two digits because these are the keys the API returns in `bucket`,
+   from bucket_of() in numfmt.py, and a bare '1' would be the Integer band's. */
+export const MONTH_BUCKETS: readonly string[] =
+  ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
 export type Post = {
   id: number

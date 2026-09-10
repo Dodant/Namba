@@ -34,7 +34,7 @@ export const EN = {
       `${on ? 'Unlike' : 'Like'} — ${fmtCount(n, 'en')} ${n === 1 ? 'like' : 'likes'}`,
   },
   format: {
-    INTEGER: 'Integer', DECIMAL: 'Decimal', MIXED: 'Mixed', TIME: 'Time', ABBR: 'Abbreviation',
+    INTEGER: 'Integer', DECIMAL: 'Decimal', MIXED: 'Mixed', TIME: 'Time', CALENDAR: 'Calendar', ABBR: 'Abbreviation',
   },
   buckets: {
     '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',

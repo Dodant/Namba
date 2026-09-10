@@ -22,7 +22,7 @@ export const FR: Messages = {
       `${on ? 'Retirer le j’aime' : 'J’aime'} — ${fmtCount(n, 'fr')} j’aime`,
   },
   format: {
-    INTEGER: 'Entier', DECIMAL: 'Décimal', MIXED: 'Mixte', TIME: 'Heure', ABBR: 'Abréviation',
+    INTEGER: 'Entier', DECIMAL: 'Décimal', MIXED: 'Mixte', TIME: 'Heure', CALENDAR: 'Calendrier', ABBR: 'Abréviation',
   },
   buckets: {
     '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',

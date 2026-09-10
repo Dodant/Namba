@@ -16,7 +16,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, field_validator
 
 from db import nfc, now
-from numfmt import bucket_of, canonical_value, is_abbr, parse_number
+from numfmt import bucket_of, canonical_value, date_key, is_abbr, parse_number
 
 
 class Text(BaseModel):
@@ -80,13 +80,21 @@ def resolve_format(value, given):
     <loc> and the canonical agree. Three mechanisms, none of them a rewrite of
     what somebody typed (ADR-0005).
 
-    It is also where ABBR is checked rather than taken at its word. Every other
-    format is a way of reading what was typed and cannot be wrong about it; this
-    one is a claim about the value, and with no login the claim is a stranger's.
+    It is also where the two checked formats are checked rather than taken at
+    their word. The other four are ways of reading what was typed and cannot be
+    wrong about it; ABBR and CALENDAR are claims *about* the value -- that it is
+    a word, that it is a date -- and with no login the claim is a stranger's.
     All three writes settle the format here -- create with what was typed, edit
     with what is stored, since the wiki's form keeps the number read-only once
     the entry exists, and an operator's renumber with what they retyped -- so
     this is the one place that catches every one of them.
+
+    A date is refused rather than repaired for the reason a separator is taken
+    out and a case is not: `01-05` and `1-5` would be two addresses for one
+    day, and nothing here keeps the difference, so the spelling has to be the
+    one the form can produce (ADR-0005). date_key() hands back the sort key it
+    checked with, which is why an explicit CALENDAR does not fall through to
+    the `key = None` above.
 
     Pure, and that is load-bearing: no sibling lookup means a create decides
     nothing about another row, which is why it is the one write with no
@@ -100,8 +108,17 @@ def resolve_format(value, given):
             except ValueError:
                 key = None
         else:
-            key = None  # MIXED, ABBR, or a TIME that is not actually a clock
+            # MIXED, ABBR, or a TIME that is not actually a clock. CALENDAR
+            # takes its own back below, off the check that settles it.
+            key = None
         fmt = given
+    if fmt == "CALENDAR":
+        key = date_key(value)
+        if key is None:
+            raise HTTPException(
+                422, "a calendar date is a two-digit month and day, and a real "
+                     "one -- 12-25, 04-01, 02-29. There is no year in it.")
+        value = value.strip()
     if fmt == "ABBR":
         if not is_abbr(value):
             raise HTTPException(

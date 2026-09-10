@@ -1,12 +1,19 @@
 """Value parsing: a raw display string -> (format, sort_key)."""
 import re
 
-FORMATS = ("INTEGER", "DECIMAL", "MIXED", "TIME", "ABBR")
+FORMATS = ("INTEGER", "DECIMAL", "MIXED", "TIME", "CALENDAR", "ABBR")
 
 _TIME_AMPM = re.compile(r"^(\d{1,2}):(\d{2})\s*([AaPp])[Mm]$")
 _TIME_24 = re.compile(r"^(\d{1,2}):(\d{2})$")
 _INT = re.compile(r"^\d+$")
 _DEC = re.compile(r"^\d+\.\d+$")
+# A date with no year, zero-padded: 12-25, 04-01, 02-29. Strict about the
+# padding, because nothing here may fold `1-5` into `01-05` -- a value is
+# stored as it was typed (ADR-0005), so refusing the other spellings is the
+# only way left to keep one date at one address. February gets 29 days: a leap
+# day is a fixed date, and there is no year here for it to disagree with.
+_DATE = re.compile(r"^(\d{2})-(\d{2})$")
+_MONTH_DAYS = (31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
 # What parse_number will *guess* is an abbreviation: letters, and the
 # punctuation one carries inside it -- R&D, Ph.D, X-ray, I/O, TL;DR. No digits,
 # because "3M" and "G7" are a number doing the same work as a word and which
@@ -145,16 +152,39 @@ def is_abbr(value):
     return bool(_ABBR_OK.match((value or "").strip()))
 
 
+def date_key(value):
+    """month * 100 + day for a fixed calendar date, or None if it is not one.
+
+    The check and the sort key are one question, so one function answers both:
+    a value this cannot read is not a date, and `resolve_format` is where that
+    becomes the 422. CALENDAR is the second format that is checked rather than
+    believed -- like ABBR it is a claim *about* the value and not a way of
+    reading one, and on a wiki with no login the claim is a stranger's.
+
+    1225 rather than a day of the year, because a band here is a month and the
+    month has to come back out of the key (see bucket_of). Either sorts.
+    """
+    m = _DATE.match((value or "").strip())
+    if not m:
+        return None
+    month, day = int(m.group(1)), int(m.group(2))
+    if not 1 <= month <= 12 or not 1 <= day <= _MONTH_DAYS[month - 1]:
+        return None
+    return float(month * 100 + day)
+
+
 def bucket_of(sort_key, fmt="INTEGER", value=None):
     """Band that sections an index: magnitude for the Integer one -- 1 / 10 /
-    100 / 1000 / 10000+ -- and first letter for the Abbreviation one, A to W,
-    then X-Z together, then 0-9 last for the MP3s and 3Ms.
+    100 / 1000 / 10000+ -- first letter for the Abbreviation one, A to W, then
+    X-Z together, then 0-9 last for the MP3s and 3Ms, and the month for the
+    Calendar one.
 
     Nothing else gets one. A TIME sort_key is minutes past midnight, so banding
     it by magnitude would put 09:41 in the "100" band, which means nothing, and
     Decimal and Mixed sort by string and read as one list. An abbreviation has
     no sort key, so its band comes off the value: the first letter or digit in
-    it, so that .NET files under N and not under a punctuation mark.
+    it, so that .NET files under N and not under a punctuation mark. A date has
+    one, and the month is the top of it.
     """
     if fmt == "ABBR":
         m = re.search(r"[A-Za-z0-9]", value or "")
@@ -162,6 +192,12 @@ def bucket_of(sort_key, fmt="INTEGER", value=None):
             return None
         c = m.group().upper()
         return "0-9" if c.isdigit() else "X-Z" if c >= "X" else c
+    if fmt == "CALENDAR":
+        # the month back out of the key, two digits so that no label of this
+        # band collides with the Integer one's "1" and "10" -- the sync test
+        # compares every label this function can return against api.ts, as a
+        # set, and one shared label would let a real gap pass
+        return f"{int(sort_key) // 100:02d}" if sort_key else None
     if sort_key is None or fmt != "INTEGER":
         return None
     v = abs(sort_key)

@@ -21,7 +21,7 @@ export const DE: Messages = {
       `${on ? 'Gefällt mir nicht mehr' : 'Gefällt mir'} — ${fmtCount(n, 'de')} ${n === 1 ? 'Like' : 'Likes'}`,
   },
   format: {
-    INTEGER: 'Ganzzahl', DECIMAL: 'Dezimalzahl', MIXED: 'Gemischt', TIME: 'Uhrzeit', ABBR: 'Abkürzung',
+    INTEGER: 'Ganzzahl', DECIMAL: 'Dezimalzahl', MIXED: 'Gemischt', TIME: 'Uhrzeit', CALENDAR: 'Kalender', ABBR: 'Abkürzung',
   },
   buckets: {
     '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',

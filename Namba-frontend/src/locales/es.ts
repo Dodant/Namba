@@ -21,7 +21,7 @@ export const ES: Messages = {
       `${on ? 'Quitar me gusta' : 'Me gusta'} — ${fmtCount(n, 'es')} me gusta`,
   },
   format: {
-    INTEGER: 'Entero', DECIMAL: 'Decimal', MIXED: 'Mixto', TIME: 'Hora', ABBR: 'Abreviatura',
+    INTEGER: 'Entero', DECIMAL: 'Decimal', MIXED: 'Mixto', TIME: 'Hora', CALENDAR: 'Calendario', ABBR: 'Abreviatura',
   },
   buckets: {
     '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',

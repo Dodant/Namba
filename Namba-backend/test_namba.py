@@ -37,7 +37,9 @@ import seo  # noqa: E402
 import seo_locale  # noqa: E402
 import sqlite3  # noqa: E402
 import store  # noqa: E402
-from numfmt import FORMATS, bucket_of, grouped_value, is_abbr, parse_number  # noqa: E402
+from numfmt import (  # noqa: E402
+    FORMATS, bucket_of, date_key, grouped_value, is_abbr, parse_number,
+)
 
 # The write limiter counts per IP, and the whole suite is one IP making a
 # hundred writes in a second. Lift it here rather than thin it out in main.py,
@@ -62,11 +64,16 @@ def test_parse():
         "3.15.20": ("MIXED", None),            # two dots
         "80/20": ("MIXED", None),
         "40-40": ("MIXED", None),
+        # and a date is not guessed at either, for the same reason: 12-25 is
+        # Christmas and 80-20 is a ratio, and nothing in either string says
+        # which. CALENDAR is reached by picking it, the way TIME is on 1:29:300
+        "12-25": ("MIXED", None),
+        "02-29": ("MIXED", None),
         "9¾": ("MIXED", None),
         "24/7": ("MIXED", None),
         "25:99": ("MIXED", None),              # colon, but no such time
         "": ("MIXED", None),
-        # letters are the fifth kind, and the punctuation an abbreviation
+        # letters are the last kind, and the punctuation an abbreviation
         # carries inside it comes with them
         "UFO": ("ABBR", None),
         "ufo": ("ABBR", None),                 # the case is settled on write
@@ -95,6 +102,19 @@ def test_parse():
     for no in ("유에프오", "УФО", "宇宙", "café", "Ünicode", "42", "9.5", "9¾",
                "", "   ", "-", "...", "UF O", "UFO!"):
         assert not is_abbr(no), no
+
+    # And what may be filed as a date, which is the other checked format. The
+    # key is the check: a value this cannot read is not a date, and the month
+    # has to come back out of it for the band. Padding is part of the spelling
+    # -- `1-5` is refused rather than folded to `01-05`, because nothing here
+    # would keep the difference and one day must have one address (ADR-0005).
+    for raw, want in {"01-01": 101.0, "04-01": 401.0, "12-25": 1225.0,
+                      "02-29": 229.0, "12-31": 1231.0}.items():
+        assert date_key(raw) == want, (raw, date_key(raw))
+    assert date_key(" 12-25 ") == 1225.0, "stripped like every other value"
+    for no in ("1-5", "01-5", "1-05", "2026-12-25", "12-32", "02-30", "04-31",
+               "13-01", "00-01", "12-00", "12/25", "12-25x", "", "   ", None):
+        assert date_key(no) is None, no
 
 
 def test_the_two_apps_still_agree():
@@ -142,8 +162,8 @@ def test_the_two_apps_still_agree():
         assert m, f"{name} is not in api.ts at all"
         return int(m.group(1))
 
-    # the five formats -- a format is a parser branch, it decides which of the
-    # two sections a value is read in, and both sides have to agree on the word
+    # the six formats -- a format is a parser branch, it decides which of the
+    # sections a value is read in, and both sides have to agree on the word
     assert listed("FORMATS") == FORMATS, listed("FORMATS")
     # the five vocabularies the TEXT columns may hold, plus what the panel offers
     for name in ("DELETE_REASONS", "REPORT_REASONS", "POST_STATUSES",
@@ -176,7 +196,9 @@ def test_the_two_apps_still_agree():
     abbrs = {bucket_of(None, "ABBR", c) for c in
              string.ascii_uppercase + string.ascii_lowercase + string.digits}
     assert abbrs == set(listed("ABBR_BUCKETS")), (abbrs, listed("ABBR_BUCKETS"))
-    # and only those two formats band at all, or a list would render one band
+    months = {bucket_of(date_key(f"{m:02d}-01"), "CALENDAR") for m in range(1, 13)}
+    assert months == set(listed("MONTH_BUCKETS")), (months, listed("MONTH_BUCKETS"))
+    # and only those three formats band at all, or a list would render one band
     # per row -- TIME sorts by minutes past midnight, where a magnitude means
     # nothing, and Decimal and Mixed sort by string and read as one list
     for fmt in ("TIME", "DECIMAL", "MIXED"):
@@ -1993,6 +2015,13 @@ def test_bucket():
         got = bucket_of(None, "ABBR", value)
         assert got == want, f"bucket_of(ABBR, {value!r}) = {got}, want {want}"
     assert bucket_of(42.0, "ABBR", "UFO") == "U", "the key had a say in a letter band"
+    # a date is banded by its month, which comes back out of the key -- two
+    # digits, so that no band of this index is spelled like an Integer one
+    for raw, want in [("01-01", "01"), ("04-01", "04"), ("09-30", "09"),
+                      ("10-04", "10"), ("12-25", "12"), ("02-29", "02")]:
+        got = bucket_of(date_key(raw), "CALENDAR")
+        assert got == want, f"bucket_of(CALENDAR, {raw!r}) = {got}, want {want}"
+    assert bucket_of(None, "CALENDAR", "12-25") is None, "no key, no month"
 
 
 def test_api_round_trip():

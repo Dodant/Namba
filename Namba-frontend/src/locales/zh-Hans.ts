@@ -18,7 +18,7 @@ export const ZH_HANS: Messages = {
     like: (on: boolean, n: number) =>
       `${on ? '取消点赞' : '点赞'} — ${fmtCount(n, 'zh-Hans')}个`,
   },
-  format: { INTEGER: '整数', DECIMAL: '小数', MIXED: '混合', TIME: '时间', ABBR: '缩写' },
+  format: { INTEGER: '整数', DECIMAL: '小数', MIXED: '混合', TIME: '时间', CALENDAR: '日历', ABBR: '缩写' },
   buckets: {
     '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',
     '1000': '1,000 – 9,999', '10000+': '10,000以上',
