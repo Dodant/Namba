@@ -36,3 +36,4 @@ the rule it introduces.
 | [0021](0021-the-content-is-cc0-the-code-is-mit.md) | The content is CC0; the code is MIT | accepted | 2026-08-20, 2026-09-09 |
 | [0022](0022-no-orm.md) | No ORM; anything the DDL cannot reach is a numbered migration | accepted | 2026-08-18, numbered 2026-09-10 |
 | [0023](0023-a-snapshot-has-its-own-shape.md) | A snapshot has its own shape, not `fetch_one`'s | accepted | 2026-09-10 |
+| [0024](0024-backups-live-with-the-host.md) | Backups live with the host, not in this repository | accepted | 2026-09-10 |

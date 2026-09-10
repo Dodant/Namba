@@ -86,7 +86,6 @@ including the test suite:
 | `auth.py` | operator passwords and sessions — the only login here |
 | `events.py` | who a request is from, as hashes, and the log of what they did |
 | `gc_uploads.py` | the cron job that deletes pictures nothing points at |
-| `backup.py` | the cron job that copies the database somewhere safe, key included |
 | `admin.py` | the operator's commands — accounts, TOTP enrollment, `hide`, `show`, `purge` |
 
 `Namba-frontend` — React + Vite, no state library and no UI kit. `src/api.ts` is
@@ -351,20 +350,31 @@ one worker, or move it to redis. It counts per IP, so a reverse proxy needs
 `FORWARDED_ALLOW_IPS` set, or every request arrives from the proxy and the whole
 site shares one allowance.
 
-Two things want a cron entry: `python gc_uploads.py --delete` daily, or abandoned
-uploads accumulate until the 1 GB ceiling stops the wiki taking pictures, and
-`python backup.py /somewhere/else` daily — anyone can rewrite any entry, and the
-snapshots that undo that live in the same file as the entries. Not `cp`: a WAL
-database is two files while the wiki runs, and a copy of the main one alone is
-missing whatever was written since the last checkpoint. `backup.py` uses
-SQLite's online backup API, brings `secret.key` along — it is what the hashes in
-`events` and the blocks are salted with, and without it they stop matching
-anything and nothing complains — and keeps the newest fourteen copies. Point it
-at another disk, or sync the directory off the box; a copy beside the original
-guards against vandalism, not against the disk. `NAMBA_SECRET` keeps the key in
-the environment instead, and then the environment is what has to be backed up.
-In the container: `docker compose exec namba python backup.py /data/backups`,
-with `/data/backups` synced elsewhere.
+Two things want a cron entry, and on the deployed host both already have one.
+
+`python gc_uploads.py --delete` daily, or abandoned uploads accumulate until
+the 1 GB ceiling stops the wiki taking pictures.
+
+And a backup, which is **not a script in this repository**: it lives beside the
+one for the other stack that shares the box, at
+`chiral-root/scripts/namba-backup.sh`. Three things go up daily, by three
+methods, because they change in three ways — the database is a new snapshot
+each day, `uploads/` is an incremental mirror since a picture never changes
+once written, and `secret.key` is overwritten in one place because it never
+changes at all. The key travels because it is what the hashes in `events` and
+the blocks are salted with: restore the database without it and every block
+stops matching, with nothing to say so.
+
+The database is copied with SQLite's online backup API and never with `cp`. A
+WAL database is two files while the wiki is running, and a copy of the main one
+alone is missing whatever was written since the last checkpoint — a loss you
+find out about when you come to restore.
+
+To restore: take the newest `namba_<timestamp>.db.gz` and `namba_secret.key`
+from the bucket, gunzip, and put them at `/data/namba.db` and `/data/secret.key`
+on the volume. Check the copy before trusting it — `PRAGMA integrity_check`,
+and a row count against what the wiki says. Verified that way on 2026-09-10:
+the snapshot opened clean and matched the live database entry for entry.
 
 The admin session cookie is `SameSite=Strict`, and `Secure` whenever the request
 arrived over https. That is what stands in for a CSRF token — the panel is

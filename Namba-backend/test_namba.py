@@ -2969,45 +2969,6 @@ def test_upload_gc_keeps_what_history_points_at():
     assert not os.path.exists(rubbish), "nothing points at it and it is not new"
 
 
-def test_backup_is_a_consistent_copy():
-    """`python backup.py` writes a copy of the database that opens whole, with
-    the key beside it, and keeps only the newest few.
-
-    A WAL database is two files while it is open -- the main file and the
-    -wal holding writes not yet checkpointed -- so `cp` of the main file is a
-    copy of the database as it was at the last checkpoint, minus whatever came
-    after. The online backup API copies pages under the reader lock and is
-    the one way to take a copy while the wiki is up.
-    """
-    import backup
-
-    c = TestClient(main.app)
-    p = c.post("/api/posts", json={"value": "3301", "title": "Cicada"}).json()
-    # a write the WAL still holds: nothing has checkpointed since
-    c.patch(f"/api/posts/{p['id']}", json={"title": "Cicada 3301", "author": "z"})
-
-    dest = os.path.join(_tmp, "backups")
-    made = backup.run(dest, keep=2)
-    assert os.path.dirname(made) == dest and made.endswith(".db"), made
-    copy = sqlite3.connect(made)
-    assert copy.execute("SELECT title FROM posts WHERE id = ?", (p["id"],)
-                        ).fetchone()[0] == "Cicada 3301", "the copy is behind the WAL"
-    assert copy.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
-    copy.close()
-    # the key travels with the database: without it every hash in events and
-    # every block stops matching anything, and nothing complains
-    assert open(os.path.join(dest, "secret.key"), "rb").read() == events.SECRET
-
-    # keep=2: a third run leaves the two newest and removes the oldest
-    time.sleep(1.1)   # names are whole seconds
-    second = backup.run(dest, keep=2)
-    time.sleep(1.1)
-    third = backup.run(dest, keep=2)
-    kept = sorted(f for f in os.listdir(dest) if f.endswith(".db"))
-    assert kept == sorted(os.path.basename(x) for x in (second, third)), kept
-    assert not os.path.exists(made), "the oldest copy was kept past --keep"
-
-
 def test_upload_does_not_hold_the_event_loop():
     """`upload` is a plain `def`, so Starlette runs it in the threadpool.
 

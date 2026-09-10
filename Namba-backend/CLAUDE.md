@@ -16,11 +16,17 @@ FastAPI over stdlib `sqlite3`. Fifteen Python files, including the test suite:
 | `test_namba.py` | the backend and cross-app checks |
 | `seed.py` + `seed_tags.py` | the markdown importer |
 | `gc_uploads.py` | the uploads collector |
-| `backup.py` | a copy of the database that opens whole, with the key beside it |
 | `admin.py` | the operator's shell commands |
 
-The last three run from cron and from a shell, never from a route — there is
+The last two run from cron and from a shell, never from a route — there is
 nobody to stop a stranger triggering one.
+
+**Backups are not in this repository.** `chiral-root/scripts/namba-backup.sh`
+on the host takes them, beside the backup for the other stack sharing that
+box: SQLite's online backup API rather than `cp` (a WAL database is two files
+and `cp` of one of them tears), gzipped to S3 daily, with `uploads/` synced
+incrementally and `secret.key` beside it. The README says what is covered and
+how to restore.
 
 ```sh
 .venv/bin/python test_namba.py           # run before saying anything passes
@@ -28,7 +34,6 @@ nobody to stop a stranger triggering one.
 .venv/bin/python admin.py add you@x.test # the first operator; there is no signup
 .venv/bin/python admin.py totp-enroll you@x.test # mandatory second factor
 .venv/bin/python admin.py hide 42        # take an entry off the public wiki
-.venv/bin/python backup.py /somewhere/else --keep 14   # daily, from cron; cp cannot copy a WAL database
 .venv/bin/uvicorn main:app --reload
 ```
 
