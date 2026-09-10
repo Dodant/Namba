@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { errorText, REASON_LABEL, REPORT_STATUSES } from '../../api'
 import { showValue } from '../../format'
-import { adm, type Page, type Report, type ReportGroup } from '../api'
-import { useAction, useUrlFilters } from '../state'
-import {
-  Badge, Confirm, Drawer, Empty, Hash, NoteField, Pager, Table, When,
-} from '../ui'
+import { adm, type Page, type ReportGroup } from '../api'
+import { EntrySheet } from '../sheet'
+import { useAction, useQueue, useUrlFilters } from '../state'
+import { Confirm, Empty, Fail, Head, Loading, NoteField, Pager, Row, Table, When } from '../ui'
 
 const PER = 50
+
+const COLS = ['Entry', 'Reports', 'Reasons given', 'First', 'Last', '']
 
 const DECIDE = {
   RESOLVE: {
@@ -29,55 +30,58 @@ const DECIDE = {
 
 /** Grouped per entry, because five people objecting to one entry is one thing
     for an operator to look at rather than five.
- 
-    The individual reports open in a drawer rather than on a page: reading them
-    is a paragraph, and a page would cost the operator their place in the queue. */
+
+    Opening a row opens the *entry* beside the reports, which is the whole
+    change: the reasons alone never answered whether the entry deserved them,
+    so every decision here used to start with a trip to another page and end
+    with finding your place in the queue again. Now the queue is worked in
+    place — read, decide, and the row drops out from under you leaving the next
+    one open. */
 export default function Reports({ onChange }: { onChange: () => void }) {
   const { get, set, offset } = useUrlFilters()
   const [got, setGot] = useState<Page<ReportGroup> | null>(null)
   const [err, setErr] = useState('')
   const [busy, run] = useAction(setErr)
-  const [open, setOpen] = useState<ReportGroup | null>(null)
-  const [detail, setDetail] = useState<Report[] | null>(null)
   const [ask, setAsk] = useState<{ row: ReportGroup; how: keyof typeof DECIDE } | null>(null)
   const [note, setNote] = useState('')
 
   const status = get('status', 'OPEN')
+  const queue = useQueue(got?.rows)
 
-  function load() {
-    setGot(null)
+  function load(quiet = false) {
+    /* Quiet after a decision: blanking the list would take the open row out
+       from under the drawer, close it, and put it back a tick later. Left
+       standing, the decided row simply drops out and the index it vacated is
+       the next item -- which is the queue advancing by itself. */
+    if (!quiet) setGot(null)
     setErr('')
     adm.reports({ status, limit: PER, offset })
       .then(setGot, (e) => setErr(errorText(e)))
   }
 
-  useEffect(load, [status, offset])
-
   useEffect(() => {
-    if (!open) return setDetail(null)
-    setDetail(null)
-    adm.reportDetail(open.post_id).then(setDetail, (e) => setErr(errorText(e)))
-  }, [open])
+    load()
+    queue.close()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, offset])
 
   function decide() {
     if (!ask) return
     run(async () => {
       await adm.decideReports(ask.row.post_id, ask.how, note)
       setAsk(null)
-      setOpen(null)
       setNote('')
-      load()
+      load(true)
       onChange()
     })
   }
 
   return (
     <div className="page">
-      <h1>Reports</h1>
-      <p className="lede">
-        One row per entry, with how many people said something and what they said.
-        Deciding here closes the reports and leaves the entry alone.
-      </p>
+      <Head
+        title="Reports"
+        tally={got && `${got.total} ${status === 'ALL' ? 'in all' : status.toLowerCase()}`}
+      />
 
       <div className="bar">
         <div className="field">
@@ -95,21 +99,24 @@ export default function Reports({ onChange }: { onChange: () => void }) {
             <option value="ALL">All</option>
           </select>
         </div>
+        <span className="hash push self">
+          Click a row to read the entry beside the reports · ↑↓ to move
+        </span>
       </div>
 
-      {err && (
-        <p className="err" role="alert">
-          {err}
-        </p>
-      )}
+      <Fail msg={err} onRetry={() => load()} />
 
       {!got ? (
-        !err && <Empty>Loading…</Empty>
+        !err && <Loading cols={COLS} />
       ) : got.rows.length ? (
         <>
-          <Table cols={['Entry', 'Reports', 'Reasons given', 'First', 'Last', '']}>
-            {got.rows.map((r) => (
-              <tr key={r.post_id}>
+          <Table cols={COLS}>
+            {got.rows.map((r, i) => (
+              <Row
+                key={r.post_id}
+                className={queue.at === i ? 'lit' : ''}
+                onOpen={() => queue.open(i)}
+              >
                 <td className="wide">
                   {r.title ? (
                     <Link to={`/content/${r.post_id}`}>
@@ -146,9 +153,6 @@ export default function Reports({ onChange }: { onChange: () => void }) {
                   <When at={r.last_at} />
                 </td>
                 <td className="acts">
-                  <button className="btn small" onClick={() => setOpen(r)}>
-                    Read them
-                  </button>
                   {status === 'OPEN' && (
                     <button
                       className="btn small primary"
@@ -158,7 +162,7 @@ export default function Reports({ onChange }: { onChange: () => void }) {
                     </button>
                   )}
                 </td>
-              </tr>
+              </Row>
             ))}
           </Table>
           <Pager
@@ -174,63 +178,33 @@ export default function Reports({ onChange }: { onChange: () => void }) {
         </Empty>
       )}
 
-      <Drawer
-        open={!!open}
-        title={
-          open ? (
-            <>
-              <span className="num">{showValue(open.value ?? '', false)}</span>{' '}
-              {open.title ?? `entry ${open.post_id}`}
-            </>
-          ) : ''
-        }
-        onClose={() => setOpen(null)}
+      <EntrySheet
+        postId={queue.row?.post_id ?? null}
+        at={queue.label}
+        onStep={queue.step}
+        onClose={queue.close}
+        onChanged={() => {
+          load(true)
+          onChange()
+        }}
       >
-        {!detail ? (
-          <Empty>Loading…</Empty>
-        ) : (
+        {status === 'OPEN' && queue.row && (
           <>
-            {detail.map((d) => (
-              <div className="note" key={d.id}>
-                <b>{d.reason}</b> <Badge>{d.status}</Badge>
-                <div className="hash">{REASON_LABEL[d.reason] ?? ''}</div>
-                {d.detail ? <p>{d.detail}</p> : <p className="hash">No detail given.</p>}
-                <span className="hash">
-                  <Hash value={d.ip_hash} /> · cookie <Hash value={d.client_hash} /> ·{' '}
-                  <When at={d.created_at} />
-                </span>
-                {d.decision_note && <p className="hash">Closed: {d.decision_note}</p>}
-              </div>
-            ))}
-            {/* Both hashes on every report, and this is what they are for: the
-                same one across four entries is a campaign rather than four
-                readers agreeing, and blocking it is a page away. */}
-            {open && (
-              <div className="sheet-acts">
-                <Link className="btn" to={`/content/${open.post_id}`}>
-                  Open the entry
-                </Link>
-                {status === 'OPEN' && (
-                  <>
-                    <button
-                      className="btn"
-                      onClick={() => setAsk({ row: open, how: 'IGNORE' })}
-                    >
-                      Dismiss
-                    </button>
-                    <button
-                      className="btn primary"
-                      onClick={() => setAsk({ row: open, how: 'RESOLVE' })}
-                    >
-                      Resolve
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
+            <button
+              className="btn"
+              onClick={() => setAsk({ row: queue.row!, how: 'IGNORE' })}
+            >
+              Dismiss
+            </button>
+            <button
+              className="btn primary"
+              onClick={() => setAsk({ row: queue.row!, how: 'RESOLVE' })}
+            >
+              Resolve
+            </button>
           </>
         )}
-      </Drawer>
+      </EntrySheet>
 
       <Confirm
         open={!!ask}

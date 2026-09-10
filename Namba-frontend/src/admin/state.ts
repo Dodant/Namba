@@ -4,7 +4,7 @@
     module mixing the two loses fast refresh for both -- which is a cost paid
     on every edit to a badge.
 */
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { errorText } from '../api'
 
@@ -60,4 +60,38 @@ export function useAction(onError: (message: string) => void) {
     }
   }
   return [busy, run] as const
+}
+
+/** Where the drawer is standing in a list, and how it moves.
+
+    Every queue in the panel is the same three lines: which row is open, step
+    to the neighbour, and stop at both ends. Written once because getting the
+    clamp wrong is what makes a Next button at the bottom of a page wrap round
+    to the top and lose an operator their place -- and because "3 of 24" has to
+    agree with the row that is actually open.
+
+    Keyed by position rather than by id: the row a decision closes drops out of
+    the list, so the *next* item lands on the index just vacated, which is the
+    behaviour a queue wants. `null` is closed.
+*/
+export function useQueue<T>(rows: T[] | undefined) {
+  const [at, setAt] = useState<number | null>(null)
+  const here = at != null && at < (rows?.length ?? 0) ? at : null
+  return {
+    at: here,
+    row: here == null ? undefined : rows?.[here],
+    /** "3 of 24" for the drawer's heading. */
+    label: here == null ? undefined : `${here + 1} of ${rows?.length ?? 0}`,
+    open: setAt,
+    close: useCallback(() => setAt(null), []),
+    step: useCallback((by: 1 | -1) => {
+      setAt((was) => {
+        if (was == null) return was
+        const next = was + by
+        /* Both ends stop rather than wrap. A queue that loops has no end, and
+           an operator who cannot tell they have reached one works it twice. */
+        return next < 0 || next >= (rows?.length ?? 0) ? was : next
+      })
+    }, [rows]),
+  }
 }

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  BrowserRouter, Link, Navigate, Route, Routes, useLocation,
+  BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate,
 } from 'react-router-dom'
 import { adm, type Stats, type Who } from './api'
 import Login from './pages/Login'
@@ -23,18 +23,69 @@ import Operators from './pages/Operators'
     open to discover is empty is a queue you stop opening. */
 type Item = { to: string; label: string; group: string; tally?: keyof Stats }
 
+/* Moderation above Content, which is the order an operator's day runs in:
+   what is waiting first, then the wiki it is about. The dashboard says the
+   same two numbers, but this is where you act on them -- and a queue you have
+   to open to discover is empty is a queue you stop opening. */
 const NAV: Item[] = [
   { to: '/', label: 'Dashboard', group: '' },
-  { to: '/content', label: 'All content', group: 'Content' },
-  { to: '/changes', label: 'Recent changes', group: 'Content' },
   { to: '/requests', label: 'Delete requests', group: 'Moderation',
     tally: 'requests_pending' },
   { to: '/reports', label: 'Reports', group: 'Moderation', tally: 'reports_open' },
   { to: '/abuse', label: 'Spam & abuse', group: 'Moderation' },
+  { to: '/content', label: 'All content', group: 'Content' },
+  { to: '/changes', label: 'Recent changes', group: 'Content' },
   { to: '/blocks', label: 'Blocked clients', group: 'Security', tally: 'blocked' },
   { to: '/audit', label: 'Audit log', group: 'Security' },
   { to: '/operators', label: 'Operators', group: 'Settings' },
 ]
+
+/** The one key that works on every page.
+
+    `/` is where every tool an operator already uses puts search, and here it
+    is also the way in to the only full-text search the panel has -- so from a
+    page without a box it goes and finds the one on the content list rather
+    than doing nothing. A command palette over six routes would be a second
+    navigation for a rail that fits on one screen; this is the part of one
+    that earns its keep.
+
+    Nothing destructive has a key, single or otherwise. Arrows and Enter move
+    and open, Escape closes, and every decision is still a button somebody
+    has to aim at. */
+function Keys() {
+  const go = useNavigate()
+  const { pathname } = useLocation()
+  const chasing = useRef(false)
+
+  /* The focus after the trip, in an effect keyed on the route rather than in
+     a frame callback after `go`. React commits when it commits; an effect on
+     the new pathname is the one moment the box is guaranteed to exist. */
+  useEffect(() => {
+    if (!chasing.current) return
+    chasing.current = false
+    document.querySelector<HTMLInputElement>('input[type=search]')?.focus()
+  }, [pathname])
+
+  useEffect(() => {
+    function key(e: KeyboardEvent) {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return
+      const hit = e.target as HTMLElement | null
+      if (hit?.matches('input, select, textarea')) return
+      e.preventDefault()
+      const box = document.querySelector<HTMLInputElement>('input[type=search]')
+      if (box) {
+        box.focus()
+        box.select()
+      } else {
+        chasing.current = true
+        go('/content')
+      }
+    }
+    addEventListener('keydown', key)
+    return () => removeEventListener('keydown', key)
+  }, [go])
+  return null
+}
 
 /** The rail.
 
@@ -73,6 +124,9 @@ function Rail({ who, stats, onOut }: { who: Who; stats: Stats | null; onOut: () 
         })}
       </div>
       <div className="rail-foot">
+        <span className="keys">
+          <kbd>/</kbd> search <kbd>↑↓</kbd> move <kbd>↵</kbd> open <kbd>esc</kbd> close
+        </span>
         <b>{who.email}</b>
         <span className="role">{who.role}</span>{' · '}
         {/* a link rather than a button: it is the one control down here and a
@@ -129,6 +183,7 @@ export default function AdminApp() {
 
   return (
     <BrowserRouter basename="/admin">
+      <Keys />
       <div className="shell">
         <Rail who={who} stats={stats} onOut={out} />
         <main className="main">

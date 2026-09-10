@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { BLOCK_HOURS, BLOCK_HOURS_LABEL, errorText } from '../../api'
 import { adm, type Abuse as Signal, type AbuseRow } from '../api'
 import { useAction } from '../state'
-import { Confirm, Empty, Hash, NoteField, Table, When } from '../ui'
+import { Confirm, Empty, Fail, Hash, Head, Loading, NoteField, Table, When } from '../ui'
 
 /* Windows an operator actually asks about: what is happening now, what happened
    while I was asleep, what happened this week. */
@@ -56,14 +56,18 @@ export default function Abuse() {
     })
   }
 
+  const COLS = ['Address', 'Writes', 'New', 'Edits', 'Talk', 'Flags', 'Files',
+                'Entries', 'Browsers', 'First', 'Last', '']
+
   return (
     <div className="page">
-      <h1>Spam &amp; abuse</h1>
-      <p className="lede">
-        Counting, not detection — and the counts are of writes, so reading the
-        wiki never appears here. A row is one address over the window; the
-        browsers column is how many cookies have been seen behind it.
-      </p>
+      <Head
+        title="Spam & abuse"
+        tally={got && `${got.clients.length} clients`}
+        hint="Counting, not detection — and the counts are of writes, so
+              reading the wiki never appears here. A row is one address over
+              the window; browsers is how many cookies have been seen behind it."
+      />
 
       <div className="bar">
         <div className="field">
@@ -91,29 +95,26 @@ export default function Abuse() {
           </select>
         </div>
         <span className="hash push self">
-          {got ? `since ${got.since}` : ''}
+          {got && <>since <When at={got.since} /></>}
         </span>
       </div>
 
-      {err && (
-        <p className="err" role="alert">
-          {err}
-        </p>
-      )}
+      <Fail msg={err} onRetry={load} />
 
       <section className="stat-group">
         <h2>Clients</h2>
         {!got ? (
-          !err && <Empty>Loading…</Empty>
+          !err && <Loading cols={COLS} rows={5} />
         ) : got.clients.length ? (
-          <Table
-            cols={['Address', 'Writes', 'New', 'Edits', 'Talk', 'Flags', 'Files',
-                   'Entries', 'Browsers', 'First', 'Last', '']}
-          >
+          <Table cols={COLS}>
             {got.clients.map((c) => (
               <tr key={c.ip_hash} className={c.blocked ? 'dim' : ''}>
                 <td className="tight">
-                  <Hash value={c.ip_hash} />
+                  {/* The column that made this page decidable. Twelve counts
+                      say somebody wrote a lot and never what they wrote, and
+                      blocking an address on a number alone is a guess -- so
+                      the hash leads to their rows in the log. */}
+                  <Hash value={c.ip_hash} to={`/changes?ip=${c.ip_hash}&kind=all`} />
                 </td>
                 <td className="tight right num">
                   <b>{c.writes}</b>
@@ -169,11 +170,9 @@ export default function Abuse() {
       <section className="stat-group">
         <h2>The same paragraph under several numbers</h2>
         <p className="lede">
-          Nobody writes the same forty words about 42 and about 1,024 by
-          coincidence. A shared <em>title</em> is not evidence here and is not
-          listed — five people writing about five numbers called “Time” is the
-          wiki working — and title-only spam shows up in the client counts above
-          instead, which is the tool that fits it.
+          A shared <em>title</em> is not evidence and is not listed: five people
+          writing about five numbers called “Time” is the wiki working. Title-only
+          spam shows up in the counts above instead.
         </p>
         {!got ? null : got.duplicates.length ? (
           <Table cols={['What they all say', 'Entries', 'Titles', 'Which']}>

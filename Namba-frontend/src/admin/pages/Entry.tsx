@@ -1,39 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { errorText, FORMATS, tagLabel, type Format, type PostStatus } from '../../api'
+import { errorText, FORMATS, tagLabel, type Format } from '../../api'
 import { fmtDate, showValue } from '../../format'
 import { ACTION_LABEL, adm, type Diff, type FullPost, type Rev } from '../api'
+import { StatusActions } from '../sheet'
 import { useAction } from '../state'
-import { Badge, Confirm, Empty, Hash, NoteField, Table, When } from '../ui'
-
-/* What each button does, what it says while asking, and what survives it. The
-   last part is the one that matters: on this wiki hiding an entry keeps its
-   history, its comments and its translations, and an operator who does not know
-   that will not press the button. */
-const MOVES: Record<string, {
-  to: PostStatus; label: string; ask: string; verb: string; danger?: boolean; says: string
-}> = {
-  hide: {
-    to: 'HIDDEN', label: 'Take off the wiki', verb: 'Hide it', danger: true,
-    ask: 'Hide this entry?',
-    says: 'It leaves the index, the lists, its own page and both vocabularies. '
-      + 'Its history, its comments and its translations are untouched, and '
-      + 'putting it back is this same button.',
-  },
-  remove: {
-    to: 'DELETED', label: 'Mark removed', verb: 'Remove it', danger: true,
-    ask: 'Mark this entry removed?',
-    says: 'The same as hiding, and it reads differently in the list: removed '
-      + 'means somebody asked and you agreed. Nothing is deleted — no route in '
-      + 'this wiki deletes a row.',
-  },
-  show: {
-    to: 'ACTIVE', label: 'Put back on the wiki', verb: 'Put it back',
-    ask: 'Put this entry back?',
-    says: 'It returns whole, at the same address, with everything that was '
-      + 'attached to it.',
-  },
-}
+import { Badge, Confirm, Empty, Fail, Hash, NoteField, Table, When } from '../ui'
 
 /* A diff line's sign as a class name. '-' and '+' cannot be one, and built by
    interpolation the name is one the stylesheet can never match -- so the
@@ -70,7 +42,6 @@ export default function Entry() {
   const [post, setPost] = useState<FullPost | null>(null)
   const [revs, setRevs] = useState<Rev[] | null>(null)
   const [err, setErr] = useState('')
-  const [ask, setAsk] = useState<keyof typeof MOVES | null>(null)
   const [note, setNote] = useState('')
   const [busy, run] = useAction(setErr)
   /* Which revision the diff is against. 'live' is the entry as it stands, and
@@ -100,16 +71,6 @@ export default function Entry() {
     setDiff(null)
     adm.diff(id, pick, 'live').then(setDiff, (e) => setErr(errorText(e)))
   }, [id, pick])
-
-  function move() {
-    if (!ask) return
-    run(async () => {
-      await adm.setStatus(id, MOVES[ask].to, note)
-      setAsk(null)
-      setNote('')
-      load()
-    })
-  }
 
   function renumber() {
     run(async () => {
@@ -142,9 +103,7 @@ export default function Entry() {
   if (err && !post)
     return (
       <div className="page">
-        <p className="err" role="alert">
-          {err}
-        </p>
+        <Fail msg={err} onRetry={load} />
         <Link to="/content">← All content</Link>
       </div>
     )
@@ -175,27 +134,10 @@ export default function Entry() {
         </div>
       </div>
 
-      {err && (
-        <p className="err" role="alert">
-          {err}
-        </p>
-      )}
+      <Fail msg={err} />
 
       <div className="bar">
-        {post.status === 'ACTIVE' ? (
-          <>
-            <button className="btn danger" onClick={() => setAsk('hide')}>
-              {MOVES.hide.label}
-            </button>
-            <button className="btn danger" onClick={() => setAsk('remove')}>
-              {MOVES.remove.label}
-            </button>
-          </>
-        ) : (
-          <button className="btn primary" onClick={() => setAsk('show')}>
-            {MOVES.show.label}
-          </button>
-        )}
+        <StatusActions post={post} onError={setErr} onDone={load} />
         <button
           className="btn"
           onClick={() => {
@@ -223,6 +165,16 @@ export default function Entry() {
           <span className="hash self">Off the wiki, so it has no page there.</span>
         )}
       </div>
+
+      {/* The history below is the entry's *revisions*; this is everything the
+          log holds about it -- the reports, the requests, the comments, the
+          moderation and the crashes, in one order. The two answer different
+          questions and the second had no way in until the log took a filter. */}
+      <p className="crumbs">
+        <Link to={`/changes?post=${post.id}&kind=all`}>
+          Everything logged about this entry →
+        </Link>
+      </p>
 
       <div className="cols">
         <div>
@@ -275,7 +227,12 @@ export default function Entry() {
                       {r.by ? <b>{r.by}</b> : r.author}
                     </td>
                     <td className="tight">
-                      {r.admin_id ? <Badge>ADMIN</Badge> : <Hash value={r.ip_hash} />}
+                      {r.admin_id ? <Badge>ADMIN</Badge> : (
+                        <Hash
+                          value={r.ip_hash}
+                          to={r.ip_hash ? `/changes?ip=${r.ip_hash}&kind=all` : undefined}
+                        />
+                      )}
                     </td>
                     <td className="tight">
                       <When at={r.at} />
@@ -394,7 +351,10 @@ export default function Entry() {
                   <b>{r.reason}</b> <Badge>{r.status}</Badge>
                   {r.detail && <p>{r.detail}</p>}
                   <span className="hash">
-                    <Hash value={r.ip_hash} /> · {fmtDate(r.created_at)}
+                    <Hash
+                      value={r.ip_hash}
+                      to={r.ip_hash ? `/changes?ip=${r.ip_hash}&kind=all` : undefined}
+                    /> · {fmtDate(r.created_at)}
                   </span>
                   {r.decision_note && <p className="hash">Closed: {r.decision_note}</p>}
                 </div>
@@ -415,8 +375,11 @@ export default function Entry() {
                   <b>{r.reason}</b> <Badge>{r.status}</Badge>
                   {r.detail && <p>{r.detail}</p>}
                   <span className="hash">
-                    {r.requested_by ?? 'anonymous'} · <Hash value={r.ip_hash} /> ·{' '}
-                    {fmtDate(r.created_at)}
+                    {r.requested_by ?? 'anonymous'} ·{' '}
+                    <Hash
+                      value={r.ip_hash}
+                      to={r.ip_hash ? `/changes?ip=${r.ip_hash}&kind=all` : undefined}
+                    /> · {fmtDate(r.created_at)}
                   </span>
                   {r.decision_note && <p className="hash">Decided: {r.decision_note}</p>}
                 </div>
@@ -442,27 +405,6 @@ export default function Entry() {
           </section>
         </aside>
       </div>
-
-      <Confirm
-        open={!!ask}
-        title={ask ? MOVES[ask].ask : ''}
-        verb={ask ? MOVES[ask].verb : ''}
-        danger={ask ? MOVES[ask].danger : false}
-        busy={busy}
-        onCancel={() => {
-          setAsk(null)
-          setNote('')
-        }}
-        onOk={move}
-      >
-        <p>{ask && MOVES[ask].says}</p>
-        <NoteField
-          label="Why (kept in the log)"
-          value={note}
-          onChange={setNote}
-          placeholder="Optional, and read by the next operator"
-        />
-      </Confirm>
 
       <Confirm
         open={renaming}

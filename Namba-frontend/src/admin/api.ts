@@ -23,8 +23,15 @@ export type Stats = {
   edited_today: number
   requests_pending: number
   reports_open: number
+  /** When the oldest thing still waiting arrived, or null when nothing is.
+      A queue is judged by its age rather than its length: two pending
+      requests is nothing and two pending requests from March is a wiki
+      nobody is minding. */
+  oldest_request: string | null
+  oldest_report: string | null
   edits_24h: number
   writes_1h: number
+  errors_24h: number
   blocked: number
   comments: number
 }
@@ -296,10 +303,12 @@ export const adm = {
 
   reports: (p: Params = {}) => req<Page<ReportGroup>>(`/api/admin/reports${qs(p)}`),
 
-  /** Every report filed against one entry, so a grouped row can be opened. The
-      hashes come with them: the same hash on four entries is the difference
-      between a problem and a campaign. */
-  reportDetail: (postId: number) => req<Report[]>(`/api/admin/reports/${postId}/detail`),
+  /* The reports on one entry used to be their own call. They are not: the
+     grouped row now opens the *entry*, and `post()` above already answers
+     with every report, request and comment hanging off it -- so reading the
+     reasons and reading what they are about is one request instead of a
+     second one that never carried the half that decides. The route is still
+     there and still tested; nothing in the panel needs it. */
 
   /** Closes every open report on one entry at once, because that is the unit the
       page shows and the unit an operator actually decides. It does nothing to

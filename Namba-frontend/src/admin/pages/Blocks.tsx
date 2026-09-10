@@ -3,9 +3,11 @@ import { errorText } from '../../api'
 import { fmtDate } from '../../format'
 import { adm, type Block, type Page } from '../api'
 import { useAction } from '../state'
-import { Confirm, Empty, Hash, Pager, Table, When } from '../ui'
+import { Confirm, Empty, Fail, Hash, Head, Loading, Pager, Table, When } from '../ui'
 
 const PER = 100
+
+const COLS = ['Kind', 'Target', 'Why', 'Since', 'Until', 'By', 'State', '']
 
 /** Who cannot write, and who could not before.
 
@@ -41,12 +43,13 @@ export default function Blocks() {
 
   return (
     <div className="page">
-      <h1>Blocked clients</h1>
-      <p className="lede">
-        A block stops writing and nothing else. It is on a browser or an address,
-        never on a person — nobody here has an account — which is why they
-        expire and why permanent has to be chosen.
-      </p>
+      <Head
+        title="Blocked clients"
+        tally={got && `${got.total} ${live ? 'in force' : 'ever'}`}
+        hint="A block stops writing and nothing else. It is on a browser or an
+              address, never on a person — nobody here has an account — which
+              is why they expire and why permanent has to be chosen."
+      />
 
       <div className="bar">
         <button
@@ -71,24 +74,23 @@ export default function Blocks() {
         </button>
       </div>
 
-      {err && (
-        <p className="err" role="alert">
-          {err}
-        </p>
-      )}
+      <Fail msg={err} onRetry={load} />
 
       {!got ? (
-        !err && <Empty>Loading…</Empty>
+        !err && <Loading cols={COLS} rows={5} />
       ) : got.rows.length ? (
         <>
-          <Table cols={['Kind', 'Target', 'Why', 'Since', 'Until', 'By', 'State', '']}>
+          <Table cols={COLS}>
             {got.rows.map((b) => (
               <tr key={b.id} className={b.live ? '' : 'dim'}>
                 <td className="tight">
                   <span className="badge">{b.type}</span>
                 </td>
                 <td className="tight">
-                  <Hash value={b.target_hash} />
+                  <Hash
+                    value={b.target_hash}
+                    to={b.type === 'ip' ? `/changes?ip=${b.target_hash}&kind=all` : undefined}
+                  />
                 </td>
                 <td className="wide">
                   <span title={b.reason}>{b.reason || '—'}</span>

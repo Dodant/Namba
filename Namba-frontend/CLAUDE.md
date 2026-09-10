@@ -54,13 +54,16 @@ reason labels and `tagLabel` there, and `fmtDate` and `showValue` from
 "2 days ago" and `1,234` should read the same on both sides of the product. `src/admin/api.ts` adds the operator's shapes and
 nothing else.
 
-Three files, not two, because a module that exports both a component and a
-hook loses fast refresh for both. `src/admin/ui.tsx` is the panel's parts --
-`Table`, `Badge`, `Hash`, `When`, `Empty`, `Pager`, `NoteField`, `Confirm`,
-`Drawer` -- and `src/admin/state.ts` is the two hooks every page repeats,
-`useUrlFilters` and `useAction`. Put a hook in `state.ts` and a component in
-`ui.tsx`; `useDialog` stays private inside `ui.tsx` because only `Confirm` and
-`Drawer` use it.
+Four files, and the split is deliberate. A module that exports both a
+component and a hook loses fast refresh for both, so `src/admin/state.ts`
+holds the three hooks every page repeats -- `useUrlFilters`, `useAction` and
+`useQueue` -- and nothing else. `src/admin/ui.tsx` is the panel's *shapes*:
+`Head`, `Table`, `Row`, `Loading`, `Badge`, `Hash`, `When`, `Empty`, `Fail`,
+`Pager`, `NoteField`, `Confirm`, `Drawer` -- none of which knows what an entry
+is. `src/admin/sheet.tsx` is the two components that do: `EntrySheet` and
+`StatusActions`. Put a hook in `state.ts`, a shape in `ui.tsx`, anything that
+knows the shape of a post in `sheet.tsx`; `useDialog` stays private inside
+`ui.tsx` because only `Confirm` and `Drawer` use it.
 
 Getting there in development needs a rewrite, because `/admin` is a router path
 and `admin.html` is a file: a small `configureServer` middleware in
@@ -78,8 +81,14 @@ every link in the panel is wrong in one of them.
 - **`NAV` in `AdminApp.tsx` is the rail.** One list, so a page cannot exist
   without appearing in it or appear in it without existing. Add a page by adding
   a line and a `<Route>`, never a link to something unbuilt.
-- **Shareable list filters live in the URL.** The content, requests and reports
-  lists survive a reload, can be bookmarked, and can be sent to somebody.
+- **Shareable list filters live in the URL.** The content, requests, reports
+  and log lists survive a reload, can be bookmarked, and can be sent to
+  somebody -- which is what makes every dashboard card a link with its filter
+  already applied, and what lets `Log`'s route be only a *default*: `/changes`
+  starts at `kind=anon` and `/audit` at `kind=admin`, and either can be
+  widened from the query string. The heading and the sentence under it follow
+  the effective kind, never the route, or a widened log says "every write a
+  visitor has made" over rows an operator wrote.
   Blocks' live/history toggle and Abuse's time-window thresholds are local
   triage controls. The search *box* is local until Enter commits — typing into
   the query fires a request per keystroke and puts every prefix of the word in
@@ -94,10 +103,37 @@ every link in the panel is wrong in one of them.
   rather than owning one, because `Entry` draws that string twice — on the page
   and inside a modal, which makes the page behind it unreadable — and it does
   not clear the error on the way in, since only two callers want that.
-- **One entry is a page, not a drawer.** The diff needs the width, and an
-  operator working a queue has to be able to send one to somebody. Reports use
-  a drawer for their details; requests and blocks use confirmation dialogs for
-  decisions.
+- **A queue row opens the entry beside the reasons, and the page keeps the
+  diff.** `EntrySheet` is that drawer and `Reports`, `Requests` and `Content`
+  all use it; `/content/:id` is unchanged, still linkable, still where the
+  diff and the revision list live. The split is by question rather than by
+  entry -- deciding about an entry is the drawer, studying one is the page --
+  because the reasons alone never answered whether the entry deserved them
+  (ADR-0025). It costs no route: `adm.post(id)` already carried the body, the
+  reports, the requests and the comments, which is why `reportDetail` is gone
+  from `api.ts` while its route stays.
+- **A queue advances by itself.** `useQueue` holds a *position*, not an id, so
+  the decided row drops out and the index it vacated is the next item -- and
+  the list reloads without being blanked (`load(true)`), or the sheet would
+  close and reopen underneath the operator. Both ends stop rather than wrap.
+- **`↑↓` and Enter move and open; no single key decides anything.** The arrows
+  and `jk` are handled on `<tbody>` in `ui.tsx` and on the drawer, both by
+  moving real DOM focus rather than tracking a cursor -- which brings
+  scroll-into-view and the focus ring for nothing, and leaves Escape to the
+  dialog. `/` is the one global key, in `Keys` in `AdminApp.tsx`, and from a
+  page with no search box it goes to `/content` and focuses that one. Its
+  focus happens in an effect on the new pathname, not in a frame callback:
+  React commits when it commits.
+- **A bulk status change is a loop over `setStatus`, not a route.** The audit
+  log wants a row per entry regardless, so a batch route would save round
+  trips and nothing else, and fifty concurrent ones against a single SQLite
+  writer is a queue with extra steps. It runs in order, counts a 409 as
+  "already that" rather than raising, and the ceiling is a page of rows -- the
+  `ponytail:` comment in `Content.tsx` names it.
+- **A client hash is a link.** `Hash` takes an optional `to`, and everywhere a
+  visitor's hash is drawn it points at `/changes?ip=…&kind=all`. That is the
+  question four characters of a hash exist to raise, and until the log took
+  filters it had no answer outside the abuse page's window.
 - **The body is shown as source.** An operator judging vandalism wants the
   characters a stranger typed — a link's real href, a zero-width space, the
   twelve blank lines — not the paragraph they render into. This is the one place
@@ -106,6 +142,20 @@ every link in the panel is wrong in one of them.
   a new tab, as a plain `<a>` because it is another document. There is one place
   that knows how a number value is parsed and how `grouped` follows the commas,
   and a second editor in here would be a second answer.
+- **A page's heading is its name and its one number.** `Head` in `ui.tsx`
+  draws `Reports  14 open`, and `hint` is for the sentence that is genuinely
+  not guessable from the page -- what a blank status column means, what a
+  window is counted over -- and is left off where there is no such sentence. A
+  heading with three lines of prose under it costs the first row of the table
+  the top of the screen on every visit. The hint is on its own row inside
+  `Head` rather than a third flex item: a `max-width` clamps a flex item's
+  hypothetical size, so a capped paragraph sits up beside the heading and
+  reads as part of it.
+- **A list that failed offers the way back.** `Fail` takes the page's own
+  `load`, so a retry keeps the filters, the scroll and the place in the queue
+  that a reload would lose. A list still loading draws `Loading`, which is the
+  same head and the same row height as the answer -- a centred word occupies
+  none of the space the table will.
 - **The number is the exception, and only because the wiki refuses it.** That
   field is `readOnly` on the wiki's form on purpose (see *Mirrors the backend*
   below), so this panel is the only place a mistyped value can be corrected at
@@ -116,6 +166,11 @@ every link in the panel is wrong in one of them.
   and a refusal is drawn *inside* the dialog — 409 for the same number back
   again and 422 for an abbreviation with no letters in it are the ordinary
   replies here, and the page behind a modal is inert and unreadable.
+- **A closed `<dialog>` is hidden by a *user-agent* rule, so never give one an
+  unconditional `display`.** Cascade origin is settled before specificity: a
+  plain `.sheet { display: flex }` beats `dialog:not([open]) { display: none }`
+  however it is written, and the drawer is then drawn in the flow at the foot
+  of every page that can open one. `.sheet[open]` is the rule.
 - **`Confirm` is a native `<dialog>`.** `showModal()` brings the focus trap,
   Escape, `::backdrop` and an inert page; hand-rolling those is a hundred lines
   and half of them wrong. Not `window.confirm` either — it blocks the event loop

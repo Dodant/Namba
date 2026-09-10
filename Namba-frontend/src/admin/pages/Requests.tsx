@@ -3,10 +3,15 @@ import { Link } from 'react-router-dom'
 import { errorText, REASON_LABEL, REQUEST_STATUSES } from '../../api'
 import { showValue } from '../../format'
 import { adm, type Page, type QueuedRequest } from '../api'
-import { useAction, useUrlFilters } from '../state'
-import { Badge, Confirm, Empty, Hash, NoteField, Pager, Table, When } from '../ui'
+import { EntrySheet } from '../sheet'
+import { useAction, useQueue, useUrlFilters } from '../state'
+import {
+  Badge, Confirm, Empty, Fail, Hash, Head, Loading, NoteField, Pager, Row, Table, When,
+} from '../ui'
 
 const PER = 50
+
+const COLS = ['Asked', 'Entry', 'Why', 'By', 'From', 'Status', '']
 
 /* Approving takes an entry off the wiki; rejecting does nothing to it. So they
    ask differently: one says what will happen and what survives it, the other
@@ -32,7 +37,11 @@ const DECIDE = {
 
 /** The queue. What a reader sends instead of pressing a Delete button, because
     there is no Delete button anywhere on the wiki: this is the only route that
-    leads to an entry coming down, and what it leads to is a person reading it. */
+    leads to an entry coming down, and what it leads to is a person reading it.
+
+    A row opens the entry beside the asking, which is the only way the question
+    can honestly be answered — "somebody says this is their phone number" is
+    not a decision until you have read the entry it is about. */
 export default function Requests({ onChange }: { onChange: () => void }) {
   const { get, set, offset } = useUrlFilters()
   const [got, setGot] = useState<Page<QueuedRequest> | null>(null)
@@ -42,15 +51,20 @@ export default function Requests({ onChange }: { onChange: () => void }) {
   const [note, setNote] = useState('')
 
   const status = get('status', 'PENDING')
+  const queue = useQueue(got?.rows)
 
-  function load() {
-    setGot(null)
+  function load(quiet = false) {
+    if (!quiet) setGot(null)
     setErr('')
     adm.requests({ status, limit: PER, offset })
       .then(setGot, (e) => setErr(errorText(e)))
   }
 
-  useEffect(load, [status, offset])
+  useEffect(() => {
+    load()
+    queue.close()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, offset])
 
   function decide() {
     if (!ask) return
@@ -58,22 +72,42 @@ export default function Requests({ onChange }: { onChange: () => void }) {
       await adm.decideRequest(ask.row.id, ask.how, note)
       setAsk(null)
       setNote('')
-      load()
-      /* The rail's waiting-count is now wrong by one. Refreshed here rather
-         than optimistically decremented: approving closes the *other* pending
-         requests on that entry too, so the count does not move by one and
-         guessing it would be a guess. */
+      /* Quiet, so the drawer stays where it is: the decided row drops out and
+         the index it vacated is the next request, which is the queue moving
+         on by itself rather than the operator finding their place again. */
+      load(true)
+      /* The rail's waiting-count is now wrong by one. Refreshed rather than
+         optimistically decremented: approving closes the *other* pending
+         requests on that entry too, so the count does not move by one. */
       onChange()
     })
   }
 
+  const acts = (r: QueuedRequest, small: boolean) => (
+    <>
+      <button
+        className={`btn ${small ? 'small ' : ''}danger`}
+        onClick={() => setAsk({ row: r, how: 'APPROVE' })}
+      >
+        Approve
+      </button>
+      <button
+        className={`btn ${small ? 'small' : ''}`}
+        onClick={() => setAsk({ row: r, how: 'REJECT' })}
+      >
+        Reject
+      </button>
+    </>
+  )
+
   return (
     <div className="page">
-      <h1>Delete requests</h1>
-      <p className="lede">
-        Nobody can remove an entry from the wiki, including whoever wrote it. This
-        is where the asking arrives.
-      </p>
+      <Head
+        title="Delete requests"
+        tally={got && `${got.total} ${status === 'ALL' ? 'in all' : status.toLowerCase()}`}
+        hint="Nobody can remove an entry from the wiki, including whoever wrote
+              it. This is where the asking arrives."
+      />
 
       <div className="bar">
         <div className="field">
@@ -91,21 +125,24 @@ export default function Requests({ onChange }: { onChange: () => void }) {
             <option value="ALL">All</option>
           </select>
         </div>
+        <span className="hash push self">
+          Click a row to read the entry beside the request · ↑↓ to move
+        </span>
       </div>
 
-      {err && (
-        <p className="err" role="alert">
-          {err}
-        </p>
-      )}
+      <Fail msg={err} onRetry={() => load()} />
 
       {!got ? (
-        !err && <Empty>Loading…</Empty>
+        !err && <Loading cols={COLS} />
       ) : got.rows.length ? (
         <>
-          <Table cols={['Asked', 'Entry', 'Why', 'By', 'From', 'Status', '']}>
-            {got.rows.map((r) => (
-              <tr key={r.id}>
+          <Table cols={COLS}>
+            {got.rows.map((r, i) => (
+              <Row
+                key={r.id}
+                className={queue.at === i ? 'lit' : ''}
+                onOpen={() => queue.open(i)}
+              >
                 <td className="tight">
                   <When at={r.created_at} />
                 </td>
@@ -124,40 +161,27 @@ export default function Requests({ onChange }: { onChange: () => void }) {
                     <span className="hash">already {r.post_status.toLowerCase()}</span>
                   )}
                 </td>
-                <td>
-                  <b className="mono small-mono">{r.reason}</b>
-                  <div className="hash">{REASON_LABEL[r.reason] ?? ''}</div>
-                  {r.detail && <p className="said">{r.detail}</p>}
+                <td className="wide">
+                  {/* One line of it. What a stranger typed can be a thousand
+                      characters and used to set the height of the row it was
+                      on; the whole of it is in the sheet, next to the entry it
+                      is about, which is where it can actually be judged. */}
+                  <b className="mono small-mono" title={REASON_LABEL[r.reason] ?? r.reason}>
+                    {r.reason}
+                  </b>
+                  {r.detail && <span className="said-line" title={r.detail}>{r.detail}</span>}
                 </td>
                 <td className="tight">{r.requested_by || 'anonymous'}</td>
                 <td className="tight">
-                  <Hash value={r.ip_hash} />
+                  <Hash value={r.ip_hash} to={r.ip_hash ? `/changes?ip=${r.ip_hash}&kind=all` : undefined} />
                 </td>
                 <td className="tight">
                   <Badge>{r.status}</Badge>
-                  {r.decision_note && <div className="hash">{r.decision_note}</div>}
                 </td>
                 <td className="acts">
-                  {r.status === 'PENDING' ? (
-                    <>
-                      <button
-                        className="btn small danger"
-                        onClick={() => setAsk({ row: r, how: 'APPROVE' })}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        className="btn small"
-                        onClick={() => setAsk({ row: r, how: 'REJECT' })}
-                      >
-                        Reject
-                      </button>
-                    </>
-                  ) : (
-                    <span className="hash">decided</span>
-                  )}
+                  {r.status === 'PENDING' ? acts(r, true) : <span className="hash">decided</span>}
                 </td>
-              </tr>
+              </Row>
             ))}
           </Table>
           <Pager
@@ -174,6 +198,19 @@ export default function Requests({ onChange }: { onChange: () => void }) {
             : 'Nothing here.'}
         </Empty>
       )}
+
+      <EntrySheet
+        postId={queue.row?.post_id ?? null}
+        at={queue.label}
+        onStep={queue.step}
+        onClose={queue.close}
+        onChanged={() => {
+          load(true)
+          onChange()
+        }}
+      >
+        {queue.row?.status === 'PENDING' && acts(queue.row, false)}
+      </EntrySheet>
 
       <Confirm
         open={!!ask}

@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { errorText } from '../../api'
 import { adm, type Operator, type Role, type Who } from '../api'
 import { useAction } from '../state'
-import { Badge, Confirm, Empty, Table, When } from '../ui'
+import { Badge, Confirm, Fail, Head, Loading, Table, When } from '../ui'
 
 const FLOOR = 12
+
+const COLS = ['Email', 'Role', '2FA', 'Since', 'Last signed in', 'State', '']
 
 /** Who can sign in here.
 
@@ -58,22 +60,20 @@ export default function Operators({ who }: { who: Who }) {
 
   return (
     <div className="page">
-      <h1>Operators</h1>
-      <p className="lede">
-        The only accounts in the wiki. Readers have none and there is no signup —
-        an account can only come from a shell or from a super admin here.
-      </p>
+      <Head
+        title="Operators"
+        tally={rows && `${rows.filter((a) => a.active).length} active`}
+        hint="The only accounts in the wiki. Readers have none and there is no
+              signup — an account can only come from a shell or from a super
+              admin here."
+      />
 
-      {err && (
-        <p className="err" role="alert">
-          {err}
-        </p>
-      )}
+      <Fail msg={err} onRetry={load} />
 
       {!rows ? (
-        <Empty>Loading…</Empty>
+        <Loading cols={COLS} rows={3} />
       ) : (
-        <Table cols={['Email', 'Role', '2FA', 'Since', 'Last signed in', 'State', '']}>
+        <Table cols={COLS}>
           {rows.map((a) => (
             <tr key={a.id} className={a.active ? '' : 'dim'}>
               <td>

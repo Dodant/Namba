@@ -141,7 +141,31 @@ a:hover { text-decoration: underline; }
 .page > h1 {
   margin: 0 0 3px; font-size: 19px; font-weight: 600; letter-spacing: -0.01em;
 }
+/* A section's own explanation reads at the same weight as a page's. Without
+   the second selector a `.lede` inside a section got no style at all and came
+   out as body copy, which is the loudest thing on a page of 11px labels. */
 .page > .lede { margin: 0 0 20px; color: var(--muted); font-size: 12.5px; }
+.stat-group > .lede { margin: -2px 0 8px; max-width: 82ch;
+                      color: var(--muted); font-size: 12px; }
+
+/* The name of the page and the one number that says whether it needs you, on
+   one line. A heading with three lines of prose under it costs the first row
+   of the table the top of the screen on every visit, so what is left of the
+   prose is the sentence that is genuinely not guessable -- and it goes below
+   both, at the size of a caption rather than of an introduction. */
+.head { margin-bottom: 14px; }
+.head-row, .head.sub {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+}
+.head h1 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+.head.sub { margin: 22px 0 8px; }
+.head.sub h2 {
+  margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--muted);
+}
+.head-tally { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.head-acts { display: flex; gap: 6px; margin-left: auto; align-items: center; }
+.head .lede { margin: 3px 0 0; max-width: 82ch; color: var(--muted); font-size: 12px; }
 
 /* --- controls ---------------------------------------------------------- */
 .btn {
@@ -245,15 +269,24 @@ aside .empty, .sheet-body .empty {
   padding: 2px 0 6px; text-align: left; font-size: 12px;
 }
 .err {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
   margin: 0 0 14px; padding: 8px 11px; border-radius: var(--radius);
   background: var(--hit-soft); color: var(--hit); font-size: 12.5px;
 }
+/* The way back, in the banner rather than beside it: "something went wrong"
+   with no control on it makes a reload the only move, and a reload loses the
+   filters, the scroll and the place in the queue. */
+.err .btn { margin-left: auto; background: transparent; border-color: currentColor;
+            color: inherit; }
+.err .btn:hover { background: var(--hit); border-color: var(--hit); color: var(--on-accent); }
 .bar {
   display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end;
   margin-bottom: 14px;
 }
 .bar .field { flex: 0 0 auto; }
-.bar .grow { flex: 1 1 220px; min-width: 0; }
+/* Capped: a search box eight hundred pixels wide is eight hundred pixels
+   of nothing, on the page whose whole argument is density. */
+.bar .grow { flex: 1 1 220px; min-width: 0; max-width: 420px; }
 .bar .push { margin-left: auto; }
 
 /* --- the login screen -------------------------------------------------- */
@@ -291,7 +324,7 @@ aside .empty, .sheet-body .empty {
   .nav-group { display: none; }   /* a heading in a scrolling strip is a gap
                                      with a word in it */
   .nav a { white-space: nowrap; }
-  .rail-foot { display: flex; gap: 8px; align-items: baseline; }
+  .rail-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
   .rail-foot b { display: inline; }
   .page { padding: 16px 14px 48px; }
 }
@@ -319,16 +352,43 @@ aside .empty, .sheet-body .empty {
   border: 1px solid var(--line); border-radius: var(--radius);
   background: var(--panel); padding: 11px 13px;
   display: flex; flex-direction: column; gap: 1px;
+  color: var(--ink); transition: border-color 110ms;
 }
+/* Every one of them goes somewhere with the filter already applied. A number
+   an operator then has to go and find again is a number that cost them a trip,
+   which is what a dashboard is supposed to save. */
+a.stat:hover { border-color: var(--ink-soft); text-decoration: none; }
+a.stat.loud:hover { border-color: var(--warn); }
 .stat b {
   font-size: 22px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15;
 }
 .stat span { font-size: 11.5px; color: var(--muted); }
+/* How long the oldest one has been waiting, which is the half of the answer a
+   count cannot give: three requests is nothing, three from March is not. */
+.stat-age {
+  font-family: var(--mono); font-size: 10.5px; min-height: 1.3em;
+  color: var(--muted);
+}
 /* only when it is not zero: a queue with nothing in it should not be the
    loudest thing on the page, and an operator learns to ignore a colour that is
    always on */
 .stat.loud { border-color: var(--warn); background: var(--warn-soft); }
-.stat.loud b { color: var(--warn); }
+.stat.loud b, .stat.loud .stat-age { color: var(--warn); }
+.stat.quiet b { color: var(--muted); font-weight: 500; }
+
+/* Context rather than a queue: nothing here is waiting for a decision, so it
+   is a strip of figures instead of seven more cards competing with the five
+   that are. */
+.pulse {
+  display: flex; flex-wrap: wrap; gap: 0 26px; margin: 14px 0 4px;
+  padding: 11px 14px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel);
+}
+.fig { display: flex; align-items: baseline; gap: 6px; color: var(--ink); }
+.fig b { font-size: 14px; font-weight: 600; }
+.fig span { font-size: 11.5px; color: var(--muted); }
+a.fig:hover { text-decoration: none; }
+a.fig:hover span { color: var(--ink); }
 
 /* --- pager, modal ------------------------------------------------------ */
 .pager {
@@ -404,6 +464,23 @@ aside .empty, .sheet-body .empty {
 tbody tr.lit { background: var(--accent-soft); }
 tbody tr.lit:hover { background: var(--accent-soft); }
 
+/* A row that stands for something you open. The cursor and the focus ring are
+   the whole affordance -- a chevron in a column of its own would cost a column
+   to say what the pointer already says. */
+tbody tr.open { cursor: pointer; }
+tbody tr.open:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: -2px;
+}
+
+/* The table before its rows arrive: the same head and the same row height, so
+   nothing jumps when they do. */
+.skel {
+  display: block; height: 10px; border-radius: 3px;
+  background: var(--rule); animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse { 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+
 /* --- the diff ---------------------------------------------------------- */
 /* Fields first and as pairs, because "1969 → 1970" is the whole answer and a
    unified text diff of a one-line change is three lines of punctuation around
@@ -443,7 +520,7 @@ tbody tr.lit:hover { background: var(--accent-soft); }
 .sheet {
   border: 0; border-left: 1px solid var(--line); padding: 0;
   margin: 0 0 0 auto; height: 100dvh; max-height: 100dvh;
-  width: min(460px, 100vw);
+  width: min(520px, 100vw);
   background: var(--panel); color: var(--ink);
 }
 /* `[open]`, and it has to be. A closed dialog is hidden by a *user-agent*
@@ -457,13 +534,76 @@ tbody tr.lit:hover { background: var(--accent-soft); }
   padding: 14px 16px; border-bottom: 1px solid var(--line); background: var(--sink);
 }
 .sheet-top h2 { margin: 0; flex: 1; font-size: 14px; font-weight: 600; }
-.sheet-body { flex: 1; overflow-y: auto; padding: 14px 16px 20px; }
+.sheet-body { flex: 1; overflow-y: auto; padding: 14px 16px 0; }
 /* sticky rather than in the scroll: the two decisions must not scroll out of
    reach behind a dozen reports, which is exactly when they matter most */
 .sheet-acts {
-  position: sticky; bottom: -20px; display: flex; gap: 7px; justify-content: flex-end;
-  padding: 12px 0 0; margin-top: 12px;
+  position: sticky; bottom: 0; display: flex; flex-wrap: wrap; gap: 7px;
+  justify-content: flex-end;
+  /* bled out to the sheet's edges, or the 16px gutters either side stay
+     transparent and the reports scroll up through them */
+  margin: 12px -16px 0; padding: 12px 16px;
   border-top: 1px solid var(--rule); background: var(--panel);
+}
+
+/* The selection bar, and it appears only once something is selected. A row of
+   permanently visible disabled bulk buttons is a row an operator learns to
+   look past, and the count is the part that has to be unmissable -- twenty
+   entries behind the word "selected" is a button pressed hopefully. */
+.picked {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 7px;
+  margin-bottom: 10px; padding: 7px 11px;
+  border: 1px solid var(--accent); border-radius: var(--radius);
+  background: var(--accent-soft); color: var(--accent);
+}
+.picked b { font-family: var(--mono); font-size: 12px; margin-right: 4px; }
+.picked .push { margin-left: auto; }
+.picked .btn { background: var(--panel); }
+td input[type="checkbox"], th input[type="checkbox"] {
+  margin: 1px 0 0; accent-color: var(--accent); cursor: pointer;
+}
+
+/* Where the drawer stands in the queue, and the two keys that move it. Beside
+   the heading rather than at the foot: it is about the sheet, not about the
+   entry in it. */
+.sheet-step { display: flex; align-items: center; gap: 5px; }
+.sheet-step .hash { cursor: default; }
+
+/* Section headings inside the sheet. Smaller than the page's, because the
+   sheet is one column of short blocks and an uppercase rule between each pair
+   would be more rules than content. */
+.sheet-body h3 {
+  margin: 16px 0 6px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--muted);
+}
+.sheet-body h3:first-child { margin-top: 0; }
+.sheet-body h3 .badge { text-transform: none; letter-spacing: 0; }
+.sheet-body .entry-tags { margin-bottom: 4px; }
+.sheet-links { display: flex; flex-direction: column; gap: 3px; margin: 0; font-size: 12px; }
+/* A body in a 500px column is a preview, not the archive: the page has the
+   whole of it and the diff beside it. */
+.src.short { max-height: 210px; font-size: 11.5px; }
+
+/* One line of what somebody wrote, in a table cell. The whole of it is in the
+   sheet, next to the entry it is about, which is where it can be judged --
+   here it must not set the height of the row it is on. */
+.said-line {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 34ch; font-size: 12px; color: var(--ink-soft);
+}
+.crumbs { margin: -4px 0 16px; font-size: 12px; }
+
+/* The keys, said once where they cannot be in the way. Discoverability for a
+   shortcut nobody would guess costs a line of 10px type in a corner. */
+.keys { display: block; margin-bottom: 6px; font-size: 10.5px; line-height: 1.7; }
+/* After the rule above rather than up with the rest of the tablet layout: two
+   rules of equal weight, so the later one has to be this one. The keys need a
+   keyboard, and the width that lays the rail across the top is the width that
+   usually has not got one. */
+@media (max-width: 900px) { .keys { display: none; } }
+kbd {
+  padding: 0 4px; border: 1px solid var(--line); border-radius: 3px;
+  background: var(--panel); font-family: var(--mono); font-size: 10px;
 }
 
 /* --- queue rows -------------------------------------------------------- */

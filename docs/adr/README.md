@@ -37,3 +37,4 @@ the rule it introduces.
 | [0022](0022-no-orm.md) | No ORM; anything the DDL cannot reach is a numbered migration | accepted | 2026-08-18, numbered 2026-09-10 |
 | [0023](0023-a-snapshot-has-its-own-shape.md) | A snapshot has its own shape, not `fetch_one`'s | accepted | 2026-09-10 |
 | [0024](0024-backups-live-with-the-host.md) | Backups live with the host, not in this repository | accepted | 2026-09-10 |
+| [0025](0025-a-queue-is-worked-without-leaving-it.md) | A queue is worked without leaving it | accepted | 2026-09-10 |
