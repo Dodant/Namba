@@ -440,6 +440,10 @@ export default function Entry() {
             id="rn-value"
             className="mono"
             maxLength={32}
+            // same reason as the wiki's own number field
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
             value={num}
             onChange={(e) => setNum(e.target.value)}
           />

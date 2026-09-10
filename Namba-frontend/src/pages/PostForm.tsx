@@ -308,6 +308,14 @@ export default function PostForm() {
               required
               readOnly={editing}
               maxLength={32}
+              /* A phone capitalizes the first letter of a text field unless
+                 told not to, and here the first letter is part of the address:
+                 dB is not DB, and the one-spelling rule means whichever case
+                 lands first is the word's spelling from then on. Autocorrect
+                 goes with it -- R&D and 11/22/63 are not typos. */
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
               value={editing ? showValue(value, grouped, locale) : value}
               inputMode={format === 'INTEGER' ? 'numeric' : format === 'DECIMAL' ? 'decimal' : undefined}
               onChange={(e) => {
