@@ -33,27 +33,44 @@ free text of any request or report about it, and leaves the entry's rows in
   gone — a state no code in this repository can produce. It stays until the
   query below has been run against production.
 
-## Answered: production holds none
+## Answered: production holds none, and never did
 
-The question was whether production has a snapshot whose entry row is gone.
-It has none, so the recovery path -- the resurrect branch in
-`restore_revision`, `guard_public`'s absent-passes rule and `PostPage`'s
-recovery view, 64 lines between them -- answers for nothing that exists and
-may go. That has not been done yet; it is a removal to take on purpose rather
-than as a footnote to a measurement.
-
-The query the answer was meant to come from needs the file, which is on the
-box:
+Run against `/data/namba.db` on the box, 2026-09-10, on a read-only
+connection (`file:...?mode=ro`, which cannot write, create or migrate):
 
 ```sql
 SELECT COUNT(*) FROM revisions r
 WHERE NOT EXISTS (SELECT 1 FROM posts p WHERE p.id = r.post_id);
+-- 0
 ```
 
-It was answered from outside instead, through the public API, which can see
-the same thing because `guard_public` treats an *absent* row differently from
-a hidden one. For an id that is not live, `/api/posts/{id}/revisions` says
-which of three things it is:
+Two further numbers make it a stronger answer than the count alone:
+
+| | |
+|---|---|
+| `revisions` where `author = 'deleted'` | 0 |
+| `sqlite_sequence.seq` for `posts` | 522, and `MAX(id)` is 522 |
+
+The first is the fingerprint of the route that could create an orphan: it
+snapshotted under the literal author `deleted`, and this database has no such
+row, so that route never ran here. The second says no id above 522 was ever
+handed out, so there is no removed entry hiding past the top of the range
+either. The rest of the file: 522 posts, 520 `ACTIVE`, two `DELETED` (110 and
+479, both rows present), 36 revisions, and no id missing from 1 to 522.
+
+So the recovery path -- the resurrect branch in `restore_revision`,
+`guard_public`'s absent-passes rule and `PostPage`'s recovery view, 64 lines
+between them -- answers for nothing that exists here and may go. That has not
+been done; it is a removal to take on purpose rather than as a footnote to a
+measurement. If it is taken, note that a developer database may hold orphans
+this does not cover -- this one had five on 2026-09-09 -- and they become
+unreachable.
+
+### The same thing from outside, which agreed
+
+Worth keeping because it needs no access to the box. `guard_public` treats an
+*absent* row differently from a hidden one, so for an id that is not live,
+`/api/posts/{id}/revisions` says which of three things it is:
 
 | answer | what it means |
 |---|---|
@@ -61,21 +78,17 @@ which of three things it is:
 | `200 []` | no row and no snapshots |
 | `200 [...]` | **no row, snapshots survive** -- an orphan |
 
-Measured 2026-09-10 against `https://namba.chiral.kr`: 520 live entries, ids
-1 to 522, and exactly two ids missing from that range, 110 and 479. Both
-answer `404` on the revisions route, so both are rows that are there and
-hidden. Nothing in 523-560 either, which is where an orphan would sit if the
-newest entries were the ones removed -- those leave no gap to notice.
+Read that way on the same day, `https://namba.chiral.kr` gave 520 live
+entries over ids 1 to 522 with exactly two missing, 110 and 479, both
+answering `404` -- rows that are there and hidden. Every figure matches the
+file. Its controls: a live id answers `200`/`200`, a gap `404`/`404`, and id
+99999, which never existed, `404`/`200 []` -- that last being the
+absent-passes rule running in production, which is what makes the middle
+answer a statement about the row rather than about the route.
 
-Three controls, without which the reading means nothing: a live id answers
-`200`/`200`; a gap answers `404`/`404`; id 99999, which never existed,
-answers `404`/`200 []`. The last is the absent-passes rule running in
-production, and it is what makes a `404` on the middle row a statement about
-the row rather than about the route.
-
-If the recovery path is removed, note that a developer database may hold
-orphans that this measurement does not cover -- this one had five on
-2026-09-09 -- and those become unreachable.
+Where it is weaker is the top of the range: from outside, "no id above 522 was
+ever created" cannot be seen, only "none of the next 38 is an orphan".
+`sqlite_sequence` is what settles that, and it needs the file.
 
 ## History
 
@@ -92,6 +105,7 @@ orphans that this measurement does not cover -- this one had five on
   database began as a copy of that file is the open question above.
 - 2026-09-09: the recovery path measured at 64 lines across the three places
   named above, and kept pending the query.
-- 2026-09-10: the query answered, from outside. Production holds no orphaned
-  snapshot, which unblocks removing the path; the removal itself is still to
-  be decided.
+- 2026-09-10: answered. Read from outside first, then run against the file:
+  no orphaned snapshot, no `author = 'deleted'` row, and no id ever handed out
+  above the highest live one. Removing the recovery path is unblocked; the
+  removal itself is still to be decided.
