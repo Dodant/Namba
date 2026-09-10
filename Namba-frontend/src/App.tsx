@@ -311,13 +311,27 @@ function Header({ lang }: { lang: string }) {
               172px of 16px mono, which is seventeen characters before the
               placeholder is cut. The enumeration goes in the label, which has
               no width to run out of. */}
+            {/* The WAI-ARIA combobox pattern, because the arrow keys below
+                move a selection and nothing else here says so: without the
+                roles a screen reader announces a text box, and the list that
+                Down opens, the option it lands on and the one it leaves are
+                all silent. `aria-activedescendant` is what moves the reader's
+                cursor without moving the focus out of the box being typed in
+                -- which is the whole reason the pattern exists. */}
             <input
               ref={box}
               type="search"
               name="q"
+              role="combobox"
               aria-label={m.header.searchLabel}
+              aria-autocomplete="list"
               aria-controls="search-suggestions"
               aria-expanded={hasSuggestions}
+              aria-activedescendant={
+                activeSuggestion >= 0
+                  ? `search-suggestion-${suggestionPosts[activeSuggestion].id}`
+                  : undefined
+              }
               placeholder={m.header.searchPlaceholder}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -325,20 +339,30 @@ function Header({ lang }: { lang: string }) {
             />
           </form>
           {hasSuggestions && (
-            <div className="search-suggestions" id="search-suggestions" aria-label={m.header.suggestions}>
-              {suggestionPosts.map((post, index) => (
-                <Link
-                  key={post.id}
-                  to={`/p/${post.id}`}
-                  className={index === activeSuggestion ? 'is-active' : undefined}
-                  onClick={() => setQuery('')}
-                >
-                  <span className="search-suggestion-value">
-                    {highlightMatches(showValue(post.value, post.grouped, locale), deferredQuery)}
-                  </span>
-                  <span>{highlightMatches(post.title, deferredQuery)}</span>
-                </Link>
-              ))}
+            <div className="search-suggestions">
+              {/* The listbox holds options and nothing else, which is why the
+                  button below is outside it: "see all results" is not one of
+                  the entries the arrow keys walk. The stylesheet reaches both
+                  through `.search-suggestions`, a descendant selector, so this
+                  wrapper costs no CSS. */}
+              <div role="listbox" id="search-suggestions" aria-label={m.header.suggestions}>
+                {suggestionPosts.map((post, index) => (
+                  <Link
+                    key={post.id}
+                    id={`search-suggestion-${post.id}`}
+                    role="option"
+                    aria-selected={index === activeSuggestion}
+                    to={`/p/${post.id}`}
+                    className={index === activeSuggestion ? 'is-active' : undefined}
+                    onClick={() => setQuery('')}
+                  >
+                    <span className="search-suggestion-value">
+                      {highlightMatches(showValue(post.value, post.grouped, locale), deferredQuery)}
+                    </span>
+                    <span>{highlightMatches(post.title, deferredQuery)}</span>
+                  </Link>
+                ))}
+              </div>
               <button
                 type="button"
                 className="search-all"

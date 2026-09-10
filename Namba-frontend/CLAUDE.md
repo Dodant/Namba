@@ -694,7 +694,19 @@ and `--fainter` are pinned by contrast and are not free to spend here.
 
 Where a control is a toggle it says so — `aria-pressed` on the likes and the
 category chips, `aria-current` on the format tabs, the language tabs and the
-Recent pill. Every `Loading…` is a `role="status"` and every error a
+Recent pill.
+
+**The header's search box is a `combobox` and its suggestions are a
+`listbox`.** The arrow keys move a selection through them, and the roles are
+what let anything but a sighted reader know: without them a screen reader
+announces a text box, and the list opening, the option Down lands on and the
+one it leaves are all silent. `aria-activedescendant` is the piece that does
+it, because it moves the reader's cursor while the focus stays in the box
+being typed into. The listbox holds options and nothing else — "see all
+results" is a button *beside* it, since it is not one of the entries the
+arrow keys walk. The suggestions close when the query falls under two
+characters or the answer is empty, and **not on blur**: clicking away leaves
+them up, which is a thing to fix in the handler rather than in these roles. Every `Loading…` is a `role="status"` and every error a
 `role="alert"`, which is what the three pages that blank their list on
 navigation depend on.
 
