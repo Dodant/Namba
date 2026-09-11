@@ -1,6 +1,6 @@
 ---
 name: random-entry
-description: Show one random entry from the Namba wiki as a single line, "{value} — {title}". Use ONLY when the user explicitly invokes it (/namba:random-entry, or under /loop). Never trigger it on your own during other work.
+description: Show one random entry from the Namba wiki as a single line, "{value} — {title}". Use ONLY when the user asks for it by name — /namba:random-entry in Claude Code, namba:random-entry in Codex — or under /loop. Never trigger it on your own during other work.
 allowed-tools: Bash
 ---
 
@@ -64,4 +64,6 @@ Use Claude Code's built-in `/loop`:
 /loop 30m /namba:random-entry
 ```
 
-Do not build a loop out of `sleep`, `while`, a background process or a hook.
+Codex has no equivalent, and one is not to be built: do not make a loop out of
+`sleep`, `while`, a background process, a hook or a scheduled job. There, ask
+for it again when you want another.

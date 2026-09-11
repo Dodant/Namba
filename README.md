@@ -1,10 +1,12 @@
 # namba
 
-A tiny Claude Code plugin that occasionally surfaces a random
+A tiny Claude Code and Codex plugin that occasionally surfaces a random
 [Namba](https://namba.chiral.kr) entry while you work — the open, no-login wiki
 of what numbers mean.
 
 ## Install
+
+### Claude Code
 
 ```
 /plugin marketplace add Dodant/Namba-plugin
@@ -25,13 +27,32 @@ claude plugin install namba@namba
 
 If the skill does not show up straight away, run `/reload-plugins`.
 
+### Codex
+
+The same marketplace, read by `codex` itself — there is no second manifest and
+no second copy of the skill:
+
+```sh
+codex plugin marketplace add Dodant/Namba-plugin
+codex plugin add namba@namba
+```
+
 ## Usage
 
 ```
 /namba:random-entry
 ```
 
+Codex has no slash command for a skill — ask for it by name instead:
+
+```
+namba:random-entry
+```
+
 ## Every 30 minutes
+
+Claude Code only — `/loop` is its scheduler, and the plugin does not carry one
+of its own:
 
 ```
 /loop 30m /namba:random-entry
