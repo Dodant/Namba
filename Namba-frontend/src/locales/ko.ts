@@ -18,7 +18,7 @@ export const KO: Messages = {
     like: (on: boolean, n: number) =>
       `${on ? '좋아요 취소' : '좋아요'} — ${fmtCount(n, 'ko')}개`,
   },
-  format: { INTEGER: '정수', DECIMAL: '소수', MIXED: '혼합형', TIME: '시각', CALENDAR: '달력', ABBR: '약어' },
+  format: { INTEGER: '정수', DECIMAL: '소수', MIXED: '혼합형', TIME: '시간', CALENDAR: '캘린더', ABBR: '약어' },
   buckets: {
     '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',
     '1000': '1,000 – 9,999', '10000+': '10,000 이상',
