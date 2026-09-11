@@ -914,6 +914,18 @@ as three unrelated ones. `detailsHint` says "this value" rather than "this
 number" for the same reason; four of the seven locales had already written it
 that way.
 
+**Auto-detect is five of the six, and the menu is drawn to say so.**
+Calendar is last and sits under an `<hr>` — a real one, which a `<select>`
+takes natively; a browser that will not draw it drops the line and leaves the
+menu — because `parse_number` cannot return that format: `12-25` is as much a
+ratio as a day, so a date is only ever reached by picking it. So do not put
+`CALENDAR` back into the `FORMATS.map` above it. The line is also the only
+thing that warns a reader on `/p/:id/edit`: picking Auto-detect there sends no
+format, the value goes back unchanged, and the server re-derives it to Mixed —
+the entry leaves `/c/12-25` for `/n/12-25` with nothing on screen saying so.
+The index's tab strip is *not* reordered to match, because there the order is
+the order the sections come in.
+
 The Format select reshapes the field beside it, down to that field's own label
 — with Abbreviation picked, "Number" is the wrong word for the box you are
 typing `UFO` into, so the label reads Abbreviation and the filter keeps Latin

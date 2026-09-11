@@ -29,6 +29,14 @@ const KEEP: Record<string, RegExp> = {
   ABBR: /[^A-Za-z0-9.&/;-]/g,
 }
 
+/* The one format Auto-detect cannot hand back, and the reason it is last in
+   the menu with a rule above it: `parse_number` reads what was typed, and
+   `12-25` is as much a ratio as a day, so a date is only ever reached by
+   picking it (ADR-0026). The other five are what Auto-detect chooses between,
+   which is what the rule divides. The tab strip on the index is not reordered
+   with it -- there the order is the order the sections come in. */
+const PICKED_ONLY: Format = 'CALENDAR'
+
 const EXAMPLES: Record<string, string> = {
   '': '42 · 3.14 · 11/22/63 · 10:04PM · UFO',
   INTEGER: '42 · 1000 · 299792458',
@@ -450,11 +458,17 @@ export default function PostForm() {
                 }}
               >
                 <option value="">{m.form.autoDetect}</option>
-                {FORMATS.map((f) => (
+                {FORMATS.filter((f) => f !== PICKED_ONLY).map((f) => (
                   <option key={f} value={f}>
                     {m.format[f]}
                   </option>
                 ))}
+                {/* an <hr> is what a <select> takes for a divider now, and a
+                    browser that does not draw one drops it rather than
+                    breaking the menu -- so the fallback is the list without
+                    the line, which is where it was yesterday */}
+                <hr />
+                <option value={PICKED_ONLY}>{m.format[PICKED_ONLY]}</option>
               </select>
             </div>
           </div>
