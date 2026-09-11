@@ -116,3 +116,16 @@ each spelling is its own `/n/` page.
   to `01-05` and nothing would keep the difference, so one day keeps one
   address by the other spellings being a 422. `/n/` is the remainder of the
   three sections now rather than "not ABBR".
+
+- 2026-09-11: **the section joins the value as a field the open form will not
+  change**, also in ADR-0026. "A query on a column is an address" above was
+  written about the value; with three sections over that column, the format
+  decides an address too, so `edit_post` refuses a format that would move an
+  entry between `/n/`, `/a/` and `/c/`. The one exception is *into* `/c/`,
+  because `parse_number` never returns `CALENDAR` and picking it is the only
+  correction an entry filed before somebody noticed it was a date has.
+  Correcting the rest stays where correcting a value is:
+  `POST /api/admin/posts/{id}/value`, with a name, a snapshot and an audit
+  row. Measured first as an index hole rather than as a moved page -- a
+  re-filed `UFO` or `12-25` kept its value, lost its sort key and fell out of
+  every Integer band.

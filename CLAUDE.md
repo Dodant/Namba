@@ -282,19 +282,17 @@ where both bite, so all three writes hit them.
   either string says which, so this format is reached by picking it, the way
   `TIME` is on `1:29:300` (ADR-0026).
 
-  **The section is closed at both ends, and it is the only one that is.**
-  There are 366 days, so `/c/99-99` is not an empty date page the way
-  `/n/999999` is an empty number one — it is not a page at all, and
-  `index_html` in `seo.py` and `CalendarPage` in `App.tsx` each ask
-  `date_key` / `monthDay` before drawing one, so what a crawler reads and what
-  a reader sees agree. At the other end, an entry filed as a date stays one:
-  `edit_post` refuses a format that would take it out of `/c/`, because that
-  is the entry's address and moving a page is the operator's renumber, exactly
-  as retyping a value is. Left open it was one click to an entry at `/n/12-25`
-  with no sort key, and the Integer tab fills five fixed bands from that key —
-  on the wiki and on no page, which is the thing the band rule above exists to
-  prevent. Re-filing *into* the section is untouched: a `MIXED` `04-01`
-  somebody meant as April Fools is still corrected by picking Calendar.
+  **`/c/` is the one section that is a closed set, so an unreadable date is
+  not a page.** There are 366 days: `/c/99-99` is not an empty date page the
+  way `/n/999999` is an empty number one, where nobody has written about that
+  number *yet*. `index_html` in `seo.py` and `CalendarPage` in `App.tsx` each
+  ask `date_key` / `monthDay` before drawing one, so what a crawler reads and
+  what a reader sees agree: the noindex head every mistyped path gets, and the
+  `*` route's own "Nothing here". Left open, the empty page's "Give it a
+  meaning" link carried the unreadable value to the form, which cannot read it
+  back and starts from today — so the reader who asked for `99-99` filed an
+  entry under this morning. A valid date with no entries is untouched;
+  `/c/01-02` is still a page somebody can be the first to write on.
 
 - **`/n/`, `/a/` and `/c/` are three sections over one column, and an entry
   has one address.** `/a/UFO` is the abbreviation, `/c/12-25` is the date,
@@ -315,6 +313,31 @@ where both bite, so all three writes hit them.
   names read the other way — a path to build, a column to group by — because a
   second answer to which section a row is in would be two addresses for one
   entry.
+
+  **The open form does not move an entry between sections**, for the same
+  reason it will not let the value be retyped: a section is an address, and a
+  page that moves leaves every link to it one page short of the thing it was
+  about. An abbreviation stays an abbreviation, a date stays a date, and a
+  number does not become either — `edit_post` refuses it, reading the format
+  it has *settled* rather than the one that was sent, so an edit carrying only
+  a value is the same refusal and not the way round it. Correcting one that is
+  filed wrong is `POST /api/admin/posts/{id}/value`, the same operator's route
+  that corrects a value, with a name, a snapshot and an audit row behind it.
+
+  Leaving it open also cost the index: `resolve_format` takes an explicit
+  `INTEGER` at its word and swallows `float()`'s `ValueError`, so a re-filed
+  `UFO` or `12-25` kept its value and lost its sort key, `bucket_of` then had
+  no band, and the Integer tab — which fills five fixed bands by filtering on
+  one — drew it nowhere. On the wiki and on no page, which is exactly what the
+  band rule above exists to prevent.
+
+  There is **one** move still allowed, and it is into `/c/`: `parse_number`
+  will never hand a date back — `12-25` is as much a ratio as a day — so
+  picking Calendar is all an entry written before somebody noticed it was a
+  date has. `ABBR` needs no such door, because the parser already guesses
+  `UFO`. The front end keeps the same shape: on an edit the Format select is
+  `disabled` for an entry already at `/a/` or `/c/`, and Abbreviation is off
+  the menu for one at `/n/`.
 - **A link in an entry stays a link.** No unfurling, no fetched thumbnails.
   Rendering a card means the server fetching a URL a stranger typed, and with
   no accounts there is nobody to rate-limit or ban — `http://169.254.169.254/`

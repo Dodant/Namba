@@ -68,17 +68,30 @@ the link carried the unreadable value to the form, which cannot read it back
 and starts from today — so the reader who asked for `99-99` filed the entry
 under this morning.
 
-**And an entry filed as a date stays one.** `edit_post` refuses a format that
-would take a `CALENDAR` entry out of `/c/`. A section is an address, and the
-open form does not change addresses — it will not let the value be retyped for
-exactly this reason (ADR-0005), and `POST /api/admin/posts/{id}/value` is the
-route that can, with a name, a snapshot and an audit row behind it. The check
-reads the format the route has *settled*, not the one that was sent, so an
-edit carrying only a value is the same refusal: `12-25` does not re-derive as
-a date, so re-deriving is the same move made quietly. Re-filing *into* the
-section stays open, because picking Calendar for a `MIXED` `04-01` is how a
-misfiled date is corrected. `ABBR` needs no equivalent — `UFO` re-derives to
-`ABBR`, so nothing drops it out of `/a/` by accident.
+**And the open form does not move an entry between sections.** Now that there
+are three of them, `edit_post` compares `section_of()` on the format it has
+settled against `section_of()` on the one the entry has, and refuses a move:
+an abbreviation stays an abbreviation, a date stays a date, and a number
+becomes neither. A section is an address, and this form does not change
+addresses — it will not let the value be retyped for exactly that reason
+(ADR-0005), and `POST /api/admin/posts/{id}/value` is the route that can, with
+a name, a snapshot and an audit row behind it. The check reads the *settled*
+format and not the one that was sent, so an edit carrying only a value is the
+same refusal rather than the way round it: `12-25` does not re-derive as a
+date, and a `MIXED` `Ufo` re-derives to `ABBR`, and both of those are the move
+made quietly.
+
+**One move is still allowed, `number` → `calendar`.** `parse_number` will
+never hand a date back, so picking Calendar is the only thing an entry written
+before somebody noticed it was a date has; without the exception a `MIXED`
+`04-01` would be an operator's errand. `ABBR` needs no such door, because the
+parser already guesses `UFO` — the values it will not guess (`MP3`, `Y2K`) are
+picked at the create form, where every format is still free. The asymmetry is
+the parser's, not the rule's.
+
+It sits **after** `resolve_format`, so `is_abbr` and `date_key` answer first
+and keep the more useful message: a `MIXED` `국정원` re-filed as `ABBR` still
+reads "an abbreviation is Latin letters" rather than the section refusal.
 
 **`resolve_format` stays pure.** No "is this date taken" lookup: a create
 decides nothing about another row, which is what lets it be the one write with
@@ -117,18 +130,19 @@ is a different entry about a different thing.
   from `Intl`. **A month with no day** (`10-00`, "October"): not asked for, and
   it needs its own band, sort and display rules. **A "today" view**: the
   current month opening is the whole of the date-awareness here.
-- **Re-filing a date as `INTEGER` was one click from the public form, and it
-  took the entry off the index.** `store.resolve_format` swallows `float()`'s
-  `ValueError` for an explicit `INTEGER`, so the entry kept `12-25` and lost
-  its sort key; `bucket_of` then has no band to give. Three of the six tabs
+- **Re-filing a date or an abbreviation as `INTEGER` was one click from the
+  public form, and it took the entry off the index.** `store.resolve_format`
+  swallows `float()`'s `ValueError` for an explicit `INTEGER`, so the entry
+  kept `12-25` and lost its sort key; `bucket_of` then has no band to give. Three of the six tabs
   fill a fixed band list with `rows.filter(n => n.bucket === b)` — Integer,
   Abbreviation and Calendar — and Integer is the only one that can be handed a
   row with no band at all, because `is_abbr` and `date_key` guarantee the
   other two one. So the entry answered at `/n/12-25` and under no band: on the
-  wiki and on no page. The shape predates this branch
-  (`UFO` re-filed as `INTEGER` does it too) and the section lock does not
-  reach all of it: `POST /api/posts` with `{"value": "9 3/4", "format":
-  "INTEGER"}` still strands one. Closing that means either checking the four
+  wiki and on no page. The shape predates this branch — `UFO` re-filed as
+  `INTEGER` did it too, which is half of why the lock covers `/a/` as well —
+  and the lock still does not reach all of it: `POST /api/posts` with
+  `{"value": "9 3/4", "format": "INTEGER"}` is a 201 with a null key and
+  strands one at create time, where no section has been left. Closing that means either checking the four
   formats that are currently taken at their word, or giving the Integer tab a
   band for the leftovers — a decision, not an oversight, and not this one.
 - The back office keeps the stored spelling everywhere, deliberately. One of
@@ -145,4 +159,6 @@ is a different entry about a different thing.
   `MM-DD` on screen. The section lock and the closed `/c/` came out of the
   pre-merge review the same day: both were reachable from the finished branch
   and neither had been asked about, so they are decisions above rather than a
-  later entry here.
+  later entry here. The lock was `/c/` alone for one commit and then widened
+  to every section on the requester's call — `/a/UFO` is an address by the
+  same argument, and one rule reads better than a rule and an exception.

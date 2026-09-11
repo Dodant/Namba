@@ -590,15 +590,30 @@ the sitemap.
   is in would be two addresses for one entry. An unknown section filters
   nothing rather than 422ing, for the reason an unknown `sort` falls back.
 
-  **`edit_post` will not move an entry out of `/c/`.** The check is on the
-  format the route has settled, not on the `format` that was sent, so an edit
-  carrying only a value — which re-derives, and `12-25` re-derives to `MIXED`
-  — is the same 422 and not the way round it. A section is an address and the
-  open form does not change addresses; `POST /api/admin/posts/{id}/value` is
-  the route that does, with a name, a snapshot and an audit row behind it. The
-  other direction is open, because picking Calendar for a `MIXED` `04-01` is
-  how a misfiled date gets corrected. `ABBR` needs no equivalent: `UFO`
-  re-derives to `ABBR`, so nothing drops it out of `/a/` by accident.
+  **`edit_post` will not move an entry between sections.** It compares
+  `section_of(fmt)` against `section_of(current["format"])` — the format the
+  route has *settled*, not the `format` that was sent, so an edit carrying
+  only a value is the same 422 and not the way round it. A section is an
+  address and the open form does not change addresses;
+  `POST /api/admin/posts/{id}/value` is the route that does, with a name, a
+  snapshot and an audit row behind it. The one exception is `number` →
+  `calendar`, because `parse_number` never returns `CALENDAR`, so picking it
+  is all an entry written before somebody noticed it was a date has; `ABBR`
+  needs no such door, since the parser already guesses `UFO`.
+
+  It sits **after** `resolve_format`, so `is_abbr` and `date_key` answer
+  first: a `MIXED` `국정원` re-filed as `ABBR` still reads "Latin letters" and
+  not the section refusal, which is the more useful of the two.
+
+  The cost of leaving it open was not only a moved page. `resolve_format`
+  takes an explicit `INTEGER` at its word and swallows `float()`'s
+  `ValueError`, so a re-filed `UFO` or `12-25` kept its value and lost its
+  sort key, `bucket_of` had no band for it, and the Integer tab draws its five
+  bands by filtering on one — the entry answered at `/n/` and under no band.
+  That shape is still reachable at **create** time (`{"value": "9 3/4",
+  "format": "INTEGER"}` is a 201 with a null key), and closing it means either
+  checking the four formats that are currently taken at their word or giving
+  the Integer tab a band for the leftovers. A decision, not an oversight.
 
   Every arm is a plain comparison on the column rather than a `CASE`, so
   `idx_posts_format` is still usable, and **`number` is the remainder**

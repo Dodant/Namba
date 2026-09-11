@@ -946,17 +946,32 @@ ratio as a day, so a date is only ever reached by picking it. So do not put
 *not* reordered to match, because there the order is the order the sections
 come in.
 
-**On `/p/:id/edit` the whole select is `disabled` for an entry that is already
-a date**, off `post.format` and not off the `format` state — read off the
-state, picking Calendar would lock the menu on the way past it. `/c/12-25` is
-that entry's address, so changing its format moves the page, which the open
-form does not do to a value either; `edit_post` answers 422 and this is only
-so the menu does not offer what Save would refuse. Nothing extra is said
-under it: the field above already reads Date and "fixed — another date is
-another entry", and a greyed control saying Calendar beside that is the same
-sentence twice. A new entry is unaffected, and so is an entry that is *not* a
-date — picking Calendar for a `MIXED` `04-01` is how a misfiled one is
-corrected.
+**On `/p/:id/edit` the menu offers only what Save would take, because a
+section is an address and the open form does not move an entry to a new one.**
+Two rules, both off `post` — the entry as loaded — and never off the `format`
+state, which would lock the menu on the way past a pick. An entry already at
+`/a/` or `/c/` gets the whole select `disabled`: its format is fixed the same
+way its value is. An entry at `/n/` keeps the select and loses one line,
+Abbreviation, dropped rather than greyed, since a line that can never be
+picked is a menu explaining itself. Calendar below the `<hr>` stays for it,
+and that asymmetry is the rule: `parse_number` never returns `CALENDAR`, so
+picking it is all an entry written before somebody noticed it was a date has,
+while `UFO` the parser already guesses. `edit_post` refuses the rest with a
+422 — this is only so the menu does not offer it.
+
+Nothing extra is said under the disabled one. The field above already reads
+Date or Abbreviation and "fixed — another date is another entry", and a
+greyed control repeating the format beside that is the same sentence twice.
+
+**Auto-detect is still on the edit menu, and on a `MIXED` value that looks
+like a word it is a 422.** The form sends the stored value with every save, so
+Auto-detect re-derives: a `MIXED` `Ufo` comes back `ABBR`, which is the move
+the server just refused. Left there because it is the honest control for the
+other case — undoing an explicit `TIME` on `09:41` re-derives to `TIME` and
+saves — and because the alternative is `parse_number` reimplemented over here
+to predict the answer. It fails loudly now, which is the part that changed:
+before the section rule the same click moved the entry to `/n/` and said
+nothing.
 
 The Format select reshapes the field beside it, down to that field's own label
 — with Abbreviation picked, "Number" is the wrong word for the box you are
