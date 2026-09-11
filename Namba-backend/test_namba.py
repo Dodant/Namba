@@ -2219,17 +2219,25 @@ def test_api_round_trip():
     # Mixed "gross" and "GROSS" are two values.
     assert section("banana") == {u["id"], mixed["id"]}, section("banana")
 
-    # re-filing an entry moves which section reads it and leaves the spelling
-    # alone -- the number field is read-only on an edit and sends no value at
-    # all, so there is nothing here for a format to settle but the format
+    # ...and the open form does not move an entry between them. /a/Ufo is
+    # where an abbreviation answers, so re-filing a number as one moves the
+    # page -- which this form does not do to a value either, and which the
+    # operator's renumber is the route for (ADR-0005).
     later = c.post("/api/posts", json={"value": "Ufo", "format": "MIXED",
                                        "title": "not sure yet"}).json()
     assert later["value"] == "Ufo", "MIXED keeps what was typed"
-    fixed = c.patch(f"/api/posts/{later['id']}",
-                    json={"format": "ABBR", "author": "scully"}).json()
-    assert fixed["value"] == "Ufo" and fixed["format"] == "ABBR", fixed
-    assert fixed["author"] == later["author"], "re-filing took the byline over"
-    assert fixed["edited_by"] == "scully"
+    stuck = c.patch(f"/api/posts/{later['id']}",
+                    json={"format": "ABBR", "author": "scully"})
+    assert stuck.status_code == 422 and "stays one" in stuck.text, stuck.text
+    held = c.get(f"/api/posts/{later['id']}").json()
+    assert held["format"] == "MIXED" and held["edited_by"] is None, held
+    # and out of /a/ the same way, which is the direction that also cost the
+    # index: re-filed as INTEGER, mp3 keeps its value and loses its sort key,
+    # so bucket_of has no band and the Integer tab draws it nowhere at all
+    out = c.patch(f"/api/posts/{mp3['id']}",
+                  json={"format": "INTEGER", "author": "x"})
+    assert out.status_code == 422 and "stays one" in out.text, out.text
+    assert c.get(f"/api/posts/{mp3['id']}").json()["format"] == "ABBR"
     # re-filing an existing entry is the other way in, and the number field is
     # read-only on an edit -- so the value the check reads is the stored one.
     # The refusal happens inside the transaction that took the snapshot, so a
@@ -2242,7 +2250,7 @@ def test_api_round_trip():
     assert len(c.get(f"/api/posts/{ko['id']}/revisions").json()) == before, \
         "a refused edit left a snapshot behind"
 
-    for pid in (u["id"], again["id"], mixed["id"], fixed["id"], mp3["id"], ko["id"],
+    for pid in (u["id"], again["id"], mixed["id"], later["id"], mp3["id"], ko["id"],
                 saas["id"], saas2["id"], iot["id"], io["id"]):
         admin.set_status(pid, "HIDDEN")
 

@@ -24,7 +24,8 @@ import seo
 from db import UPLOAD_DIR, get_db, nfc, now, writing
 from store import (
     LIVE, Text, apply_snapshot, fetch_one, guard_public, resolve_format,
-    section_sql, section_where, shape, snapshot, ungroup, write_tags,
+    section_of, section_sql, section_where, shape, snapshot, ungroup,
+    write_tags,
 )
 from numfmt import FORMATS, bucket_of
 
@@ -844,23 +845,38 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
             value, fmt, key = resolve_format(value, None)  # value changed, re-derive
         else:
             fmt, key = current["format"], current["sort_key"]
-        # A date's format is the one thing the open form may not move. /c/12-25
-        # is the entry's address, so re-filing it as INTEGER is the same edit
-        # as retyping the value -- the page becomes /n/12-25 and the sort key
-        # goes with it, since 12-25 is not a number to sort by and the Integer
-        # index draws its bands from that key. Correcting a misfiled one is the
-        # operator's renumber, the route that takes a name, a snapshot and an
-        # audit row, the same as correcting a value (ADR-0002, ADR-0026).
+        # A section is an **address**, so the open form does not move an entry
+        # between them, for the same reason it will not let the value be
+        # retyped: /a/UFO and /c/12-25 are where those entries answer, and a
+        # page that moves leaves every link to it a page short of the thing it
+        # was about (ADR-0005). Correcting one that is filed wrong is
+        # `POST /api/admin/posts/{id}/value`, which carries a name, a snapshot
+        # and an audit row -- the route that exists for exactly this.
+        #
+        # Left open it also cost the index. `resolve_format` swallows
+        # `float()`'s ValueError on an explicit INTEGER, so a re-filed UFO or
+        # 12-25 kept its value and lost its sort key; `bucket_of` then has no
+        # band, and the Integer tab fills five fixed bands by filtering on one
+        # -- the entry answers at /n/ and under no band.
+        #
+        # The one move still allowed is a *number* into the calendar, because
+        # CALENDAR is the one format `parse_number` will never hand back --
+        # 12-25 is as much a ratio as a day (ADR-0026) -- so picking it is all
+        # an entry written before somebody noticed it was a date has. ABBR
+        # needs no such door: the parser already guesses UFO.
         #
         # Read off the settled format and not off `p.format`, so a value sent
-        # with no format -- which re-derives, and 12-25 does not re-derive as a
-        # date (ADR-0026) -- is the same refusal rather than the way round it.
-        if current["format"] == "CALENDAR" and fmt != "CALENDAR":
+        # with no format -- which re-derives, and 12-25 does not re-derive as
+        # a date -- is the same refusal rather than the way round it.
+        was, goes = section_of(current["format"]), section_of(fmt)
+        if was != goes and not (was == "number" and goes == "calendar"):
             raise HTTPException(
-                422, "a date is read at /c/ and that is the entry's address, "
-                     "so an entry filed as a calendar date stays one -- send "
-                     "format=CALENDAR with the edit. Moving it out of the "
-                     "section is an operator's renumber.")
+                422, "an entry's section is its address: /n/ reads numbers, "
+                     "/a/ abbreviations and /c/ dates, and this form does not "
+                     "move an entry between them. An abbreviation stays one, a "
+                     "date stays one, and a number does not become an "
+                     "abbreviation. Ask an operator to move one that is filed "
+                     "wrong.")
         # author is the first writer and stays put -- on an open wiki, an edit
         # by a stranger must not erase who the entry came from.
         # The conflict check is the last clause and nothing else: one statement,

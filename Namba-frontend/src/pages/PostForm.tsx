@@ -450,14 +450,14 @@ export default function PostForm() {
               <select
                 id={fid('format')}
                 value={format}
-                /* A date's format is fixed once the entry exists, the same way
-                   its value is: /c/12-25 is the address, and moving it to
-                   Integer moves the page to /n/ and drops the sort key the
-                   Calendar index bands by. The API refuses it too; this is so
-                   the menu does not offer what Save would answer 422 to.
-                   Off the loaded entry and not off `format`, or picking
-                   Calendar here would lock the menu on the way past it. */
-                disabled={post?.format === 'CALENDAR'}
+                /* An entry that already answers at /a/ or /c/ has its
+                   format fixed, the same way its value is: the section is the
+                   address, and changing it moves the page. `edit_post`
+                   answers 422; this is so the menu does not offer what Save
+                   would refuse. Off the loaded entry and not off `format`, or
+                   picking one of the two would lock the menu on the way
+                   past it. */
+                disabled={!!post && sectionOf(post.format) !== 'number'}
                 onChange={(e) => {
                   const next = e.target.value as '' | Format
                   setFormat(next)
@@ -466,7 +466,17 @@ export default function PostForm() {
                 }}
               >
                 <option value="">{m.form.autoDetect}</option>
-                {FORMATS.filter((f) => f !== PICKED_ONLY).map((f) => (
+                {/* Abbreviation is not on the menu when editing a number: /a/
+                    is a different address and this form does not move an
+                    entry to one. Calendar below it is the exception and stays,
+                    because `parse_number` will never hand a date back, so
+                    picking it is all an entry written before somebody noticed
+                    it was one has. Dropped rather than disabled -- a greyed
+                    line that is never pickable is a menu explaining itself. */}
+                {FORMATS.filter(
+                  (f) => f !== PICKED_ONLY
+                    && !(f === 'ABBR' && post && sectionOf(post.format) === 'number'),
+                ).map((f) => (
                   <option key={f} value={f}>
                     {m.format[f]}
                   </option>
