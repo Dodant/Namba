@@ -112,31 +112,36 @@ def resolve_format(value, given):
     fmt, key = parse_number(value)
     if given and given != fmt:
         if given in ("INTEGER", "DECIMAL"):
-            # Refused rather than filed with no key. A number that cannot be
-            # read is not a number, and the two ways of getting one past here
-            # both cost something real: `9 3/4` as INTEGER kept its value,
-            # lost its key, and `bucket_of` then had no band for it -- the
-            # Integer tab fills five fixed bands by filtering on one, so the
-            # entry answered at /n/ and on no page. `inf` and `nan` are worse
-            # and are the reason the finite check is not belt-and-braces:
-            # SQLite stores NaN as NULL, which is the first case again, and it
-            # stores Inf as Inf, which json.dumps refuses -- one row and
-            # /api/numbers and /api/posts 500 for everybody.
             try:
                 key = float(value)
             except ValueError:
                 key = None
-            if key is None or not math.isfinite(key):
-                raise HTTPException(
-                    422, "Integer and Decimal read the value as a number, so "
-                         "it has to be one -- 42, -42, 3.14, 1e5. Something "
-                         "with a number in it, like 9 3/4 or 11/22/63, is "
-                         "Mixed, which sorts by the string instead.")
         else:
             # MIXED, ABBR, or a TIME that is not actually a clock. CALENDAR
             # takes its own back below, off the check that settles it.
             key = None
         fmt = given
+    # Refused rather than filed with no key, and out here rather than in the
+    # branch above so that every way of arriving at INTEGER or DECIMAL is
+    # checked -- `parse_number` hands back `float()`'s answer too, and
+    # `float('9' * 309)` is `inf` rather than a ValueError, so the agreeing
+    # path can settle a key the disagreeing one is refused for.
+    #
+    # A number that cannot be read is not a number, and the three ways of
+    # getting one past here all cost something real: `9 3/4` as INTEGER kept
+    # its value, lost its key, and `bucket_of` then had no band for it -- the
+    # Integer tab fills five fixed bands by filtering on one, so the entry
+    # answered at /n/ and on no page. `inf` and `nan` are worse, and are the
+    # reason the finite check is not belt-and-braces: SQLite stores NaN as
+    # NULL, which is the first case again, and it stores Inf as Inf, which
+    # json.dumps refuses -- one row and /api/numbers and /api/posts 500 for
+    # everybody.
+    if fmt in ("INTEGER", "DECIMAL") and (key is None or not math.isfinite(key)):
+        raise HTTPException(
+            422, "Integer and Decimal read the value as a number, so it has "
+                 "to be one -- 42, -42, 3.14, 1e5. Something with a number in "
+                 "it, like 9 3/4 or 11/22/63, is Mixed, which sorts by the "
+                 "string instead.")
     if fmt == "CALENDAR":
         key = date_key(value)
         if key is None:
@@ -378,12 +383,24 @@ def apply_snapshot(con, post_id, old, editor):
     overwritten, so a restore credits whoever pressed it in `edited_by` --
     which is what `editor` is, and what makes an operator's restore read as
     theirs.
+
+    `sort_key` is the one field not put back as it stands. A snapshot can
+    hold `Inf` -- SQLite keeps it in the column and `json.dumps` writes it
+    into the snapshot without complaint, so any revision taken before
+    `resolve_format` checked for one still carries it -- and putting that
+    back 500s `/api/numbers` and `/api/posts` for every reader, which is the
+    outage ADR-0027 closed on the write path and this is the same rule on the
+    way back in. NULL is already a legal key, so the entry returns with no
+    band rather than with no index at all.
     """
+    key = old["sort_key"]
+    if key is not None and not math.isfinite(key):
+        key = None
     con.execute(
         """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
                             image=?, lang=?, grouped=?, edited_by=?, updated_at=?
            WHERE id=?""",
-        (old["value"], old["format"], old["sort_key"], old["title"], old["body"],
+        (old["value"], old["format"], key, old["title"], old["body"],
          old["image"], old.get("lang"), int(old.get("grouped") or 0), editor,
          now(), post_id),
     )

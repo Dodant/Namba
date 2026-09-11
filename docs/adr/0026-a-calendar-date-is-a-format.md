@@ -164,3 +164,22 @@ is a different entry about a different thing.
   later entry here. The lock was `/c/` alone for one commit and then widened
   to every section on the requester's call — `/a/UFO` is an address by the
   same argument, and one rule reads better than a rule and an exception.
+- 2026-09-11: the lock had two ways round it, found the same day by a second
+  review of the branch.
+
+  The `number` → `calendar` exception let the value move with the format, so
+  one anonymous `PATCH {"value": "12-25", "format": "CALENDAR"}` turned
+  `/n/42` into `/c/12-25` — and the lock then held it there, because every
+  later edit re-derives a number and reads as a move out of `/c/`. The same
+  vandalism was self-reversible before the lock; the lock made it a one-way
+  door. It now compares the value too: the door takes a format and not a
+  relocation, which is the move it was opened for.
+
+  And `restore_revision` did not keep the rule at all. `apply_snapshot`
+  writes `format` straight out of a snapshot, so the walk
+  create → re-file into `/c/` → restore the pre-move revision put the entry
+  back at `/n/` with nothing authenticated anywhere in it, and the same walk
+  undoes an operator's renumber. The public restore now refuses a
+  cross-section restore; the operator's own restore does not come through
+  that route and still crosses, which is the line the renumber already
+  draws.

@@ -542,7 +542,14 @@ def index_html(con, request, path: str, page: str, base: str) -> HTMLResponse:
     # /a/QQQ are values nobody has written about yet, which is a different
     # answer from a value there is no such thing as. date_key() draws the line,
     # the same function resolve_format() refuses a write with.
-    if date is not None and date_key(date) is not None:
+    #
+    # It draws it one character wider than a URL should, though: date_key()
+    # strips, because on a write it reads a value somebody typed, and here
+    # the segment *is* the address. So `/c/%2012-25` would take a date page's
+    # head and a canonical pointing at itself while monthDay() -- which does
+    # not strip -- tells the reader there is nothing there. One day, one
+    # address: the segment has to be the spelling that is stored.
+    if date is not None and date == date.strip() and date_key(date) is not None:
         return answer(head_calendar(con, page, date, base, locale))
     tag = path_seg(request, "t/")
     if tag is not None:

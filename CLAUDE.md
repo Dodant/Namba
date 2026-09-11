@@ -307,7 +307,11 @@ opposite, and only its regex says `[0-9]`.
   number *yet*. `index_html` in `seo.py` and `CalendarPage` in `App.tsx` each
   ask `date_key` / `monthDay` before drawing one, so what a crawler reads and
   what a reader sees agree: the noindex head every mistyped path gets, and the
-  `*` route's own "Nothing here". Left open, the empty page's "Give it a
+  `*` route's own "Nothing here". `index_html` asks for the stored spelling
+  exactly, because `date_key` strips — on a write it reads a value somebody
+  typed, while a path segment *is* the address — and `/c/%2012-25` taking a
+  date page's head and a canonical pointing at itself is one day with two
+  addresses, by a space. Left open, the empty page's "Give it a
   meaning" link carried the unreadable value to the form, which cannot read it
   back and starts from today — so the reader who asked for `99-99` filed an
   entry under this morning. A valid date with no entries is untouched;
@@ -349,10 +353,24 @@ opposite, and only its regex says `[0-9]`.
   two are independent and both are wanted: one keeps an entry where its links
   point, the other keeps a number a number.
 
+  A **restore is held to the same rule**, because `apply_snapshot` writes the
+  format straight out of the snapshot and the open half would otherwise have
+  a second way in: putting an entry back at `/n/` that answers at `/c/`, and
+  undoing an operator's renumber — a name, a snapshot and an audit row — with
+  one unauthenticated POST carrying none of the three. `restore_revision`
+  refuses a cross-section restore; the operator's own restore is the other
+  caller of `apply_snapshot` and does not come through it, so it still
+  crosses. A restore puts an entry's *words* back, never its address.
+
   There is **one** move still allowed, and it is into `/c/`: `parse_number`
   will never hand a date back — `12-25` is as much a ratio as a day — so
   picking Calendar is all an entry written before somebody noticed it was a
-  date has. `ABBR` needs no such door, because the parser already guesses
+  date has. It takes the format and **not the value** with it: an entry
+  somebody noticed was a date already reads as one, while the same request
+  carrying a value is not a re-filing, it is `42`'s page becoming
+  Christmas's — and the refusal above then holds it there, since every later
+  edit re-derives a number and reads as a move back out. `ABBR` needs no such
+  door, because the parser already guesses
   `UFO`. The front end keeps the same shape: on an edit the Format select is
   `disabled` for an entry already at `/a/` or `/c/`, and Abbreviation is off
   the menu for one at `/n/`.

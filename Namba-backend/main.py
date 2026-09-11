@@ -864,11 +864,21 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         # an entry written before somebody noticed it was a date has. ABBR
         # needs no such door: the parser already guesses UFO.
         #
+        # That door takes the format and not the value with it. An entry
+        # somebody noticed was a date already reads as one, so the door it
+        # needs is `{"format": "CALENDAR"}` and nothing else -- while
+        # `{"value": "12-25", "format": "CALENDAR"}` on /n/42 is not a
+        # re-filing, it is 42's page becoming Christmas's, and the refusal
+        # above then holds it there: every later edit re-derives a number,
+        # reads as a move out of /c/, and is refused. One request, a page
+        # somewhere else, and no way back that does not take an operator.
+        #
         # Read off the settled format and not off `p.format`, so a value sent
         # with no format -- which re-derives, and 12-25 does not re-derive as
         # a date -- is the same refusal rather than the way round it.
         was, goes = section_of(current["format"]), section_of(fmt)
-        if was != goes and not (was == "number" and goes == "calendar"):
+        if was != goes and not (was == "number" and goes == "calendar"
+                                and value == current["value"]):
             raise HTTPException(
                 422, "an entry's section is its address: /n/ reads numbers, "
                      "/a/ abbreviations and /c/ dates, and this form does not "
@@ -945,9 +955,31 @@ def restore_revision(
         if row is None:
             raise HTTPException(404, "revision not found")
         old = json.loads(row["snapshot"])
-        alive = con.execute("SELECT 1 FROM posts WHERE id = ?", (post_id,)).fetchone()
+        alive = con.execute(
+            "SELECT format FROM posts WHERE id = ?", (post_id,)).fetchone()
         rev = None
         if alive:
+            # A section is an address, and this is not the route that moves an
+            # entry between them either. `edit_post` refuses that, but
+            # `apply_snapshot` writes `format` straight out of the snapshot --
+            # so without this the open half puts an entry back at /n/ that
+            # answers at /c/, and undoes an operator's renumber, which carries
+            # a name, a snapshot and an audit row, with one unauthenticated
+            # POST carrying none of the three.
+            #
+            # The operator's own restore is the other caller of
+            # `apply_snapshot` and does not come through here, so it still
+            # crosses -- the same line the renumber draws.
+            #
+            # Only against a row that is here to compare with. The resurrect
+            # branch below has no current section, and refusing to put an
+            # entry back for want of one is the worse answer.
+            if section_of(old["format"]) != section_of(alive["format"]):
+                raise HTTPException(
+                    422, "that version is filed in another section -- /n/ "
+                         "reads numbers, /a/ abbreviations and /c/ dates -- so "
+                         "restoring it would move the entry's address rather "
+                         "than put its words back. Ask an operator, who can.")
             rev = snapshot(con, post_id, author)  # restoring is itself undoable
         else:
             # The post's row is gone. Nothing in this codebase removes a row, so

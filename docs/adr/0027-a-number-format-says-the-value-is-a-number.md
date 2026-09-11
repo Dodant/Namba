@@ -114,3 +114,28 @@ opposite, and it is the only one whose pattern says `[0-9]`.
   write alone and give the Integer tab a sixth band for rows the five do not
   cover. That option would have made the index honest without making the data
   right, and it would not have touched the `inf` crash at all.
+- 2026-09-11: two holes in it, found the same day by a second review of the
+  branch, closed in one commit.
+
+  The check was written as a clause inside the branch that runs when the
+  poster's format and the parser's disagree, so the path where they *agree*
+  never reached it: `parse_number` hands back `float()`'s answer, and
+  `float('9' * 309)` is `inf` rather than a `ValueError`, so
+  `resolve_format('9' * 400, 'INTEGER')` returned `inf` with the rule in
+  place. Only `value`'s 32-character cap stood between that and the outage
+  this record exists to close, and a cap in a Pydantic model is not where
+  this rule lives. It is now asked of the settled format.
+
+  And the rule reached three writes, not four: `apply_snapshot` puts
+  `sort_key` back out of a snapshot, and `json.dumps` writes `Infinity` into
+  one without complaint, so a revision taken before the check existed
+  restores the crash — public, unauthenticated, repeatable. `apply_snapshot`
+  now drops a non-finite key to `NULL`, which every restore already accepts.
+  Re-settling through `resolve_format` there was the other option and was not
+  taken: it would make an old snapshot unrestorable, which is a worse answer
+  than restoring it with no band.
+
+  The pre-deploy query above was wrong as first written. `sort_key IS NULL`
+  finds the `9 3/4` and `nan` rows and misses the `Inf` one — the only row
+  that is actually serving 500s — so an operator would have run the check,
+  read a clean-ish list and deployed onto a wiki whose index was down.

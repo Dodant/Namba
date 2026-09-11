@@ -558,12 +558,21 @@ the sitemap.
   `with con`, so a refused edit rolls back the snapshot it had already taken.
 
   **The finite part is not belt-and-braces.** `float('nan')` and
-  `float('inf')` both succeed, and both used to be written: SQLite stores NaN
-  as NULL, which is the no-sort-key case and takes the entry off every Integer
-  band, and it stores Inf as Inf, which `json.dumps` refuses — so the row was
-  committed, the 201 failed to serialize, and `/api/numbers` and `/api/posts`
-  then answered 500 for every reader until an operator found it. The `<head>`
-  routes and the sitemap were unaffected, which is what made it quiet.
+  `float('inf')` both succeed: SQLite keeps NaN as NULL, which is the
+  no-sort-key case and takes the entry off every Integer band, and it keeps
+  Inf as Inf, which `json.dumps` refuses — so the row commits, the 201 fails
+  to serialize, and `/api/numbers` and `/api/posts` answer 500 for every
+  reader until an operator finds the row. The `<head>` routes and the sitemap
+  keep answering, which is what would make it quiet (ADR-0027).
+
+  **It is asked of the settled format, not of a disagreement.** The check is
+  `fmt in ("INTEGER", "DECIMAL")` after the format is decided rather than a
+  clause inside the branch that runs when the poster and the parser differ,
+  because `parse_number` hands back `float()`'s answer too and
+  `float('9' * 309)` is `inf` rather than a `ValueError` — so the agreeing
+  path could settle a key the disagreeing one is refused for, with nothing
+  but the 32-character cap on `value` between it and the 500. A length cap is
+  not where this rule lives.
 
   The check does not touch spelling: `-42`, `1e5`, `1_000` and `٤٢` all read
   and all stay as typed, because two spellings of a number are two entries
@@ -618,7 +627,26 @@ the sitemap.
   snapshot and an audit row behind it. The one exception is `number` →
   `calendar`, because `parse_number` never returns `CALENDAR`, so picking it
   is all an entry written before somebody noticed it was a date has; `ABBR`
-  needs no such door, since the parser already guesses `UFO`.
+  needs no such door, since the parser already guesses `UFO`. That door takes
+  the format and not the value: `{"value": "12-25", "format": "CALENDAR"}` on
+  `/n/42` is 42's page becoming Christmas's, and the refusal then holds it
+  there, so the comparison is `value == current["value"]` as well.
+
+  **`restore_revision` keeps the same rule**, and it needs its own copy of it:
+  `apply_snapshot` writes `format` straight out of the snapshot, so the open
+  half would otherwise put an entry back at `/n/` that answers at `/c/` and
+  undo an operator's renumber with an unauthenticated POST. Only when the row
+  is there to compare with — the resurrect branch has no current section, and
+  refusing to put an entry back for want of one is the worse answer. The
+  operator's restore is the other caller of `apply_snapshot` and does not come
+  through this route, so it still crosses.
+
+  **`apply_snapshot` drops a `sort_key` no response can carry.** SQLite keeps
+  `Inf` in the column and `json.dumps` writes it into a snapshot without
+  complaint, so any revision taken before `resolve_format` checked for one
+  still holds it, and putting it back 500s `/api/numbers` and `/api/posts` for
+  every reader. `NULL` is already a legal key, so the entry comes back with no
+  band rather than with no index.
 
   It sits **after** `resolve_format`, so `is_abbr` and `date_key` answer
   first: a `MIXED` `국정원` re-filed as `ABBR` still reads "Latin letters" and

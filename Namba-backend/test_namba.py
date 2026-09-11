@@ -1,5 +1,6 @@
 """Self-check: python test_namba.py   (no pytest, no fixtures)"""
 import json
+import math
 import os
 import re
 import string
@@ -156,6 +157,20 @@ def test_parse():
     # none, and MIXED is the remainder and claims nothing at all.
     assert store.resolve_format("1:29:300", "TIME") == ("1:29:300", "TIME", None)
     assert store.resolve_format("9 3/4", "MIXED") == ("9 3/4", "MIXED", None)
+    # The check is on the settled format and not on the disagreement, because
+    # `parse_number` hands back float()'s answer too and float("9" * 309) is
+    # `inf` rather than a ValueError -- so the path where the poster and the
+    # parser agree could settle a key the other one is refused for. Nothing
+    # but the 32-character cap on `value` stands between that and the outage,
+    # and a cap is not where this rule should live.
+    assert not math.isfinite(float("9" * 309)), "float() started raising"
+    for given in (None, "INTEGER"):
+        try:
+            store.resolve_format("9" * 400, given)
+        except Exception as e:
+            assert getattr(e, "status_code", None) == 422, (given, e)
+        else:
+            raise AssertionError(f"an overflowing value was filed, given={given!r}")
 
 
 def test_the_two_apps_still_agree():
@@ -773,7 +788,13 @@ def test_head_per_route():
     # unreadable one is not an empty date page, it is not a page: no canonical
     # claiming it exists, the same answer every mistyped path gets. CalendarPage
     # in App.tsx draws the reader the matching "Nothing here".
-    for nothing in ("/c/99-99", "/c/1-5", "/c/02-30", "/c/christmas"):
+    # The padded spellings go the same way. date_key() strips, because on a
+    # write it reads a value somebody typed -- but here the segment *is* the
+    # address, and monthDay() in format.ts does not strip, so left alone
+    # /c/%2012-25 took a date page's head and a canonical pointing at itself
+    # while the reader was told there was nothing there.
+    for nothing in ("/c/99-99", "/c/1-5", "/c/02-30", "/c/christmas",
+                    "/c/%2012-25", "/c/12-25%20", "/c/%0912-25", "/c/12-25%0A"):
         page = c.get(nothing).text
         assert "noindex" in page, nothing
         assert 'rel="canonical"' not in page, nothing
@@ -2394,6 +2415,57 @@ def test_api_round_trip():
     assert held["edited_by"] == "hoaxer", "a refused edit signed the entry"
     assert len(c.get(f"/api/posts/{fools['id']}/revisions").json()) == was, \
         "a refused edit left a revision saying somebody replaced the entry"
+    # The door takes the format and not the value with it. An entry somebody
+    # noticed was a date already reads as one, so {"format": "CALENDAR"} is
+    # the whole of the move -- while the same request carrying a value is
+    # 42's page becoming Christmas's, and the refusal above then holds it
+    # there, since every later edit re-derives a number and reads as a move
+    # back out. One request, a page somewhere else, and no way back that does
+    # not take an operator.
+    plain = c.post("/api/posts", json={"value": "42", "title": "not a date"}).json()
+    moved = c.patch(f"/api/posts/{plain['id']}",
+                    json={"value": "12-25", "format": "CALENDAR", "author": "vandal"})
+    assert moved.status_code == 422 and "stays one" in moved.text, moved.text
+    still = c.get(f"/api/posts/{plain['id']}").json()
+    assert (still["value"], still["format"]) == ("42", "INTEGER"), still
+    assert c.patch(f"/api/posts/{plain['id']}",
+                   json={"value": "43", "author": "x"}).status_code == 200, \
+        "the refusal trapped an entry that never left /n/"
+    admin.set_status(plain["id"], "HIDDEN")
+    # And a restore is not the way round either. `apply_snapshot` writes the
+    # format straight out of the snapshot, so without a check here the open
+    # half puts an entry back at /n/ that answers at /c/ -- and undoes an
+    # operator's renumber, which carries a name, a snapshot and an audit row,
+    # with one unauthenticated POST carrying none of the three.
+    before = next(v for v in c.get(f"/api/posts/{fools['id']}/revisions").json()
+                  if v["format"] == "MIXED")
+    back = c.post(f"/api/posts/{fools['id']}/revisions/{before['id']}/restore",
+                  json={"author": "vandal"})
+    assert back.status_code == 422 and "another section" in back.text, back.text
+    kept = c.get(f"/api/posts/{fools['id']}").json()
+    assert (kept["format"], kept["bucket"]) == ("CALENDAR", "04"), kept
+    # a restore inside the section is what the route is for and still works
+    same = c.get(f"/api/posts/{xmas['id']}/revisions").json()[0]
+    put = c.post(f"/api/posts/{xmas['id']}/revisions/{same['id']}/restore",
+                 json={"author": "elf"})
+    assert put.status_code == 200 and put.json()["format"] == "CALENDAR", put.text
+    # A key no response can carry does not go back on the row either. SQLite
+    # keeps Inf in the column and json.dumps writes it into a snapshot without
+    # complaint, so a revision taken before resolve_format checked for one
+    # still holds it -- and restoring that 500s every list endpoint for every
+    # reader. It comes back with no band instead of with no index.
+    con = db.connect()
+    with con:
+        raw = json.loads(con.execute(
+            "SELECT snapshot FROM revisions WHERE id = ?", (same["id"],)).fetchone()[0])
+        raw["sort_key"] = float("inf")
+        con.execute("UPDATE revisions SET snapshot = ? WHERE id = ?",
+                    (json.dumps(raw), same["id"]))
+    healed = c.post(f"/api/posts/{xmas['id']}/revisions/{same['id']}/restore",
+                    json={"author": "elf"})
+    assert healed.status_code == 200 and healed.json()["sort_key"] is None, healed.text
+    assert c.get("/api/numbers").status_code == 200, "an Inf key reached a response"
+    assert c.get("/api/posts").status_code == 200, "an Inf key reached a response"
     for pid in (xmas["id"], fools["id"], wrote["id"], leap["id"]):
         admin.set_status(pid, "HIDDEN")
 
