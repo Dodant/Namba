@@ -36,12 +36,25 @@ package). **Change one, change the other:**
 | the two tag limits | `main.py` `TAG_MAX`, `TAGS_PER_POST` | `src/api.ts`, same names |
 | the moderation vocabularies | `db.py` `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`, `REQUEST_STATUSES`, `REPORT_STATUSES`, `BLOCK_TYPES`, `BLOCK_HOURS` | `src/api.ts`, same names |
 | the index's bands | `numfmt.py` `bucket_of` — computed, not listed | `src/api.ts` `BUCKETS`, `ABBR_BUCKETS`, `MONTH_BUCKETS` |
+| which format is which section | `store.py` `SECTION_FORMATS` | `src/api.ts` `OF_FORMAT` — the same map read the other way |
+| what a calendar date is | `numfmt.py` `_DATE`, `_MONTH_DAYS` | `src/format.ts` `DATE`, `MONTH_DAYS` |
 
-`test_the_two_apps_still_agree` in `test_namba.py` reads `src/api.ts` and checks
-every row of that table, so "change one, change the other" is a thing the suite
-notices rather than a thing you remember.
+`test_the_two_apps_still_agree` in `test_namba.py` reads `src/api.ts` and
+`src/format.ts` and checks every row of that table, so "change one, change the
+other" is a thing the suite notices rather than a thing you remember.
 
-The last row is the odd one and worth reading twice. The other three are lists
+The last two rows joined the table after each had already drifted once. The
+section map is what the edit form asks which format to disable and which to
+drop from the menu, so a format that only the backend knows is in a section
+leaves the form offering a move `edit_post` answers 422 to — no error until
+somebody presses Save. And the date pair is the one place the two languages
+disagree about a character class: Python's `\d` matches every Unicode decimal
+numeral and JavaScript's is ASCII whatever the flags, so a backend `\d` gave
+`١٢-٢٥` and `１２-２５` a `/c/` address each and one day three pages. `[0-9]`
+is the spelling that means the same thing on both sides, and the test compares
+the patterns as text with that substitution made.
+
+The bands row is the odd one and worth reading twice. The vocabulary rows are lists
 on both sides; that one is a **function** on this side and a list on the other,
 so there is nothing to compare literally — the test calls `bucket_of` across
 every branch and compares the set of labels it can return against the set the

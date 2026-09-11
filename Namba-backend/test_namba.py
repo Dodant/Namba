@@ -34,6 +34,7 @@ import auth  # noqa: E402
 import db  # noqa: E402
 import events  # noqa: E402
 import main  # noqa: E402
+import numfmt  # noqa: E402
 import seo  # noqa: E402
 import seo_locale  # noqa: E402
 import sqlite3  # noqa: E402
@@ -174,7 +175,7 @@ def test_parse():
 
 
 def test_the_two_apps_still_agree():
-    """The hand-copied lists in `../Namba-frontend/src/api.ts` match these ones.
+    """The hand-copied lists in `../Namba-frontend/src/` match these ones.
 
     The root CLAUDE.md calls these "kept in sync by hand" and says change one,
     change the other -- and until this test there was nothing checking that
@@ -192,9 +193,12 @@ def test_the_two_apps_still_agree():
     is the premise, and a check that quietly passes when it cannot look is the
     kind of test that is worse than none.
     """
-    path = os.path.join(db.DIR, os.pardir, "Namba-frontend", "src", "api.ts")
-    assert os.path.isfile(path), f"the other half of the repo is not at {path}"
-    src = open(path, encoding="utf-8").read()
+    def read(name):
+        path = os.path.join(db.DIR, os.pardir, "Namba-frontend", "src", name)
+        assert os.path.isfile(path), f"the other half of the repo is not at {path}"
+        return open(path, encoding="utf-8").read()
+
+    src, fmt_src = read("api.ts"), read("format.ts")
 
     def listed(name):
         """One `export const NAME = [...]` as Python.
@@ -261,6 +265,36 @@ def test_the_two_apps_still_agree():
         assert bucket_of(100, fmt) is None, fmt
     assert bucket_of(None, "ABBR", "...") is None, "no letter and no digit, no band"
     assert bucket_of(None, "ABBR", ".NET") == "N", "a band comes off the first letter"
+
+    # Which format is which section. `SECTION_FORMATS` is the one map on this
+    # side and `OF_FORMAT` is its copy over there, read the other way round --
+    # and this pair is worth more than a menu item, because the form asks it
+    # what to disable and which format to drop: a seventh format in a new
+    # section that only this side knows about leaves the edit menu offering a
+    # move Save answers 422 to, and nothing errors until somebody presses it.
+    m = re.search(r"const OF_FORMAT\b[^=]*=\s*\{(.*?)\}", src, re.S)
+    assert m, "OF_FORMAT is not in api.ts at all"
+    theirs = dict(re.findall(r"(\w+)\s*:\s*'([^']+)'", m.group(1)))
+    assert theirs == {f: s for s, f in store.SECTION_FORMATS.items()}, theirs
+
+    # What a calendar date is, which lives in format.ts rather than api.ts and
+    # is two halves: the days each month has, and the shape of the value.
+    days = re.search(r"const MONTH_DAYS\b[^=]*=\s*\[(.*?)\]", fmt_src, re.S)
+    assert days, "MONTH_DAYS is not in format.ts at all"
+    assert tuple(int(d) for d in re.findall(r"\d+", days.group(1))) \
+        == numfmt._MONTH_DAYS, days.group(1)
+    # The pattern compared as text, with JavaScript's `\d` written the way
+    # this side has to write it. They are not interchangeable: a Python `\d`
+    # matches every Unicode decimal numeral, so `١٢-٢٥` and `１２-２５` passed
+    # here and not there, and one day had three /c/ addresses. JavaScript's is
+    # ASCII whatever the flags, so `[0-9]` is the spelling that means the same
+    # thing on both sides.
+    shape = re.search(r"const DATE\b[^=]*=\s*/(.*?)/", fmt_src)
+    assert shape, "DATE is not in format.ts at all"
+    assert shape.group(1).replace(r"\d", "[0-9]") == numfmt._DATE.pattern, \
+        (shape.group(1), numfmt._DATE.pattern)
+    assert r"\d" not in numfmt._DATE.pattern, \
+        "a Python \\d here matches ٤ and ４, and a date is ASCII"
 
 
 def test_two_editors_do_not_undo_each_other():
