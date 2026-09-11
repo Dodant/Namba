@@ -315,6 +315,7 @@ table.
 | Spam & abuse | writes per client per window, and the same paragraph filed under several numbers |
 | Blocked clients | by address or by cookie, with an expiry; lifted ones stay listed |
 | Audit log | every decision an operator made, and nothing can edit it |
+| Editor plugin | how many clients are running the plugin, by day — the one read this wiki counts |
 | Operators | the accounts, addable by a super admin |
 
 Two things it deliberately does not do. It has no editor of its own — "Edit on
@@ -350,6 +351,15 @@ its own repository,
 [`Dodant/Namba-plugin`](https://github.com/Dodant/Namba-plugin), because a
 plugin is installed by repository: pointing a stranger's `/plugin` at this one
 hands them the whole wiki to get one skill.
+
+That read is the only one this wiki counts, and it is counted because it says
+who it is: the plugin's `curl` sends a `User-Agent` naming itself, and the back
+office's *Editor plugin* page shows how many clients asked, on which days, and
+how many were asking for the first time. A browser reading the wiki records
+nothing at all, as before. Nothing there is an install count and the page says
+so — an install is a git clone and nothing calls home — and a client is a
+salted hash of an address like every other client here, so an office is one of
+them and a laptop on two networks is two.
 
 Codex installs the same repository — `codex plugin marketplace add
 Dodant/Namba-plugin`, then `codex plugin add namba@namba` — because it reads

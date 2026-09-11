@@ -428,6 +428,24 @@ opposite, and only its regex says `[0-9]`.
   stdout traceback, which is untouched because Starlette re-raises after
   calling a handler, answers with what input.
 
+- **Reading records nothing, and the one exception volunteered.** The editor
+  plugin — its own repository, `Dodant/Namba-plugin` — names itself in a
+  `User-Agent`, and `/api/posts` counts that read in `plugin_days`: one row
+  per client per day, a counter that UPDATEs. Every other read still records
+  nothing, which is very nearly every read, and the self-declaration is the
+  whole of the boundary — what gets counted is the traffic that asked to be,
+  which is why this is not analytics arriving by the side door. It is
+  deliberately **not** an `events` row: `/loop 30m` is 48 calls a day per
+  install, and as event rows they would bury the recent-changes feed and sit
+  at the top of the abuse page, where an install asking politely every half
+  hour looks exactly like somebody hammering the wiki. **No figure on that
+  page is an install count** — an install is a git clone, nothing calls home,
+  and a client is an address hash rather than a person, so an office is one
+  and a laptop on two networks is two. The half of this that lives in the
+  other repository, `-A namba-plugin` in its `SKILL.md`, is hand-copied
+  against `PLUGIN_UA` here and no test in this suite can reach it: change one
+  and the figures go quietly to zero, with no error anywhere (ADR-0028).
+
 - **A write that decides holds the lock while it decides.** `db.writing(con)`
   is the transaction every one of the twelve public write routes opens, and it
   is `BEGIN IMMEDIATE` rather than `with con:` for a reason that is easy to get
