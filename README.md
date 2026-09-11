@@ -310,10 +310,10 @@ sha256 salted with the install's own key. Tables show only the first four
 characters; a block confirmation and its audit-log metadata show eight so an
 operator can distinguish the exact target of an irreversible decision.
 
-## The Claude Code plugin
+## The editor plugin
 
-Namba has a plugin anyone can install, which prints one random entry of this
-wiki as a single line while they work:
+Namba has a plugin anyone can install in Claude Code or Codex, which prints one
+random entry of this wiki as a single line while they work:
 
 ```
 /plugin marketplace add Dodant/Namba-plugin
@@ -331,6 +331,10 @@ its own repository,
 [`Dodant/Namba-plugin`](https://github.com/Dodant/Namba-plugin), because a
 plugin is installed by repository: pointing a stranger's `/plugin` at this one
 hands them the whole wiki to get one skill.
+
+Codex installs the same repository — `codex plugin marketplace add
+Dodant/Namba-plugin`, then `codex plugin add namba@namba` — because it reads
+the same manifest. One plugin, not one per editor.
 
 ## Deploying
 
