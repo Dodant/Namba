@@ -139,9 +139,13 @@ export default function PostForm() {
   const [image, setImage] = useState<string | null>(null)
   const [lang, setLang] = useState(LANGS[0])
   const [grouped, setGrouped] = useState(false)
-  // what this form is about right now: "number" until a section that calls it
-  // something else is picked. Auto-detect has decided nothing, so it is one too
-  const noun = m.common.subject(format ? sectionOf(format) : 'number')
+  /* Which section this form is filling in right now. Auto-detect has decided
+     nothing, so it is the number one -- which is what most of this wiki is.
+     The noun the fields use follows it, and so do the two placeholders: an
+     entry about UFO is not titled after a book about 42, and one about
+     Christmas is not either. */
+  const section = format ? sectionOf(format) : 'number'
+  const noun = m.common.subject(section)
   /* The pair the two date selects show, and the value they stand for. A date
      is picked rather than typed, so this always reads a real one: picking
      Calendar with "42" in the box starts from today rather than from a pair
@@ -467,7 +471,7 @@ export default function PostForm() {
             maxLength={200}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder={m.form.titlePlaceholder}
+            placeholder={m.form.titlePlaceholder(section)}
           />
         </div>
 
@@ -481,7 +485,7 @@ export default function PostForm() {
             maxLength={5000}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder={m.form.detailsPlaceholder}
+            placeholder={m.form.detailsPlaceholder(section)}
           />
           <p className="fine">
             {m.form.markdown}

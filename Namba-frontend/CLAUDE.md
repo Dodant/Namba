@@ -895,6 +895,16 @@ selects a create-only branch. The examples in the hint go through
 `showValue()` with the format, so they read "December 25 · April 1 ·
 February 29" in the reader's own language.
 
+**The two placeholders follow the format as well**, because an entry about
+`UFO` is not titled after a book about 42 and one about Christmas is not
+either: `titlePlaceholder` and `detailsPlaceholder` take the section and each
+locale answers with three — the Hitchhiker's Guide, Unidentified flying
+object, Christmas Day. They are examples of what to write in that box, so a
+number's example over an abbreviation's field is the field explaining itself
+with the wrong thing. `detailsHint` says "this value" rather than "this
+number" for the same reason; four of the seven locales had already written it
+that way.
+
 The Format select reshapes the field beside it, down to that field's own label
 — with Abbreviation picked, "Number" is the wrong word for the box you are
 typing `UFO` into, so the label reads Abbreviation and the filter keeps Latin
