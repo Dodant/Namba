@@ -496,6 +496,14 @@ def plugin_use(
     """
     first = (datetime.now(timezone.utc).date()
              - timedelta(days=days - 1)).isoformat()
+    # One snapshot for all three reads. A plugin call committing between them
+    # answers a window holding no rows beside a client count of one, and the
+    # page then draws its empty state under a tile saying somebody asked. A WAL
+    # reader gets a stable view for the length of its transaction and takes no
+    # lock for it, so this costs two statements and blocks nobody. Left to the
+    # connection's close on the way out if a query raises: ending a read
+    # transaction is all a rollback would do here.
+    con.execute("BEGIN DEFERRED")
     # `born` is over the whole table on purpose: a client first seen before the
     # window is not new inside it, however long the window is.
     rows = con.execute(
@@ -512,12 +520,13 @@ def plugin_use(
     def one(sql, *args):
         return con.execute(sql, args).fetchone()[0]
 
-    return {
+    out = {
         "days": days,
         "since": first,
         # DISTINCT over the window, and not the sum of the column above: a
         # client that ran it on five of those days is one client, not five.
-        # This is the number that answers "how many people are using it".
+        # This is the number that answers "how many clients are still
+        # running it" -- never how many people, for the reason above.
         "clients": one("""SELECT COUNT(DISTINCT ip_hash) FROM plugin_days
                           WHERE day >= ?""", first),
         "ever": one("SELECT COUNT(DISTINCT ip_hash) FROM plugin_days"),
@@ -525,6 +534,8 @@ def plugin_use(
         # the page that already has them, rather than two more queries here.
         "rows": [dict(r) for r in rows],
     }
+    con.execute("COMMIT")
+    return out
 
 
 @router.get("/activity")
