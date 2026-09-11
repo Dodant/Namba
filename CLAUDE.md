@@ -284,9 +284,11 @@ where both bite, so all three writes hit them.
 
 - **`/n/`, `/a/` and `/c/` are three sections over one column, and an entry
   has one address.** `/a/UFO` is the abbreviation, `/c/12-25` is the date,
-  `/n/42` is the number, and `section_where()` in `store.py` is the single
-  condition that tells them apart — the list endpoint, all three value
-  `<head>`s and the sitemap all ask it. So a value filed in two of them, which
+  `/n/42` is the number, and `SECTION_FORMATS` in `store.py` is the single
+  map that tells them apart — the list endpoint and all three value `<head>`s
+  ask it through `section_where()`, and the sitemap through `section_sql()`,
+  which needs the section as a value to group by rather than as a filter. So a
+  value filed in two of them, which
   takes somebody choosing Mixed for `UFO` or for `12-25` on purpose, is two
   entries at two addresses rather than one entry showing up twice. Do not
   answer an abbreviation or a date at `/n/`: it is the same mistake as storing

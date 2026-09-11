@@ -572,9 +572,10 @@ the sitemap.
   `write_tags` normalises without validating. A snapshot has to be restorable
   or the history is not a history, and nothing can be written into that state
   any more anyway.
-- **`section_where()` is the only thing that tells `/n/` from `/a/` from
-  `/c/`.** `list_posts`, `head_number`, `head_abbr`, `head_calendar` and the
-  sitemap all ask it, so a value filed in two sections is two entries at two
+- **`SECTION_FORMATS` is the only thing that tells `/n/` from `/a/` from
+  `/c/`.** `list_posts`, `head_number`, `head_abbr` and `head_calendar` ask it
+  through `section_where()` and the sitemap through `section_sql()`, so a
+  value filed in two sections is two entries at two
   addresses rather than one entry on two pages. It lives in `store.py` for the
   reason `ungroup` and `resolve_format` do: some of those callers are in
   `main.py` and some in `seo.py`, and a second answer to which section a row

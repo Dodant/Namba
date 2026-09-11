@@ -156,7 +156,7 @@ def value_path(section: str, value: str) -> str:
 
 
 def path_seg(request, prefix: str) -> Optional[str]:
-    """The one segment after /n/, /a/ or /t/, as the reader typed it.
+    """The one segment after /n/, /a/, /c/ or /t/, as the reader typed it.
 
     Read off the raw path rather than the decoded one the router hands us,
     because a value may contain a slash: 11/22/63 is a date and a number here,
@@ -193,7 +193,7 @@ def write_head(page: str, *, title=None, desc=None, canonical=None,
                robots=None, og=(), ld=None, locale="en") -> str:
     """Put this page's own head into the built index.html.
 
-    One writer for all six public routes. Title and description are *replaced*
+    One writer for all seven public routes. Title and description are *replaced*
     -- two <title>s and the browser keeps the first -- and everything else is
     appended before </head>.
 

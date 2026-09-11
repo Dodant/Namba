@@ -1285,7 +1285,7 @@ def robots(request: Request):
 def sitemap(request: Request, con=Depends(get_db)):
     """Every page on this wiki worth indexing, in one file.
 
-    The thirteenth public read, and it carries LIVE like the other twelve: an
+    The fourteenth public read, and it carries LIVE like the other thirteen: an
     entry an operator hid keeps its row, and handing that row to a crawler in a
     list leaks exactly what hiding it was for.
 
