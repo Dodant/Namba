@@ -8,7 +8,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   canGroupValue, canonicalNumber, cleanNumberInput, fmtCount, fmtDate, marker,
-  numSize, plain, plainLines, showValue,
+  monthDay, monthDays, monthDayValue, monthName, numSize, plain, plainLines,
+  showDate, showValue, todayMonthDay,
 } from './format.ts'
 
 test('a value typed in any interface locale reaches the API in one spelling', () => {
@@ -23,6 +24,40 @@ test('a value typed in any interface locale reaches the API in one spelling', ()
   // itself each produce a different one
   assert.deepEqual(canonicalNumber('1 000', 'en'), { value: '1 000', grouped: false },
     'English never grouped with a space')
+})
+
+test('a date is stored locale-neutral and read in the locale', () => {
+  // The identity is one spelling and the reading is seven, which is the whole
+  // reason the stored value is two numbers and a dash.
+  assert.equal(showDate('12-25', 'en'), 'December 25')
+  assert.equal(showDate('12-25', 'ko'), '12월 25일')
+  assert.equal(showDate('12-25', 'de'), '25. Dezember')
+  assert.equal(showDate('02-29', 'en'), 'February 29', 'a leap day is a fixed date')
+  assert.equal(monthName(9, 'en'), 'September')
+  // and it is asked off the row's format, never guessed from the characters:
+  // a Mixed 12-25 is a different entry about a different thing
+  assert.equal(showValue('12-25', false, 'en', 'CALENDAR'), 'December 25')
+  assert.equal(showValue('12-25', false, 'en', 'MIXED'), '12-25')
+  assert.equal(showValue('12-25', false, 'en'), '12-25', 'no format, no claim')
+  // anything that is not a date comes back untouched, the same as a value
+  // that is not a number does above
+  for (const raw of ['1-5', '02-30', '13-01', '00-01', '12-00', '9¾', '']) {
+    assert.equal(showDate(raw, 'en'), raw, raw)
+    assert.equal(monthDay(raw), null, raw)
+  }
+  assert.deepEqual(monthDay('12-25'), [12, 25])
+})
+
+test('a date is picked, so the pair on screen is always a real one', () => {
+  assert.equal(monthDays(2), 29, 'February, with no year to disagree')
+  assert.equal(monthDays(4), 30)
+  assert.equal(monthDays(1), 31)
+  assert.equal(monthDayValue(4, 1), '04-01', 'zero-padded, which is the spelling')
+  // moving off 31 January clamps rather than leaving a pair no month has
+  assert.equal(monthDayValue(2, 31), '02-29')
+  assert.equal(monthDayValue(4, 31), '04-30')
+  assert.equal(todayMonthDay(new Date(2026, 8, 11)), '09-11')
+  assert.equal(todayMonthDay(new Date(2024, 1, 29)), '02-29', 'a real leap day')
 })
 
 test('an invalid grouping is content and comes back untouched', () => {

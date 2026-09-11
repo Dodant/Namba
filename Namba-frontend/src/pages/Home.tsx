@@ -1,10 +1,12 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  ABBR_BUCKETS, api, BUCKETS, entryPath, FORMATS, isAbbr, tagLabel, tagPath,
-  type Format, type NumberEntry, type Post,
+  ABBR_BUCKETS, api, BUCKETS, entryPath, FORMATS, MONTH_BUCKETS, sectionOf,
+  tagLabel, tagPath, type Format, type NumberEntry, type Post,
 } from '../api'
-import { fmtCount, fmtDate, marker, numSize, plain, plainLines, showValue } from '../format'
+import {
+  fmtCount, fmtDate, marker, monthName, numSize, plain, plainLines, showValue,
+} from '../format'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
 import { useUi, type Messages } from '../uiLocale'
@@ -101,10 +103,10 @@ function Feed({ lang }: { lang: string }) {
       {shown.map((p: Post) => (
         <article className="fx" key={p.id}>
           <Link
-            className={`fx-num ${numSize(showValue(p.value, p.grouped, locale))}`}
+            className={`fx-num ${numSize(showValue(p.value, p.grouped, locale, p.format))}`}
             to={entryPath(p.value, p.format)}
           >
-            {showValue(p.value, p.grouped, locale)}
+            {showValue(p.value, p.grouped, locale, p.format)}
           </Link>
           <h2>
             <Link to={`/p/${p.id}`}>{p.title}</Link>
@@ -165,12 +167,22 @@ const FOLD_OVER = 10
    entries on a thin band and forty on a busy one, and the second figure is
    the one that moves as the wiki fills up. Both, because the band folds:
    closed, this line is all it says about itself. The first noun follows the
-   format: the Abbreviation band counts abbreviations, not numbers. */
+   section: the Abbreviation band counts abbreviations and the Calendar band
+   counts dates, not numbers. */
+/* One band of the index. `open` and `keep` are the Calendar tab's alone: every
+   other band is open and is drawn only when it has rows. */
+type Band = {
+  label: string
+  items: NumberEntry[]
+  open?: boolean
+  keep?: boolean
+}
+
 function bandCount(items: NumberEntry[], format: Format, m: Messages) {
   const entries = items.reduce((n, item) => n + item.entries.length, 0)
   return m.home.bandCount(
     items.length,
-    m.common.subject(isAbbr(format), items.length),
+    m.common.subject(sectionOf(format), items.length),
     entries,
   )
 }
@@ -249,7 +261,7 @@ function Index({ lang }: { lang: string }) {
      a worse answer than a heading that lags a frame behind the tab. */
   const shownFormat = numbers.data?.[0]?.format ?? format
   const rows = numbers.data ?? []
-  const bands =
+  const bands: Band[] =
     shownFormat === 'INTEGER'
       ? BUCKETS.map((b) => ({
           label: m.buckets[b],
@@ -262,23 +274,43 @@ function Index({ lang }: { lang: string }) {
             label: b.replace('-', ' – '),
             items: rows.filter((n) => n.bucket === b),
           }))
-        : [{ label: m.format[shownFormat], items: rows }]
+        : shownFormat === 'CALENDAR'
+          ? MONTH_BUCKETS.map((b) => ({
+              /* Intl knows the month names in all seven locales, so there is
+                 no thirteenth row to keep in `m.buckets` -- and no 84 of them
+                 once every locale answers */
+              label: monthName(Number(b), locale),
+              items: rows.filter((n) => n.bucket === b),
+              /* the month it is now, and only that one. A calendar that opens
+                 at January is a year to scroll past; one that opens at today
+                 is the page the reader came for. Local time, because the
+                 reader's calendar is the reader's. */
+              open: Number(b) === new Date().getMonth() + 1,
+              /* and the one index that draws a band with nothing in it:
+                 twelve months are a calendar, and a year missing August reads
+                 as a bug rather than as a month nobody has written about. */
+              keep: true,
+            }))
+          : [{ label: m.format[shownFormat], items: rows }]
 
   return (
     <>
       <nav className="tabs fmts" ref={strip} aria-label={m.home.entryKinds}>
-        {FORMATS.map((f) => (
+        {FORMATS.map((f, i) => (
           <Link
             key={f}
-            /* .apart on the one that reads letters, not on the fifth: the
-               gap before it is the digits/letters line and not a position
-               in FORMATS, so reordering that array moves the tab and leaves
-               the gap where it belongs. index.css spends the free space. */
-            className={`${isAbbr(f) ? 'apart ' : ''}${f === format ? 'on' : ''}`}
+            /* .apart wherever the section changes, not on a position in
+               FORMATS: the gaps are the /n/, /c/ and /a/ lines, so reordering
+               that array moves the tabs and leaves the gaps where they
+               belong. index.css spends the free space, and two of them split
+               it between the two, which is what makes three groups read as
+               three. */
+            className={`${i > 0 && sectionOf(f) !== sectionOf(FORMATS[i - 1])
+              ? 'apart ' : ''}${f === format ? 'on' : ''}`}
             aria-current={f === format ? 'page' : undefined}
             to={`/?${new URLSearchParams({ format: f, ...(tag ? { tag } : {}) })}`}
           >
-            {/* Whole words at every width. Five of them want 400px and a
+            {/* Whole words at every width. Six of them want past 400px and a
                 320px screen has 288, so the strip scrolls -- see .tabs.fmts
                 in index.css, and the layout effect above, which is what keeps
                 the tab you are on from starting off the end of it. A label
@@ -341,13 +373,15 @@ function Index({ lang }: { lang: string }) {
 
       {bands.map(
         (band) =>
-          band.items.length > 0 && (
+          (band.items.length > 0 || band.keep) && (
             /* <details>, not a button and a piece of state: the browser
                already knows how to open and close a disclosure, and it
                gets the keyboard and the screen reader right for free.
                Open by default -- the index is the page, and five closed
-               headings is a table of contents, not a wiki. */
-            <details className="band" key={band.label} open>
+               headings is a table of contents, not a wiki. The Calendar tab
+               is the exception and says so itself: twelve open months are a
+               year to scroll past, so it opens the one it is. */
+            <details className="band" key={band.label} open={band.open ?? true}>
               <summary className="band-head">
                 <h2>{band.label}</h2>
                 <span className="rule" />
@@ -434,7 +468,7 @@ function IndexEntry(
 function IndexRow({ row }: { row: NumberEntry }) {
   const { locale, m } = useUi()
   const rx = marker(row, locale)
-  const shownValue = showValue(row.value, row.grouped, locale)
+  const shownValue = showValue(row.value, row.grouped, locale, row.format)
   const entries = row.entries.map((entry) => (
     <IndexEntry
       key={entry.id}

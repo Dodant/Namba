@@ -1440,6 +1440,13 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .existing li { margin: 2px 0; }
 .existing a:not(.existing-value) { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
 .existing-more { display: inline-block; margin-top: 5px; color: var(--accent) !important; }
+/* Two capsules on one line: the month and the day the Calendar format is
+   picked with. The month's name is a word in every locale and the day is two
+   digits, so the two are not the same width anywhere -- 1fr each would make
+   "Dezember" share a column with "9". They wrap under each other on a phone,
+   which is the same thing the form's own rows do. */
+.two-up { display: flex; flex-wrap: wrap; gap: 8px; }
+.two-up .select { flex: 1 1 auto; min-width: 0; }
 .select { position: relative; }
 .select select { appearance: none; padding-right: 34px; }
 .select::after {

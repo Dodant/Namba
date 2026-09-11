@@ -719,7 +719,7 @@ def get_post(post_id: int, con=Depends(get_db)):
 def list_revisions(post_id: int, con=Depends(get_db)):
     """The newest REVISIONS_SHOWN versions of an entry, as labels.
 
-    Three fields off each snapshot and then the snapshot is dropped, which is
+    Four fields off each snapshot and then the snapshot is dropped, which is
     also what the back office's own revision list does. What this answers is a
     history someone is reading -- what the entry was called, which number it was
     filed under, who and when -- and a restore is a POST that reads the snapshot
@@ -732,11 +732,13 @@ def list_revisions(post_id: int, con=Depends(get_db)):
     rows stay, since they are the only thing standing between vandalism and
     permanent loss, and reverting vandalism means reaching for a recent one.
 
-    `grouped` is here because the value reads through it: without the flag,
-    1000 renders as 1000 in a history whose entry shows 1,000.
+    `grouped` and `format` are here because the value reads through both:
+    without the flag, 1000 renders as 1000 in a history whose entry shows
+    1,000, and without the format a date reads as 12-25 under an entry whose
+    hero says 25 December. Neither is a different number.
     """
     guard_public(con, post_id)
-    # The three fields, asked for by name. SQLite reads them out of the stored
+    # The four fields, asked for by name. SQLite reads them out of the stored
     # JSON, so an entry fought over five hundred times is not five hundred
     # whole entries parsed in Python to draw fifty labels. A key a snapshot
     # does not carry comes back NULL, which is what `.get()` answered.
@@ -744,6 +746,7 @@ def list_revisions(post_id: int, con=Depends(get_db)):
         """SELECT id, author, at,
                   json_extract(snapshot, '$.title')   AS title,
                   json_extract(snapshot, '$.value')   AS value,
+                  json_extract(snapshot, '$.format')  AS format,
                   json_extract(snapshot, '$.grouped') AS grouped
            FROM revisions WHERE post_id = ? ORDER BY id DESC LIMIT ?""",
         (post_id, REVISIONS_SHOWN),

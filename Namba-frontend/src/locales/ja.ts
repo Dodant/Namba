@@ -1,5 +1,6 @@
 import { fmtCount } from '../format'
 import { GLOBAL_NAV, GLOBAL_TERMS } from './shared'
+import type { Section } from '../api'
 import type { Messages } from './en'
 
 /** Japanese (日本語). */
@@ -14,7 +15,8 @@ export const JA: Messages = {
       ? `${name === 'anonymous' ? '匿名' : name}が${when}に編集`
       : `${when}に編集`,
     entries: (n: number) => `${fmtCount(n, 'ja')}件`, tags: (n: number) => `${fmtCount(n, 'ja')}個のタグ`,
-    subject: (abbr: boolean) => abbr ? '略語' : '数字',
+    subject: (section: Section) =>
+      ({ number: '数字', abbr: '略語', calendar: '日付' })[section],
     like: (on: boolean, n: number) =>
       `${on ? 'いいねを取り消す' : 'いいね'} — ${fmtCount(n, 'ja')}件`,
   },
@@ -51,7 +53,8 @@ export const JA: Messages = {
   },
   browse: {
     category: 'カテゴリ', search: GLOBAL_TERMS.search,
-    summary: (n: number, abbr: boolean) => `${abbr ? 'この略語' : 'この数字'}を説明する項目が${fmtCount(n, 'ja')}件あります。`,
+    summary: (n: number, section: Section) =>
+      `${({ number: 'この数字', abbr: 'この略語', calendar: 'この日付' })[section]}を説明する項目が${fmtCount(n, 'ja')}件あります。`,
     addMeaning: '+ 別の意味を追加', emptyValue: (value: string) => `${value}の項目はまだありません。`,
     giveMeaning: '意味を追加する。', emptyTag: (tag: string) => `${tag}タグの項目はまだありません。`,
     noMatches: (q: string) => `「${q}」に一致する項目はありません。別の言葉で検索するか、`,
@@ -79,6 +82,7 @@ export const JA: Messages = {
     editIntro: (owner: string) => `誰でもこの項目を編集できます${owner ? `。最初の作成者は${owner}です` : ''}。置き換えられた版は履歴に残り、${owner || '最初の作成者'}のクレジットも維持されます。`,
     addIntro: '1項目につき1つの意味を記載します。42がすでに存在していても、置き換えずに新しい意味として追加されます。',
     guidelines: '項目ガイドライン', fixedValue: (noun: string) => `変更不可 — 別の${noun}は別項目として作成`,
+    date: '日付', month: '月', day: '日',
     number: '数字', abbreviation: '略語', groupThousands: '3桁区切りを使用', format: '形式',
     autoDetect: '自動判定', title: 'タイトル', titleHint: '何を指す数字か',
     titlePlaceholder: '銀河ヒッチハイク・ガイド', details: '詳細',

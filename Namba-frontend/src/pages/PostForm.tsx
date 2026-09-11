@@ -1,12 +1,13 @@
 import { useEffect, useId, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
-  api, ApiError, errorText, FORMATS, LANG_CODE, langLabel, nickname, TAG_MAX,
-  tagLabel, TAGS_PER_POST, type Format, type Post, type Revision, type Tag,
-  type Translation,
+  api, ApiError, errorText, FORMATS, LANG_CODE, langLabel, MONTH_BUCKETS,
+  nickname, sectionOf, TAG_MAX, tagLabel, TAGS_PER_POST, type Format,
+  type Post, type Revision, type Tag, type Translation,
 } from '../api'
 import {
-  canGroupValue, canonicalNumber, cleanNumberInput, fmtDate, showValue,
+  canGroupValue, canonicalNumber, cleanNumberInput, fmtDate, monthDay,
+  monthDays, monthDayValue, monthName, showValue, todayMonthDay,
 } from '../format'
 import ExistingEntries from '../components/ExistingEntries'
 import { useAsync } from '../useAsync'
@@ -34,16 +35,21 @@ const EXAMPLES: Record<string, string> = {
   DECIMAL: '3.14 · 42.195',
   MIXED: '11/22/63 · 9¾ · 80/20',
   TIME: '10:04PM · 09:41',
+  CALENDAR: '12-25 · 04-01 · 02-29',
   ABBR: 'UFO · R&D · MP3',
 }
 
+// the format goes through, so the Calendar examples read the way the field
+// beside them will: "December 25 · April 1 · February 29", in the reader's own
+// language. The other five are unchanged by it.
 const examples = (format: string, locale: string) => EXAMPLES[format]
   .split(' · ')
-  .map((value) => showValue(value, false, locale))
+  .map((value) => showValue(value, false, locale, format))
   .join(' · ')
 
-// there is no thousand in 10:04PM, in 9¾ or in UFO
-const groupable = (f: string) => f !== 'MIXED' && f !== 'TIME' && f !== 'ABBR'
+// there is no thousand in 10:04PM, in 9¾, in UFO or in 12-25
+const groupable = (f: string) =>
+  f !== 'MIXED' && f !== 'TIME' && f !== 'ABBR' && f !== 'CALENDAR'
 
 /* Which fields somebody else moved while this form was open. Compared
    between the entry as the form was filled from it and the entry as it now
@@ -133,8 +139,17 @@ export default function PostForm() {
   const [image, setImage] = useState<string | null>(null)
   const [lang, setLang] = useState(LANGS[0])
   const [grouped, setGrouped] = useState(false)
-  // what this form is about right now: "number" until Abbreviation is picked
-  const noun = m.common.subject(format === 'ABBR')
+  // what this form is about right now: "number" until a section that calls it
+  // something else is picked. Auto-detect has decided nothing, so it is one too
+  const noun = m.common.subject(format ? sectionOf(format) : 'number')
+  /* The pair the two date selects show, and the value they stand for. A date
+     is picked rather than typed, so this always reads a real one: picking
+     Calendar with "42" in the box starts from today rather than from a pair
+     no month has. It is what the payload sends too, so what is on screen is
+     what is stored -- ponytail: derived every render instead of a third piece
+     of state kept in step with `value`. */
+  const [picked, day] = monthDay(value) ?? monthDay(todayMonthDay())!
+  const dateValue = monthDayValue(picked, day)
   const [coined, setCoined] = useState('')
   const [allCategories, setAllCategories] = useState(false)
   /* the chips are the wiki's working vocabulary, not a list in here. Capped so
@@ -193,7 +208,7 @@ export default function PostForm() {
     setClash(null)
     nickname.set(author)
     const payload = {
-      value,
+      value: format === 'CALENDAR' && !editing ? dateValue : value,
       /* Two people can have this form open, filled from the entry as it was
          when each of them opened it -- and it sends every field on every save,
          so without this the second to press Publish writes their copy of the
@@ -297,11 +312,52 @@ export default function PostForm() {
                 you are typing UFO into. Auto-detect keeps Number, because
                 that is what most of this wiki is. */}
             <label htmlFor={fid('value')}>
-              {format === 'ABBR' ? m.form.abbreviation : m.form.number}{' '}
+              {format === 'ABBR' ? m.form.abbreviation
+                : format === 'CALENDAR' ? m.form.date
+                  : m.form.number}{' '}
               <span className="hint">
                 {editing ? m.form.fixedValue(noun) : examples(format, locale)}
               </span>
             </label>
+            {format === 'CALENDAR' && !editing ? (
+              /* Picked, not typed. A date is two numbers with a fixed range
+                 each and one stored spelling -- zero-padded MM-DD -- so a
+                 text box is a way to type 13-40 and read a 422 about it.
+                 Real <select>s, which is the rule here: keyboard, type-ahead,
+                 a phone's own wheel and the screen reader all come free, and
+                 every one of them has to be rebuilt by hand in a div-and-<ul>
+                 listbox built to be styled in more browsers. */
+              <div className="two-up">
+                <div className="select">
+                  <select
+                    id={fid('value')}
+                    aria-label={m.form.month}
+                    value={String(picked).padStart(2, '0')}
+                    onChange={(e) => setValue(monthDayValue(Number(e.target.value), day))}
+                  >
+                    {MONTH_BUCKETS.map((b) => (
+                      <option key={b} value={b}>{monthName(Number(b), locale)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="select">
+                  <select
+                    aria-label={m.form.day}
+                    /* as many days as the month has, so February stops at 29
+                       -- a leap day is a fixed date and there is no year here
+                       to disagree with it. Moving off 31 January clamps the
+                       day rather than leaving an impossible pair behind;
+                       monthDayValue() is where that happens. */
+                    value={String(day).padStart(2, '0')}
+                    onChange={(e) => setValue(monthDayValue(picked, Number(e.target.value)))}
+                  >
+                    {Array.from({ length: monthDays(picked) }, (_, i) => i + 1).map((d) => (
+                      <option key={d} value={String(d).padStart(2, '0')}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : (
             <input
               id={fid('value')}
               className="mono"
@@ -316,7 +372,7 @@ export default function PostForm() {
               autoCapitalize="off"
               autoCorrect="off"
               spellCheck={false}
-              value={editing ? showValue(value, grouped, locale) : value}
+              value={editing ? showValue(value, grouped, locale, format || undefined) : value}
               inputMode={format === 'INTEGER' ? 'numeric' : format === 'DECIMAL' ? 'decimal' : undefined}
               onChange={(e) => {
                 const kept = format === 'INTEGER' || format === 'DECIMAL'
@@ -336,8 +392,15 @@ export default function PostForm() {
                 }
               }}
             />
+            )}
             {!editing && (
-              <ExistingEntries value={value} format={format} locale={locale} />
+              <ExistingEntries
+                /* what the selects show, so the lookup answers for the date
+                   on screen even when the reader accepts the one it opened on */
+                value={format === 'CALENDAR' ? dateValue : value}
+                format={format}
+                locale={locale}
+              />
             )}
             {/* under the number it rewrites, not a third column in the row:
                 the row is two fields wide, and a column that came and went as
@@ -944,7 +1007,7 @@ function LinkPanel({
       <div className="panel">
         {post.related?.map((r) => (
           <div className="panel-row" key={r.id}>
-            <span className="panel-num">{showValue(r.value, r.grouped, locale)}</span>
+            <span className="panel-num">{showValue(r.value, r.grouped, locale, r.format)}</span>
             <span className="panel-title ink">{r.title}</span>
             <button type="button" className="pill" onClick={() => act(() => api.unlink(post.id, r.id))}>
               {m.form.unlink}
@@ -975,7 +1038,7 @@ function LinkPanel({
         </div>
         {hits?.map((h) => (
           <div className="panel-row" key={h.id}>
-            <span className="panel-num">{showValue(h.value, h.grouped, locale)}</span>
+            <span className="panel-num">{showValue(h.value, h.grouped, locale, h.format)}</span>
             <span className="panel-title ink">{h.title}</span>
             <button
               type="button"

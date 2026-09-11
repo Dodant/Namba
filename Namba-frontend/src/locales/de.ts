@@ -1,5 +1,6 @@
 import { fmtCount } from '../format'
 import { GLOBAL_NAV, GLOBAL_TERMS } from './shared'
+import type { Section } from '../api'
 import type { Messages } from './en'
 
 /** German (Deutsch). */
@@ -14,9 +15,11 @@ export const DE: Messages = {
       `bearbeitet ${when}${name ? ` von ${name === 'anonymous' ? 'anonym' : name}` : ''}`,
     entries: (n: number) => `${fmtCount(n, 'de')} ${n === 1 ? 'Eintrag' : 'Einträge'}`,
     tags: (n: number) => `${fmtCount(n, 'de')} ${n === 1 ? 'Tag' : 'Tags'}`,
-    subject: (abbr: boolean, n = 1) => abbr
-      ? (n === 1 ? 'Abkürzung' : 'Abkürzungen')
-      : n === 1 ? 'Zahl' : 'Zahlen',
+    subject: (section: Section, n = 1) => ({
+      number: n === 1 ? 'Zahl' : 'Zahlen',
+      abbr: n === 1 ? 'Abkürzung' : 'Abkürzungen',
+      calendar: n === 1 ? 'Kalendertag' : 'Kalendertage',
+    })[section],
     like: (on: boolean, n: number) =>
       `${on ? 'Gefällt mir nicht mehr' : 'Gefällt mir'} — ${fmtCount(n, 'de')} ${n === 1 ? 'Like' : 'Likes'}`,
   },
@@ -56,8 +59,9 @@ export const DE: Messages = {
   },
   browse: {
     category: 'Kategorie', search: GLOBAL_TERMS.search,
-    summary: (n: number, abbr: boolean) =>
-      `${n === 1 ? 'Ein Eintrag erklärt' : `${fmtCount(n, 'de')} Einträge erklären`} ${abbr ? 'diese Abkürzung' : 'diese Zahl'}.`,
+    summary: (n: number, section: Section) =>
+      `${n === 1 ? 'Ein Eintrag erklärt' : `${fmtCount(n, 'de')} Einträge erklären`} ${
+        { number: 'diese Zahl', abbr: 'diese Abkürzung', calendar: 'dieses Datum' }[section]}.`,
     addMeaning: '+ Weitere Bedeutung hinzufügen',
     emptyValue: (value: string) => `Unter ${value} ist noch nichts eingetragen.`,
     giveMeaning: 'Eine Bedeutung hinzufügen.',
@@ -89,6 +93,7 @@ export const DE: Messages = {
     editIntro: (owner: string) => `Dieser Eintrag kann von allen bearbeitet werden${owner ? `, auch wenn er von ${owner} verfasst wurde` : ''}. Die ersetzte Version bleibt in der Versionsgeschichte und ${owner || 'der ursprüngliche Autor'} wird weiterhin genannt.`,
     addIntro: 'Ein Eintrag pro Bedeutung. Wenn 42 bereits vorhanden ist, wird dieser Eintrag als weitere Bedeutung hinzugefügt, statt den vorhandenen zu ersetzen.',
     guidelines: 'Richtlinien für Einträge', fixedValue: (noun: string) => `fest — eine andere ${noun} benötigt einen eigenen Eintrag`,
+    date: 'Datum', month: 'Monat', day: 'Tag',
     number: 'Zahl', abbreviation: 'Abkürzung', groupThousands: 'Tausendertrennzeichen verwenden',
     format: 'Format', autoDetect: 'Automatisch erkennen', title: 'Titel', titleHint: 'worum es geht',
     titlePlaceholder: 'Per Anhalter durch die Galaxis', details: 'Details',

@@ -387,7 +387,8 @@ function Header({ lang }: { lang: string }) {
                     onClick={() => setQuery('')}
                   >
                     <span className="search-suggestion-value">
-                      {highlightMatches(showValue(post.value, post.grouped, locale), deferredQuery)}
+                      {highlightMatches(showValue(post.value, post.grouped, locale, post.format),
+                                        deferredQuery)}
                     </span>
                     <span>{highlightMatches(post.title, deferredQuery)}</span>
                   </Link>
@@ -599,6 +600,7 @@ function Wiki() {
               <Route path="/" element={<Home lang={lang} />} />
               <Route path="/n/:value" element={<Browse mode="number" lang={lang} />} />
               <Route path="/a/:value" element={<Browse mode="abbr" lang={lang} />} />
+              <Route path="/c/:value" element={<Browse mode="calendar" lang={lang} />} />
               <Route path="/t/:tag" element={<Browse mode="tag" lang={lang} />} />
               <Route path="/search" element={<Browse mode="search" lang={lang} />} />
               <Route path="/random" element={<Random />} />

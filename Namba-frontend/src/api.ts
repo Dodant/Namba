@@ -75,9 +75,23 @@ export const langLabel = (l: string) => (LANG_CODE[l] ? `${l} (${LANG_CODE[l]})`
 export const FORMATS = ['INTEGER', 'DECIMAL', 'MIXED', 'TIME', 'CALENDAR', 'ABBR'] as const
 export type Format = (typeof FORMATS)[number]
 
-/* An abbreviation is the one kind of entry that is not a number, so it decides
-   the address a value is read at -- see entryPath() below. The nouns that used
-   to live beside this are `m.common.subject` now, one per interface locale. */
+/* The sections this one column is read in, and the format that puts an entry
+   in each. `number` is the remainder, so a format added without a thought
+   about this lands at /n/, which is the safe side. The twin of section_of() in
+   store.py, and these are the words the list endpoint's `section` takes.
+
+   A format decides the address a value is read at -- see entryPath() below --
+   and the noun the page calls it by, which is `m.common.subject`, one per
+   interface locale. */
+export type Section = 'number' | 'abbr' | 'calendar'
+
+const OF_FORMAT: Partial<Record<Format, Section>> = { ABBR: 'abbr', CALENDAR: 'calendar' }
+export const sectionOf = (f: Format): Section => OF_FORMAT[f] ?? 'number'
+
+/* Letters are still their own question in the two places that ask about the
+   characters rather than about an address: the API reads /a/ up to case, and
+   the form filters what may be typed into an abbreviation. Neither is true of
+   a date, which is picked rather than typed and has no case to fold. */
 export const isAbbr = (f: Format) => f === 'ABBR'
 
 export const BUCKETS = ['1', '10', '100', '1000', '10000+'] as const
@@ -170,6 +184,11 @@ export type Revision = {
   at: string
   title: string
   value: string
+  /** how the value read at that version: `grouped` puts the separators back
+      and `format` decides whether it is a number at all -- 12-25 in a history
+      whose entry says 25 December is the format gone missing, not a different
+      date. */
+  format: Format
   grouped: boolean
 }
 
@@ -380,5 +399,7 @@ export const liked = {
     The format decides which -- take it off the row, never guess it from the
     characters, since a poster may file UFO as Mixed on purpose. The twin of
     value_path() in main.py, which writes the same link into every canonical. */
+const SECTION_PATH: Record<Section, string> = { number: 'n', abbr: 'a', calendar: 'c' }
+
 export const entryPath = (value: string, format: Format) =>
-  `/${isAbbr(format) ? 'a' : 'n'}/${encodeURIComponent(value)}`
+  `/${SECTION_PATH[sectionOf(format)]}/${encodeURIComponent(value)}`

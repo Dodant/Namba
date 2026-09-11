@@ -1,5 +1,6 @@
 import { fmtCount } from '../format'
 import { GLOBAL_NAV, GLOBAL_TERMS } from './shared'
+import type { Section } from '../api'
 import type { Messages } from './en'
 
 /** Simplified Chinese (简体中文). The one code here that carries a script
@@ -14,7 +15,8 @@ export const ZH_HANS: Messages = {
     edited: (when: string, name?: string | null) =>
       `${when}编辑${name ? ` · ${name === 'anonymous' ? '匿名用户' : name}` : ''}`,
     entries: (n: number) => `${fmtCount(n, 'zh-Hans')}个条目`, tags: (n: number) => `${fmtCount(n, 'zh-Hans')}个标签`,
-    subject: (abbr: boolean) => abbr ? '缩写' : '数字',
+    subject: (section: Section) =>
+      ({ number: '数字', abbr: '缩写', calendar: '日期' })[section],
     like: (on: boolean, n: number) =>
       `${on ? '取消点赞' : '点赞'} — ${fmtCount(n, 'zh-Hans')}个`,
   },
@@ -51,7 +53,8 @@ export const ZH_HANS: Messages = {
   },
   browse: {
     category: '分类', search: GLOBAL_TERMS.search,
-    summary: (n: number, abbr: boolean) => `共有${fmtCount(n, 'zh-Hans')}个条目解释${abbr ? '这个缩写' : '这个数字'}。`,
+    summary: (n: number, section: Section) =>
+      `共有${fmtCount(n, 'zh-Hans')}个条目解释${({ number: '这个数字', abbr: '这个缩写', calendar: '这个日期' })[section]}。`,
     addMeaning: '+ 添加另一种含义', emptyValue: (value: string) => `${value}下还没有条目。`,
     giveMeaning: '添加一种含义。', emptyTag: (tag: string) => `还没有带有${tag}标签的条目。`,
     noMatches: (q: string) => `没有与“${q}”匹配的结果。请尝试其他关键词，或`,
@@ -79,6 +82,7 @@ export const ZH_HANS: Messages = {
     editIntro: (owner: string) => `任何人都可以编辑此条目${owner ? `。最初的创建者是${owner}` : ''}。被替换的版本会保留在历史记录中，${owner || '最初创建者'}的署名也会保留。`,
     addIntro: '每个条目只记录一个含义。即使42已经存在，新内容也会作为另一种含义加入，而不会替换原条目。',
     guidelines: '条目指南', fixedValue: (noun: string) => `不可更改 — 另一个${noun}应创建为单独条目`,
+    date: '日期', month: '月', day: '日',
     number: '数字', abbreviation: '缩写', groupThousands: '使用千位分隔符', format: '格式',
     autoDetect: '自动检测', title: '标题', titleHint: '它指的是什么',
     titlePlaceholder: '银河系漫游指南', details: '详细说明',

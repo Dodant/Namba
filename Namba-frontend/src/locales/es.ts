@@ -1,5 +1,6 @@
 import { fmtCount } from '../format'
 import { GLOBAL_NAV, GLOBAL_TERMS } from './shared'
+import type { Section } from '../api'
 import type { Messages } from './en'
 
 /** Spanish (Español). */
@@ -14,9 +15,11 @@ export const ES: Messages = {
       `editado ${when}${name ? ` por ${name === 'anonymous' ? 'anónimo' : name}` : ''}`,
     entries: (n: number) => `${fmtCount(n, 'es')} ${n === 1 ? 'entrada' : 'entradas'}`,
     tags: (n: number) => `${fmtCount(n, 'es')} ${n === 1 ? 'etiqueta' : 'etiquetas'}`,
-    subject: (abbr: boolean, n = 1) => abbr
-      ? (n === 1 ? 'abreviatura' : 'abreviaturas')
-      : n === 1 ? 'número' : 'números',
+    subject: (section: Section, n = 1) => ({
+      number: n === 1 ? 'número' : 'números',
+      abbr: n === 1 ? 'abreviatura' : 'abreviaturas',
+      calendar: n === 1 ? 'fecha' : 'fechas',
+    })[section],
     like: (on: boolean, n: number) =>
       `${on ? 'Quitar me gusta' : 'Me gusta'} — ${fmtCount(n, 'es')} me gusta`,
   },
@@ -56,8 +59,9 @@ export const ES: Messages = {
   },
   browse: {
     category: 'Categoría', search: GLOBAL_TERMS.search,
-    summary: (n: number, abbr: boolean) =>
-      `${n === 1 ? 'Una entrada explica' : `${fmtCount(n, 'es')} entradas explican`} ${abbr ? 'esta abreviatura' : 'este número'}.`,
+    summary: (n: number, section: Section) =>
+      `${n === 1 ? 'Una entrada explica' : `${fmtCount(n, 'es')} entradas explican`} ${
+        { number: 'este número', abbr: 'esta abreviatura', calendar: 'esta fecha' }[section]}.`,
     addMeaning: '+ Añadir otro significado',
     emptyValue: (value: string) => `Aún no hay entradas para ${value}.`,
     giveMeaning: 'Añade un significado.', emptyTag: (tag: string) => `Aún no hay entradas con la etiqueta ${tag}.`,
@@ -88,6 +92,7 @@ export const ES: Messages = {
     editIntro: (owner: string) => `Cualquiera puede editar esta entrada${owner ? `, aunque la haya escrito ${owner}` : ''}. La versión reemplazada permanece en el historial y ${owner || 'el autor original'} conserva la autoría.`,
     addIntro: 'Una entrada por significado. Si 42 ya existe, esta entrada se añade como otro significado en lugar de reemplazarlo.',
     guidelines: 'Guía para las entradas', fixedValue: (noun: string) => `fijo — otro ${noun} requiere otra entrada`,
+    date: 'Fecha', month: 'Mes', day: 'Día',
     number: 'Número', abbreviation: 'Abreviatura', groupThousands: 'Usar separadores de miles',
     format: 'Formato', autoDetect: 'Detectar automáticamente', title: 'Título', titleHint: 'a qué se refiere',
     titlePlaceholder: 'Guía del autoestopista galáctico', details: 'Detalles',

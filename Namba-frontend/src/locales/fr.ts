@@ -1,5 +1,6 @@
 import { fmtCount } from '../format'
 import { GLOBAL_NAV, GLOBAL_TERMS } from './shared'
+import type { Section } from '../api'
 import type { Messages } from './en'
 
 /** French (Français). Its numbers group on a narrow no-break space, which
@@ -15,9 +16,11 @@ export const FR: Messages = {
       `modifié ${when}${name ? ` par ${name === 'anonymous' ? 'anonyme' : name}` : ''}`,
     entries: (n: number) => `${fmtCount(n, 'fr')} ${n === 1 ? 'entrée' : 'entrées'}`,
     tags: (n: number) => `${fmtCount(n, 'fr')} ${n === 1 ? 'étiquette' : 'étiquettes'}`,
-    subject: (abbr: boolean, n = 1) => abbr
-      ? (n === 1 ? 'abréviation' : 'abréviations')
-      : n === 1 ? 'nombre' : 'nombres',
+    subject: (section: Section, n = 1) => ({
+      number: n === 1 ? 'nombre' : 'nombres',
+      abbr: n === 1 ? 'abréviation' : 'abréviations',
+      calendar: n === 1 ? 'date' : 'dates',
+    })[section],
     like: (on: boolean, n: number) =>
       `${on ? 'Retirer le j’aime' : 'J’aime'} — ${fmtCount(n, 'fr')} j’aime`,
   },
@@ -58,8 +61,9 @@ export const FR: Messages = {
   },
   browse: {
     category: 'Catégorie', search: GLOBAL_TERMS.search,
-    summary: (n: number, abbr: boolean) =>
-      `${n === 1 ? 'Une entrée explique' : `${fmtCount(n, 'fr')} entrées expliquent`} ${abbr ? 'cette abréviation' : 'ce nombre'}.`,
+    summary: (n: number, section: Section) =>
+      `${n === 1 ? 'Une entrée explique' : `${fmtCount(n, 'fr')} entrées expliquent`} ${
+        { number: 'ce nombre', abbr: 'cette abréviation', calendar: 'cette date' }[section]}.`,
     addMeaning: '+ Ajouter une autre signification',
     emptyValue: (value: string) => `Aucune entrée n’est encore associée à ${value}.`,
     giveMeaning: 'Ajoutez une signification.',
@@ -92,6 +96,7 @@ export const FR: Messages = {
     editIntro: (owner: string) => `Tout le monde peut modifier cette entrée${owner ? `, même si elle a été écrite par ${owner}` : ''}. La version remplacée reste dans l’historique et ${owner || 'l’auteur d’origine'} conserve son crédit.`,
     addIntro: 'Une entrée par signification. Si 42 existe déjà, cette entrée ajoute une autre signification au lieu de la remplacer.',
     guidelines: 'Guide des entrées', fixedValue: (noun: string) => `fixe — un autre ${noun} nécessite une autre entrée`,
+    date: 'Date', month: 'Mois', day: 'Jour',
     number: 'Nombre', abbreviation: 'Abréviation', groupThousands: 'Utiliser les séparateurs de milliers',
     format: 'Format', autoDetect: 'Détection automatique', title: 'Titre',
     titleHint: 'ce à quoi l’entrée fait référence', titlePlaceholder: 'Le Guide du voyageur galactique',
