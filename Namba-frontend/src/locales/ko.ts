@@ -14,11 +14,11 @@ export const KO: Messages = {
     edited: (when: string, name?: string | null) => `${when} 수정${name ? ` · ${name === 'anonymous' ? '익명' : name}` : ''}`,
     entries: (n: number) => `항목 ${fmtCount(n, 'ko')}개`, tags: (n: number) => `태그 ${fmtCount(n, 'ko')}개`,
     subject: (section: Section) =>
-      ({ number: '숫자', abbr: '약어', calendar: '날짜' })[section],
+      ({ number: '숫자', abbr: '줄임말', calendar: '날짜' })[section],
     like: (on: boolean, n: number) =>
       `${on ? '좋아요 취소' : '좋아요'} — ${fmtCount(n, 'ko')}개`,
   },
-  format: { INTEGER: '정수', DECIMAL: '소수', MIXED: '혼합형', TIME: '시간', CALENDAR: '캘린더', ABBR: '약어' },
+  format: { INTEGER: '정수', DECIMAL: '소수', MIXED: '혼합형', TIME: '시간', CALENDAR: '캘린더', ABBR: '줄임말' },
   buckets: {
     '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',
     '1000': '1,000 – 9,999', '10000+': '10,000 이상',
@@ -44,15 +44,15 @@ export const KO: Messages = {
     seeMore: '더 보기',
     hasImage: '이미지 있음', feedIntro: '최근 작성·수정된 항목부터 보여줍니다.',
     moreRecent: '최근 항목 더 보기',
-    empty: '아직 작성된 항목이 없습니다.', entryKinds: '항목 형식', categories: '분류', all: '전체',
+    empty: '아직 작성된 항목이 없습니다.', entryKinds: '항목 형식', categories: '카테고리', all: '전체',
     foldedEntries: (n: number) => `항목 ${fmtCount(n, 'ko')}개`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${subject} ${fmtCount(subjects, 'ko')}개 · 항목 ${fmtCount(entries, 'ko')}개`,
   },
   browse: {
-    category: '분류', search: GLOBAL_TERMS.search,
+    category: '카테고리', search: GLOBAL_TERMS.search,
     summary: (n: number, section: Section) =>
-      `${({ number: '이 숫자', abbr: '이 약어', calendar: '이 날짜' })[section]}를 설명하는 항목이 ${fmtCount(n, 'ko')}개 있습니다.`,
+      `${({ number: '이 숫자를', abbr: '이 줄임말을', calendar: '이 날짜를' })[section]} 설명하는 항목이 ${fmtCount(n, 'ko')}개 있습니다.`,
     addMeaning: '+ 다른 의미 추가', emptyValue: (value: string) => `${value}에 등록된 항목이 아직 없습니다.`,
     giveMeaning: '의미 추가하기.', emptyTag: (tag: string) => `${tag} 태그가 붙은 항목이 아직 없습니다.`,
     noMatches: (q: string) => `“${q}” 검색 결과가 없습니다. 다른 단어로 검색하거나`,
@@ -79,9 +79,9 @@ export const KO: Messages = {
     editTitle: '항목 수정', addTitle: '항목 추가',
     editIntro: (owner: string) => `누구나 이 항목을 수정할 수 있습니다${owner ? `. 최초 작성자는 ${owner}입니다` : ''}. 교체되는 버전은 기록에 남고 ${owner || '최초 작성자'} 표시는 유지됩니다.`,
     addIntro: '하나의 항목에는 하나의 의미를 작성합니다. 42가 이미 있어도 기존 내용을 교체하지 않고 새 의미로 추가됩니다.',
-    guidelines: '항목 작성 지침', fixedValue: (noun: string) => `고정됨 — 다른 ${noun}는 별도 항목으로 작성`,
+    guidelines: '항목 작성 지침', fixedValue: (noun: string) => `고정됨 — 다른 ${noun}에는 별도 항목이 필요`,
     date: '날짜', month: '월', day: '일',
-    number: '숫자', abbreviation: '약어', groupThousands: '천 단위 구분 기호 사용', format: '형식',
+    number: '숫자', abbreviation: '줄임말', groupThousands: '천 단위 구분 기호 사용', format: '형식',
     autoDetect: '자동 감지', title: '제목', titleHint: '무엇을 가리키는지 작성',
     titlePlaceholder: (section: Section) => ({
       number: '은하수를 여행하는 히치하이커를 위한 안내서',
@@ -95,10 +95,10 @@ export const KO: Messages = {
       calendar: '가벼운 거짓말이나 장난을 주고받는 날.',
     })[section],
     markdown: 'Markdown을 사용할 수 있습니다 — **굵게**, *기울임*, [링크](https://…), 목록, 제목, 표. Enter 한 번은 줄바꿈으로 표시됩니다.',
-    writtenIn: '작성 언어', categories: '분류',
+    writtenIn: '작성 언어', categories: '카테고리',
     categoryHint: (n: number) => `최대 ${fmtCount(n, 'ko')}개 — 책을 원작으로 한 영화라면 둘 다 선택 가능`,
-    allCategories: '모든 분류 보기', fewerCategories: '분류 접기',
-    newCategoryAria: '새 분류 이름', newCategory: '새 분류 직접 입력', add: '추가', image: '이미지',
+    allCategories: '모든 카테고리 보기', fewerCategories: '카테고리 접기',
+    newCategoryAria: '새 카테고리 이름', newCategory: '새 카테고리 직접 입력', add: '추가', image: '이미지',
     imageHint: '선택 — jpg, png, gif, webp, 최대 5 MB', remove: '제거', uploading: '업로드 중…',
     nickname: '닉네임', editorHint: '작성자가 아닌 수정자로 기록', noAccountHint: '계정과 비밀번호 없음',
     saving: '저장 중…', publishing: '게시 중…', saveChanges: '변경 내용 저장', publish: '게시',
