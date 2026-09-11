@@ -360,12 +360,34 @@ sanitiser config to get wrong.
   screen readers all come free here and all have to be rebuilt by hand there.
   Options set no font of their own: they inherit, so a field's picker is
   Newsreader like the field and the header pill's is mono like the pill.
-- Two families, both from Google Fonts, linked in `index.html`: Newsreader for
-  prose and IBM Plex Mono for `--mono`. It is the one external asset the app
-  loads. If it is chrome or a number it is mono; if it is content prose it is
-  Newsreader. The wordmark is Newsreader too — a masthead speaks in the page's
-  own voice — over a mono strapline, which is where that pairing comes from.
-  It is not a third face and must not become one.
+- Two voices, three families, all from Google Fonts in one `index.html` link:
+  Newsreader for prose, Gowun Batang behind it for Hangul, and IBM Plex Mono
+  for `--mono`. It is the one external asset the app loads. If it is chrome or
+  a number it is mono; if it is content prose it is Newsreader. The wordmark is
+  Newsreader too — a masthead speaks in the page's own voice — over a mono
+  strapline, which is where that pairing comes from. There is no third *voice*
+  and there must not be one.
+
+  Gowun Batang is the serif in a script Newsreader has no glyphs for, which is
+  why it is not one. A font answers only for the characters it has, so the
+  order in the stack is what splits the scripts: Newsreader takes the Latin,
+  Gowun Batang takes the Hangul, and reversing the two would hand the Latin to
+  a Korean face as well. Before it, Hangul fell past Georgia to whatever the
+  platform calls `serif` — AppleMyungjo on a Mac, a Batang on Windows — so the
+  Korean UI and every Korean entry title on the wiki were set in a face nobody
+  had chosen. It carries 400 and 700 only: Korean at 500 comes out 400 and at
+  600 comes out 700, which is the weight either side and never a synthesised
+  bold, because faux bold on Hangul thickens the strokes until the counters
+  close. The CJK subsetting is what it costs — the font stylesheet is a great
+  deal larger than it was, though a page fetches only the subsets whose
+  characters it shows, and a page with no Hangul fetches none of them.
+
+  The mono voice is left to fall through, and that is not an oversight either:
+  IBM Plex Mono has no Hangul, so a Korean field label comes out in whatever
+  the platform calls `monospace`, which is a sans. It is the right shape by
+  accident — every Hangul syllable is already a square of the same width, so a
+  Korean label is monospaced without a monospaced font, and the letter-spacing
+  on `.field-label` is doing the rest. Do not add a fourth family for it.
 - `Home` has two views off one `?view=` param, `Index` (default) and `Feed`, and
   they are two components rather than one with a branch through its hooks —
   otherwise it fetches both. `Index` is a list, not a grid: one row per number,

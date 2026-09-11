@@ -5,7 +5,13 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext x='16' y='24' text-anchor='middle' font-family='ui-monospace,monospace' font-size='20' font-weight='700' fill='%231a4d3c'%3E42%3C/text%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- Three families in one request. Gowun Batang is not a third voice: it
+         is the serif in a script Newsreader has no glyphs for, and without it
+         Hangul fell through Georgia to the platform's default myeongjo, which
+         on a Mac is AppleMyungjo. It carries 400 and 700 only, so Korean at
+         500 renders 400 and at 600 renders 700 -- the weights either side,
+         never a synthesised bold, which on Hangul smears the strokes. -->
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400&family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <!-- viewport-fit=cover so env(safe-area-inset-*) reports something: the
          page gutter maxes against it, which is what keeps the left edge of a
          line out from under the notch on a phone held sideways. No

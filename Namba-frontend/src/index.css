@@ -27,7 +27,10 @@
   --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   color-scheme: light dark;
-  font-family: Newsreader, Georgia, serif;
+  /* Newsreader first and Gowun Batang behind it: a font only answers for the
+     characters it has, so Latin comes out of the first and Hangul out of the
+     second. Reversing them would hand the Latin to a Korean face as well. */
+  font-family: Newsreader, 'Gowun Batang', Georgia, serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -285,7 +288,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
    up ran the letters together, "mb" worst of all. */
 .logo {
   /* margin, because on the front page this is an <h1> */
-  margin: 0; font-family: Newsreader, Georgia, serif; font-size: clamp(26px, 3.4vw, 30px);
+  margin: 0; font-family: Newsreader, 'Gowun Batang', Georgia, serif; font-size: clamp(26px, 3.4vw, 30px);
   font-weight: 600; letter-spacing: -0.02em; line-height: 1;
 }
 .logo span { color: var(--accent); }
