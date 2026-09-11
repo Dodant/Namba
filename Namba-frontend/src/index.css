@@ -557,11 +557,12 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 }
 .tabs.fmts::-webkit-scrollbar { display: none; }
 .tabs.fmts a { flex: none; }
-/* Four tabs read numbers; the fifth reads letters -- UFO, CSI, NASA. That
-   distinction matters, but an auto margin made Abbreviation look like an
-   unrelated action at the far end of a wide row. A compact divider keeps all
-   five in one tab group while still marking the change of section. It also
-   travels with the strip on a narrow screen, unlike a viewport-only cue. */
+/* Four tabs read numbers, one reads a day of the year and one reads letters
+   -- UFO, CSI, NASA. Those distinctions matter, but an auto margin made
+   Abbreviation look like an unrelated action at the far end of a wide row. A
+   compact divider at each section boundary keeps all six in one tab group
+   while still marking the change of section. It also travels with the strip
+   on a narrow screen, unlike a viewport-only cue. */
 .tabs.fmts a.apart { position: relative; margin-left: 12px; }
 .tabs.fmts a.apart::before {
   content: ''; position: absolute; left: -7px; top: 10px; bottom: 10px;
@@ -1421,8 +1422,11 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    24px of text at 1.2, the 11px padding both already have, the border. Each
    centres its own single line inside it, so nothing else has to move. */
 /* > input, not input: the Group-thousands box is inside this field now, and
-   .field.check never had to say a height to be a checkbox. */
-.num-field > input, .fmt-field select { height: 53px; }
+   .field.check never had to say a height to be a checkbox. The two date
+   selects are named as well: with Calendar picked they are what stands where
+   the number's box stands, so they answer to the same height or the top row
+   goes crooked the other way round. */
+.num-field > input, .num-field .two-up select, .fmt-field select { height: 53px; }
 /* editing an entry cannot move it to another number, so there the field is
    the number rather than a box to type one in -- the hard border above is
    what says "type here", and this is the only field that ever drops it */
@@ -1495,6 +1499,12 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   }
   .select option:checked { color: var(--accent); font-weight: 600; }
   .select option::checkmark { order: 2; margin-left: auto; font-size: 11px; }
+  /* the rule under the five formats Auto-detect can hand back, in the same
+     hairline .body hr wears. Only inside this block: where the picker is the
+     system one the <hr> is the system's too, and a UA two-tone groove is the
+     right thing in a UA menu -- it is in a styled menu that it reads as the
+     one line nobody got to. */
+  .select hr { border: 0; border-top: 1px solid var(--line); margin: 5px 6px; }
 }
 
 /* the same select in the footer, wearing the pill the header's buttons wear --
