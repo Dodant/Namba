@@ -42,7 +42,8 @@ export default function Plugin() {
      page, and `new` is summable because a client has exactly one first day. */
   const arrived = got?.rows.reduce((n, d) => n + d.new, 0) ?? 0
   const calls = got?.rows.reduce((n, d) => n + d.calls, 0) ?? 0
-  /* The bar's scale. `|| 1` so a window with no rows divides by something. */
+  /* The bar's scale. The 1 is the floor, so a window with no rows still
+     divides by something. */
   const peak = Math.max(1, ...(got?.rows.map((d) => d.clients) ?? []))
 
   const COLS = ['Day', 'Clients', 'New', 'Calls', '']
@@ -92,7 +93,7 @@ export default function Plugin() {
         </span>
         <span className="fig">
           <b className="num">{got ? calls : '—'}</b>
-          <span>Entries served</span>
+          <span>Times run, this window</span>
         </span>
       </div>
 
@@ -120,7 +121,9 @@ export default function Plugin() {
       ) : (
         <Empty>
           Nothing has asked in that window. The plugin only calls when somebody
-          runs it, so a quiet week is a quiet week and not a broken counter.
+          runs it, so a quiet week looks exactly like this — and so does a
+          counter that has stopped, which is a line in the server log rather
+          than anything this page can see.
         </Empty>
       )}
     </div>
