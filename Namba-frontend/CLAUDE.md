@@ -143,6 +143,13 @@ every link in the panel is wrong in one of them.
   characters a stranger typed — a link's real href, a zero-width space, the
   twelve blank lines — not the paragraph they render into. This is the one place
   in the product that deliberately does not use `react-markdown`.
+- **And a value is shown as stored, for the same reason.** The panel shares
+  `showValue` with the wiki but never hands it a format, so a calendar entry
+  reads `12-25` in here and "25 December" out there. That is not an oversight:
+  one of the places this draws a value is the field an operator retypes it in
+  (`Change the number` on `Entry.tsx`), and a localized date in that box would
+  be sent back as the new value. An operator correcting or judging a value
+  wants the characters that are stored.
 - **Editing goes to the wiki's own form, except the number.** `/p/:id/edit` in
   a new tab, as a plain `<a>` because it is another document. There is one place
   that knows how a number value is parsed and how `grouped` follows the commas,
@@ -361,10 +368,11 @@ sanitiser config to get wrong.
   column for every "7" — the class comes from `numSize()` in `format.ts`, shared
   with the feed rows, the cards and both heroes, because one font size either
   shouts at "7" or breaks on "1960년 4월 16일 오후 3시" and a viewport clamp
-  cannot tell those apart. The Integer tab bands by magnitude and the
+  cannot tell those apart. The Integer tab bands by magnitude, the
   Abbreviation tab by first letter — `ABBR_BUCKETS` in `api.ts`: A to W, then
   X – Z together, then 0 – 9 last, the keys the API returns in `bucket` — and
-  the other three tabs are one band named for the format. Each band is a
+  the Calendar tab by month, `MONTH_BUCKETS`, January to December. The other
+  three tabs are one band named for the format. Each band is a
   `<details>` open by default, and the
   category filter is the same thing closed by default — the browser owns the
   collapse, so there is no open state to hold anywhere. A closed filter still
@@ -372,6 +380,16 @@ sanitiser config to get wrong.
   number past `FOLD_OVER` entries is a third `<details>`, open, its summary
   the count: it is there to be closed by a reader who wants past a number the
   wiki has taken to, and it never hides an entry from one who did not ask.
+
+  **The Calendar tab breaks both of those defaults, and is the only tab that
+  does.** It opens the month it *is* and closes the other eleven — twelve open
+  months are a year to scroll past, and the page a reader came for is today's
+  — and it draws a month with nothing in it, where every other band is skipped
+  when empty, because twelve months are a calendar and a year missing August
+  reads as a bug rather than as a month nobody has written about. `open` and
+  `keep` on the `Band` type are those two, and they are optional so the other
+  five tabs keep the behaviour they had (ADR-0026).
+
   The numeral stays outside it — it links to `/n/:value`, and a link inside a
   summary is one click that has to be two things. Its rows need the
   `.ix-list` box: everything after a summary goes into one anonymous content
@@ -630,13 +648,13 @@ What actually changes shape, rather than size:
 - **A `.panel-row`** puts its title on a line of its own below 560, whole,
   rather than an ellipsis at twelve characters.
 - **The format tabs scroll rather than shorten or wrap**, and they are the one
-  strip that does. Five full labels are 400px of type against the 288 a 320px
-  screen has. Wrapping made a strip two rows tall, which has stopped being a
-  strip; shortening them to `Int. Dec. Mix. Time Abbr.` fit, and cost every tab
-  its name. `.tabs.fmts` is `nowrap` + `overflow-x: auto` with **no media
-  query** — overflow is inert until something overflows, so one rule does
-  nothing above about 430px and the right thing below it, and a sixth format
-  would need no re-measuring. `flex: none` on the children is not optional: a
+  strip that does. Six full labels are well past 400px of type against the 288
+  a 320px screen has. Wrapping made a strip two rows tall, which has stopped
+  being a strip; shortening them to `Int. Dec. Mix. Time Cal. Abbr.` fit, and
+  cost every tab its name. `.tabs.fmts` is `nowrap` + `overflow-x: auto` with
+  **no media query** — overflow is inert until something overflows, so one rule
+  does nothing above about 430px and the right thing below it, and a seventh
+  format would need no re-measuring. `flex: none` on the children is not optional: a
   nowrap flex row shrinks them by default, which compresses the labels instead
   of overflowing them.
 
@@ -656,14 +674,16 @@ What actually changes shape, rather than size:
   the 104. Worth knowing if either number moves: the strip would twitch down
   by the difference on a tab press.
 
-  **Abbreviation sits at the far end of the strip.** `.apart` from `Home.tsx`
-  off `isAbbr(f)`, spent by `margin-left: auto` in `index.css`. Four of these
-  tabs read digits and the fifth reads letters — `UFO`, `CSI`, `NASA` — which
-  is the one division in `FORMATS` that decides how a value is read, sorted
-  and addressed, and five evenly spaced tabs say there is no such division.
-  The class goes on the format that reads letters and **not** on the fifth
-  item, so reordering `FORMATS` moves the tab and leaves the gap where it
-  belongs. An auto margin and not a gap or a separator, because it is the one
+  **The strip is spaced into its three sections.** `.apart` from `Home.tsx`
+  wherever `sectionOf(f)` differs from the tab before it, spent by
+  `margin-left: auto` in `index.css`. Four of these tabs read digits as a
+  number, one reads a day of the year and one reads letters — `UFO`, `CSI`,
+  `NASA` — which is the division in `FORMATS` that decides how a value is
+  read, sorted and addressed, and six evenly spaced tabs say there is no such
+  division. Two auto margins split the free space between them, which is what
+  makes three groups read as three. The class is computed from the sections
+  and **not** from a position, so reordering `FORMATS` moves the tabs and
+  leaves the gaps where they belong. An auto margin and not a gap or a separator, because it is the one
   rule that does nothing when there is nothing to spend: below about 460 the
   strip overflows, free space goes negative, the margin resolves to 0, and the
   tab falls back in beside the others and scrolls with them rather than
@@ -849,14 +869,28 @@ than this list. Adding a language is one line here and no migration. Taking one
 out is safe too — `langsWith()` keeps an entry's existing language on the menu
 so the form cannot drop it on the next save.
 
+**Calendar replaces that field outright.** A date is two numbers with a fixed
+range each and one stored spelling, so there is nothing to type and nothing to
+filter: two real `<select>`s, the day list following the month so February
+offers 29, and the day clamped when the month shrinks under it —
+`monthDayValue()` in `format.ts` is where that happens, and it is the same
+function the payload's value comes out of, so what is on screen is what is
+stored. The pair is *derived* from `value` every render with today as the
+fallback, rather than kept as a third piece of state in step with it. Only on
+a create: the value field is `readOnly` on an edit, which is what makes the
+selects a create-only branch. The examples in the hint go through
+`showValue()` with the format, so they read "December 25 · April 1 ·
+February 29" in the reader's own language.
+
 The Format select reshapes the field beside it, down to that field's own label
 — with Abbreviation picked, "Number" is the wrong word for the box you are
 typing `UFO` into, so the label reads Abbreviation and the filter keeps Latin
 letters, digits and `.&/;-`. Case is kept as typed — `SaaS` is spelled `SaaS` —
 and the API is what keeps `ufo` and `UFO` on one page, by adopting the spelling
 already stored for the word. That filter is a copy of `is_abbr` in
-`numfmt.py`, which **refuses** anything else with a 422 — unlike the other four
-formats, which are ways of reading what was typed and take it as given. It is
+`numfmt.py`, which **refuses** anything else with a 422 — unlike the four that
+read digits as a number, which are ways of reading what was typed and take it
+as given. It is
 not in the root `CLAUDE.md`'s hand-synced table for the same reason a tag's
 shape is not: the API is the one that decides and says so out loud. Keeping the
 filter in step only spares the reader a rejection they can see coming. Integer and Decimal filter what can be typed and offer the
@@ -874,8 +908,9 @@ with the format re-measures Number and Format underneath the choice, and the
 preview it carries belongs under the number it rewrites. The two controls in
 that row are given one height in `index.css` rather than each taking its own:
 24px of number against 15.5px of select is a pair that sits crooked. Mixed and Time are
-plain text with no checkbox and Abbreviation is the third with none — there is
-no thousand in `UFO` — and Auto-detect constrains nothing because nothing
+plain text with no checkbox, and Abbreviation and Calendar are the third and
+fourth with none — there is no thousand in `UFO` or in `12-25` — and
+Auto-detect constrains nothing because nothing
 has been decided yet. Filtering happens as you type and **never** rewrites what
 is already in the field — picking Integer by mistake with `11/22/63` in there
 must not turn it into `112263`.
@@ -909,9 +944,11 @@ value to the API as a **query param**, never a path segment — `%2F` in a path
 gets normalised by the ASGI layer before routing.
 
 `entryPath()` takes the format as well as the value, because the format is what
-decides the address: `/a/UFO` for an abbreviation, `/n/42` for a number. Take it
-off the row you are drawing — a poster may file `UFO` as Mixed on purpose, and
-that entry is at `/n/UFO`. It is the twin of `value_path()` in `Namba-backend/seo.py`, which
+decides the address: `/a/UFO` for an abbreviation, `/c/12-25` for a date,
+`/n/42` for a number. It asks `sectionOf()`, which is the twin of
+`section_of()` in `store.py` and the one place either app turns a format into
+a section. Take the format off the row you are drawing — a poster may file
+`UFO` or `12-25` as Mixed on purpose, and that entry is at `/n/`. It is the twin of `value_path()` in `Namba-backend/seo.py`, which
 writes the same link into every canonical and breadcrumb.
 
 Client-side routing decodes the segment correctly, which is why `/n/:value`
@@ -919,9 +956,14 @@ works but `/api/numbers/{value}` would not.
 
 ## Routes
 
-`Browse.tsx` serves four of them — `/n/:value`, `/a/:value`, `/t/:tag`,
-`/search` — because they differ only in which filter reaches `api.posts()`. Add
-a fifth list view by extending its `mode`, not by copying the file.
+`Browse.tsx` serves five of them — `/n/:value`, `/a/:value`, `/c/:value`,
+`/t/:tag`, `/search` — because they differ only in which filter reaches
+`api.posts()`. Add a sixth list view by extending its `mode`, not by copying
+the file. `ABOUT_VALUE` in there is the three modes that are about one value:
+which section reads the page, and which format the Add pill preselects so a
+reader who follows it lands back in the section they came from. Off the mode
+and not off the rows, because an empty page is where that pill has to be
+right — and `/n/` holds four formats, so it preselects none.
 
 `/guide` is the odd one and the only page here that is prose rather than a
 query — `Guide.tsx`, no fetch, no state. It is where the one rule
@@ -1062,15 +1104,20 @@ of it, this page has no entry on it to contaminate, and a page of rules is the
 one thing in this app somebody has a reason to quote at somebody else. Do not
 "finish" the list by adding it.
 
-`/n/` and `/a/` are two sections over one column and the mode is what picks
-between them: it sends `section` to the API, which reads `/a/` up to case so
-that `/a/ufo` still lands on `UFO`, shows the entries' stored spelling in the
-hero rather than the link's, and chooses the noun the hero uses. An entry has exactly one address — an abbreviation never answers at `/n/`
-— and `section_where()` in `main.py` is the single condition that says so.
+`/n/`, `/a/` and `/c/` are three sections over one column and the mode is what
+picks between them: it sends `section` to the API, which reads `/a/` up to case
+so that `/a/ufo` still lands on `UFO`, shows the entries' stored spelling in the
+hero rather than the link's, and chooses the noun the hero uses — `m.common.subject`
+takes the section now, so a Calendar band counts dates and the `/c/` hero says
+"this date". An entry has exactly one address — an abbreviation never answers
+at `/n/`, and neither does a date — and `section_where()` in `store.py` is the
+single condition that says so.
 
-All four heroes are one shape: a `.kicker` of metadata over an `<h1>` that is
-the subject and nothing else. On `/n/:value` and `/a/:value` the kicker is the
-format alone; on the other two it is the kind of page and the count. The count
+All five heroes are one shape: a `.kicker` of metadata over an `<h1>` that is
+the subject and nothing else. On `/n/:value`, `/a/:value` and `/c/:value` the
+kicker is the format alone; on the other two it is the kind of page and the
+count. A date's `<h1>` is the localized reading — "25 December", "12월 25일" —
+off `showValue()` and the row's own format, while the address stays `/c/12-25`. The count
 waits for `posts.data` because "0 entries" before the fetch lands is a result
 rather than a wait. `/t/:tag` passes its tag to `PostCard` as `except`, so a
 row does not carry a chip linking to the page it is already on — what is left
@@ -1219,9 +1266,14 @@ is on and a parameter property is the one class syntax that is not erasable.
 
 ## Mirrors the backend
 
-`FORMATS` in `api.ts` is a hand-copy of `numfmt.py` — five of them now, four
-ways of reading digits and `ABBR` for letters. `numfmt.py`'s parser branch and
-the localized `m.format` maps in `uiLocale.tsx` must change with it. The seven
+`FORMATS` in `api.ts` is a hand-copy of `numfmt.py` — six of them now: four
+ways of reading digits as a number, `CALENDAR` for a day of the year and
+`ABBR` for letters. `numfmt.py`'s parser branch and the localized `m.format`
+maps in `src/locales/` must change with it, **in the same position in the
+list**, since `test_the_two_apps_still_agree` compares the two as tuples and
+the strip draws them in that order. `MONTH_BUCKETS` beside `BUCKETS` and
+`ABBR_BUCKETS` is the third band list, compared against `bucket_of` as a set
+in both directions. The seven
 moderation vocabularies — `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`,
 `REQUEST_STATUSES`, `REPORT_STATUSES`, `BLOCK_TYPES`, `BLOCK_HOURS` — are
 hand-copies of `db.py`. Unknown reasons, statuses and block types get a 422;

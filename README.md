@@ -90,7 +90,8 @@ including the test suite:
 
 `Namba-frontend` — React + Vite, no state library and no UI kit. `src/api.ts` is
 the whole client; `Browse.tsx` serves the number (`/n/`), abbreviation (`/a/`),
-tag and search pages because they differ only by which filter they pass. The home page has two views off a
+date (`/c/`), tag and search pages because they differ only by which filter
+they pass. The home page has two views off a
 `?view=` param — the number index, and a feed of what was last written or
 rewritten.
 
@@ -112,6 +113,7 @@ A number is a column on a post, not a table — `/n/42` is a query. Each carries
 | `DECIMAL` | `3.14`, `42.195` | the value | `/n/3.14` |
 | `TIME` | `10:04PM`, `09:41` | minutes past midnight | `/n/09:41` |
 | `MIXED` | `11/22/63`, `80/20`, `9¾` | none — sorts by string | `/n/80%2F20` |
+| `CALENDAR` | `12-25`, `04-01`, `02-29` | month × 100 + day | `/c/12-25` |
 | `ABBR` | `UFO`, `CSI`, `R&D` | none — sorts by string | `/a/UFO` |
 
 A number can also be written with thousands separators. `1000` and `1,000` are
@@ -124,17 +126,34 @@ gets what it asked for.
 
 `parse_number()` guesses, and the poster can overrule it in the form. It has to
 work that way: `11:11` is a clock, `1:29:300` is Heinrich's law, and nothing in
-the string says which.
+the string says which. `12-25` is the same problem again — Christmas, or a
+ratio — and it is answered by not guessing at all: the parser never suggests
+`CALENDAR`, so that format is only ever reached by picking it.
 
-Integers get a magnitude band (`1`, `10`, `100`, `1000`, `10000+`) and
-abbreviations a letter band (A to W, then `X-Z`, then `0-9` last for `MP3`); a
-TIME gets none, because banding 09:41 by its sort key would file it under "100".
+Integers get a magnitude band (`1`, `10`, `100`, `1000`, `10000+`),
+abbreviations a letter band (A to W, then `X-Z`, then `0-9` last for `MP3`) and
+dates a month band (January to December); a TIME gets none, because banding
+09:41 by its sort key would file it under "100".
 
-**Abbreviations** are the fifth format and the one that is not digits — `UFO`,
+**Dates** are for the ones that come round every year — Christmas, April
+Fools, Bastille Day. The value is a month and a day with no year, picked from
+two menus rather than typed, and stored as a zero-padded `12-25`; the index
+draws it as twelve foldable months with the current one already open, and the
+page reads it in your own language — "December 25", "12월 25일" — while the
+address stays `/c/12-25`. A date that happened once is a number like any other
+and belongs at `/n/`.
+
+Its other spellings are refused rather than tidied up: `1-5` is not quietly
+turned into `01-05`, because nothing on this wiki rewrites a value and one day
+has to have one page. `02-30` and `13-01` go the same way. `02-29` does not —
+a leap day is a fixed date and there is no year here to argue with it.
+
+**Abbreviations** are the one format that is not digits at all — `UFO`,
 `CSI`, `NASA`. Everything else about them is a number's: one entry per meaning,
 anyone can edit, nothing removes one, all of it CC0. Three things are their own.
 They are read at `/a/UFO` rather than `/n/UFO`, so a value somebody files under
-both sections is two entries at two addresses instead of one showing up twice.
+two of the three sections is two entries at two addresses instead of one
+showing up twice.
 A word is one page whatever case it is written in — `/a/ufo`, `/a/Ufo` and
 `/a/UFO` are the same list, because with no accounts there is nobody to merge
 two pages about one word afterwards. The spelling itself is kept as typed, so
@@ -324,8 +343,8 @@ They are served together rather than split so that every page can carry its own
 picture already in the markup — no crawler runs the JavaScript that would set
 them — so something has to write the `<head>` per request, and the only process
 holding the entry is this one. `/` gets `WebSite` JSON-LD with a
-`SearchAction`; `/n/42`, `/a/UFO` and `/t/book` get descriptions and JSON-LD
-`ItemList`s naming their entries. `/guide` gets its own title, description and
+`SearchAction`; `/n/42`, `/a/UFO`, `/c/12-25` and `/t/book` get descriptions
+and JSON-LD `ItemList`s naming their entries. `/guide` gets its own title, description and
 breadcrumbs.
 `/search`, `/new`, `/random`, an edit form and anything mistyped are marked
 `noindex`. `NAMBA_DIST` overrides where it looks.

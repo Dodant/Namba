@@ -108,3 +108,11 @@ each spelling is its own `/n/` page.
   Knock-on, recorded in ADR-0007: `resolve_format` was the only read
   `create_post` decided on, so a create now decides nothing and
   `test_every_write_decides_inside_the_lock` probes eleven routes, not twelve.
+
+- 2026-09-11: a sixth format and a third section, both recorded in ADR-0026.
+  `CALENDAR` is a zero-padded `MM-DD` read at `/c/12-25`, and it is the second
+  format this record's "nothing is taken from a value" rule reaches by
+  *refusal* rather than by leaving the spelling alone: `1-5` cannot be folded
+  to `01-05` and nothing would keep the difference, so one day keeps one
+  address by the other spellings being a 422. `/n/` is the remainder of the
+  three sections now rather than "not ABBR".

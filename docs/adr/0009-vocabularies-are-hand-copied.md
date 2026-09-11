@@ -28,3 +28,7 @@ literal types (`Format`, `PostStatus`) the front end leans on.
 - 2026-08-18: the two lists, hand-copied.
 - 2026-09-09 (`42d1c97`): the bands became the fourth row of the table and the
   test compares them as sets.
+- 2026-09-11: a sixth format and a third band list. `MONTH_BUCKETS` is
+  compared the same way the other two are, and the formats are compared as a
+  *tuple*, so the position `CALENDAR` takes in the list -- which is the order
+  the front end draws the tabs in -- has to agree as well (ADR-0026).

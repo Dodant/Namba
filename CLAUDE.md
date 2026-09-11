@@ -32,10 +32,10 @@ package). **Change one, change the other:**
 
 | what | backend | frontend |
 |---|---|---|
-| the 5 formats | `numfmt.py` `FORMATS` | `src/api.ts` `FORMATS` |
+| the 6 formats | `numfmt.py` `FORMATS` | `src/api.ts` `FORMATS` |
 | the two tag limits | `main.py` `TAG_MAX`, `TAGS_PER_POST` | `src/api.ts`, same names |
 | the moderation vocabularies | `db.py` `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`, `REQUEST_STATUSES`, `REPORT_STATUSES`, `BLOCK_TYPES`, `BLOCK_HOURS` | `src/api.ts`, same names |
-| the index's bands | `numfmt.py` `bucket_of` — computed, not listed | `src/api.ts` `BUCKETS`, `ABBR_BUCKETS` |
+| the index's bands | `numfmt.py` `bucket_of` — computed, not listed | `src/api.ts` `BUCKETS`, `ABBR_BUCKETS`, `MONTH_BUCKETS` |
 
 `test_the_two_apps_still_agree` in `test_namba.py` reads `src/api.ts` and checks
 every row of that table, so "change one, change the other" is a thing the suite
@@ -76,11 +76,19 @@ tag's shape, never its membership, and `/api/tags` reports the vocabulary in
 use. A format is a parser branch and has to be agreed on; a tag is not
 (ADR-0010).
 
-Four of the five read digits. `ABBR` is the fifth and reads letters — `UFO`,
-`CSI`, `NASA` — and it is a format rather than a `kind` column because
-`posts.format` is already the one thing that decides how a value is read,
-sorted and addressed. A second column would have been a migration, a second
-hand-copied vocabulary and a branch beside every existing one.
+Four of the six read digits as a number. `ABBR` reads letters — `UFO`, `CSI`,
+`NASA` — and `CALENDAR` reads a day of the year, and both are formats rather
+than a `kind` column because `posts.format` is already the one thing that
+decides how a value is read, sorted and addressed. A second column would have
+been a migration, a second hand-copied vocabulary and a branch beside every
+existing one (ADR-0026).
+
+Those two are also the only formats that are **checked** rather than believed.
+The other four describe how to read what was typed and cannot be wrong about
+it; these two are claims *about* the value — that it is a word, that it is a
+date — and on a wiki with no login the claim is a stranger's. `is_abbr` and
+`date_key` in `numfmt.py` are the rules, and `resolve_format` in `store.py` is
+where both bite, so all three writes hit them.
 
 ## Design decisions that are not up for quiet revision
 
@@ -106,7 +114,7 @@ hand-copied vocabulary and a branch beside every existing one.
   the second factor. Password success creates only a five-minute challenge;
   the session cookie is issued after one unused authenticator counter succeeds.
 - **Nothing removes an entry.** `posts.status` is `ACTIVE` / `HIDDEN` /
-  `DELETED`, and a hidden entry drops out of all thirteen public reads and comes
+  `DELETED`, and a hidden entry drops out of all fourteen public reads and comes
   back whole. There is no `DELETE /api/posts/{id}` — the path answers 405 — and
   no delete button anywhere in the front end. An open wiki where one click can
   take a page away has no defence at all, and the fix is not confirming harder:
@@ -243,10 +251,11 @@ hand-copied vocabulary and a branch beside every existing one.
   (ADR-0005, ADR-0007). Digits have no case, which is why none of this reaches
   the other four.
 
-  **And `ABBR` is Latin script only — the one format that is checked rather
-  than taken at its word.** The other four are ways of *reading* what was
-  typed and cannot be wrong about it; this one is a claim *about* the value,
-  and on a wiki with no login the claim is a stranger's. `is_abbr` in
+  **And `ABBR` is Latin script only — one of the two formats that are checked
+  rather than taken at their word.** The four that read digits as a number are
+  ways of *reading* what was typed and cannot be wrong about it; this one is a
+  claim *about* the value, and on a wiki with no login the claim is a
+  stranger's. `is_abbr` in
   `numfmt.py` is the rule and `resolve_format` in `store.py` is where it bites,
   so both writes hit it. It is not a keyboard preference: `유에프오` and `УФО` are the
   same abbreviation in another alphabet, and one `/a/` page per alphabet is
@@ -255,14 +264,41 @@ hand-copied vocabulary and a branch beside every existing one.
   means in any language — `lang` and the translations are untouched by this;
   it is the value that is one spelling.
 
-- **`/n/` and `/a/` are two sections over one column, and an entry has one
-  address.** `/a/UFO` is the abbreviation, `/n/42` is the number, and
-  `section_where()` in `main.py` is the single condition that tells them apart
-  — the list endpoint, both `<head>`s and the sitemap all ask it. So a value
-  filed under both, which takes somebody choosing Mixed for `UFO` on purpose,
-  is two entries at two addresses rather than one entry showing up twice. Do
-  not answer an abbreviation at `/n/`: it is the same mistake as storing the
-  comma, one page short of the number.
+- **A fixed calendar date is a day of the year and nothing else.** `CALENDAR`
+  is Christmas and April Fools — a zero-padded `MM-DD` at `/c/12-25`, sorted
+  by `month * 100 + day` the way a `TIME` is sorted by minutes past midnight,
+  and banded by month so the index reads as a calendar. There is no year in
+  it: a date that happens once is a number like any other and belongs at
+  `/n/`.
+
+  **Its other spellings are refused, not folded.** `1-5` does not become
+  `01-05`. Nothing would keep that difference, and one day has to have one
+  address, so refusal is what is left once rewriting is off the table — which
+  is the rule above reached from the other side, and the reason `date_key`
+  both checks the value and hands back the sort key. `02-30` and `13-01` go
+  the same way; `02-29` does not, because a leap day is a fixed date and there
+  is no year here to disagree with it. **`parse_number` does not guess at
+  it** either: `12-25` is Christmas and `80-20` is a ratio, and nothing in
+  either string says which, so this format is reached by picking it, the way
+  `TIME` is on `1:29:300` (ADR-0026).
+
+- **`/n/`, `/a/` and `/c/` are three sections over one column, and an entry
+  has one address.** `/a/UFO` is the abbreviation, `/c/12-25` is the date,
+  `/n/42` is the number, and `section_where()` in `store.py` is the single
+  condition that tells them apart — the list endpoint, all three value
+  `<head>`s and the sitemap all ask it. So a value filed in two of them, which
+  takes somebody choosing Mixed for `UFO` or for `12-25` on purpose, is two
+  entries at two addresses rather than one entry showing up twice. Do not
+  answer an abbreviation or a date at `/n/`: it is the same mistake as storing
+  the comma, one page short of the number.
+
+  `number` is the **remainder** of the three rather than a listed arm, so a
+  seventh format arriving with no thought about sections lands at `/n/`, which
+  is the side where a value with nothing special about how it reads has always
+  answered. `section_of()` and `section_sql()` beside it are the same three
+  names read the other way — a path to build, a column to group by — because a
+  second answer to which section a row is in would be two addresses for one
+  entry.
 - **A link in an entry stays a link.** No unfurling, no fetched thumbnails.
   Rendering a card means the server fetching a URL a stranger typed, and with
   no accounts there is nobody to rate-limit or ban — `http://169.254.169.254/`
