@@ -844,6 +844,23 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
             value, fmt, key = resolve_format(value, None)  # value changed, re-derive
         else:
             fmt, key = current["format"], current["sort_key"]
+        # A date's format is the one thing the open form may not move. /c/12-25
+        # is the entry's address, so re-filing it as INTEGER is the same edit
+        # as retyping the value -- the page becomes /n/12-25 and the sort key
+        # goes with it, since 12-25 is not a number to sort by and the Integer
+        # index draws its bands from that key. Correcting a misfiled one is the
+        # operator's renumber, the route that takes a name, a snapshot and an
+        # audit row, the same as correcting a value (ADR-0002, ADR-0026).
+        #
+        # Read off the settled format and not off `p.format`, so a value sent
+        # with no format -- which re-derives, and 12-25 does not re-derive as a
+        # date (ADR-0026) -- is the same refusal rather than the way round it.
+        if current["format"] == "CALENDAR" and fmt != "CALENDAR":
+            raise HTTPException(
+                422, "a date is read at /c/ and that is the entry's address, "
+                     "so an entry filed as a calendar date stays one -- send "
+                     "format=CALENDAR with the edit. Moving it out of the "
+                     "section is an operator's renumber.")
         # author is the first writer and stays put -- on an open wiki, an edit
         # by a stranger must not erase who the entry came from.
         # The conflict check is the last clause and nothing else: one statement,

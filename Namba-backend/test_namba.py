@@ -2290,6 +2290,29 @@ def test_api_round_trip():
     c.patch(f"/api/posts/{xmas['id']}", json={"title": "Christmas", "author": "elf"})
     rev = c.get(f"/api/posts/{xmas['id']}/revisions").json()[0]
     assert (rev["value"], rev["format"], rev["grouped"]) == ("12-25", "CALENDAR", False), rev
+    # Re-filing into the section is a way in and not a way back out. /c/04-01
+    # is the entry's address, so moving its format moves the page -- which the
+    # open form may no more do than retype the number, and which the
+    # operator's renumber is the route for (ADR-0002, ADR-0026). Left open,
+    # one PATCH puts the entry at /n/04-01 with no sort key, and since the
+    # Integer tab fills five fixed bands from that key it is then on the wiki
+    # and on no page.
+    was = len(c.get(f"/api/posts/{fools['id']}/revisions").json())
+    stuck = c.patch(f"/api/posts/{fools['id']}",
+                    json={"format": "INTEGER", "author": "vandal"})
+    assert stuck.status_code == 422 and "stays one" in stuck.text, stuck.text
+    # and the same refusal with no format at all: a value on its own re-derives
+    # the format, and 04-01 does not re-derive as a date (ADR-0026), so reading
+    # the settled format rather than what was sent is what closes both
+    slipped = c.patch(f"/api/posts/{fools['id']}",
+                      json={"value": "04-01", "author": "vandal"})
+    assert slipped.status_code == 422, slipped.text
+    held = c.get(f"/api/posts/{fools['id']}").json()
+    assert (held["format"], held["sort_key"], held["bucket"]) \
+        == ("CALENDAR", 401.0, "04"), held
+    assert held["edited_by"] == "hoaxer", "a refused edit signed the entry"
+    assert len(c.get(f"/api/posts/{fools['id']}/revisions").json()) == was, \
+        "a refused edit left a revision saying somebody replaced the entry"
     for pid in (xmas["id"], fools["id"], wrote["id"], leap["id"]):
         admin.set_status(pid, "HIDDEN")
 

@@ -450,6 +450,14 @@ export default function PostForm() {
               <select
                 id={fid('format')}
                 value={format}
+                /* A date's format is fixed once the entry exists, the same way
+                   its value is: /c/12-25 is the address, and moving it to
+                   Integer moves the page to /n/ and drops the sort key the
+                   Calendar index bands by. The API refuses it too; this is so
+                   the menu does not offer what Save would answer 422 to.
+                   Off the loaded entry and not off `format`, or picking
+                   Calendar here would lock the menu on the way past it. */
+                disabled={post?.format === 'CALENDAR'}
                 onChange={(e) => {
                   const next = e.target.value as '' | Format
                   setFormat(next)
