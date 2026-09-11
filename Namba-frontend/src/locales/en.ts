@@ -122,14 +122,14 @@ export const EN = {
     format: 'Format', autoDetect: 'Auto-detect', title: 'Title', titleHint: 'what it refers to',
     titlePlaceholder: (section: Section) => ({
       number: "The Hitchhiker's Guide to the Galaxy",
-      abbr: 'Unidentified flying object',
-      calendar: 'Christmas Day',
+      abbr: 'POV',
+      calendar: "April Fools' Day",
     })[section],
     details: 'Details', detailsHint: 'optional — why this value, what it means',
     detailsPlaceholder: (section: Section) => ({
       number: 'The Answer to the Ultimate Question of Life, the Universe, and Everything.',
-      abbr: 'Coined by the US Air Force for anything in the sky it could not identify.',
-      calendar: 'Kept on the 25th of December, whatever day of the week it lands on.',
+      abbr: "An expression for a particular person's point of view or perspective.",
+      calendar: 'A day for trading harmless lies and pranks.',
     })[section],
     markdown: 'Markdown works — **bold**, *italic*, [links](https://…), lists, headings and tables. A single Enter is a line break.',
     writtenIn: 'Written in', categories: 'Categories',

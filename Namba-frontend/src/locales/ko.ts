@@ -85,14 +85,14 @@ export const KO: Messages = {
     autoDetect: '자동 감지', title: '제목', titleHint: '무엇을 가리키는지 작성',
     titlePlaceholder: (section: Section) => ({
       number: '은하수를 여행하는 히치하이커를 위한 안내서',
-      abbr: '미확인 비행물체',
-      calendar: '크리스마스',
+      abbr: 'POV',
+      calendar: '만우절',
     })[section],
     details: '자세히', detailsHint: '선택 — 이 값인 이유와 의미',
     detailsPlaceholder: (section: Section) => ({
       number: '삶, 우주, 그리고 모든 것에 대한 궁극적인 질문의 답.',
-      abbr: '미 공군이 정체를 확인하지 못한 비행 물체를 가리켜 쓰기 시작한 말.',
-      calendar: '12월 25일에 지키는 날. 요일과 상관없이 날짜가 고정되어 있다.',
+      abbr: '특정 인물의 시점이나 관점을 나타내는 표현.',
+      calendar: '가벼운 거짓말이나 장난을 주고받는 날.',
     })[section],
     markdown: 'Markdown을 사용할 수 있습니다 — **굵게**, *기울임*, [링크](https://…), 목록, 제목, 표. Enter 한 번은 줄바꿈으로 표시됩니다.',
     writtenIn: '작성 언어', categories: '분류',

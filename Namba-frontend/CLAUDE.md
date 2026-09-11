@@ -896,12 +896,14 @@ selects a create-only branch. The examples in the hint go through
 February 29" in the reader's own language.
 
 **The two placeholders follow the format as well**, because an entry about
-`UFO` is not titled after a book about 42 and one about Christmas is not
+`POV` is not titled after a book about 42 and one about April Fools is not
 either: `titlePlaceholder` and `detailsPlaceholder` take the section and each
-locale answers with three — the Hitchhiker's Guide, Unidentified flying
-object, Christmas Day. They are examples of what to write in that box, so a
-number's example over an abbreviation's field is the field explaining itself
-with the wrong thing. `detailsHint` says "this value" rather than "this
+locale answers with three — the Hitchhiker's Guide, POV, April Fools' Day.
+They are examples of what to write in that box, so a number's example over an
+abbreviation's field is the field explaining itself with the wrong thing. Each
+one is also an example of the *value* beside it: `POV` and April 1 both lead
+the hint under their field, so the three boxes read as one entry rather than
+as three unrelated ones. `detailsHint` says "this value" rather than "this
 number" for the same reason; four of the seven locales had already written it
 that way.
 

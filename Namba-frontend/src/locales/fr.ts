@@ -101,14 +101,14 @@ export const FR: Messages = {
     format: 'Format', autoDetect: 'Détection automatique', title: 'Titre',
     titleHint: 'ce à quoi l’entrée fait référence', titlePlaceholder: (section: Section) => ({
       number: 'Le Guide du voyageur galactique',
-      abbr: 'Objet volant non identifié',
-      calendar: 'Noël',
+      abbr: 'POV',
+      calendar: 'Poisson d’avril',
     })[section],
     details: 'Détails', detailsHint: 'facultatif — pourquoi cette valeur et ce qu’elle signifie',
     detailsPlaceholder: (section: Section) => ({
       number: 'La réponse à la grande question sur la vie, l’univers et le reste.',
-      abbr: 'Le terme forgé par l’armée de l’air américaine pour ce qu’elle n’arrivait pas à identifier dans le ciel.',
-      calendar: 'Célébré le 25 décembre, quel que soit le jour de la semaine.',
+      abbr: 'Une expression désignant le point de vue ou la perspective d’une personne donnée.',
+      calendar: 'Un jour où l’on échange mensonges anodins et farces.',
     })[section],
     markdown: 'Vous pouvez utiliser Markdown : **gras**, *italique*, [liens](https://…), listes, titres et tableaux. Une seule pression sur Entrée crée un saut de ligne.',
     writtenIn: 'Langue du texte', categories: 'Catégories',

@@ -36,7 +36,7 @@ const EXAMPLES: Record<string, string> = {
   MIXED: '11/22/63 · 9¾ · 80/20',
   TIME: '10:04PM · 09:41',
   CALENDAR: '12-25 · 04-01 · 02-29',
-  ABBR: 'UFO · R&D · MP3',
+  ABBR: 'POV · R&D · MP3',
 }
 
 // the format goes through, so the Calendar examples read the way the field
