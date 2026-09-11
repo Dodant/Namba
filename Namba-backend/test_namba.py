@@ -3857,6 +3857,164 @@ def test_the_share_card_is_a_real_png():
     width, height = struct.unpack(">II", head[16:24])
     assert (width, height) == (1200, 630), (width, height)
 
+
+def test_the_plugin_is_counted_and_is_never_a_write():
+    """The one read in this codebase that is written down, and the four places
+    it must not turn up in.
+
+    Counting a read at all is a departure -- `guard` says reading this wiki
+    costs nothing and records nothing -- so the departure is kept to requests
+    that asked for it by naming themselves, and kept out of `events`. That
+    second half is what this test is mostly about: an install polling politely
+    every half hour is 48 calls a day, and as event rows they would land in
+    the writes-per-hour figure that says whether a spam wave is on, in the
+    operator's recent-changes feed, and at the top of the abuse page -- where
+    the plugin's own users would look exactly like somebody hammering the
+    wiki. The abuse page reads `events` and nothing else, so "no event row"
+    is what clears all of them at once.
+    """
+    c = TestClient(main.app)
+    ops = _operator(TestClient(main.app))
+
+    assert TestClient(main.app).get("/api/admin/plugin").status_code == 401
+    # the window is a day count and not a free number: a "year" is the ceiling
+    for bad in (0, 367):
+        assert ops.get("/api/admin/plugin", params={"days": bad}).status_code == 422
+
+    today = datetime.now(timezone.utc).date().isoformat()
+
+    def day_row(answer, day=today):
+        return next((r for r in answer["rows"] if r["day"] == day), None)
+
+    before = ops.get("/api/admin/plugin").json()
+    was = day_row(before)
+    writes = ops.get("/api/admin/stats").json()["writes_1h"]
+
+    # a browser reading the wiki is not counted, which is every other read
+    assert c.get("/api/posts", params={"limit": 1}).status_code == 200
+    assert ops.get("/api/admin/plugin").json() == before, \
+        "an ordinary read was counted; only a caller that names itself is"
+
+    con = db.connect()
+    try:
+        logged = con.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+    finally:
+        con.close()
+
+    # The third signs itself with a version, because `is_plugin` matches on a
+    # prefix so that a later release still counts -- a rule an exact-match
+    # rewrite would pass every other assertion here.
+    for ua in ("namba-plugin", "namba-plugin", "namba-plugin/9.9 (curl)"):
+        r = c.get("/api/posts", params={"sort": "random", "limit": 5},
+                  headers={"user-agent": ua})
+        assert r.status_code == 200, r.text
+        assert len(r.json()) <= 5, "the counter changed what the route answers"
+
+    got = ops.get("/api/admin/plugin").json()
+    mine = day_row(got)
+    assert mine is not None, "the plugin asked three times and the day is missing"
+    # Three calls, one write. The first lands at once, so a client that runs
+    # the plugin once is a client the panel knows about; the two inside the
+    # minute after it are carried in memory. What is counted is every call --
+    # what is bounded is how often the write lock is taken for them.
+    base = was["calls"] if was else 0
+    assert mine["calls"] == base + 1, \
+        "the first call of a window was not written straight away"
+    assert mine["clients"] == 1, "one address is one client, however often it asks"
+    assert mine["new"] == 1, "its first call ever was not counted as a first"
+
+    # Close the window and ask once more: the two carried calls arrive with it,
+    # so the four calls are four and only two of them took the lock.
+    flush = events.PLUGIN_FLUSH
+    events.PLUGIN_FLUSH = 0
+    try:
+        assert c.get("/api/posts", params={"limit": 1},
+                     headers={"user-agent": "namba-plugin"}).status_code == 200
+    finally:
+        events.PLUGIN_FLUSH = flush
+    mine = day_row(ops.get("/api/admin/plugin").json())
+    assert mine["calls"] == base + 4, \
+        "the calls carried inside the window were lost rather than flushed"
+
+    # The promise the `try` in `list_posts` makes: a counter that cannot write
+    # must not become a 500 on the route every page of the wiki reads from.
+    # Without this the guard can be lifted out and nothing goes red.
+    counter = events.count_plugin
+    events.count_plugin = lambda *a, **k: (_ for _ in ()).throw(
+        RuntimeError("the disk is full"))
+    try:
+        r = c.get("/api/posts", params={"limit": 1},
+                  headers={"user-agent": "namba-plugin"})
+        assert r.status_code == 200, r.text
+    finally:
+        events.count_plugin = counter
+    assert day_row(ops.get("/api/admin/plugin").json())["calls"] == mine["calls"], \
+        "a counter that raised still moved the count"
+
+    con = db.connect()
+    try:
+        assert con.execute("SELECT COUNT(*) FROM events").fetchone()[0] == logged, \
+            "a plugin read left a row in the audit log"
+    finally:
+        con.close()
+    assert ops.get("/api/admin/stats").json()["writes_1h"] == writes, \
+        "a plugin read counted as a write on the dashboard"
+    feed = ops.get("/api/admin/activity", params={"kind": "all", "limit": 100}).json()
+    assert not [e for e in feed["rows"] if "PLUGIN" in (e["action"] or "")], \
+        "the recent-changes feed is showing polling"
+
+    # An install from before the window: still counted in `ever`, because that
+    # is the question `ever` answers, and out of every row and every
+    # window-scoped figure, because that is the question those answer.
+    old_day = (datetime.now(timezone.utc).date() - timedelta(days=40)).isoformat()
+    con = db.connect()
+    try:
+        with con:
+            con.execute(
+                """INSERT INTO plugin_days (day, ip_hash, calls, first_at, last_at)
+                   VALUES (?,?,?,?,?)""",
+                (old_day, "an-install-from-before", 5,
+                 old_day + "T00:00:00+00:00", old_day + "T00:00:00+00:00"))
+            # and asking again today, so that today holds two clients and
+            # one first-timer: with one client a day, `new` and `clients`
+            # are the same column twice and neither is really being read.
+            con.execute(
+                """INSERT INTO plugin_days (day, ip_hash, calls, first_at, last_at)
+                   VALUES (?,?,?,?,?)""",
+                (today, "an-install-from-before", 2,
+                 today + "T00:00:00+00:00", today + "T00:00:00+00:00"))
+    finally:
+        con.close()
+
+    month = ops.get("/api/admin/plugin", params={"days": 30}).json()
+    year = ops.get("/api/admin/plugin", params={"days": 365}).json()
+    assert month["ever"] == year["ever"] == got["ever"] + 1, \
+        "`ever` is every client there has ever been, whatever the window is set to"
+    assert day_row(month, old_day) is None, "a 40-day-old day inside a 30-day window"
+    assert day_row(year, old_day)["new"] == 1, "first seen is first seen"
+    assert day_row(year)["new"] == 1, "the old install made today's client stale"
+    # `born` is over the whole table: inside a 30-day window the client first
+    # seen 40 days ago is not a first-timer, so today reads two clients and one
+    # `new`. A window-scoped `born` answers 2 here and passes everything else.
+    assert (day_row(month)["clients"], day_row(month)["new"]) == (2, 1), \
+        "`new` is first-seen-ever, not first-seen-inside-the-window"
+    assert (month["clients"], year["clients"]) == (2, 2), \
+        "clients is DISTINCT over the window, not a sum of the days"
+    assert [r["day"] for r in year["rows"]] == \
+        sorted([r["day"] for r in year["rows"]], reverse=True), \
+        "the table reads newest first, like every other one in the panel"
+
+    # Every figure this endpoint returns is cumulative over the whole table, so
+    # the fabricated client does not get to be somebody else's baseline.
+    con = db.connect()
+    try:
+        with con:
+            con.execute("DELETE FROM plugin_days WHERE ip_hash = ?",
+                        ("an-install-from-before",))
+    finally:
+        con.close()
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_"):

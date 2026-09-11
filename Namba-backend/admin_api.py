@@ -469,6 +469,75 @@ def stats(_=Depends(auth.require_admin), con=Depends(db.get_db)):
     }
 
 
+@router.get("/plugin")
+def plugin_use(
+    days: int = Query(default=30, ge=1, le=366),
+    _=Depends(auth.require_admin),
+    con=Depends(db.get_db),
+):
+    """How many installs of the editor plugin are still asking, by day.
+
+    **No number here is an install count, because there is no such number to
+    have.** `/plugin install` is a git clone from GitHub and nothing calls
+    home: nobody reports an install to the wiki, and the marketplace does not
+    report one either. What this counts is what ran. `ever` is every client
+    that has ever asked, which is the closest honest thing to an install
+    count; `new` is the ones whose first call falls inside the window, which
+    is the day an install started being used -- and an install that never
+    runs is not a user.
+
+    A client is an address hash, not a person (see `plugin_days`), and it is
+    self-declared besides: the plugin names itself in a header anybody could
+    send. A usage figure on an open wiki, not an audited one.
+
+    ponytail: three queries and no rollup. The table is already one row per
+    client per day, the front end draws the bars from the rows, and there is
+    no chart endpoint. Cache it when a year of it stops being instant.
+    """
+    first = (datetime.now(timezone.utc).date()
+             - timedelta(days=days - 1)).isoformat()
+    # One snapshot for all three reads. A plugin call committing between them
+    # answers a window holding no rows beside a client count of one, and the
+    # page then draws its empty state under a tile saying somebody asked. A WAL
+    # reader gets a stable view for the length of its transaction and takes no
+    # lock for it, so this costs two statements and blocks nobody. Left to the
+    # connection's close on the way out if a query raises: ending a read
+    # transaction is all a rollback would do here.
+    con.execute("BEGIN DEFERRED")
+    # `born` is over the whole table on purpose: a client first seen before the
+    # window is not new inside it, however long the window is.
+    rows = con.execute(
+        """WITH born AS (SELECT ip_hash, MIN(day) AS day
+                         FROM plugin_days GROUP BY ip_hash)
+           SELECT d.day, COUNT(*) AS clients, SUM(d.calls) AS calls,
+                  SUM(d.day = b.day) AS new
+           FROM plugin_days d JOIN born b ON b.ip_hash = d.ip_hash
+           WHERE d.day >= ?
+           GROUP BY d.day ORDER BY d.day DESC""",
+        (first,),
+    ).fetchall()
+
+    def one(sql, *args):
+        return con.execute(sql, args).fetchone()[0]
+
+    out = {
+        "days": days,
+        "since": first,
+        # DISTINCT over the window, and not the sum of the column above: a
+        # client that ran it on five of those days is one client, not five.
+        # This is the number that answers "how many clients are still
+        # running it" -- never how many people, for the reason above.
+        "clients": one("""SELECT COUNT(DISTINCT ip_hash) FROM plugin_days
+                          WHERE day >= ?""", first),
+        "ever": one("SELECT COUNT(DISTINCT ip_hash) FROM plugin_days"),
+        # The totals of `new` and `calls` are sums of the rows and are left to
+        # the page that already has them, rather than two more queries here.
+        "rows": [dict(r) for r in rows],
+    }
+    con.execute("COMMIT")
+    return out
+
+
 @router.get("/activity")
 def activity(
     kind: str = "all",

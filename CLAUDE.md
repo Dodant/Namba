@@ -428,6 +428,29 @@ opposite, and only its regex says `[0-9]`.
   stdout traceback, which is untouched because Starlette re-raises after
   calling a handler, answers with what input.
 
+- **Reading records nothing, and the one exception volunteered.** The editor
+  plugin — its own repository, `Dodant/Namba-plugin` — names itself in a
+  `User-Agent`, and `/api/posts` counts that read in `plugin_days`: one row
+  per client per day, a counter that UPDATEs. **It is one row per client per
+  day and at most one *write* per client per minute**, the calls in between
+  buffered in `events._pending`, because `/api/posts` carries no limiter and
+  an upsert per call put SQLite's one write lock behind an unmetered GET —
+  read spam this wiki accepts by design turning into write starvation it does
+  not. Every other read still records nothing,
+  which is very nearly every read, and the self-declaration is the
+  whole of the boundary — what gets counted is the traffic that asked to be,
+  which is why this is not analytics arriving by the side door. It is
+  deliberately **not** an `events` row: `/loop 30m` is 48 calls a day per
+  install, and as event rows they would bury the recent-changes feed and sit
+  at the top of the abuse page, where an install asking politely every half
+  hour looks exactly like somebody hammering the wiki. **No figure on that
+  page is an install count** — an install is a git clone, nothing calls home,
+  and a client is an address hash rather than a person, so an office is one
+  and a laptop on two networks is two. The half of this that lives in the
+  other repository, `-A namba-plugin` in its `SKILL.md`, is hand-copied
+  against `PLUGIN_UA` here and no test in this suite can reach it: change one
+  and the figures go quietly to zero, with no error anywhere (ADR-0028).
+
 - **A write that decides holds the lock while it decides.** `db.writing(con)`
   is the transaction every one of the twelve public write routes opens, and it
   is `BEGIN IMMEDIATE` rather than `with con:` for a reason that is easy to get
@@ -465,12 +488,16 @@ opposite, and only its regex says `[0-9]`.
 - **One process, and that is a requirement rather than a default.** The three
   limiters that stand between an open wiki and a script — `main._writes`,
   `auth._attempts`, `auth._mfa_attempts` — are `defaultdict`s in process
-  memory. A second worker is a second allowance for the same address, and a
-  second container is a third: the login limiter in particular is what makes
-  five password attempts a minute mean five. `--workers 1` in the Dockerfile
+  memory, and `events._pending` is a fourth structure living there for a
+  different reason (it buffers the plugin's counts so the wiki's busiest read
+  does not take the write lock on every call). A second worker is a second
+  allowance for the same address, and a second container is a third: the login
+  limiter in particular is what makes five password attempts a minute mean
+  five, and the counter would split one client's calls between workers.
+  `--workers 1` in the Dockerfile
   is the enforcement and its comment says so, but a deploy setting is not
   where a rule like this survives — this list is. So it is here: **adding
-  workers, gunicorn, or a second replica means moving those three out of
+  workers, gunicorn, or a second replica means moving those four out of
   process memory first**, in the same change, or the rule is quietly gone with
   nothing failing. There is no test that can catch it, which is the other
   reason it is written down (ADR-0008).

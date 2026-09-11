@@ -40,3 +40,4 @@ the rule it introduces.
 | [0025](0025-a-queue-is-worked-without-leaving-it.md) | A queue is worked without leaving it | accepted | 2026-09-10 |
 | [0026](0026-a-calendar-date-is-a-format.md) | A fixed calendar date is a format, and a third section | accepted | 2026-09-11 |
 | [0027](0027-a-number-format-says-the-value-is-a-number.md) | A number format says the value is a number, and that is checked | accepted | 2026-09-11 |
+| [0028](0028-the-plugin-is-the-one-read-that-is-counted.md) | The editor plugin's read is counted, and it is not an event | accepted | 2026-09-11 |
