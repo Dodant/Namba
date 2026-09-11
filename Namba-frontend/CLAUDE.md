@@ -701,7 +701,7 @@ What actually changes shape, rather than size:
   of overflowing them.
 
   **The scroll is only half of it.** The tab you are on can start off the end
-  of the strip, and four tabs with no underline on any of them is a page that
+  of the strip, and five tabs with no underline on any of them is a page that
   looks like it belongs to none of them. `Index` in `Home.tsx` holds a ref on
   the `<nav>` and a **layout** effect that calls `scrollIntoView({ inline:
   'nearest', block: 'nearest' })` on `[aria-current="page"]`. Each half of that
@@ -717,26 +717,27 @@ What actually changes shape, rather than size:
   by the difference on a tab press.
 
   **The strip is spaced into its three sections.** `.apart` from `Home.tsx`
-  wherever `sectionOf(f)` differs from the tab before it, spent by
-  `margin-left: auto` in `index.css`. Four of these tabs read digits as a
-  number, one reads a day of the year and one reads letters — `UFO`, `CSI`,
-  `NASA` — which is the division in `FORMATS` that decides how a value is
-  read, sorted and addressed, and six evenly spaced tabs say there is no such
-  division. Two auto margins split the free space between them, which is what
-  makes three groups read as three. The class is computed from the sections
-  and **not** from a position, so reordering `FORMATS` moves the tabs and
-  leaves the gaps where they belong. An auto margin and not a gap or a separator, because it is the one
-  rule that does nothing when there is nothing to spend: below about 460 the
-  strip overflows, free space goes negative, the margin resolves to 0, and the
-  tab falls back in beside the others and scrolls with them rather than
-  opening a gap nobody can see the far side of.
+  wherever `sectionOf(f)` differs from the tab before it, drawn by `index.css`
+  as `margin-left: 12px` and a 1px `::before` hairline. Four of these tabs
+  read digits as a number, one reads a day of the year and one reads letters —
+  `UFO`, `CSI`, `NASA` — which is the division in `FORMATS` that decides how a
+  value is read, sorted and addressed, and six evenly spaced tabs say there is
+  no such division. Two of these dividers are what makes three groups read as
+  three. The class is computed from the sections and **not** from a position,
+  so reordering `FORMATS` moves the tabs and leaves the gaps where they
+  belong. A divider and not an auto margin, which is what this was first: the
+  margin pushed Abbreviation to the far end of a wide row, where it read as an
+  unrelated action rather than as the next tab along. A fixed gap keeps all
+  six in one group and travels with the strip when the strip scrolls, which is
+  the case an auto margin cannot answer — free space is the one thing a narrow
+  screen has none of.
 
   The scrollbar is hidden (`scrollbar-width: none` and the `-webkit`
   pseudo-element) and the tab half-cut at the edge is the cue in its place —
   the affordance every native tab strip uses, and there is no pointer at these
   widths to want the bar. `overscroll-behavior-x: contain` because iOS reads a
   swipe past the end of a horizontal scroller as Back, and flicking through
-  five tabs must not leave the page.
+  six tabs must not leave the page.
 
   **The language tabs on `/p/:id` share `.tabs` and deliberately do not get
   this.** They are `.tabs langs`, they wrap, and they should: they are

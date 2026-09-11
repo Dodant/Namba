@@ -303,9 +303,9 @@ function Index({ lang }: { lang: string }) {
             /* .apart wherever the section changes, not on a position in
                FORMATS: the gaps are the /n/, /c/ and /a/ lines, so reordering
                that array moves the tabs and leaves the gaps where they
-               belong. index.css spends the free space, and two of them split
-               it between the two, which is what makes three groups read as
-               three. */
+               belong. index.css draws each one as 12px and a hairline -- the
+               strip scrolls rather than spreading, so there is no free space
+               to spend -- and two of them make three groups read as three. */
             className={`${i > 0 && sectionOf(f) !== sectionOf(FORMATS[i - 1])
               ? 'apart ' : ''}${f === format ? 'on' : ''}`}
             aria-current={f === format ? 'page' : undefined}
