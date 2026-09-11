@@ -26,7 +26,7 @@ from fastapi.responses import HTMLResponse
 
 import seo_locale
 from db import nfc
-from numfmt import grouped_value
+from numfmt import date_key, grouped_value
 from store import LIVE, section_of, section_where
 
 # Derived, not spelled again: a locale the interface offers is exactly one
@@ -536,7 +536,13 @@ def index_html(con, request, path: str, page: str, base: str) -> HTMLResponse:
     if abbr is not None:
         return answer(head_abbr(con, page, abbr, base, locale))
     date = path_seg(request, "c/")
-    if date is not None:
+    # /c/ is the one closed section: a day of the year is a fixed set of 366
+    # addresses, so /c/99-99 is not an empty date page, it is not a page. The
+    # other two are open sets and keep their empty state -- /n/999999 and
+    # /a/QQQ are values nobody has written about yet, which is a different
+    # answer from a value there is no such thing as. date_key() draws the line,
+    # the same function resolve_format() refuses a write with.
+    if date is not None and date_key(date) is not None:
         return answer(head_calendar(con, page, date, base, locale))
     tag = path_seg(request, "t/")
     if tag is not None:

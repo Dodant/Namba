@@ -732,6 +732,15 @@ def test_head_per_route():
         # nothing about the chat window someone pastes "be the first" into.
         assert 'property="og:image" content="http://testserver/og.png"' in page, empty
 
+    # -- ...except /c/, the one closed section. There are 366 days, so an
+    # unreadable one is not an empty date page, it is not a page: no canonical
+    # claiming it exists, the same answer every mistyped path gets. CalendarPage
+    # in App.tsx draws the reader the matching "Nothing here".
+    for nothing in ("/c/99-99", "/c/1-5", "/c/02-30", "/c/christmas"):
+        page = c.get(nothing).text
+        assert "noindex" in page, nothing
+        assert 'rel="canonical"' not in page, nothing
+
     # -- the entry itself is grouped as its own flag says
     grouped = c.post("/api/posts", json={
         "value": "1000", "title": "A grand", "grouped": True}).json()
