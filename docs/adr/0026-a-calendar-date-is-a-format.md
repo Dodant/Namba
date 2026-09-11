@@ -55,6 +55,31 @@ ratio, and nothing in either string says which — the same ambiguity that keeps
 picking it. `test_parse` pins `12-25` and `02-29` as `MIXED` suggestions so
 that stays true.
 
+**The section is closed at both ends, and it is the only one that is.**
+`/n/` and `/a/` are open sets: `/n/999999` and `/a/QQQ` are values nobody has
+written about *yet*, and an empty page there is a real page inviting the first
+entry. A day of the year is 366 addresses, so `/c/99-99` is not an empty date
+— it is not a page, and `index_html` falls it through to the same noindex
+head every mistyped path gets, with no canonical claiming it exists.
+`CalendarPage` in `App.tsx` asks `monthDay` at the same boundary and draws the
+`*` route's own "Nothing here", so the `<head>` a crawler reads and the page a
+reader sees agree. Left open, the empty page offered "Give it a meaning" and
+the link carried the unreadable value to the form, which cannot read it back
+and starts from today — so the reader who asked for `99-99` filed the entry
+under this morning.
+
+**And an entry filed as a date stays one.** `edit_post` refuses a format that
+would take a `CALENDAR` entry out of `/c/`. A section is an address, and the
+open form does not change addresses — it will not let the value be retyped for
+exactly this reason (ADR-0005), and `POST /api/admin/posts/{id}/value` is the
+route that can, with a name, a snapshot and an audit row behind it. The check
+reads the format the route has *settled*, not the one that was sent, so an
+edit carrying only a value is the same refusal: `12-25` does not re-derive as
+a date, so re-deriving is the same move made quietly. Re-filing *into* the
+section stays open, because picking Calendar for a `MIXED` `04-01` is how a
+misfiled date is corrected. `ABBR` needs no equivalent — `UFO` re-derives to
+`ABBR`, so nothing drops it out of `/a/` by accident.
+
 **`resolve_format` stays pure.** No "is this date taken" lookup: a create
 decides nothing about another row, which is what lets it be the one write with
 no deciding read to hold the lock over (ADR-0007).
@@ -92,6 +117,20 @@ is a different entry about a different thing.
   from `Intl`. **A month with no day** (`10-00`, "October"): not asked for, and
   it needs its own band, sort and display rules. **A "today" view**: the
   current month opening is the whole of the date-awareness here.
+- **Re-filing a date as `INTEGER` was one click from the public form, and it
+  took the entry off the index.** `store.resolve_format` swallows `float()`'s
+  `ValueError` for an explicit `INTEGER`, so the entry kept `12-25` and lost
+  its sort key; `bucket_of` then has no band to give. Three of the six tabs
+  fill a fixed band list with `rows.filter(n => n.bucket === b)` — Integer,
+  Abbreviation and Calendar — and Integer is the only one that can be handed a
+  row with no band at all, because `is_abbr` and `date_key` guarantee the
+  other two one. So the entry answered at `/n/12-25` and under no band: on the
+  wiki and on no page. The shape predates this branch
+  (`UFO` re-filed as `INTEGER` does it too) and the section lock does not
+  reach all of it: `POST /api/posts` with `{"value": "9 3/4", "format":
+  "INTEGER"}` still strands one. Closing that means either checking the four
+  formats that are currently taken at their word, or giving the Integer tab a
+  band for the leftovers — a decision, not an oversight, and not this one.
 - The back office keeps the stored spelling everywhere, deliberately. One of
   the places it draws a value is the field an operator retypes it in, and an
   operator judging or correcting a value wants the characters that are stored —
@@ -103,4 +142,7 @@ is a different entry about a different thing.
   requester before anything was written; the answers were the fuller option
   each time — its own section rather than `/n/`, all twelve months rather than
   only the ones with entries, and a localized reading rather than the stored
-  `MM-DD` on screen.
+  `MM-DD` on screen. The section lock and the closed `/c/` came out of the
+  pre-merge review the same day: both were reachable from the finished branch
+  and neither had been asked about, so they are decisions above rather than a
+  later entry here.

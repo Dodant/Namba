@@ -942,12 +942,21 @@ Calendar is last and sits under an `<hr>` — a real one, which a `<select>`
 takes natively; a browser that will not draw it drops the line and leaves the
 menu — because `parse_number` cannot return that format: `12-25` is as much a
 ratio as a day, so a date is only ever reached by picking it. So do not put
-`CALENDAR` back into the `FORMATS.map` above it. The line is also the only
-thing that warns a reader on `/p/:id/edit`: picking Auto-detect there sends no
-format, the value goes back unchanged, and the server re-derives it to Mixed —
-the entry leaves `/c/12-25` for `/n/12-25` with nothing on screen saying so.
-The index's tab strip is *not* reordered to match, because there the order is
-the order the sections come in.
+`CALENDAR` back into the `FORMATS.map` above it. The index's tab strip is
+*not* reordered to match, because there the order is the order the sections
+come in.
+
+**On `/p/:id/edit` the whole select is `disabled` for an entry that is already
+a date**, off `post.format` and not off the `format` state — read off the
+state, picking Calendar would lock the menu on the way past it. `/c/12-25` is
+that entry's address, so changing its format moves the page, which the open
+form does not do to a value either; `edit_post` answers 422 and this is only
+so the menu does not offer what Save would refuse. Nothing extra is said
+under it: the field above already reads Date and "fixed — another date is
+another entry", and a greyed control saying Calendar beside that is the same
+sentence twice. A new entry is unaffected, and so is an entry that is *not* a
+date — picking Calendar for a `MIXED` `04-01` is how a misfiled one is
+corrected.
 
 The Format select reshapes the field beside it, down to that field's own label
 — with Abbreviation picked, "Number" is the wrong word for the box you are
@@ -1025,7 +1034,15 @@ works but `/api/numbers/{value}` would not.
 
 `Browse.tsx` serves five of them — `/n/:value`, `/a/:value`, `/c/:value`,
 `/t/:tag`, `/search` — because they differ only in which filter reaches
-`api.posts()`. Add a sixth list view by extending its `mode`, not by copying
+`api.posts()`. `/c/:value` goes through `CalendarPage` in `App.tsx` first,
+which is four lines and belongs there rather than in `Browse`: a day of the
+year is a closed set of 366, so `/c/99-99` is not an empty date page, it is
+not a page, and the answer it gets is the `*` route's own `NotFound`. The
+other two value sections are open sets and keep their empty state — nobody
+has written about `999999` *yet*. Without it the empty page offered "Give it
+a meaning", and the link carried a value the form cannot read, so the entry
+was filed under today's date instead. `index_html` in `seo.py` draws the same
+line with `date_key`, so the `<head>` and the page agree. Add a sixth list view by extending its `mode`, not by copying
 the file. `ABOUT_VALUE` in there is the three modes that are about one value:
 which section reads the page, and which format the Add pill preselects so a
 reader who follows it lands back in the section they came from. Off the mode

@@ -282,6 +282,20 @@ where both bite, so all three writes hit them.
   either string says which, so this format is reached by picking it, the way
   `TIME` is on `1:29:300` (ADR-0026).
 
+  **The section is closed at both ends, and it is the only one that is.**
+  There are 366 days, so `/c/99-99` is not an empty date page the way
+  `/n/999999` is an empty number one — it is not a page at all, and
+  `index_html` in `seo.py` and `CalendarPage` in `App.tsx` each ask
+  `date_key` / `monthDay` before drawing one, so what a crawler reads and what
+  a reader sees agree. At the other end, an entry filed as a date stays one:
+  `edit_post` refuses a format that would take it out of `/c/`, because that
+  is the entry's address and moving a page is the operator's renumber, exactly
+  as retyping a value is. Left open it was one click to an entry at `/n/12-25`
+  with no sort key, and the Integer tab fills five fixed bands from that key —
+  on the wiki and on no page, which is the thing the band rule above exists to
+  prevent. Re-filing *into* the section is untouched: a `MIXED` `04-01`
+  somebody meant as April Fools is still corrected by picking Calendar.
+
 - **`/n/`, `/a/` and `/c/` are three sections over one column, and an entry
   has one address.** `/a/UFO` is the abbreviation, `/c/12-25` is the date,
   `/n/42` is the number, and `SECTION_FORMATS` in `store.py` is the single

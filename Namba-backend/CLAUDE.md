@@ -559,6 +559,14 @@ the sitemap.
   difference and one day has to have one address (ADR-0026). `02-29` passes:
   a leap day is a fixed date with no year to disagree with it.
 
+  It answers a third question in `index_html`: **`/c/{value}` is a page only
+  for a value `date_key` can read.** The other two sections are open sets and
+  an empty one is a real page inviting the first entry, but there are 366
+  days, so `/c/99-99` is not an empty date — it falls through to the same
+  noindex head every mistyped path gets, with no canonical claiming it exists.
+  `CalendarPage` in `App.tsx` asks `monthDay` at the same boundary, so the
+  `<head>` and the page agree.
+
   Two things the *abbreviation* shape does not say. It is looser than
   `parse_number`'s branch on purpose: `MP3`, `Y2K` and `COVID-19` carry digits and the parser
   will never guess at them, and a gate refusing what a poster explicitly
@@ -581,6 +589,16 @@ the sitemap.
   `main.py` and some in `seo.py`, and a second answer to which section a row
   is in would be two addresses for one entry. An unknown section filters
   nothing rather than 422ing, for the reason an unknown `sort` falls back.
+
+  **`edit_post` will not move an entry out of `/c/`.** The check is on the
+  format the route has settled, not on the `format` that was sent, so an edit
+  carrying only a value — which re-derives, and `12-25` re-derives to `MIXED`
+  — is the same 422 and not the way round it. A section is an address and the
+  open form does not change addresses; `POST /api/admin/posts/{id}/value` is
+  the route that does, with a name, a snapshot and an audit row behind it. The
+  other direction is open, because picking Calendar for a `MIXED` `04-01` is
+  how a misfiled date gets corrected. `ABBR` needs no equivalent: `UFO`
+  re-derives to `ABBR`, so nothing drops it out of `/a/` by accident.
 
   Every arm is a plain comparison on the column rather than a `CASE`, so
   `idx_posts_format` is still usable, and **`number` is the remainder**
