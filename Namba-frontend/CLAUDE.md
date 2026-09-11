@@ -176,8 +176,15 @@ every link in the panel is wrong in one of them.
   and `resolve_format` on the server settles the spelling, the separators and
   the sort key. The answer is refetched rather than patched in for that reason,
   and a refusal is drawn *inside* the dialog — 409 for the same number back
-  again and 422 for an abbreviation with no letters in it are the ordinary
-  replies here, and the page behind a modal is inert and unreadable.
+  again, and 422 for an abbreviation with no letters in it or a date that is
+  not a day of the year, are the ordinary replies here, and the page behind a
+  modal is inert and unreadable. Those two formats are refused rather than
+  read, which is why they are the refusals an operator meets: the panel offers
+  every format the wiki has, including the two that can be wrong about the
+  value. Auto-detect keeps an abbreviation one and does **not** keep a date
+  one, because `parse_number` never guesses a date — so "Work it out" on
+  `12-25` files it as Mixed, at `/n/`. That is why the select starts on the
+  format the entry already has.
 - **A closed `<dialog>` is hidden by a *user-agent* rule, so never give one an
   unconditional `display`.** Cascade origin is settled before specificity: a
   plain `.sheet { display: flex }` beats `dialog:not([open]) { display: none }`

@@ -420,7 +420,8 @@ export default function Entry() {
         {/* Repeated inside the dialog, and it has to be: the page behind a
             modal is inert and unreadable, and a refusal here is the ordinary
             case rather than the exception -- the same number back again, a
-            format the value cannot be, an abbreviation with no letters in it.
+            format the value cannot be, an abbreviation with no letters in it,
+            a date with no such day in it.
             The typed value stays put so it can be corrected. */}
         {err && (
           <p className="err" role="alert">

@@ -1759,12 +1759,28 @@ def test_admin_content_and_dashboard():
                     json={"value": "1971"}).status_code == 409
     assert ops.post(f"/api/admin/posts/{pid}/value",
                     json={"value": "1971", "format": "SHRUG"}).status_code == 422
-    # ABBR is a claim about the value rather than a way of reading it, so it is
-    # checked here too -- this route settles the format through resolve_format
-    # for exactly that reason
+    # ABBR and CALENDAR are claims about the value rather than ways of reading
+    # it, so both are checked here too -- this route settles the format through
+    # resolve_format for exactly that reason
     assert ops.post(f"/api/admin/posts/{pid}/value",
                     json={"value": "1971", "format": "ABBR"}).status_code == 422
-    ops.post(f"/api/admin/posts/{pid}/value", json={"value": "1969"})
+    assert ops.post(f"/api/admin/posts/{pid}/value",
+                    json={"value": "1971", "format": "CALENDAR"}).status_code == 422
+    assert ops.post(f"/api/admin/posts/{pid}/value",
+                    json={"value": "1-5", "format": "CALENDAR"}).status_code == 422
+    # Re-filing is this route's other job, and the panel is the only place it
+    # can be done: an entry filed as a number moves into the calendar section
+    # by an operator saying so, and the section follows the format.
+    dated = ops.post(f"/api/admin/posts/{pid}/value",
+                     json={"value": "12-25", "format": "CALENDAR"})
+    assert dated.status_code == 200, dated.text
+    assert dated.json()["value"] == "12-25", "a date is stored as the two pairs"
+    assert (dated.json()["format"], dated.json()["sort_key"]) == ("CALENDAR", 1225.0)
+    # ...and it moves back out, because auto-detect does not guess a date --
+    # which is the one way this route can un-file one, and why the panel sends
+    # the format it is showing rather than nothing
+    back = ops.post(f"/api/admin/posts/{pid}/value", json={"value": "1969"})
+    assert back.json()["format"] == "INTEGER", "auto-detect guessed a date"
     ops.post(f"/api/admin/posts/{pid}/status", json={"status": "ACTIVE"})
 
     # the counters, and the two that must not double-count each other
