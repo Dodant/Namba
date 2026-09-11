@@ -154,6 +154,33 @@ CREATE INDEX IF NOT EXISTS idx_events_since  ON events(at);
 -- pushed a snapshot has a value), which is what makes the index small.
 CREATE INDEX IF NOT EXISTS idx_events_revision ON events(revision_id);
 
+-- What the editor plugin has been asking for, one row per client per day.
+--
+-- The only place in this schema where a *read* is written down, and its own
+-- table rather than an `events` row. Three reasons, any one of them enough:
+-- `events` is append-only, which is what makes it an audit log, and this is a
+-- counter that UPDATEs; `/loop 30m` is 48 rows a day per install, which would
+-- bury the operator's recent-changes feed under polling; and those rows would
+-- count as writes on the abuse page, where an install asking politely every
+-- half hour would look exactly like somebody hammering the wiki.
+--
+-- Keyed on the address hash alone. The plugin is curl and carries no cookie,
+-- so there is no client_hash to group on -- which is why a row here is a
+-- client and never a person: an office is one of them, and a laptop on two
+-- networks is two.
+CREATE TABLE IF NOT EXISTS plugin_days (
+  day      TEXT NOT NULL,        -- UTC, like every other date in this file
+  ip_hash  TEXT NOT NULL,
+  calls    INTEGER NOT NULL,
+  first_at TEXT NOT NULL,
+  last_at  TEXT NOT NULL,
+  PRIMARY KEY (day, ip_hash)
+);
+-- "How many are new" is MIN(day) per client, which the key above cannot answer
+-- without reading the whole table: it leads with the day. Both columns, so the
+-- grouping is satisfied by the index and never touches the table.
+CREATE INDEX IF NOT EXISTS idx_plugin_client ON plugin_days(ip_hash, day);
+
 -- Operators. This is the only account table there will ever be: readers have
 -- none, there is no signup route, and nothing here is per-post ownership.
 -- An operator exists so that a decision can carry a name and be undone, which

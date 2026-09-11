@@ -36,6 +36,33 @@ export type Stats = {
   comments: number
 }
 
+/** One day of the editor plugin asking.
+
+    `clients` is address hashes and not people -- the plugin is curl and sends
+    no cookie, so there is nothing finer to group on: one office is one client
+    and one laptop on two networks is two. `new` is how many of them had never
+    asked before that day, anywhere in the record. */
+export type PluginDay = { day: string; clients: number; calls: number; new: number }
+
+/** What the plugin page reads. No field here is an install count and none
+    pretends to be one: `/plugin install` is a git clone from GitHub, nothing
+    calls home, and the marketplace reports nothing back. `ever` -- every
+    client that has ever asked -- is the closest honest thing to one, and an
+    install that never runs was never a user. */
+export type PluginUse = {
+  days: number
+  /** The first day in the window, UTC, as `YYYY-MM-DD`. */
+  since: string
+  /** Distinct clients over the whole window. Not the sum of the daily figures:
+      one that ran it on five of those days is one client, not five. */
+  clients: number
+  ever: number
+  /** Newest first, and days nobody asked on are absent rather than zero --
+      every row carries its date, so the gap is readable rather than smoothed
+      over. */
+  rows: PluginDay[]
+}
+
 /** One row of the log. `admin_id` is the whole split: null is a visitor and
     set is an operator's own decision, so the activity feed and the audit log
     are this same row read with two filters. */
@@ -254,6 +281,8 @@ export const adm = {
   me: () => req<Who>('/api/admin/me'),
 
   stats: () => req<Stats>('/api/admin/stats'),
+
+  plugin: (p: Params = {}) => req<PluginUse>(`/api/admin/plugin${qs(p)}`),
 
   activity: (p: Params = {}) => req<Page<Event>>(`/api/admin/activity${qs(p)}`),
 

@@ -601,6 +601,7 @@ def list_numbers(
 
 @app.get("/api/posts")
 def list_posts(
+    request: Request,
     value: Optional[str] = None,
     tag: Optional[str] = None,
     format: Optional[str] = None,
@@ -614,6 +615,18 @@ def list_posts(
 ):
     # the filters read the column, so they are folded the way the column is
     value, tag, q = nfc(value), nfc(tag), nfc(q)
+    # The one read in this file that is counted, and only when the caller says
+    # it is the plugin -- a browser reading the wiki still records nothing.
+    #
+    # In a `try` because a statistic is never worth the answer: a locked
+    # database or a full disk must not turn a figure on the operator's
+    # dashboard into a 500 on the route every page of the wiki reads from.
+    if events.is_plugin(request):
+        try:
+            with con:
+                events.count_plugin(con, events.client_of(request))
+        except Exception:
+            pass
     sql = ["SELECT p.* FROM posts p"]
     args = []
     where = []

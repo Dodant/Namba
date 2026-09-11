@@ -11,6 +11,10 @@ issues an UPDATE or a DELETE against `events`. That is what makes it an audit
 log an operator cannot quietly tidy up after themselves in. It has no foreign
 keys for the same reason `revisions` has none: a record of what happened to a
 thing has to outlive the thing.
+
+At the bottom is the one thing in here that is not an event and says so: the
+editor plugin's daily counter, which needs `client_of()` and nothing else this
+file does.
 """
 import hashlib
 import json
@@ -102,3 +106,38 @@ def record(con, action, *, client=None, who=None, target_type=None, target_id=No
          json.dumps(meta, ensure_ascii=False) if meta else None),
     )
     return cur.lastrowid
+
+
+# --- the editor plugin --------------------------------------------------
+# What the plugin's curl sends as its user agent. A prefix rather than the whole
+# string, so a later version may sign itself and still be counted.
+PLUGIN_UA = "namba-plugin"
+
+
+def is_plugin(request):
+    """Whether this request says it is the plugin.
+
+    Self-declared and forgeable, like everything else on a wiki with no
+    accounts -- what it buys is the opposite of identification. A browser
+    reading the wiki records nothing at all, so the one read this codebase
+    writes down is the one that asked to be.
+    """
+    return request.headers.get("user-agent", "").startswith(PLUGIN_UA)
+
+
+def count_plugin(con, client):
+    """One row per client per day, incremented. Deliberately not an event.
+
+    `plugin_days` in the schema has the argument for the separate table. What
+    belongs here is the consequence: this is the only write in the codebase
+    that is not something a person did, so it takes no `action`, no actor and
+    no target -- a count, a first and a last, and no way to ask it who.
+    """
+    at = db.now()
+    con.execute(
+        """INSERT INTO plugin_days (day, ip_hash, calls, first_at, last_at)
+           VALUES (?,?,1,?,?)
+           ON CONFLICT(day, ip_hash) DO UPDATE
+             SET calls = calls + 1, last_at = excluded.last_at""",
+        (at[:10], client["ip_hash"], at, at),
+    )
