@@ -129,3 +129,11 @@ each spelling is its own `/n/` page.
   row. Measured first as an index hole rather than as a moved page -- a
   re-filed `UFO` or `12-25` kept its value, lost its sort key and fell out of
   every Integer band.
+
+- 2026-09-11: **"the four that read digits cannot be wrong about it" no longer
+  holds for two of them**, recorded in ADR-0027. `INTEGER` and `DECIMAL` are
+  the claim that the value reads as a number and are checked for it; `TIME`
+  is the one still taken at its word and `MIXED` claims nothing. What is
+  unchanged is this record's own rule: the check decides nothing about
+  spelling, so `-42`, `1e5`, `1_000` and `٤٢` all read and all stay as typed,
+  two spellings sharing one sort key.

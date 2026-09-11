@@ -139,12 +139,14 @@ is a different entry about a different thing.
   row with no band at all, because `is_abbr` and `date_key` guarantee the
   other two one. So the entry answered at `/n/12-25` and under no band: on the
   wiki and on no page. The shape predates this branch — `UFO` re-filed as
-  `INTEGER` did it too, which is half of why the lock covers `/a/` as well —
-  and the lock still does not reach all of it: `POST /api/posts` with
-  `{"value": "9 3/4", "format": "INTEGER"}` is a 201 with a null key and
-  strands one at create time, where no section has been left. Closing that means either checking the four
-  formats that are currently taken at their word, or giving the Integer tab a
-  band for the leftovers — a decision, not an oversight, and not this one.
+  `INTEGER` did it too, which is half of why the lock covers `/a/` as well.
+  The lock does not reach the other half, which is a value that was never a
+  number to begin with: `POST /api/posts` with `{"value": "9 3/4", "format":
+  "INTEGER"}` was a 201 with a null key and stranded one at create time,
+  where no section had been left. That end is closed by ADR-0027, which makes
+  `INTEGER` and `DECIMAL` checked rather than believed. The two are
+  independent and both are wanted — this one keeps an entry's address, that
+  one keeps a number a number.
 - The back office keeps the stored spelling everywhere, deliberately. One of
   the places it draws a value is the field an operator retypes it in, and an
   operator judging or correcting a value wants the characters that are stored —

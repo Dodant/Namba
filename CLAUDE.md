@@ -83,12 +83,32 @@ decides how a value is read, sorted and addressed. A second column would have
 been a migration, a second hand-copied vocabulary and a branch beside every
 existing one (ADR-0026).
 
-Those two are also the only formats that are **checked** rather than believed.
-The other four describe how to read what was typed and cannot be wrong about
-it; these two are claims *about* the value — that it is a word, that it is a
-date — and on a wiki with no login the claim is a stranger's. `is_abbr` and
-`date_key` in `numfmt.py` are the rules, and `resolve_format` in `store.py` is
-where both bite, so all three writes hit them.
+Five of the six are **checked** rather than believed, and on a wiki with no
+login the claim being checked is always a stranger's. `ABBR` and `CALENDAR`
+are claims about what the value *is* — that it is a word, that it is a date —
+and `is_abbr` and `date_key` in `numfmt.py` are the rules. `INTEGER` and
+`DECIMAL` are the claim that it *reads* as a number, and the check is that
+`float()` gets a finite one out of it.
+
+`TIME` is the one taken at its word: an explicit `TIME` on `1:29:300` files
+with no sort key, and nothing downstream bands or serializes on it. `MIXED`
+claims nothing at all, being the remainder. `resolve_format` in `store.py` is
+where all five bite, so all three writes hit them.
+
+The two number checks are not tidiness. A `sort_key` is load-bearing twice:
+without one an `INTEGER` entry matches no band on the index and is drawn
+nowhere — on the wiki and on no page, the thing the band rule above exists to
+prevent — and a non-finite one cannot be serialized at all, because SQLite
+keeps `NaN` as `NULL` (the first case again) and keeps `Inf` as `Inf`, which
+`json.dumps` refuses. One `{"value": "inf", "format": "INTEGER"}` used to be
+enough to 500 `/api/numbers` and `/api/posts` for every reader until an
+operator found the row.
+
+What the check does **not** do is decide how a number is spelled. `float()`
+reads `-42`, `1e5`, `1_000` and `٤٢`, and all four stay as typed: two
+spellings of a number are two entries sharing a sort key, which is the rule
+for the four that read digits (ADR-0005). Only `CALENDAR` promised the
+opposite, and only its regex says `[0-9]`.
 
 ## Design decisions that are not up for quiet revision
 
@@ -251,11 +271,10 @@ where both bite, so all three writes hit them.
   (ADR-0005, ADR-0007). Digits have no case, which is why none of this reaches
   the other four.
 
-  **And `ABBR` is Latin script only — one of the two formats that are checked
-  rather than taken at their word.** The four that read digits as a number are
-  ways of *reading* what was typed and cannot be wrong about it; this one is a
-  claim *about* the value, and on a wiki with no login the claim is a
-  stranger's. `is_abbr` in
+  **And `ABBR` is Latin script only — one of the five formats that are checked
+  rather than taken at their word.** `INTEGER` and `DECIMAL` are checked for
+  being readable as a number; this one is a claim about what the value *is*,
+  and on a wiki with no login the claim is a stranger's. `is_abbr` in
   `numfmt.py` is the rule and `resolve_format` in `store.py` is where it bites,
   so both writes hit it. It is not a keyboard preference: `유에프오` and `УФО` are the
   same abbreviation in another alphabet, and one `/a/` page per alphabet is

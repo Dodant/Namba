@@ -979,13 +979,22 @@ typing `UFO` into, so the label reads Abbreviation and the filter keeps Latin
 letters, digits and `.&/;-`. Case is kept as typed — `SaaS` is spelled `SaaS` —
 and the API is what keeps `ufo` and `UFO` on one page, by adopting the spelling
 already stored for the word. That filter is a copy of `is_abbr` in
-`numfmt.py`, which **refuses** anything else with a 422 — unlike the four that
-read digits as a number, which are ways of reading what was typed and take it
-as given. It is
+`numfmt.py`, which **refuses** anything else with a 422. It is
 not in the root `CLAUDE.md`'s hand-synced table for the same reason a tag's
 shape is not: the API is the one that decides and says so out loud. Keeping the
-filter in step only spares the reader a rejection they can see coming. Integer and Decimal filter what can be typed and offer the
-separator checkbox — from the fourth
+filter in step only spares the reader a rejection they can see coming.
+
+Integer and Decimal have a filter of their own and an API rule behind it too:
+`resolve_format` refuses a value `float()` cannot read as a finite number, so
+`9 3/4` filed as Integer is a 422 rather than an entry with no sort key. The
+filter is `cleanNumberInput`, and it deliberately does **not** rewrite what is
+already in the box when the format changes — picking Integer by mistake with
+`11/22/63` in there must not silently make it `112263`. So the two do
+different jobs: the filter keeps you from typing the wrong thing, and the 422
+catches the value that was already there. Do not "finish" the pair by
+rewriting on the format change.
+
+They also offer the separator checkbox — from the fourth
 digit, because there is no thousand in `100` and a box that ticks with nothing
 on the page changing reads as broken rather than as inapplicable. It asks
 `canGroupValue(canonical.value)`, which checks that a plain number has at

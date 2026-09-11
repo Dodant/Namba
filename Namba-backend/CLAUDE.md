@@ -540,17 +540,36 @@ the sitemap.
   the reads fold instead: `list_posts` in the abbr section and `head_abbr`
   compare `NOCASE`, and the sitemap groups the same way, so `/a/ufo` is the
   `UFO` page and its canonical says so (ADR-0005).
-- **`ABBR` and `CALENDAR` are the two formats that are refused; `is_abbr` and
-  `date_key` are the rules.** The other four describe how to *read* what was
-  typed and cannot be wrong about it — `resolve_format` takes an explicit
-  `TIME` on `1:29:300` at its word and files it with no sort key. These two are
-  claims *about* the value, so they are checked: Latin letters, digits and
-  `.&/;-` with at least one letter; a two-digit month and a day that month
-  has. Both are 422s raised from `resolve_format` rather than Pydantic
-  validators, because a validator cannot see both halves — an edit sends a
+- **Five of the six formats are refused when the value does not fit them;
+  `is_abbr`, `date_key` and `float()` are the rules.** `ABBR` and `CALENDAR`
+  are claims about what the value *is*: Latin letters, digits and `.&/;-` with
+  at least one letter; a two-digit month and a day that month has. `INTEGER`
+  and `DECIMAL` are the claim that it reads as a number, and the rule is that
+  `float()` returns a **finite** one.
+
+  `TIME` is the one still taken at its word — `resolve_format` files an
+  explicit `TIME` on `1:29:300` with no sort key, and nothing bands or
+  serializes on that key — and `MIXED` is the remainder and claims nothing.
+
+  Every one is a 422 raised from `resolve_format` rather than a Pydantic
+  validator, because a validator cannot see both halves — an edit sends a
   `format` and no `value` at all — and because that function is the one place
   all three writes settle the pair. In `edit_post` they are raised **inside**
   `with con`, so a refused edit rolls back the snapshot it had already taken.
+
+  **The finite part is not belt-and-braces.** `float('nan')` and
+  `float('inf')` both succeed, and both used to be written: SQLite stores NaN
+  as NULL, which is the no-sort-key case and takes the entry off every Integer
+  band, and it stores Inf as Inf, which `json.dumps` refuses — so the row was
+  committed, the 201 failed to serialize, and `/api/numbers` and `/api/posts`
+  then answered 500 for every reader until an operator found it. The `<head>`
+  routes and the sitemap were unaffected, which is what made it quiet.
+
+  The check does not touch spelling: `-42`, `1e5`, `1_000` and `٤٢` all read
+  and all stay as typed, because two spellings of a number are two entries
+  sharing a sort key (ADR-0005). It is `float()` and not a stricter regex for
+  the first two of those — `parse_number` guesses neither a minus sign nor an
+  exponent, and `bucket_of` already bands a negative by its magnitude.
 
   `date_key` is the check *and* the sort key, because for a date they are one
   question: a value it cannot read is not a date, and one it can hands back
@@ -610,10 +629,11 @@ the sitemap.
   `ValueError`, so a re-filed `UFO` or `12-25` kept its value and lost its
   sort key, `bucket_of` had no band for it, and the Integer tab draws its five
   bands by filtering on one — the entry answered at `/n/` and under no band.
-  That shape is still reachable at **create** time (`{"value": "9 3/4",
-  "format": "INTEGER"}` is a 201 with a null key), and closing it means either
-  checking the four formats that are currently taken at their word or giving
-  the Integer tab a band for the leftovers. A decision, not an oversight.
+  It was reachable at **create** time too — `{"value": "9 3/4", "format":
+  "INTEGER"}` was a 201 with a null key — and that is closed at the other end
+  now, by `INTEGER` and `DECIMAL` being checked rather than believed. The two
+  fixes are independent and both are wanted: this one keeps an entry's
+  address, that one keeps a number a number.
 
   Every arm is a plain comparison on the column rather than a `CASE`, so
   `idx_posts_format` is still usable, and **`number` is the remainder**
