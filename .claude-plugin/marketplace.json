@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "namba",
+  "description": "Claude Code plugins from Namba, the open wiki of what numbers mean.",
+  "owner": {
+    "name": "Dodant",
+    "url": "https://github.com/Dodant"
+  },
+  "plugins": [
+    {
+      "name": "namba",
+      "description": "Surfaces one random entry from the Namba wiki while you work. Read-only, one line, no interruption.",
+      "source": "./plugins/namba",
+      "category": "productivity",
+      "homepage": "https://github.com/Dodant/Namba/tree/main/plugins/namba"
+    }
+  ]
+}

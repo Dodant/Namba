@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "namba",
+  "version": "1.0.0",
+  "description": "Surfaces one random entry from the Namba wiki while you work. Read-only, one line, no interruption.",
+  "author": {
+    "name": "Dodant",
+    "url": "https://github.com/Dodant"
+  },
+  "homepage": "https://namba.chiral.kr",
+  "repository": "https://github.com/Dodant/Namba",
+  "license": "MIT",
+  "keywords": ["namba", "wiki", "numbers", "ambient", "serendipity"]
+}
