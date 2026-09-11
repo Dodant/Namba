@@ -312,11 +312,11 @@ operator can distinguish the exact target of an irreversible decision.
 
 ## The Claude Code plugin
 
-`plugins/namba/` is a plugin anyone can install, which prints one random entry
-of this wiki as a single line while they work:
+Namba has a plugin anyone can install, which prints one random entry of this
+wiki as a single line while they work:
 
 ```
-/plugin marketplace add Dodant/Namba
+/plugin marketplace add Dodant/Namba-plugin
 /plugin install namba@namba
 /namba:random-entry
 ```
@@ -326,8 +326,11 @@ of this wiki as a single line while they work:
 ```
 
 It reads `GET /api/posts?sort=random&limit=5` over the public API and carries
-no copy of the entries, so it stays current without being updated.
-[`plugins/namba/README.md`](plugins/namba/README.md) has the rest.
+no copy of the entries, so it stays current without being updated. It lives in
+its own repository,
+[`Dodant/Namba-plugin`](https://github.com/Dodant/Namba-plugin), because a
+plugin is installed by repository: pointing a stranger's `/plugin` at this one
+hands them the whole wiki to get one skill.
 
 ## Deploying
 
