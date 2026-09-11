@@ -114,7 +114,7 @@ export const KO: Messages = {
     language: '언어', languageHint: '이 번역에 사용된 언어', pickOne: '선택…',
     translationTitleHint: '해당 언어로 쓴 엔트리 제목', optionalMarkdown: '선택 — 여기서도 Markdown 사용 가능',
     addThisTranslation: '번역 추가', removeTranslation: '번역 제거', related: '관련 엔트리',
-    relatedHint: '함께 볼 만한 다른 숫자', unlink: '연결 해제',
+    relatedHint: '함께 볼 만한 다른 엔트리', unlink: '연결 해제',
     linkSearchAria: '연결할 엔트리 검색', linkSearchPlaceholder: '위키 검색 — 예: Back to the Future',
     searching: '검색 중…', search: GLOBAL_TERMS.search, link: '연결', noMatches: '검색 결과가 없습니다.',
   },
