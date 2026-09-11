@@ -769,6 +769,21 @@ def test_head_per_route():
         f"http://testserver/p/{dna['id']}"], crumb
     admin.set_status(dna["id"], "HIDDEN")
 
+    # -- and a date's entry says what happens on it, with the crumb into the
+    # third section. Same argument as the abbreviation above: og_head picks
+    # both off section_of(post["format"]), so a third arm that fell back to
+    # the number's would leave a page that still looks right.
+    yule = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                                      "title": "Christmas Day"}).json()
+    page = c.get(f"/p/{yule['id']}").text
+    assert 'content="Christmas Day — what happens on 12-25, on Namba."' in page, \
+        page[:600]
+    article, crumb = _ld(page)[0]
+    assert article["about"]["name"] == "12-25"
+    assert [i["item"] for i in crumb["itemListElement"]] == [
+        "http://testserver/", "http://testserver/c/12-25",
+        f"http://testserver/p/{yule['id']}"], crumb
+    admin.set_status(yule["id"], "HIDDEN")
 
     # -- and every one of them carries the site's card. An entry, a number, a
     # tag and the front page: four routes, no picture between them, and before
@@ -2259,7 +2274,23 @@ def test_api_round_trip():
     assert dated("number") == {wrote["id"]}, dated("number")
     assert dated("abbr") == set(), dated("abbr")
     assert dated("banana") == {xmas["id"], wrote["id"]}, dated("banana")
-    for pid in (xmas["id"], fools["id"], wrote["id"]):
+    # the Calendar tab of the index: sorted by month * 100 + day, banded by
+    # the month that comes back out of the key, and the Mixed 12-25 filed
+    # above is not on it -- the tab groups by (value, format), so a value in
+    # two sections is two rows and only one of them is here
+    leap = c.post("/api/posts", json={"value": "02-29", "format": "CALENDAR",
+                                      "title": "the leap day"}).json()
+    rows = c.get("/api/numbers", params={"format": "CALENDAR"}).json()
+    assert [r["value"] for r in rows] == ["02-29", "04-01", "12-25"], rows
+    assert [r["bucket"] for r in rows] == ["02", "04", "12"], rows
+    assert all(len(r["entries"]) == 1 for r in rows), "a Mixed row reached the tab"
+    # a history line reads the value through the format the way the hero does,
+    # so the label carries it: 12-25 under an entry whose hero says 25 December
+    # is the format gone missing from the label, not a different date
+    c.patch(f"/api/posts/{xmas['id']}", json={"title": "Christmas", "author": "elf"})
+    rev = c.get(f"/api/posts/{xmas['id']}/revisions").json()[0]
+    assert (rev["value"], rev["format"], rev["grouped"]) == ("12-25", "CALENDAR", False), rev
+    for pid in (xmas["id"], fools["id"], wrote["id"], leap["id"]):
         admin.set_status(pid, "HIDDEN")
 
     clock = c.post("/api/posts", json={"value": "09:41", "title": "iPhone keynote",
