@@ -92,9 +92,13 @@ opposite, and it is the only one whose pattern says `[0-9]`.
   validating. A live row with an unreadable value and a null key keeps
   answering at `/n/` and stays off the Integer bands, and an edit of one is
   now a 422 the reader cannot act on. The check before deploying is one
-  query — `SELECT id, value, format FROM posts WHERE format IN ('INTEGER',
-  'DECIMAL') AND sort_key IS NULL` — and the fix for anything it returns is
-  the operator's renumber. Left as a deploy step rather than a tolerance
+  query, and it has to ask for both halves, because SQLite keeps `NaN` as
+  `NULL` and keeps `Inf` as `Inf` — `SELECT id, value, format, sort_key FROM
+  posts WHERE format IN ('INTEGER', 'DECIMAL') AND (sort_key IS NULL OR
+  abs(sort_key) > 1e308)`. A `sort_key IS NULL` on its own reports clean on
+  the row that matters most: the `Inf` one is the row `/api/numbers` and
+  `/api/posts` are already answering 500 for. The fix for anything it returns
+  is the operator's renumber. Left as a deploy step rather than a tolerance
   branch in `edit_post`, because the branch would have to skip re-settling on
   an unchanged pair and that quietly changes what Auto-detect does on an edit.
 - The front end is unchanged. `cleanNumberInput` already filters the Number

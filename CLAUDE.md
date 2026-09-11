@@ -245,8 +245,8 @@ opposite, and only its regex says `[0-9]`.
   cache `/assets/` alone.** The bundle is where the bytes are and it is already
   immutable — Vite hashes the names, and `ASSET_CACHE` in `main.py` says a
   year. The document is cheap to answer: `/` and `/guide` and every path that
-  falls through to `noindex` run no query at all, and only `/n/`, `/a/`, `/t/`
-  and `/p/{id}` read the database for their `<head>`.
+  falls through to `noindex` run no query at all, and only `/n/`, `/a/`,
+  `/c/`, `/t/` and `/p/{id}` read the database for their `<head>`.
 
   **An `ABBR` word is one page, and its case is not a spelling to be fixed.**
   `ufo`, `Ufo` and `UFO` are one word and with no accounts there is nobody to
@@ -343,12 +343,11 @@ opposite, and only its regex says `[0-9]`.
   filed wrong is `POST /api/admin/posts/{id}/value`, the same operator's route
   that corrects a value, with a name, a snapshot and an audit row behind it.
 
-  Leaving it open also cost the index: `resolve_format` takes an explicit
-  `INTEGER` at its word and swallows `float()`'s `ValueError`, so a re-filed
-  `UFO` or `12-25` kept its value and lost its sort key, `bucket_of` then had
-  no band, and the Integer tab — which fills five fixed bands by filtering on
-  one — drew it nowhere. On the wiki and on no page, which is exactly what the
-  band rule above exists to prevent.
+  The address is all this rule keeps. A sort key is kept a step above it, by
+  `INTEGER` and `DECIMAL` being checked rather than believed, so a re-filed
+  `UFO` or `12-25` is refused there and never reaches this check at all. The
+  two are independent and both are wanted: one keeps an entry where its links
+  point, the other keeps a number a number.
 
   There is **one** move still allowed, and it is into `/c/`: `parse_number`
   will never hand a date back — `12-25` is as much a ratio as a day — so

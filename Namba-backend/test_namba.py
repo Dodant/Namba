@@ -103,7 +103,8 @@ def test_parse():
                "", "   ", "-", "...", "UF O", "UFO!"):
         assert not is_abbr(no), no
 
-    # And what may be filed as a date, which is the other checked format. The
+    # And what may be filed as a date, the other claim about what a value is.
+    # The
     # key is the check: a value this cannot read is not a date, and the month
     # has to come back out of it for the band. Padding is part of the spelling
     # -- `1-5` is refused rather than folded to `01-05`, because nothing here
@@ -2310,7 +2311,8 @@ def test_api_round_trip():
                 saas["id"], saas2["id"], iot["id"], io["id"]):
         admin.set_status(pid, "HIDDEN")
 
-    # A date is the other checked format, and the third section. The triple it
+    # A date is the other claim about what a value is, and the third section.
+    # The triple it
     # comes back with is the whole of it: the format that was picked, the key
     # the check handed over, and the month band that comes back out of the key.
     xmas = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",

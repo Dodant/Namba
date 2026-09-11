@@ -853,11 +853,10 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         # `POST /api/admin/posts/{id}/value`, which carries a name, a snapshot
         # and an audit row -- the route that exists for exactly this.
         #
-        # Left open it also cost the index. `resolve_format` swallows
-        # `float()`'s ValueError on an explicit INTEGER, so a re-filed UFO or
-        # 12-25 kept its value and lost its sort key; `bucket_of` then has no
-        # band, and the Integer tab fills five fixed bands by filtering on one
-        # -- the entry answers at /n/ and under no band.
+        # The address is all this keeps. A value that cannot be read as one
+        # never gets here: `resolve_format` refuses an explicit INTEGER or
+        # DECIMAL it cannot take a finite float out of, one step above, so a
+        # re-filed UFO or 12-25 is a 422 before this line (ADR-0027).
         #
         # The one move still allowed is a *number* into the calendar, because
         # CALENDAR is the one format `parse_number` will never hand back --

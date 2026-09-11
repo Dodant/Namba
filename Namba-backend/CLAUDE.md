@@ -624,15 +624,11 @@ the sitemap.
   first: a `MIXED` `국정원` re-filed as `ABBR` still reads "Latin letters" and
   not the section refusal, which is the more useful of the two.
 
-  The cost of leaving it open was not only a moved page. `resolve_format`
-  takes an explicit `INTEGER` at its word and swallows `float()`'s
-  `ValueError`, so a re-filed `UFO` or `12-25` kept its value and lost its
-  sort key, `bucket_of` had no band for it, and the Integer tab draws its five
-  bands by filtering on one — the entry answered at `/n/` and under no band.
-  It was reachable at **create** time too — `{"value": "9 3/4", "format":
-  "INTEGER"}` was a 201 with a null key — and that is closed at the other end
-  now, by `INTEGER` and `DECIMAL` being checked rather than believed. The two
-  fixes are independent and both are wanted: this one keeps an entry's
+  An entry's address is all it keeps. The sort key is kept a step earlier, by
+  `INTEGER` and `DECIMAL` being checked rather than believed: `resolve_format`
+  refuses `{"value": "9 3/4", "format": "INTEGER"}` on every write, so a value
+  that would reach this check with no key is already a 422 above it. The two
+  rules are independent and both are wanted: this one keeps an entry's
   address, that one keeps a number a number.
 
   Every arm is a plain comparison on the column rather than a `CASE`, so

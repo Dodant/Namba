@@ -150,9 +150,9 @@ def parse_number(s):
 def is_abbr(value):
     """Whether this may be filed as an abbreviation.
 
-    The public API has no login, so this is the whole of the rule: a format
-    the poster picks is otherwise taken at its word, and without this any
-    string at all could be filed under /a/. Latin letters, digits and the
+    The public API has no login, so this is the whole of the rule: `ABBR` is
+    a claim about what the value *is* rather than a way of reading one, and
+    without this any string at all could be filed under /a/. Latin letters, digits and the
     punctuation an abbreviation carries, and at least one letter -- "42" is a
     number however it is filed.
     """
@@ -164,9 +164,10 @@ def date_key(value):
 
     The check and the sort key are one question, so one function answers both:
     a value this cannot read is not a date, and `resolve_format` is where that
-    becomes the 422. CALENDAR is the second format that is checked rather than
-    believed -- like ABBR it is a claim *about* the value and not a way of
-    reading one, and on a wiki with no login the claim is a stranger's.
+    becomes the 422. CALENDAR is one of the five formats that are checked
+    rather than believed -- like ABBR it is a claim *about* the value and not
+    a way of reading one, and on a wiki with no login the claim is a
+    stranger's.
 
     1225 rather than a day of the year, because a band here is a month and the
     month has to come back out of the key (see bucket_of). Either sorts.
