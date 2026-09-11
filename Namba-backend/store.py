@@ -33,13 +33,13 @@ class Text(BaseModel):
     def one_normal_form(cls, v):
         return nfc(v)
 
-# The only status a visitor ever sees. Thirteen reads in main.py carry it -- the
+# The only status a visitor ever sees. Fourteen reads in main.py carry it -- the
 # index, the list endpoint the feed and the search share, one entry, the two
-# vocabularies, an entry's related row, its history and its comments, the four
-# <head>s written for /p/{id}, /n/{value}, /a/{value} and /t/{tag}, and the
-# sitemap -- and missing one leaks the body of something an operator took down.
-# test_hidden_is_invisible walks all thirteen: eight API reads, four heads and
-# the sitemap. A head that names an entry and a sitemap that links
+# vocabularies, an entry's related row, its history and its comments, the five
+# <head>s written for /p/{id}, /n/{value}, /a/{value}, /c/{value} and /t/{tag},
+# and the sitemap -- and missing one leaks the body of something an operator
+# took down. test_hidden_is_invisible walks all fourteen: eight API reads, five
+# heads and the sitemap. A head that names an entry and a sitemap that links
 # to it are both places a row can leak to somebody who never called the API at
 # all. The writes need no equivalent: they reach for fetch_one() below first and
 # get the 404 from there.
@@ -128,21 +128,59 @@ def resolve_format(value, given):
     return value, fmt, key
 
 
-def section_where(section, prefix=""):
-    """SQL for "this is an abbreviation" / "this is a number", or None for both.
+# The sections this one column is read in, and the format that puts a row in
+# each. `number` is the remainder and is deliberately not in here: a format
+# added without a thought about this map lands there, which is the safe side --
+# /n/ is where a value with nothing special about how it reads has always
+# answered. Everything below derives from this, so there is one list of them.
+SECTION_FORMATS = {"abbr": "ABBR", "calendar": "CALENDAR"}
+SECTIONS = ("number", *SECTION_FORMATS)
 
-    /n/ and /a/ are two sections over one column. An entry is one or the other
-    and has exactly one address, so a value filed under both -- somebody
-    choosing Mixed for UFO on purpose -- is two entries at two addresses rather
-    than one entry showing up twice. One function decides it, so the list
-    endpoint, the two <head>s and the sitemap cannot answer differently.
+
+def section_of(fmt):
+    """Which section a format is read in: the name, not a filter.
+
+    The twin of section_where() for the callers that are going the other way --
+    building a path out of a row rather than finding the rows in a section.
+    """
+    return next((s for s, f in SECTION_FORMATS.items() if f == fmt), "number")
+
+
+def section_where(section, prefix=""):
+    """SQL for "this row is in that section", or None for every section at once.
+
+    /n/, /a/ and /c/ are three sections over one column. An entry is in exactly
+    one of them and has exactly one address, so a value filed in two -- somebody
+    choosing Mixed for UFO on purpose, or Mixed for 12-25 -- is two entries at
+    two addresses rather than one entry showing up twice. One function decides
+    it, so the list endpoint, the three <head>s and the sitemap cannot answer
+    differently.
+
+    Each arm is a plain comparison on the column rather than a CASE, so
+    idx_posts_format is still usable; `number` is the negation of the others,
+    which is what makes it the remainder rather than a third list to keep.
 
     An unknown section filters nothing, the same way an unknown `sort` falls
     back rather than 422ing: a typo either side of the wire is a page that
     shows too much, not a page that breaks.
     """
-    op = {"number": "!=", "abbr": "="}.get(section or "")
-    return f"{prefix}format {op} 'ABBR'" if op else None
+    fmt = SECTION_FORMATS.get(section or "")
+    if fmt:
+        return f"{prefix}format = '{fmt}'"
+    if section == "number":
+        rest = ", ".join(f"'{f}'" for f in SECTION_FORMATS.values())
+        return f"{prefix}format NOT IN ({rest})"
+    return None
+
+
+def section_sql(prefix=""):
+    """A row's section as a value rather than a filter.
+
+    section_of() in SQL, for the one query that needs to group by the section
+    and then build a path from it rather than filter on one.
+    """
+    arms = " ".join(f"WHEN '{f}' THEN '{s}'" for s, f in SECTION_FORMATS.items())
+    return f"CASE {prefix}format {arms} ELSE 'number' END"
 
 
 def shape(rows, con):

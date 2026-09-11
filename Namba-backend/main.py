@@ -24,7 +24,7 @@ import seo
 from db import UPLOAD_DIR, get_db, nfc, now, writing
 from store import (
     LIVE, Text, apply_snapshot, fetch_one, guard_public, resolve_format,
-    section_where, shape, snapshot, ungroup, write_tags,
+    section_sql, section_where, shape, snapshot, ungroup, write_tags,
 )
 from numfmt import FORMATS, bucket_of
 
@@ -634,7 +634,7 @@ def list_posts(
     if format:
         where.append("p.format = ?")
         args.append(format.upper())
-    # what tells /n/42 from /a/UFO -- see section_where()
+    # what tells /n/42 from /a/UFO from /c/12-25 -- see section_where()
     in_section = section_where(section, "p.")
     if in_section:
         where.append(in_section)
@@ -1299,9 +1299,10 @@ def sitemap(request: Request, con=Depends(get_db)):
     urls = [(base, None), (f"{base}guide", None)]
     urls += [(f"{base}p/{r['id']}", r["updated_at"]) for r in con.execute(
         "SELECT id, updated_at FROM posts WHERE status = ? ORDER BY id", (LIVE,))]
-    # grouped by section as well as by value, because the two are two pages:
-    # UFO filed as an abbreviation is /a/UFO and UFO filed as Mixed is /n/UFO,
-    # and value_path() is the one place that decides which.
+    # grouped by section as well as by value, because each section is its own
+    # page: UFO filed as an abbreviation is /a/UFO and UFO filed as Mixed is
+    # /n/UFO, 12-25 as a date is /c/12-25 and as Mixed is /n/12-25, and
+    # value_path() is the one place that decides which.
     #
     # NOCASE, and the spelling off the earliest row, because a <loc> has to be
     # the canonical: `dB` and `DB` are two spellings of one abbreviation, /a/
@@ -1311,14 +1312,13 @@ def sitemap(request: Request, con=Depends(get_db)):
     # is what picks the spelling -- MIN(id) beside MAX(updated_at) is two
     # aggregates, and SQLite only promises a bare column follows one of them.
     # Digits have no case, so folding the number section too changes nothing.
-    urls += [(base + seo.value_path(r["fmt"], r["value"]), r["at"])
+    urls += [(base + seo.value_path(r["section"], r["value"]), r["at"])
              for r in con.execute(
-        "SELECT p.value, g.at, "
-        f"       CASE WHEN {section_where('abbr', 'p.')} THEN 'ABBR' ELSE '' END AS fmt "
+        f"SELECT p.value, g.at, {section_sql('p.')} AS section "
         "FROM posts p JOIN ("
         "    SELECT MIN(id) AS id, MAX(updated_at) AS at FROM posts WHERE status = ? "
-        f"    GROUP BY value COLLATE NOCASE, {section_where('abbr')}"
-        ") g ON g.id = p.id ORDER BY p.value, fmt",
+        f"    GROUP BY value COLLATE NOCASE, {section_sql()}"
+        ") g ON g.id = p.id ORDER BY p.value, section",
         (LIVE,))]
     urls += [(f"{base}t/{seo.enc(r['tag'])}", r["at"]) for r in con.execute(
         "SELECT t.tag, MAX(p.updated_at) AS at FROM post_tags t "

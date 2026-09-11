@@ -688,6 +688,29 @@ def test_head_per_route():
     assert "<title>UFO — 1 entry · Namba</title>" in num, num[:400]
     assert "Unidentified" not in num, "the abbreviation reached the number's page"
 
+    # A date is a third section for the same reason: 12-25 filed as a date is
+    # a day of the year, and there is no number 12-25 for it to be about.
+    c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                               "title": "Christmas Day"})
+    page = c.get("/c/12-25").text
+    assert "<title>12-25 — 1 entry · Namba</title>" in page, page[:400]
+    assert 'content="What happens on 12-25 — 1 entry on Namba: ' in page, page[:600]
+    assert 'rel="canonical" href="http://testserver/c/12-25"' in page
+    coll, crumb = _ld(page)[0]
+    assert coll["about"]["name"] == "12-25"
+    assert crumb["itemListElement"][-1]["item"] == "http://testserver/c/12-25"
+    assert "noindex" in c.get("/n/12-25").text, "a date answered at /n/"
+    assert "Christmas" not in c.get("/n/12-25").text
+    # and the same characters filed as Mixed on purpose is a second entry at a
+    # second address, so neither head is leaning on the other being empty
+    c.post("/api/posts", json={"value": "12-25", "format": "MIXED",
+                               "title": "a score somebody wrote 12-25"})
+    date, num = c.get("/c/12-25").text, c.get("/n/12-25").text
+    assert "<title>12-25 — 1 entry · Namba</title>" in date, date[:400]
+    assert "a score" not in date, "the Mixed entry reached the date's page"
+    assert "<title>12-25 — 1 entry · Namba</title>" in num, num[:400]
+    assert "Christmas" not in num, "the date reached the number's page"
+
     # -- a tag page is the same shape, and folds case like tagLabel() does
     page = c.get("/t/BREAKBEAT").text
     assert "<title>breakbeat — 2 entries · Namba</title>" in page, page[:400]
@@ -697,7 +720,7 @@ def test_head_per_route():
     # -- an empty number is a real page and not one to index: /n/ is an open
     # set, so indexing it means an unbounded number of blank pages in front of
     # the ones that say something.
-    for empty in ("/n/999999999", "/t/nothingistaggedthis"):
+    for empty in ("/n/999999999", "/c/01-02", "/t/nothingistaggedthis"):
         page = c.get(empty).text
         assert "noindex" in page, empty
         assert 'rel="canonical"' in page, empty
@@ -848,6 +871,22 @@ def test_robots_and_sitemap():
     locs = [u.findtext(f"{ns}loc") for u in
             ElementTree.fromstring(c.get("/sitemap.xml").text).findall(f"{ns}url")]
     assert "http://testserver/a/CSI" not in locs, "a hidden abbreviation was listed"
+
+    # a date is a third section with a third address, and the same characters
+    # filed as Mixed still get theirs
+    cal = c.post("/api/posts", json={"value": "07-14", "format": "CALENDAR",
+                                     "title": "Bastille Day"}).json()
+    c.post("/api/posts", json={"value": "07-14", "format": "MIXED",
+                               "title": "the same characters, filed as a number"})
+    locs = [u.findtext(f"{ns}loc") for u in
+            ElementTree.fromstring(c.get("/sitemap.xml").text).findall(f"{ns}url")]
+    assert "http://testserver/c/07-14" in locs, [x for x in locs if "07" in x]
+    assert "http://testserver/n/07-14" in locs, "the Mixed one has an address too"
+    assert len(locs) == len(set(locs)), "one address per page"
+    admin.set_status(cal["id"], "HIDDEN")
+    locs = [u.findtext(f"{ns}loc") for u in
+            ElementTree.fromstring(c.get("/sitemap.xml").text).findall(f"{ns}url")]
+    assert "http://testserver/c/07-14" not in locs, "a hidden date was listed"
 
     # two spellings of one abbreviation are one page, so they are one <loc> --
     # and it is the spelling the page's own canonical claims, or this file
@@ -2162,6 +2201,45 @@ def test_api_round_trip():
                 saas["id"], saas2["id"], iot["id"], io["id"]):
         admin.set_status(pid, "HIDDEN")
 
+    # A date is the other checked format, and the third section. The triple it
+    # comes back with is the whole of it: the format that was picked, the key
+    # the check handed over, and the month band that comes back out of the key.
+    xmas = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                                      "title": "Christmas Day"})
+    assert xmas.status_code == 201, xmas.text
+    xmas = xmas.json()
+    assert xmas["format"] == "CALENDAR" and xmas["value"] == "12-25", xmas
+    assert xmas["sort_key"] == 1225.0 and xmas["bucket"] == "12", xmas
+    # the padding is part of the spelling, so every other way of writing it is
+    # refused rather than folded: one day has one address (ADR-0005)
+    for bad in ("1-5", "01-5", "12-32", "02-30", "13-01", "2026-12-25", "12/25", "9¾"):
+        r = c.post("/api/posts", json={"value": bad, "format": "CALENDAR",
+                                       "title": "not a date"})
+        assert r.status_code == 422 and "month and day" in r.text, (bad, r.text)
+    # auto-detect does not reach for it -- 12-25 is Christmas and 80-20 is a
+    # ratio, and nothing in either string says which
+    guessed = c.post("/api/posts", json={"value": "04-01", "title": "a guess"}).json()
+    assert guessed["format"] == "MIXED" and guessed["sort_key"] is None, guessed
+    # ...so re-filing is the other way in, and since the number field is
+    # read-only on an edit the check reads the value that is stored
+    fools = c.patch(f"/api/posts/{guessed['id']}",
+                    json={"format": "CALENDAR", "author": "hoaxer"}).json()
+    assert fools["value"] == "04-01" and fools["format"] == "CALENDAR", fools
+    assert fools["sort_key"] == 401.0 and fools["bucket"] == "04", fools
+    assert fools["author"] == guessed["author"], "re-filing took the byline over"
+    # and each of the three sections answers for its own and for nothing else
+    wrote = c.post("/api/posts", json={"value": "12-25", "format": "MIXED",
+                                       "title": "a score somebody wrote 12-25"}).json()
+    def dated(name):
+        return {x["id"] for x in c.get(
+            "/api/posts", params={"value": "12-25", "section": name}).json()}
+    assert dated("calendar") == {xmas["id"]}, dated("calendar")
+    assert dated("number") == {wrote["id"]}, dated("number")
+    assert dated("abbr") == set(), dated("abbr")
+    assert dated("banana") == {xmas["id"], wrote["id"]}, dated("banana")
+    for pid in (xmas["id"], fools["id"], wrote["id"]):
+        admin.set_status(pid, "HIDDEN")
+
     clock = c.post("/api/posts", json={"value": "09:41", "title": "iPhone keynote",
                                        "tags": ["BRAND"]}).json()
     assert clock["format"] == "TIME" and clock["sort_key"] == 581 and clock["bucket"] is None
@@ -2559,12 +2637,12 @@ def test_api_round_trip():
 def test_hidden_is_invisible():
     """Hiding an entry takes it off the wiki, not out of one view of it.
 
-    Thirteen public reads carry the status condition and missing one leaks the
-    body of something an operator took down, so this walks all thirteen: the
+    Fourteen public reads carry the status condition and missing one leaks the
+    body of something an operator took down, so this walks all fourteen: the
     index, the list endpoint the feed and the search share, the entry itself,
     the two vocabularies, its row among another entry's related entries, its
     history, the talk beside it, the <head> written server-side for /p/{id},
-    the three written for the list pages it appears on, and the sitemap handed
+    the four written for the list pages it appears on, and the sitemap handed
     to crawlers.
 
     It moves the column through admin.py because that is the only thing that
@@ -2585,6 +2663,10 @@ def test_hidden_is_invisible():
     # without the condition doing anything.
     ab = c.post("/api/posts", json={"value": "KAP", "format": "ABBR",
                                     "title": "Kaprekar, for short"}).json()
+    # and the date section, so /c/{value} is walked as well. Same argument as
+    # the abbreviation above: its own value, no tag, no translation.
+    cal = c.post("/api/posts", json={"value": "09-17", "format": "CALENDAR",
+                                     "title": "Kaprekar, on a day"}).json()
     c.put(f"/api/posts/{pid}/translations",
           json={"lang": "Klingon", "title": "loSmaH", "body": "loS", "author": "worf"})
     c.post(f"/api/posts/{pid}/comments", json={"body": "It really is every time."})
@@ -2596,6 +2678,7 @@ def test_hidden_is_invisible():
         forgot LIVE has nowhere to keep the word alive from."""
         admin.set_status(pid, status)
         admin.set_status(ab["id"], status)
+        admin.set_status(cal["id"], status)
 
     def seen():
         """Every way a reader could reach this entry. Unique tag and language on
@@ -2619,13 +2702,14 @@ def test_hidden_is_invisible():
             # JSON-LD ItemList, which is a copy of the title outside the app
             "n-head": "Kaprekar" in c.get("/n/6174").text,
             "a-head": "Kaprekar" in c.get("/a/KAP").text,
+            "c-head": "Kaprekar" in c.get("/c/09-17").text,
             "t-head": "Kaprekar" in c.get("/t/kaprekar").text,
             # and the sitemap is a list of every address a crawler should ask
             # for -- a hidden entry's is not one of them
             "sitemap": f"/p/{pid}</loc>" in c.get("/sitemap.xml").text,
         }
 
-    assert len(seen()) == 13 + 1, "thirteen reads, and search is the second on /api/posts"
+    assert len(seen()) == 14 + 1, "fourteen reads, and search is the second on /api/posts"
     assert all(seen().values()), seen()
 
     move("HIDDEN")
