@@ -14,8 +14,8 @@ import type { GuideDoc } from './outline'
    pass run on the document it is a translation of, so the two say the same
    thing at the same length in the same order. */
 const en: GuideDoc = {
-  version: '0.3',
-  updated: '2026-09-01',
+  version: '0.4',
+  updated: '2026-09-11',
   title: 'Entry guidelines',
   lede: `Namba is a **wiki of what numbers mean**. It is not a record of every
 place a number turns up.
@@ -41,16 +41,22 @@ rule on this page is a rule about an entry.
 **Number page.** \`/n/42\` is not itself an entry. It is the page that gathers
 every entry filed under 42. No number belongs to anybody, so filing a new
 meaning under 42 does not replace what is already there — the new entry joins
-it under the same number.
+it under the same number. \`/a/UFO\` and \`/c/12-25\` are the same kind of page
+for a word and for a day.
 
 **Value.** The identifier that tells one entry from another: \`42\`, \`3.14\`,
-\`11:11\`, \`11/22/63\`, \`UFO\`. The value settles the address and cannot be
-changed after publishing. A different value belongs to a different page.
+\`11:11\`, \`11/22/63\`, \`12-25\`, \`UFO\`. The value settles the address and
+cannot be changed after publishing. A different value belongs to a different
+page.
 
 **Format.** What kind of thing the value is read as: integer, decimal, mixed,
-time or abbreviation. The format decides how a value sorts and where it is
-answered — the abbreviation \`UFO\` is read at \`/a/UFO\` and the number \`42\`
-at \`/n/42\`.`,
+time, calendar date or abbreviation. The format decides how a value sorts and
+where it is answered — the number \`42\` is read at \`/n/42\`, the abbreviation
+\`UFO\` at \`/a/UFO\`, and the date \`12-25\` at \`/c/12-25\`.
+
+Five of the six are worked out from what you type. A **calendar date** is the
+one to choose yourself, because nothing in \`12-25\` says whether it is a day
+or a ratio.`,
     },
 
     test: {
@@ -279,6 +285,15 @@ The IV in *Rocky IV* marks the place in the series.`,
 
     dates: {
       heading: 'Dates and times',
+      body: `**A day that comes round every year is a calendar date. A date
+that happened once is a number.**
+
+Christmas is 25 December every year, so it is filed as a calendar date at
+\`/c/12-25\` — the month and the day, with no year in it.
+
+The day Kennedy was killed happened once, so \`11/22/63\` is filed with the
+numbers. If what matters about a date is the year it happened in, the year
+belongs in the value and the entry is a number.`,
       rows: [
         [
           "11/22/63 — the day Kennedy was killed, and the title of Stephen King's novel",
@@ -287,6 +302,10 @@ The IV in *Rocky IV* marks the place in the series.`,
         ['11:11 — *Us*, and Jeremiah 11:11', 'a time glimpsed in one scene'],
         ['09:41 — the time used on every iPhone in an Apple photograph', "a living person's birthday"],
         ['29 February — the leap day', 'the date of an event with no particular meaning'],
+        [
+          '12-25 — Christmas, kept on the same day every year',
+          'a day declared for one campaign or product',
+        ],
       ],
     },
 
@@ -390,7 +409,11 @@ left over as a duplicate.`,
       body: `The form has few fields, and that is deliberate.
 
 The **value** and the **format** decide the address of the page. The number 42
-is shown at \`/n/42\`, and the abbreviation UFO at \`/a/UFO\`.
+is shown at \`/n/42\`, the abbreviation UFO at \`/a/UFO\`, and the date 12-25 at
+\`/c/12-25\`.
+
+A calendar date is picked from two menus rather than typed, and it has no year
+in it: Calendar is for a day that comes round every year.
 
 The **title** says in a few words what the number refers to.
 
