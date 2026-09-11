@@ -133,7 +133,7 @@ export const FR: Messages = {
     translationTitleHint: 'titre de l’entrée dans cette langue',
     optionalMarkdown: 'facultatif — vous pouvez aussi utiliser Markdown ici',
     addThisTranslation: 'Ajouter la traduction', removeTranslation: 'Supprimer la traduction',
-    related: 'Entrées associées', relatedHint: 'd’autres nombres à consulter avec celui-ci', unlink: 'Dissocier',
+    related: 'Entrées associées', relatedHint: 'd’autres entrées à consulter avec celle-ci', unlink: 'Dissocier',
     linkSearchAria: 'Rechercher dans le wiki une entrée à associer',
     linkSearchPlaceholder: 'Rechercher dans le wiki — p. ex. Retour vers le futur', searching: 'Recherche…',
     search: GLOBAL_TERMS.search, link: 'Associer', noMatches: 'Aucun résultat.',

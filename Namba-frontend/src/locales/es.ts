@@ -128,7 +128,7 @@ export const ES: Messages = {
     language: 'Idioma', languageHint: 'idioma de esta traducción', pickOne: 'Elige uno…',
     translationTitleHint: 'título de la entrada en este idioma', optionalMarkdown: 'opcional — también puedes usar Markdown aquí',
     addThisTranslation: 'Añadir traducción', removeTranslation: 'Eliminar traducción',
-    related: 'Entradas relacionadas', relatedHint: 'otros números que conviene consultar junto a este', unlink: 'Desvincular',
+    related: 'Entradas relacionadas', relatedHint: 'otras entradas que conviene consultar junto a esta', unlink: 'Desvincular',
     linkSearchAria: 'Buscar en la wiki una entrada para vincular',
     linkSearchPlaceholder: 'Buscar en la wiki — p. ej., Regreso al futuro', searching: 'Buscando…',
     search: GLOBAL_TERMS.search, link: 'Vincular', noMatches: 'No hay resultados.',

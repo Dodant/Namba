@@ -118,7 +118,7 @@ export const JA: Messages = {
     language: '言語', languageHint: 'この翻訳で使用する言語', pickOne: '選択…',
     translationTitleHint: 'その言語での項目タイトル', optionalMarkdown: '任意 — ここでもMarkdownを使用可能',
     addThisTranslation: '翻訳を追加', removeTranslation: '翻訳を削除', related: '関連項目',
-    relatedHint: '一緒に見るとよい別の数字', unlink: 'リンクを解除',
+    relatedHint: '一緒に見るとよい別の項目', unlink: 'リンクを解除',
     linkSearchAria: 'リンクする項目を検索', linkSearchPlaceholder: 'ウィキを検索 — 例: Back to the Future',
     searching: '検索中…', search: GLOBAL_TERMS.search, link: 'リンク', noMatches: '一致する項目はありません。',
   },

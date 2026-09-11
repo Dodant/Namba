@@ -131,7 +131,7 @@ export const DE: Messages = {
     translationTitleHint: 'Titel des Eintrags in dieser Sprache',
     optionalMarkdown: 'optional — auch hier ist Markdown möglich',
     addThisTranslation: 'Übersetzung hinzufügen', removeTranslation: 'Übersetzung entfernen',
-    related: 'Verwandte Einträge', relatedHint: 'andere Zahlen, die zu diesem Eintrag passen', unlink: 'Verknüpfung lösen',
+    related: 'Verwandte Einträge', relatedHint: 'andere Einträge, die neben diesen gehören', unlink: 'Verknüpfung lösen',
     linkSearchAria: 'Wiki nach einem zu verknüpfenden Eintrag durchsuchen',
     linkSearchPlaceholder: 'Wiki durchsuchen — z. B. Zurück in die Zukunft', searching: 'Wird gesucht…',
     search: GLOBAL_TERMS.search, link: 'Verknüpfen', noMatches: 'Keine Treffer.',

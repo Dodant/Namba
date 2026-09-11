@@ -118,7 +118,7 @@ export const ZH_HANS: Messages = {
     language: '语言', languageHint: '此翻译所使用的语言', pickOne: '请选择…',
     translationTitleHint: '使用该语言填写条目标题', optionalMarkdown: '可选 — 此处也支持Markdown',
     addThisTranslation: '添加翻译', removeTranslation: '移除翻译', related: '相关条目',
-    relatedHint: '适合与此条目一同查看的其他数字', unlink: '取消关联',
+    relatedHint: '适合与本条目一同查看的其他条目', unlink: '取消关联',
     linkSearchAria: '搜索要关联的条目', linkSearchPlaceholder: '搜索维基 — 例如：Back to the Future',
     searching: '搜索中…', search: GLOBAL_TERMS.search, link: '关联', noMatches: '没有匹配的结果。',
   },

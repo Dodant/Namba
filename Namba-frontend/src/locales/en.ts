@@ -155,7 +155,7 @@ export const EN = {
     language: 'Language', languageHint: 'the language used for this translation', pickOne: 'Pick one…',
     translationTitleHint: 'the entry’s title in that language', optionalMarkdown: 'optional — Markdown works here too',
     addThisTranslation: 'Add translation', removeTranslation: 'Remove translation',
-    related: 'Related entries', relatedHint: 'other numbers that belong beside this one', unlink: 'Unlink',
+    related: 'Related entries', relatedHint: 'other entries that belong beside this one', unlink: 'Unlink',
     linkSearchAria: 'Search the wiki for an entry to link',
     linkSearchPlaceholder: 'Search the wiki — e.g. Back to the Future', searching: 'Searching…',
     search: GLOBAL_TERMS.search, link: 'Link', noMatches: 'No matches.',
