@@ -120,6 +120,42 @@ def test_parse():
                "١٢-٢٥", "１２-２５", "1２-25"):
         assert date_key(no) is None, no
 
+    # INTEGER and DECIMAL are the claim that the value reads as a number, and
+    # `resolve_format` is where the claim is checked rather than believed --
+    # the sort key it settles off the value is load-bearing twice. Without one
+    # an Integer entry is in no band on the index and is drawn nowhere at all;
+    # with a non-finite one it cannot be serialized, and SQLite keeps NaN as
+    # NULL (the first case again) and Inf as Inf, which json.dumps refuses --
+    # so one such row 500s every list endpoint until an operator finds it.
+    for no in ("9 3/4", "11/22/63", "UFO", "12-25", "nan", "NaN", "inf",
+               "-inf", "Infinity", "0x1f"):
+        for fmt in ("INTEGER", "DECIMAL"):
+            try:
+                store.resolve_format(no, fmt)
+            except Exception as e:
+                assert getattr(e, "status_code", None) == 422, (no, fmt, e)
+            else:
+                raise AssertionError(f"{no!r} was filed as {fmt}")
+    # ...and what an explicit pick is still *for*: a number `parse_number`
+    # would have filed elsewhere. It guesses neither a minus sign nor an
+    # exponent, and both are numbers -- so the check is float(), not a stricter
+    # regex, and bucket_of already takes the magnitude of a negative.
+    for yes, key in (("-42", -42.0), ("1e5", 100000.0), ("42", 42.0),
+                     ("3.14", 3.14), ("0", 0.0),
+                     # float() reads a Python underscore and a non-ASCII
+                     # numeral, and both stay -- two spellings of a number are
+                     # two entries sharing a sort key, which is the rule for
+                     # the four that read digits (ADR-0005). Only CALENDAR
+                     # promised the opposite, and only its regex says [0-9].
+                     ("1_000", 1000.0), ("٤٢", 42.0)):
+        for fmt in ("INTEGER", "DECIMAL"):
+            assert store.resolve_format(yes, fmt) == (yes, fmt, key), (yes, fmt)
+    # TIME is the one still taken at its word: nothing bands or serializes on
+    # its key, so an explicit one on a value that is not a clock files with
+    # none, and MIXED is the remainder and claims nothing at all.
+    assert store.resolve_format("1:29:300", "TIME") == ("1:29:300", "TIME", None)
+    assert store.resolve_format("9 3/4", "MIXED") == ("9 3/4", "MIXED", None)
+
 
 def test_the_two_apps_still_agree():
     """The hand-copied lists in `../Namba-frontend/src/api.ts` match these ones.
@@ -1797,6 +1833,12 @@ def test_admin_content_and_dashboard():
                     json={"value": "1971", "format": "CALENDAR"}).status_code == 422
     assert ops.post(f"/api/admin/posts/{pid}/value",
                     json={"value": "1-5", "format": "CALENDAR"}).status_code == 422
+    # and so are INTEGER and DECIMAL, which are the claim that the value reads
+    # as a number. The operator's route is not the way round that either: a
+    # stored Inf is a key no list response can serialize.
+    for bad in ("9 3/4", "inf"):
+        assert ops.post(f"/api/admin/posts/{pid}/value",
+                        json={"value": bad, "format": "INTEGER"}).status_code == 422, bad
     # Re-filing is this route's other job, and the panel is the only place it
     # can be done: an entry filed as a number moves into the calendar section
     # by an operator saying so, and the section follows the format.
@@ -2135,6 +2177,17 @@ def test_api_round_trip():
     t = c.post("/api/posts", json={"value": "11:11", "title": "Us (Jeremiah 11:11)",
                                    "format": "MIXED", "tags": ["MOVIE"]}).json()
     assert t["format"] == "MIXED" and t["sort_key"] is None and t["bucket"] is None
+    # ...but not into a number the value is not. test_parse has the table; what
+    # is here is that the route answers it and that the list endpoints are
+    # still standing afterwards -- `inf` used to be written and then fail to
+    # serialize, which left a row that 500'd /api/numbers and /api/posts for
+    # everybody until somebody found it.
+    for bad in ("9 3/4", "inf", "nan"):
+        r = c.post("/api/posts", json={"value": bad, "format": "INTEGER",
+                                       "title": "not a number"})
+        assert r.status_code == 422 and "has to be one" in r.text, (bad, r.text)
+    assert c.get("/api/numbers").status_code == 200, "a refused write reached the table"
+    assert c.get("/api/posts").status_code == 200
 
     # -- the fifth kind. Letters are an abbreviation, they carry no sort key,
     # and the case they were typed in is kept, because case is part of how an
@@ -2231,12 +2284,15 @@ def test_api_round_trip():
     assert stuck.status_code == 422 and "stays one" in stuck.text, stuck.text
     held = c.get(f"/api/posts/{later['id']}").json()
     assert held["format"] == "MIXED" and held["edited_by"] is None, held
-    # and out of /a/ the same way, which is the direction that also cost the
-    # index: re-filed as INTEGER, mp3 keeps its value and loses its sort key,
-    # so bucket_of has no band and the Integer tab draws it nowhere at all
-    out = c.patch(f"/api/posts/{mp3['id']}",
-                  json={"format": "INTEGER", "author": "x"})
+    # and out of /a/ the same way
+    out = c.patch(f"/api/posts/{mp3['id']}", json={"format": "MIXED", "author": "x"})
     assert out.status_code == 422 and "stays one" in out.text, out.text
+    # INTEGER is refused one step earlier now, and says the more useful of the
+    # two things: mp3 is not a number. That arm is what used to cost the index
+    # -- the entry kept its value, lost its sort key, and the Integer tab
+    # fills five fixed bands by filtering on one, so it was drawn nowhere.
+    num = c.patch(f"/api/posts/{mp3['id']}", json={"format": "INTEGER", "author": "x"})
+    assert num.status_code == 422 and "has to be one" in num.text, num.text
     assert c.get(f"/api/posts/{mp3['id']}").json()["format"] == "ABBR"
     # re-filing an existing entry is the other way in, and the number field is
     # read-only on an edit -- so the value the check reads is the stored one.
@@ -2316,8 +2372,14 @@ def test_api_round_trip():
     # and on no page.
     was = len(c.get(f"/api/posts/{fools['id']}/revisions").json())
     stuck = c.patch(f"/api/posts/{fools['id']}",
-                    json={"format": "INTEGER", "author": "vandal"})
+                    json={"format": "MIXED", "author": "vandal"})
     assert stuck.status_code == 422 and "stays one" in stuck.text, stuck.text
+    # INTEGER is refused one step earlier and says why more usefully: 04-01 is
+    # not a number. That arm is the one that used to strand the entry off the
+    # index rather than merely move it.
+    num = c.patch(f"/api/posts/{fools['id']}",
+                  json={"format": "INTEGER", "author": "vandal"})
+    assert num.status_code == 422 and "has to be one" in num.text, num.text
     # and the same refusal with no format at all: a value on its own re-derives
     # the format, and 04-01 does not re-derive as a date (ADR-0026), so reading
     # the settled format rather than what was sent is what closes both

@@ -11,6 +11,7 @@ the third is in a module that may not import `main`. How a value is spelled and
 which format it is filed under has to be answered identically by all three.
 """
 import json
+import math
 
 from fastapi import HTTPException
 from pydantic import BaseModel, field_validator
@@ -80,10 +81,18 @@ def resolve_format(value, given):
     <loc> and the canonical agree. Three mechanisms, none of them a rewrite of
     what somebody typed (ADR-0005).
 
-    It is also where the two checked formats are checked rather than taken at
-    their word. The other four are ways of reading what was typed and cannot be
-    wrong about it; ABBR and CALENDAR are claims *about* the value -- that it is
-    a word, that it is a date -- and with no login the claim is a stranger's.
+    It is also where five of the six formats are checked rather than taken at
+    their word, and with no login the claim being checked is a stranger's.
+    ABBR and CALENDAR are claims about what the value *is* -- that it is a
+    word, that it is a date. INTEGER and DECIMAL are the claim that it reads
+    as a number, and the sort key they settle off it is load-bearing twice
+    over: without one an Integer entry is in no band on the index and is drawn
+    nowhere at all, and `float('inf')` is a key no JSON response can carry, so
+    one such row 500s every list endpoint until an operator finds it. TIME is
+    the one still taken at its word -- an explicit TIME on `1:29:300` files
+    with no key, and nothing bands or serializes on it -- and MIXED claims
+    nothing, being the remainder.
+
     All three writes settle the format here -- create with what was typed, edit
     with what is stored, since the wiki's form keeps the number read-only once
     the entry exists, and an operator's renumber with what they retyped -- so
@@ -103,10 +112,26 @@ def resolve_format(value, given):
     fmt, key = parse_number(value)
     if given and given != fmt:
         if given in ("INTEGER", "DECIMAL"):
+            # Refused rather than filed with no key. A number that cannot be
+            # read is not a number, and the two ways of getting one past here
+            # both cost something real: `9 3/4` as INTEGER kept its value,
+            # lost its key, and `bucket_of` then had no band for it -- the
+            # Integer tab fills five fixed bands by filtering on one, so the
+            # entry answered at /n/ and on no page. `inf` and `nan` are worse
+            # and are the reason the finite check is not belt-and-braces:
+            # SQLite stores NaN as NULL, which is the first case again, and it
+            # stores Inf as Inf, which json.dumps refuses -- one row and
+            # /api/numbers and /api/posts 500 for everybody.
             try:
                 key = float(value)
             except ValueError:
                 key = None
+            if key is None or not math.isfinite(key):
+                raise HTTPException(
+                    422, "Integer and Decimal read the value as a number, so "
+                         "it has to be one -- 42, -42, 3.14, 1e5. Something "
+                         "with a number in it, like 9 3/4 or 11/22/63, is "
+                         "Mixed, which sorts by the string instead.")
         else:
             # MIXED, ABBR, or a TIME that is not actually a clock. CALENDAR
             # takes its own back below, off the check that settles it.
