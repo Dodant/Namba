@@ -310,6 +310,25 @@ sha256 salted with the install's own key. Tables show only the first four
 characters; a block confirmation and its audit-log metadata show eight so an
 operator can distinguish the exact target of an irreversible decision.
 
+## The Claude Code plugin
+
+`plugins/namba/` is a plugin anyone can install, which prints one random entry
+of this wiki as a single line while they work:
+
+```
+/plugin marketplace add Dodant/Namba
+/plugin install namba@namba
+/namba:random-entry
+```
+
+```
+42 — The Hitchhiker's Guide to the Galaxy
+```
+
+It reads `GET /api/posts?sort=random&limit=5` over the public API and carries
+no copy of the entries, so it stays current without being updated.
+[`plugins/namba/README.md`](plugins/namba/README.md) has the rest.
+
 ## Deploying
 
 One process. `npm run build` writes `Namba-frontend/dist/`, and the API serves
