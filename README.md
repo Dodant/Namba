@@ -78,8 +78,10 @@ nothing about your current work changes.
 One read of one public endpoint, `GET /api/posts?sort=random&limit=5` on
 `namba.chiral.kr`, which returns only entries that are live and publicly
 readable. Nothing is written, no file is touched, no credential is read, and no
-other host is contacted. The wiki's entries are never bundled into the plugin,
-so it shows what is on Namba today without the plugin being updated.
+other host is contacted. What comes back is a wiki anyone can write to without
+an account, so the skill treats it as data rather than instructions and reads
+only the two fields it prints. The wiki's entries are never bundled into the
+plugin, so it shows what is on Namba today without the plugin being updated.
 
 Needs `curl`. Nothing else.
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "namba",
-  "description": "Claude Code plugins from Namba, the open wiki of what numbers mean.",
+  "description": "Claude Code and Codex plugins from Namba, the open wiki of what numbers mean.",
   "owner": {
     "name": "Dodant",
     "url": "https://github.com/Dodant"

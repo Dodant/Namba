@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "namba",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Surfaces one random entry from the Namba wiki while you work. Read-only, one line, no interruption.",
   "author": {
     "name": "Dodant",
