@@ -623,10 +623,37 @@ def list_posts(
     # dashboard into a 500 on the route every page of the wiki reads from.
     if events.is_plugin(request):
         try:
-            with con:
-                events.count_plugin(con, events.client_of(request))
+            # A short wait and not the connection's five seconds. This is the
+            # one write on a read path, and a plugin call must not sit on a
+            # threadpool slot holding the wiki's busiest endpoint open while
+            # somebody's save commits -- dropping the count is the cheaper
+            # answer. Read back rather than restored to a literal, so it
+            # cannot drift from `db.connect`'s timeout; not a bound parameter
+            # because PRAGMA does not take one, and it is an int SQLite just
+            # handed over.
+            waited = con.execute("PRAGMA busy_timeout").fetchone()[0]
+            try:
+                con.execute("PRAGMA busy_timeout = 50")
+                with con:
+                    events.count_plugin(con, events.client_of(request))
+            finally:
+                con.execute(f"PRAGMA busy_timeout = {waited}")
         except Exception:
-            pass
+            # Swallowed because a statistic is never worth the answer: a locked
+            # database or a full disk must not turn a figure on the operator's
+            # dashboard into a 500 on the route every page of the wiki reads
+            # from. Printed because the alternative is a counter that stops and
+            # nothing anywhere saying so -- this is the one failure in the file
+            # the `Exception` handler never sees, so the traceback is all an
+            # operator gets and it has to actually be there.
+            traceback.print_exc()
+            # `with con:` commits in __exit__ and does not roll back when that
+            # commit is what failed, so without this a full disk leaves this
+            # request holding the write lock through every read below.
+            try:
+                con.rollback()
+            except Exception:
+                pass
     sql = ["SELECT p.* FROM posts p"]
     args = []
     where = []

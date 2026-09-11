@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 import secrets
+import time
 
 import db
 
@@ -125,19 +126,70 @@ def is_plugin(request):
     return request.headers.get("user-agent", "").startswith(PLUGIN_UA)
 
 
-def count_plugin(con, client):
-    """One row per client per day, incremented. Deliberately not an event.
+# Calls not written yet, per client: `{ip_hash: [day, calls, first_at, last_at,
+# monotonic]}`. The fourth structure in this codebase that lives in process
+# memory, and the root CLAUDE.md's one-process rule names it beside the other
+# three -- a second worker is a second dict and one client's calls split
+# between them.
+#
+# It exists because a count is not worth a write lock per request. `/api/posts`
+# is the endpoint every page of the wiki reads from and it carries no limiter,
+# reads being free here, so an upsert per call let a forged user agent hold
+# SQLite's one write lock on an unmetered path. One write per client per
+# minute instead, with the calls in between added up here (ADR-0028).
+_pending = {}
+PLUGIN_FLUSH = 60
+# The same sweep, for the same reason, as main.KEEP_CLIENTS: an entry stays
+# after its calls are written so that the next one knows when the window
+# started, so without this every address that ever asked would sit here for
+# the life of the process. Only entries with nothing pending are dropped --
+# an absent entry writes immediately, which is the right answer for a client
+# whose window has expired anyway.
+PLUGIN_KEEP = 10_000
 
-    `plugin_days` in the schema has the argument for the separate table. What
+
+def _flush(con, h, day, calls, first_at, last_at):
+    con.execute(
+        """INSERT INTO plugin_days (day, ip_hash, calls, first_at, last_at)
+           VALUES (?,?,?,?,?)
+           ON CONFLICT(day, ip_hash) DO UPDATE
+             SET calls = calls + excluded.calls, last_at = excluded.last_at""",
+        (day, h, calls, first_at, last_at),
+    )
+
+
+def count_plugin(con, client):
+    """One row per client per day, and at most one write a minute. Not an event.
+
+    `plugin_days` in the schema has the argument for the separate table and
+    `_pending` above has the argument for not writing on every call. What
     belongs here is the consequence: this is the only write in the codebase
     that is not something a person did, so it takes no `action`, no actor and
     no target -- a count, a first and a last, and no way to ask it who.
+
+    The first call of a day is written straight away, so a client that runs the
+    plugin once is a client the panel has heard of. The calls inside the minute
+    after it are added up in memory and land on the call that follows, which is
+    the one place a count can be lost: whatever is still pending when the
+    process stops, or when a client stops asking, is never written. Under a
+    minute of one client's polling is the whole of it, and a usage figure is
+    allowed to be that honest -- a write lock on the wiki's busiest read is
+    not.
     """
-    at = db.now()
-    con.execute(
-        """INSERT INTO plugin_days (day, ip_hash, calls, first_at, last_at)
-           VALUES (?,?,1,?,?)
-           ON CONFLICT(day, ip_hash) DO UPDATE
-             SET calls = calls + 1, last_at = excluded.last_at""",
-        (at[:10], client["ip_hash"], at, at),
-    )
+    at, mono = db.now(), time.monotonic()
+    day, h = at[:10], client["ip_hash"]
+    held = _pending.get(h)
+    if held and held[0] == day and mono - held[4] < PLUGIN_FLUSH:
+        held[1] += 1
+        held[3] = at
+        return
+    if len(_pending) > PLUGIN_KEEP:
+        for k in [k for k, v in _pending.items()
+                  if not v[1] and mono - v[4] >= PLUGIN_FLUSH]:
+            del _pending[k]
+    if held and held[0] != day and held[1]:
+        # yesterday's tail, filed under the day it happened on
+        _flush(con, h, held[0], held[1], held[2], held[3])
+    carried = held[1] if held and held[0] == day else 0
+    _flush(con, h, day, carried + 1, at, at)
+    _pending[h] = [day, 0, at, at, mono]
