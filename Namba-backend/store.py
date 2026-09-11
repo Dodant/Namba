@@ -134,7 +134,6 @@ def resolve_format(value, given):
 # /n/ is where a value with nothing special about how it reads has always
 # answered. Everything below derives from this, so there is one list of them.
 SECTION_FORMATS = {"abbr": "ABBR", "calendar": "CALENDAR"}
-SECTIONS = ("number", *SECTION_FORMATS)
 
 
 def section_of(fmt):
