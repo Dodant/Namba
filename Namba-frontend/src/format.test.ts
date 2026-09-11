@@ -9,7 +9,7 @@ import assert from 'node:assert/strict'
 import {
   canGroupValue, canonicalNumber, cleanNumberInput, fmtCount, fmtDate, marker,
   monthDay, monthDays, monthDayValue, monthName, numSize, plain, plainLines,
-  showDate, showValue, todayMonthDay,
+  showDate, showDay, showValue, todayMonthDay,
 } from './format.ts'
 
 test('a value typed in any interface locale reaches the API in one spelling', () => {
@@ -46,6 +46,13 @@ test('a date is stored locale-neutral and read in the locale', () => {
     assert.equal(monthDay(raw), null, raw)
   }
   assert.deepEqual(monthDay('12-25'), [12, 25])
+  // the index bands by month, so the column under a September heading says
+  // the day and nothing else -- plain digits, because that column is numerals
+  // lining up down the page and the heading is localized already
+  assert.equal(showDay('09-11'), '11')
+  assert.equal(showDay('12-25'), '25')
+  assert.equal(showDay('04-01'), '1', 'no padding: the Integer index says 7, not 07')
+  assert.equal(showDay('11/22/63'), '11/22/63', 'not a date, untouched')
 })
 
 test('a date is picked, so the pair on screen is always a real one', () => {

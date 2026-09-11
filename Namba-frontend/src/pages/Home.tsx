@@ -5,7 +5,8 @@ import {
   tagLabel, tagPath, type Format, type NumberEntry, type Post,
 } from '../api'
 import {
-  fmtCount, fmtDate, marker, monthName, numSize, plain, plainLines, showValue,
+  fmtCount, fmtDate, marker, monthName, numSize, plain, plainLines, showDay,
+  showValue,
 } from '../format'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
@@ -469,6 +470,13 @@ function IndexRow({ row }: { row: NumberEntry }) {
   const { locale, m } = useUi()
   const rx = marker(row, locale)
   const shownValue = showValue(row.value, row.grouped, locale, row.format)
+  /* The month is the band heading over this row, so the column says the day
+     and nothing else. "September 11" down every row of September is the
+     heading repeated nine characters at a time, in the one column the index
+     is read down -- and that column is 104px of tabular numerals on purpose.
+     The popover below keeps the whole date: a layer has room a row does not,
+     and out there the heading is behind it rather than above it. */
+  const shownNum = row.format === 'CALENDAR' ? showDay(row.value) : shownValue
   const entries = row.entries.map((entry) => (
     <IndexEntry
       key={entry.id}
@@ -480,8 +488,15 @@ function IndexRow({ row }: { row: NumberEntry }) {
 
   return (
     <li className="ix">
-      <Link className={`ix-num ${numSize(shownValue)}`} to={entryPath(row.value, row.format)}>
-        {shownValue}
+      <Link
+        className={`ix-num ${numSize(shownNum)}`}
+        to={entryPath(row.value, row.format)}
+        /* only where the column is showing a shortened form: a link whose
+           whole accessible name is "11" has lost what the heading above it
+           was carrying, and nothing reads a heading for a link it jumps to */
+        aria-label={shownNum === shownValue ? undefined : shownValue}
+      >
+        {shownNum}
       </Link>
       {/* <details> and not a piece of state, the same as the band above it:
           the browser owns the collapse and gets the keyboard and the screen

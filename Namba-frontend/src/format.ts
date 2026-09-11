@@ -264,6 +264,20 @@ export const monthDayValue = (month: number, day: number) =>
 export const todayMonthDay = (now = new Date()) =>
   monthDayValue(now.getMonth() + 1, now.getDate())
 
+/** The day alone, as plain digits, for the one place the month is already on
+    screen: the Calendar index bands by month, so the heading above a row says
+    September and the column under it only has to say which one.
+
+    No Intl and no suffix. That column is `--mono` with `tabular-nums` and its
+    whole job is that the numerals line up down the page, which a per-locale
+    "11日" would undo -- and the month heading over it is localized already.
+    The whole date is still a hover away in the row's popover and a click away
+    at /c/09-11. Anything that is not a date comes back untouched. */
+export function showDay(value: string) {
+  const picked = monthDay(value)
+  return picked ? String(picked[1]) : value
+}
+
 export function showDate(value: string, locale = 'en') {
   const picked = monthDay(value)
   if (!picked) return value

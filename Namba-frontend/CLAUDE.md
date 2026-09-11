@@ -390,6 +390,19 @@ sanitiser config to get wrong.
   `keep` on the `Band` type are those two, and they are optional so the other
   five tabs keep the behaviour they had (ADR-0026).
 
+  **And its numeral column says the day alone.** `showDay()`, not
+  `showValue()`: the month is the heading over the row, so "September 11" down
+  every row of September is that heading repeated nine characters at a time in
+  the one column the index is read down — and that column is 104px of tabular
+  numerals on purpose. Plain digits with no locale suffix for the same reason,
+  since the heading above them is localized already. Two things buy the
+  context back: the numeral link carries the whole date as its `aria-label`,
+  because a link whose accessible name is "11" has lost what the heading was
+  holding and nothing reads a heading for a link it jumps to; and the row's
+  popover keeps `showValue()`, since a layer has room a row does not and out
+  there the heading is behind it rather than above it. Every hero — `/c/`,
+  `/p/:id`, a card, a feed row — keeps the whole date too.
+
   The numeral stays outside it — it links to `/n/:value`, and a link inside a
   summary is one click that has to be two things. Its rows need the
   `.ix-list` box: everything after a summary goes into one anonymous content
