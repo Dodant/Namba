@@ -27,7 +27,10 @@
   --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   color-scheme: light dark;
-  font-family: Newsreader, Georgia, serif;
+  /* Newsreader first and Gowun Batang behind it: a font only answers for the
+     characters it has, so Latin comes out of the first and Hangul out of the
+     second. Reversing them would hand the Latin to a Korean face as well. */
+  font-family: Newsreader, 'Gowun Batang', Georgia, serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -285,7 +288,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
    up ran the letters together, "mb" worst of all. */
 .logo {
   /* margin, because on the front page this is an <h1> */
-  margin: 0; font-family: Newsreader, Georgia, serif; font-size: clamp(26px, 3.4vw, 30px);
+  margin: 0; font-family: Newsreader, 'Gowun Batang', Georgia, serif; font-size: clamp(26px, 3.4vw, 30px);
   font-weight: 600; letter-spacing: -0.02em; line-height: 1;
 }
 .logo span { color: var(--accent); }
@@ -554,11 +557,12 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 }
 .tabs.fmts::-webkit-scrollbar { display: none; }
 .tabs.fmts a { flex: none; }
-/* Four tabs read numbers; the fifth reads letters -- UFO, CSI, NASA. That
-   distinction matters, but an auto margin made Abbreviation look like an
-   unrelated action at the far end of a wide row. A compact divider keeps all
-   five in one tab group while still marking the change of section. It also
-   travels with the strip on a narrow screen, unlike a viewport-only cue. */
+/* Four tabs read numbers, one reads a day of the year and one reads letters
+   -- UFO, CSI, NASA. Those distinctions matter, but an auto margin made
+   Abbreviation look like an unrelated action at the far end of a wide row. A
+   compact divider at each section boundary keeps all six in one tab group
+   while still marking the change of section. It also travels with the strip
+   on a narrow screen, unlike a viewport-only cue. */
 .tabs.fmts a.apart { position: relative; margin-left: 12px; }
 .tabs.fmts a.apart::before {
   content: ''; position: absolute; left: -7px; top: 10px; bottom: 10px;
@@ -1295,11 +1299,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    widths and read as eight accidents. Scoped to .guide on purpose: a table in
    an entry is a stranger's, and that one is still sized by what is in it. */
 .guide .tbl table { width: 100%; table-layout: fixed; }
-/* The rules page opens on a standfirst. .form-intro's size and colour,
-   without its text-wrap: balance -- that is written for the one line the
-   form says about itself, and on four lines it pulls the paragraph in
-   narrower than every line under it. A class and not :first-of-type, which
-   it was until the version row above it became the first <p> on the page. */
+/* The rules page opens on a standfirst: .form-intro's size and colour, and
+   nothing else of it. A class and not :first-of-type, which it was until the
+   version row above it became the first <p> on the page. */
 .guide .lede { font-size: 16.5px; color: var(--ink-soft); }  /* two classes: .body p would win a tie */
 /* The version and the language it is being read in, on the line above the h1
    and pushed to the far edge -- the title anchors the left, the metadata about
@@ -1420,8 +1422,11 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    24px of text at 1.2, the 11px padding both already have, the border. Each
    centres its own single line inside it, so nothing else has to move. */
 /* > input, not input: the Group-thousands box is inside this field now, and
-   .field.check never had to say a height to be a checkbox. */
-.num-field > input, .fmt-field select { height: 53px; }
+   .field.check never had to say a height to be a checkbox. The two date
+   selects are named as well: with Calendar picked they are what stands where
+   the number's box stands, so they answer to the same height or the top row
+   goes crooked the other way round. */
+.num-field > input, .num-field .two-up select, .fmt-field select { height: 53px; }
 /* editing an entry cannot move it to another number, so there the field is
    the number rather than a box to type one in -- the hard border above is
    what says "type here", and this is the only field that ever drops it */
@@ -1440,6 +1445,13 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .existing li { margin: 2px 0; }
 .existing a:not(.existing-value) { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
 .existing-more { display: inline-block; margin-top: 5px; color: var(--accent) !important; }
+/* Two capsules on one line: the month and the day the Calendar format is
+   picked with. The month's name is a word in every locale and the day is two
+   digits, so the two are not the same width anywhere -- 1fr each would make
+   "Dezember" share a column with "9". They wrap under each other on a phone,
+   which is the same thing the form's own rows do. */
+.two-up { display: flex; flex-wrap: wrap; gap: 8px; }
+.two-up .select { flex: 1 1 auto; min-width: 0; }
 .select { position: relative; }
 .select select { appearance: none; padding-right: 34px; }
 .select::after {
@@ -1487,6 +1499,12 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   }
   .select option:checked { color: var(--accent); font-weight: 600; }
   .select option::checkmark { order: 2; margin-left: auto; font-size: 11px; }
+  /* the rule under the five formats Auto-detect can hand back, in the same
+     hairline .body hr wears. Only inside this block: where the picker is the
+     system one the <hr> is the system's too, and a UA two-tone groove is the
+     right thing in a UA menu -- it is in a styled menu that it reads as the
+     one line nobody got to. */
+  .select hr { border: 0; border-top: 1px solid var(--line); margin: 5px 6px; }
 }
 
 /* the same select in the footer, wearing the pill the header's buttons wear --
@@ -1529,13 +1547,19 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    balance, not pretty: pretty guards the last line, and at two or three lines
    the bad break is the first one. balance evens them all, so "and" stops
    hanging off the end of line one. */
+/* pretty, not balance, on both of these: balance evens the lines out by
+   pulling the whole block in, and a paragraph narrower than the fields under
+   it reads as a column that lost its right edge. These two are the form
+   talking about itself and they are two and three lines long in most
+   languages -- Korean sets them longer still. pretty only picks better breaks
+   and leaves the measure alone. A heading is where balance belongs. */
 .form-intro {
   font-size: 16.5px; line-height: 1.5; color: var(--ink-soft);
-  margin: 0 0 24px; text-wrap: balance;
+  margin: 0 0 24px; text-wrap: pretty;
 }
 .fine {
   font-size: 13.5px; line-height: 1.5; color: var(--faint);
-  margin: 12px 0 0; text-wrap: balance;
+  margin: 12px 0 0; text-wrap: pretty;
 }
 .file-row { display: flex; gap: 12px; align-items: center; }
 .file-row .thumb {
@@ -1548,6 +1572,11 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .panel {
   border: 1px solid var(--line); border-radius: var(--radius);
   background: var(--panel); overflow: hidden;
+  /* asked about below: whether a row has room to be read as two ends depends
+     on this box and not on the window. The same panel is 340px in the rail at
+     1200 and the whole column at 1000, so a viewport query would have had it
+     backwards at one of the two. */
+  container-type: inline-size;
 }
 .panel-row {
   display: flex; align-items: center; gap: 12px;
@@ -1585,6 +1614,23 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 }
 .panel-t.now { font-weight: 600; color: var(--accent); }
 .panel-m { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+/* Given the width, the version and who wrote it are the two ends of one row
+   rather than two stacked lines: a title that stops short left the right half
+   of every row empty. Under it they stack, which is the 340px rail and a
+   phone both -- squeezed onto the end there, the line came out as "현재 ·
+   an…". Both sides shrink and both ellipsize, for the reason .panel-by above
+   does: a title is as long as an entry's title and a nickname is as long as
+   somebody wants it to be, and at flex: none either pushes the other out of a
+   panel that clips. */
+@container (min-width: 560px) {
+  .panel-main { flex-direction: row; align-items: baseline; gap: 12px;
+                justify-content: space-between; }
+  .panel-t { flex: 1 1 auto; min-width: 0; }
+  .panel-m {
+    flex: 0 1 auto; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+}
 .panel-add {
   font-family: var(--mono); font-size: 11.5px; color: var(--accent);
   background: none; border: 0; padding: 0; cursor: pointer;

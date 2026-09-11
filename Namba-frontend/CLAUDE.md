@@ -143,6 +143,13 @@ every link in the panel is wrong in one of them.
   characters a stranger typed — a link's real href, a zero-width space, the
   twelve blank lines — not the paragraph they render into. This is the one place
   in the product that deliberately does not use `react-markdown`.
+- **And a value is shown as stored, for the same reason.** The panel shares
+  `showValue` with the wiki but never hands it a format, so a calendar entry
+  reads `12-25` in here and "25 December" out there. That is not an oversight:
+  one of the places this draws a value is the field an operator retypes it in
+  (`Change the number` on `Entry.tsx`), and a localized date in that box would
+  be sent back as the new value. An operator correcting or judging a value
+  wants the characters that are stored.
 - **Editing goes to the wiki's own form, except the number.** `/p/:id/edit` in
   a new tab, as a plain `<a>` because it is another document. There is one place
   that knows how a number value is parsed and how `grouped` follows the commas,
@@ -169,8 +176,15 @@ every link in the panel is wrong in one of them.
   and `resolve_format` on the server settles the spelling, the separators and
   the sort key. The answer is refetched rather than patched in for that reason,
   and a refusal is drawn *inside* the dialog — 409 for the same number back
-  again and 422 for an abbreviation with no letters in it are the ordinary
-  replies here, and the page behind a modal is inert and unreadable.
+  again, and 422 for an abbreviation with no letters in it or a date that is
+  not a day of the year, are the ordinary replies here, and the page behind a
+  modal is inert and unreadable. Those two formats are refused rather than
+  read, which is why they are the refusals an operator meets: the panel offers
+  every format the wiki has, including the two that can be wrong about the
+  value. Auto-detect keeps an abbreviation one and does **not** keep a date
+  one, because `parse_number` never guesses a date — so "Work it out" on
+  `12-25` files it as Mixed, at `/n/`. That is why the select starts on the
+  format the entry already has.
 - **A closed `<dialog>` is hidden by a *user-agent* rule, so never give one an
   unconditional `display`.** Cascade origin is settled before specificity: a
   plain `.sheet { display: flex }` beats `dialog:not([open]) { display: none }`
@@ -346,12 +360,34 @@ sanitiser config to get wrong.
   screen readers all come free here and all have to be rebuilt by hand there.
   Options set no font of their own: they inherit, so a field's picker is
   Newsreader like the field and the header pill's is mono like the pill.
-- Two families, both from Google Fonts, linked in `index.html`: Newsreader for
-  prose and IBM Plex Mono for `--mono`. It is the one external asset the app
-  loads. If it is chrome or a number it is mono; if it is content prose it is
-  Newsreader. The wordmark is Newsreader too — a masthead speaks in the page's
-  own voice — over a mono strapline, which is where that pairing comes from.
-  It is not a third face and must not become one.
+- Two voices, three families, all from Google Fonts in one `index.html` link:
+  Newsreader for prose, Gowun Batang behind it for Hangul, and IBM Plex Mono
+  for `--mono`. It is the one external asset the app loads. If it is chrome or
+  a number it is mono; if it is content prose it is Newsreader. The wordmark is
+  Newsreader too — a masthead speaks in the page's own voice — over a mono
+  strapline, which is where that pairing comes from. There is no third *voice*
+  and there must not be one.
+
+  Gowun Batang is the serif in a script Newsreader has no glyphs for, which is
+  why it is not one. A font answers only for the characters it has, so the
+  order in the stack is what splits the scripts: Newsreader takes the Latin,
+  Gowun Batang takes the Hangul, and reversing the two would hand the Latin to
+  a Korean face as well. Before it, Hangul fell past Georgia to whatever the
+  platform calls `serif` — AppleMyungjo on a Mac, a Batang on Windows — so the
+  Korean UI and every Korean entry title on the wiki were set in a face nobody
+  had chosen. It carries 400 and 700 only: Korean at 500 comes out 400 and at
+  600 comes out 700, which is the weight either side and never a synthesised
+  bold, because faux bold on Hangul thickens the strokes until the counters
+  close. The CJK subsetting is what it costs — the font stylesheet is a great
+  deal larger than it was, though a page fetches only the subsets whose
+  characters it shows, and a page with no Hangul fetches none of them.
+
+  The mono voice is left to fall through, and that is not an oversight either:
+  IBM Plex Mono has no Hangul, so a Korean field label comes out in whatever
+  the platform calls `monospace`, which is a sans. It is the right shape by
+  accident — every Hangul syllable is already a square of the same width, so a
+  Korean label is monospaced without a monospaced font, and the letter-spacing
+  on `.field-label` is doing the rest. Do not add a fourth family for it.
 - `Home` has two views off one `?view=` param, `Index` (default) and `Feed`, and
   they are two components rather than one with a branch through its hooks —
   otherwise it fetches both. `Index` is a list, not a grid: one row per number,
@@ -361,10 +397,11 @@ sanitiser config to get wrong.
   column for every "7" — the class comes from `numSize()` in `format.ts`, shared
   with the feed rows, the cards and both heroes, because one font size either
   shouts at "7" or breaks on "1960년 4월 16일 오후 3시" and a viewport clamp
-  cannot tell those apart. The Integer tab bands by magnitude and the
+  cannot tell those apart. The Integer tab bands by magnitude, the
   Abbreviation tab by first letter — `ABBR_BUCKETS` in `api.ts`: A to W, then
   X – Z together, then 0 – 9 last, the keys the API returns in `bucket` — and
-  the other three tabs are one band named for the format. Each band is a
+  the Calendar tab by month, `MONTH_BUCKETS`, January to December. The other
+  three tabs are one band named for the format. Each band is a
   `<details>` open by default, and the
   category filter is the same thing closed by default — the browser owns the
   collapse, so there is no open state to hold anywhere. A closed filter still
@@ -372,6 +409,29 @@ sanitiser config to get wrong.
   number past `FOLD_OVER` entries is a third `<details>`, open, its summary
   the count: it is there to be closed by a reader who wants past a number the
   wiki has taken to, and it never hides an entry from one who did not ask.
+
+  **The Calendar tab breaks both of those defaults, and is the only tab that
+  does.** It opens the month it *is* and closes the other eleven — twelve open
+  months are a year to scroll past, and the page a reader came for is today's
+  — and it draws a month with nothing in it, where every other band is skipped
+  when empty, because twelve months are a calendar and a year missing August
+  reads as a bug rather than as a month nobody has written about. `open` and
+  `keep` on the `Band` type are those two, and they are optional so the other
+  five tabs keep the behaviour they had (ADR-0026).
+
+  **And its numeral column says the day alone.** `showDay()`, not
+  `showValue()`: the month is the heading over the row, so "September 11" down
+  every row of September is that heading repeated nine characters at a time in
+  the one column the index is read down — and that column is 104px of tabular
+  numerals on purpose. Plain digits with no locale suffix for the same reason,
+  since the heading above them is localized already. Two things buy the
+  context back: the numeral link carries the whole date as its `aria-label`,
+  because a link whose accessible name is "11" has lost what the heading was
+  holding and nothing reads a heading for a link it jumps to; and the row's
+  popover keeps `showValue()`, since a layer has room a row does not and out
+  there the heading is behind it rather than above it. Every hero — `/c/`,
+  `/p/:id`, a card, a feed row — keeps the whole date too.
+
   The numeral stays outside it — it links to `/n/:value`, and a link inside a
   summary is one click that has to be two things. Its rows need the
   `.ix-list` box: everything after a summary goes into one anonymous content
@@ -630,18 +690,18 @@ What actually changes shape, rather than size:
 - **A `.panel-row`** puts its title on a line of its own below 560, whole,
   rather than an ellipsis at twelve characters.
 - **The format tabs scroll rather than shorten or wrap**, and they are the one
-  strip that does. Five full labels are 400px of type against the 288 a 320px
-  screen has. Wrapping made a strip two rows tall, which has stopped being a
-  strip; shortening them to `Int. Dec. Mix. Time Abbr.` fit, and cost every tab
-  its name. `.tabs.fmts` is `nowrap` + `overflow-x: auto` with **no media
-  query** — overflow is inert until something overflows, so one rule does
-  nothing above about 430px and the right thing below it, and a sixth format
-  would need no re-measuring. `flex: none` on the children is not optional: a
+  strip that does. Six full labels are well past 400px of type against the 288
+  a 320px screen has. Wrapping made a strip two rows tall, which has stopped
+  being a strip; shortening them to `Int. Dec. Mix. Time Cal. Abbr.` fit, and
+  cost every tab its name. `.tabs.fmts` is `nowrap` + `overflow-x: auto` with
+  **no media query** — overflow is inert until something overflows, so one rule
+  does nothing above about 430px and the right thing below it, and a seventh
+  format would need no re-measuring. `flex: none` on the children is not optional: a
   nowrap flex row shrinks them by default, which compresses the labels instead
   of overflowing them.
 
   **The scroll is only half of it.** The tab you are on can start off the end
-  of the strip, and four tabs with no underline on any of them is a page that
+  of the strip, and five tabs with no underline on any of them is a page that
   looks like it belongs to none of them. `Index` in `Home.tsx` holds a ref on
   the `<nav>` and a **layout** effect that calls `scrollIntoView({ inline:
   'nearest', block: 'nearest' })` on `[aria-current="page"]`. Each half of that
@@ -656,25 +716,28 @@ What actually changes shape, rather than size:
   the 104. Worth knowing if either number moves: the strip would twitch down
   by the difference on a tab press.
 
-  **Abbreviation sits at the far end of the strip.** `.apart` from `Home.tsx`
-  off `isAbbr(f)`, spent by `margin-left: auto` in `index.css`. Four of these
-  tabs read digits and the fifth reads letters — `UFO`, `CSI`, `NASA` — which
-  is the one division in `FORMATS` that decides how a value is read, sorted
-  and addressed, and five evenly spaced tabs say there is no such division.
-  The class goes on the format that reads letters and **not** on the fifth
-  item, so reordering `FORMATS` moves the tab and leaves the gap where it
-  belongs. An auto margin and not a gap or a separator, because it is the one
-  rule that does nothing when there is nothing to spend: below about 460 the
-  strip overflows, free space goes negative, the margin resolves to 0, and the
-  tab falls back in beside the others and scrolls with them rather than
-  opening a gap nobody can see the far side of.
+  **The strip is spaced into its three sections.** `.apart` from `Home.tsx`
+  wherever `sectionOf(f)` differs from the tab before it, drawn by `index.css`
+  as `margin-left: 12px` and a 1px `::before` hairline. Four of these tabs
+  read digits as a number, one reads a day of the year and one reads letters —
+  `UFO`, `CSI`, `NASA` — which is the division in `FORMATS` that decides how a
+  value is read, sorted and addressed, and six evenly spaced tabs say there is
+  no such division. Two of these dividers are what makes three groups read as
+  three. The class is computed from the sections and **not** from a position,
+  so reordering `FORMATS` moves the tabs and leaves the gaps where they
+  belong. A divider and not an auto margin, which is what this was first: the
+  margin pushed Abbreviation to the far end of a wide row, where it read as an
+  unrelated action rather than as the next tab along. A fixed gap keeps all
+  six in one group and travels with the strip when the strip scrolls, which is
+  the case an auto margin cannot answer — free space is the one thing a narrow
+  screen has none of.
 
   The scrollbar is hidden (`scrollbar-width: none` and the `-webkit`
   pseudo-element) and the tab half-cut at the edge is the cue in its place —
   the affordance every native tab strip uses, and there is no pointer at these
   widths to want the bar. `overscroll-behavior-x: contain` because iOS reads a
   swipe past the end of a horizontal scroller as Back, and flicking through
-  five tabs must not leave the page.
+  six tabs must not leave the page.
 
   **The language tabs on `/p/:id` share `.tabs` and deliberately do not get
   this.** They are `.tabs langs`, they wrap, and they should: they are
@@ -849,18 +912,89 @@ than this list. Adding a language is one line here and no migration. Taking one
 out is safe too — `langsWith()` keeps an entry's existing language on the menu
 so the form cannot drop it on the next save.
 
+**Calendar replaces that field outright.** A date is two numbers with a fixed
+range each and one stored spelling, so there is nothing to type and nothing to
+filter: two real `<select>`s, the day list following the month so February
+offers 29, and the day clamped when the month shrinks under it —
+`monthDayValue()` in `format.ts` is where that happens, and it is the same
+function the payload's value comes out of, so what is on screen is what is
+stored. The pair is *derived* from `value` every render with today as the
+fallback, rather than kept as a third piece of state in step with it. Only on
+a create: the value field is `readOnly` on an edit, which is what makes the
+selects a create-only branch. The examples in the hint go through
+`showValue()` with the format, so they read "December 25 · April 1 ·
+February 29" in the reader's own language.
+
+**The two placeholders follow the format as well**, because an entry about
+`POV` is not titled after a book about 42 and one about April Fools is not
+either: `titlePlaceholder` and `detailsPlaceholder` take the section and each
+locale answers with three — the Hitchhiker's Guide, POV, April Fools' Day.
+They are examples of what to write in that box, so a number's example over an
+abbreviation's field is the field explaining itself with the wrong thing. Each
+one is also an example of the *value* beside it: `POV` and April 1 both lead
+the hint under their field, so the three boxes read as one entry rather than
+as three unrelated ones. `detailsHint` says "this value" rather than "this
+number" for the same reason; four of the seven locales had already written it
+that way.
+
+**Auto-detect is five of the six, and the menu is drawn to say so.**
+Calendar is last and sits under an `<hr>` — a real one, which a `<select>`
+takes natively; a browser that will not draw it drops the line and leaves the
+menu — because `parse_number` cannot return that format: `12-25` is as much a
+ratio as a day, so a date is only ever reached by picking it. So do not put
+`CALENDAR` back into the `FORMATS.map` above it. The index's tab strip is
+*not* reordered to match, because there the order is the order the sections
+come in.
+
+**On `/p/:id/edit` the menu offers only what Save would take, because a
+section is an address and the open form does not move an entry to a new one.**
+Two rules, both off `post` — the entry as loaded — and never off the `format`
+state, which would lock the menu on the way past a pick. An entry already at
+`/a/` or `/c/` gets the whole select `disabled`: its format is fixed the same
+way its value is. An entry at `/n/` keeps the select and loses one line,
+Abbreviation, dropped rather than greyed, since a line that can never be
+picked is a menu explaining itself. Calendar below the `<hr>` stays for it,
+and that asymmetry is the rule: `parse_number` never returns `CALENDAR`, so
+picking it is all an entry written before somebody noticed it was a date has,
+while `UFO` the parser already guesses. `edit_post` refuses the rest with a
+422 — this is only so the menu does not offer it.
+
+Nothing extra is said under the disabled one. The field above already reads
+Date or Abbreviation and "fixed — another date is another entry", and a
+greyed control repeating the format beside that is the same sentence twice.
+
+**Auto-detect is still on the edit menu, and on a `MIXED` value that looks
+like a word it is a 422.** The form sends the stored value with every save, so
+Auto-detect re-derives: a `MIXED` `Ufo` comes back `ABBR`, which is the move
+the server just refused. Left there because it is the honest control for the
+other case — undoing an explicit `TIME` on `09:41` re-derives to `TIME` and
+saves — and because the alternative is `parse_number` reimplemented over here
+to predict the answer. It fails loudly now, which is the part that changed:
+before the section rule the same click moved the entry to `/n/` and said
+nothing.
+
 The Format select reshapes the field beside it, down to that field's own label
 — with Abbreviation picked, "Number" is the wrong word for the box you are
 typing `UFO` into, so the label reads Abbreviation and the filter keeps Latin
 letters, digits and `.&/;-`. Case is kept as typed — `SaaS` is spelled `SaaS` —
 and the API is what keeps `ufo` and `UFO` on one page, by adopting the spelling
 already stored for the word. That filter is a copy of `is_abbr` in
-`numfmt.py`, which **refuses** anything else with a 422 — unlike the other four
-formats, which are ways of reading what was typed and take it as given. It is
+`numfmt.py`, which **refuses** anything else with a 422. It is
 not in the root `CLAUDE.md`'s hand-synced table for the same reason a tag's
 shape is not: the API is the one that decides and says so out loud. Keeping the
-filter in step only spares the reader a rejection they can see coming. Integer and Decimal filter what can be typed and offer the
-separator checkbox — from the fourth
+filter in step only spares the reader a rejection they can see coming.
+
+Integer and Decimal have a filter of their own and an API rule behind it too:
+`resolve_format` refuses a value `float()` cannot read as a finite number, so
+`9 3/4` filed as Integer is a 422 rather than an entry with no sort key. The
+filter is `cleanNumberInput`, and it deliberately does **not** rewrite what is
+already in the box when the format changes — picking Integer by mistake with
+`11/22/63` in there must not silently make it `112263`. So the two do
+different jobs: the filter keeps you from typing the wrong thing, and the 422
+catches the value that was already there. Do not "finish" the pair by
+rewriting on the format change.
+
+They also offer the separator checkbox — from the fourth
 digit, because there is no thousand in `100` and a box that ticks with nothing
 on the page changing reads as broken rather than as inapplicable. It asks
 `canGroupValue(canonical.value)`, which checks that a plain number has at
@@ -874,8 +1008,9 @@ with the format re-measures Number and Format underneath the choice, and the
 preview it carries belongs under the number it rewrites. The two controls in
 that row are given one height in `index.css` rather than each taking its own:
 24px of number against 15.5px of select is a pair that sits crooked. Mixed and Time are
-plain text with no checkbox and Abbreviation is the third with none — there is
-no thousand in `UFO` — and Auto-detect constrains nothing because nothing
+plain text with no checkbox, and Abbreviation and Calendar are the third and
+fourth with none — there is no thousand in `UFO` or in `12-25` — and
+Auto-detect constrains nothing because nothing
 has been decided yet. Filtering happens as you type and **never** rewrites what
 is already in the field — picking Integer by mistake with `11/22/63` in there
 must not turn it into `112263`.
@@ -909,9 +1044,11 @@ value to the API as a **query param**, never a path segment — `%2F` in a path
 gets normalised by the ASGI layer before routing.
 
 `entryPath()` takes the format as well as the value, because the format is what
-decides the address: `/a/UFO` for an abbreviation, `/n/42` for a number. Take it
-off the row you are drawing — a poster may file `UFO` as Mixed on purpose, and
-that entry is at `/n/UFO`. It is the twin of `value_path()` in `Namba-backend/seo.py`, which
+decides the address: `/a/UFO` for an abbreviation, `/c/12-25` for a date,
+`/n/42` for a number. It asks `sectionOf()`, which is the twin of
+`section_of()` in `store.py` and the one place either app turns a format into
+a section. Take the format off the row you are drawing — a poster may file
+`UFO` or `12-25` as Mixed on purpose, and that entry is at `/n/`. It is the twin of `value_path()` in `Namba-backend/seo.py`, which
 writes the same link into every canonical and breadcrumb.
 
 Client-side routing decodes the segment correctly, which is why `/n/:value`
@@ -919,9 +1056,22 @@ works but `/api/numbers/{value}` would not.
 
 ## Routes
 
-`Browse.tsx` serves four of them — `/n/:value`, `/a/:value`, `/t/:tag`,
-`/search` — because they differ only in which filter reaches `api.posts()`. Add
-a fifth list view by extending its `mode`, not by copying the file.
+`Browse.tsx` serves five of them — `/n/:value`, `/a/:value`, `/c/:value`,
+`/t/:tag`, `/search` — because they differ only in which filter reaches
+`api.posts()`. `/c/:value` goes through `CalendarPage` in `App.tsx` first,
+which is four lines and belongs there rather than in `Browse`: a day of the
+year is a closed set of 366, so `/c/99-99` is not an empty date page, it is
+not a page, and the answer it gets is the `*` route's own `NotFound`. The
+other two value sections are open sets and keep their empty state — nobody
+has written about `999999` *yet*. Without it the empty page offered "Give it
+a meaning", and the link carried a value the form cannot read, so the entry
+was filed under today's date instead. `index_html` in `seo.py` draws the same
+line with `date_key`, so the `<head>` and the page agree. Add a sixth list view by extending its `mode`, not by copying
+the file. `ABOUT_VALUE` in there is the three modes that are about one value:
+which section reads the page, and which format the Add pill preselects so a
+reader who follows it lands back in the section they came from. Off the mode
+and not off the rows, because an empty page is where that pill has to be
+right — and `/n/` holds four formats, so it preselects none.
 
 `/guide` is the odd one and the only page here that is prose rather than a
 query — `Guide.tsx`, no fetch, no state. It is where the one rule
@@ -1062,15 +1212,20 @@ of it, this page has no entry on it to contaminate, and a page of rules is the
 one thing in this app somebody has a reason to quote at somebody else. Do not
 "finish" the list by adding it.
 
-`/n/` and `/a/` are two sections over one column and the mode is what picks
-between them: it sends `section` to the API, which reads `/a/` up to case so
-that `/a/ufo` still lands on `UFO`, shows the entries' stored spelling in the
-hero rather than the link's, and chooses the noun the hero uses. An entry has exactly one address — an abbreviation never answers at `/n/`
-— and `section_where()` in `main.py` is the single condition that says so.
+`/n/`, `/a/` and `/c/` are three sections over one column and the mode is what
+picks between them: it sends `section` to the API, which reads `/a/` up to case
+so that `/a/ufo` still lands on `UFO`, shows the entries' stored spelling in the
+hero rather than the link's, and chooses the noun the hero uses — `m.common.subject`
+takes the section now, so a Calendar band counts dates and the `/c/` hero says
+"this date". An entry has exactly one address — an abbreviation never answers
+at `/n/`, and neither does a date — and `section_where()` in `store.py` is the
+single condition that says so.
 
-All four heroes are one shape: a `.kicker` of metadata over an `<h1>` that is
-the subject and nothing else. On `/n/:value` and `/a/:value` the kicker is the
-format alone; on the other two it is the kind of page and the count. The count
+All five heroes are one shape: a `.kicker` of metadata over an `<h1>` that is
+the subject and nothing else. On `/n/:value`, `/a/:value` and `/c/:value` the
+kicker is the format alone; on the other two it is the kind of page and the
+count. A date's `<h1>` is the localized reading — "25 December", "12월 25일" —
+off `showValue()` and the row's own format, while the address stays `/c/12-25`. The count
 waits for `posts.data` because "0 entries" before the fetch lands is a result
 rather than a wait. `/t/:tag` passes its tag to `PostCard` as `except`, so a
 row does not carry a chip linking to the page it is already on — what is left
@@ -1219,9 +1374,14 @@ is on and a parameter property is the one class syntax that is not erasable.
 
 ## Mirrors the backend
 
-`FORMATS` in `api.ts` is a hand-copy of `numfmt.py` — five of them now, four
-ways of reading digits and `ABBR` for letters. `numfmt.py`'s parser branch and
-the localized `m.format` maps in `uiLocale.tsx` must change with it. The seven
+`FORMATS` in `api.ts` is a hand-copy of `numfmt.py` — six of them now: four
+ways of reading digits as a number, `CALENDAR` for a day of the year and
+`ABBR` for letters. `numfmt.py`'s parser branch and the localized `m.format`
+maps in `src/locales/` must change with it, **in the same position in the
+list**, since `test_the_two_apps_still_agree` compares the two as tuples and
+the strip draws them in that order. `MONTH_BUCKETS` beside `BUCKETS` and
+`ABBR_BUCKETS` is the third band list, compared against `bucket_of` as a set
+in both directions. The seven
 moderation vocabularies — `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`,
 `REQUEST_STATUSES`, `REPORT_STATUSES`, `BLOCK_TYPES`, `BLOCK_HOURS` — are
 hand-copies of `db.py`. Unknown reasons, statuses and block types get a 422;

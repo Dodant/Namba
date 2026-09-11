@@ -11,12 +11,13 @@ the third is in a module that may not import `main`. How a value is spelled and
 which format it is filed under has to be answered identically by all three.
 """
 import json
+import math
 
 from fastapi import HTTPException
 from pydantic import BaseModel, field_validator
 
 from db import nfc, now
-from numfmt import bucket_of, canonical_value, is_abbr, parse_number
+from numfmt import bucket_of, canonical_value, date_key, is_abbr, parse_number
 
 
 class Text(BaseModel):
@@ -33,13 +34,13 @@ class Text(BaseModel):
     def one_normal_form(cls, v):
         return nfc(v)
 
-# The only status a visitor ever sees. Thirteen reads in main.py carry it -- the
+# The only status a visitor ever sees. Fourteen reads in main.py carry it -- the
 # index, the list endpoint the feed and the search share, one entry, the two
-# vocabularies, an entry's related row, its history and its comments, the four
-# <head>s written for /p/{id}, /n/{value}, /a/{value} and /t/{tag}, and the
-# sitemap -- and missing one leaks the body of something an operator took down.
-# test_hidden_is_invisible walks all thirteen: eight API reads, four heads and
-# the sitemap. A head that names an entry and a sitemap that links
+# vocabularies, an entry's related row, its history and its comments, the five
+# <head>s written for /p/{id}, /n/{value}, /a/{value}, /c/{value} and /t/{tag},
+# and the sitemap -- and missing one leaks the body of something an operator
+# took down. test_hidden_is_invisible walks all fourteen: eight API reads, five
+# heads and the sitemap. A head that names an entry and a sitemap that links
 # to it are both places a row can leak to somebody who never called the API at
 # all. The writes need no equivalent: they reach for fetch_one() below first and
 # get the 404 from there.
@@ -80,13 +81,29 @@ def resolve_format(value, given):
     <loc> and the canonical agree. Three mechanisms, none of them a rewrite of
     what somebody typed (ADR-0005).
 
-    It is also where ABBR is checked rather than taken at its word. Every other
-    format is a way of reading what was typed and cannot be wrong about it; this
-    one is a claim about the value, and with no login the claim is a stranger's.
+    It is also where five of the six formats are checked rather than taken at
+    their word, and with no login the claim being checked is a stranger's.
+    ABBR and CALENDAR are claims about what the value *is* -- that it is a
+    word, that it is a date. INTEGER and DECIMAL are the claim that it reads
+    as a number, and the sort key they settle off it is load-bearing twice
+    over: without one an Integer entry is in no band on the index and is drawn
+    nowhere at all, and `float('inf')` is a key no JSON response can carry, so
+    one such row 500s every list endpoint until an operator finds it. TIME is
+    the one still taken at its word -- an explicit TIME on `1:29:300` files
+    with no key, and nothing bands or serializes on it -- and MIXED claims
+    nothing, being the remainder.
+
     All three writes settle the format here -- create with what was typed, edit
     with what is stored, since the wiki's form keeps the number read-only once
     the entry exists, and an operator's renumber with what they retyped -- so
     this is the one place that catches every one of them.
+
+    A date is refused rather than repaired for the reason a separator is taken
+    out and a case is not: `01-05` and `1-5` would be two addresses for one
+    day, and nothing here keeps the difference, so the spelling has to be the
+    one the form can produce (ADR-0005). date_key() hands back the sort key it
+    checked with, which is why an explicit CALENDAR does not fall through to
+    the `key = None` above.
 
     Pure, and that is load-bearing: no sibling lookup means a create decides
     nothing about another row, which is why it is the one write with no
@@ -100,8 +117,38 @@ def resolve_format(value, given):
             except ValueError:
                 key = None
         else:
-            key = None  # MIXED, ABBR, or a TIME that is not actually a clock
+            # MIXED, ABBR, or a TIME that is not actually a clock. CALENDAR
+            # takes its own back below, off the check that settles it.
+            key = None
         fmt = given
+    # Refused rather than filed with no key, and out here rather than in the
+    # branch above so that every way of arriving at INTEGER or DECIMAL is
+    # checked -- `parse_number` hands back `float()`'s answer too, and
+    # `float('9' * 309)` is `inf` rather than a ValueError, so the agreeing
+    # path can settle a key the disagreeing one is refused for.
+    #
+    # A number that cannot be read is not a number, and the three ways of
+    # getting one past here all cost something real: `9 3/4` as INTEGER kept
+    # its value, lost its key, and `bucket_of` then had no band for it -- the
+    # Integer tab fills five fixed bands by filtering on one, so the entry
+    # answered at /n/ and on no page. `inf` and `nan` are worse, and are the
+    # reason the finite check is not belt-and-braces: SQLite stores NaN as
+    # NULL, which is the first case again, and it stores Inf as Inf, which
+    # json.dumps refuses -- one row and /api/numbers and /api/posts 500 for
+    # everybody.
+    if fmt in ("INTEGER", "DECIMAL") and (key is None or not math.isfinite(key)):
+        raise HTTPException(
+            422, "Integer and Decimal read the value as a number, so it has "
+                 "to be one -- 42, -42, 3.14, 1e5. Something with a number in "
+                 "it, like 9 3/4 or 11/22/63, is Mixed, which sorts by the "
+                 "string instead.")
+    if fmt == "CALENDAR":
+        key = date_key(value)
+        if key is None:
+            raise HTTPException(
+                422, "a calendar date is a two-digit month and day, and a real "
+                     "one -- 12-25, 04-01, 02-29. There is no year in it.")
+        value = value.strip()
     if fmt == "ABBR":
         if not is_abbr(value):
             raise HTTPException(
@@ -111,21 +158,58 @@ def resolve_format(value, given):
     return value, fmt, key
 
 
-def section_where(section, prefix=""):
-    """SQL for "this is an abbreviation" / "this is a number", or None for both.
+# The sections this one column is read in, and the format that puts a row in
+# each. `number` is the remainder and is deliberately not in here: a format
+# added without a thought about this map lands there, which is the safe side --
+# /n/ is where a value with nothing special about how it reads has always
+# answered. Everything below derives from this, so there is one list of them.
+SECTION_FORMATS = {"abbr": "ABBR", "calendar": "CALENDAR"}
 
-    /n/ and /a/ are two sections over one column. An entry is one or the other
-    and has exactly one address, so a value filed under both -- somebody
-    choosing Mixed for UFO on purpose -- is two entries at two addresses rather
-    than one entry showing up twice. One function decides it, so the list
-    endpoint, the two <head>s and the sitemap cannot answer differently.
+
+def section_of(fmt):
+    """Which section a format is read in: the name, not a filter.
+
+    The twin of section_where() for the callers that are going the other way --
+    building a path out of a row rather than finding the rows in a section.
+    """
+    return next((s for s, f in SECTION_FORMATS.items() if f == fmt), "number")
+
+
+def section_where(section, prefix=""):
+    """SQL for "this row is in that section", or None for every section at once.
+
+    /n/, /a/ and /c/ are three sections over one column. An entry is in exactly
+    one of them and has exactly one address, so a value filed in two -- somebody
+    choosing Mixed for UFO on purpose, or Mixed for 12-25 -- is two entries at
+    two addresses rather than one entry showing up twice. One function decides
+    it, so the list endpoint, the three <head>s and the sitemap cannot answer
+    differently.
+
+    Each arm is a plain comparison on the column rather than a CASE, so
+    idx_posts_format is still usable; `number` is the negation of the others,
+    which is what makes it the remainder rather than a third list to keep.
 
     An unknown section filters nothing, the same way an unknown `sort` falls
     back rather than 422ing: a typo either side of the wire is a page that
     shows too much, not a page that breaks.
     """
-    op = {"number": "!=", "abbr": "="}.get(section or "")
-    return f"{prefix}format {op} 'ABBR'" if op else None
+    fmt = SECTION_FORMATS.get(section or "")
+    if fmt:
+        return f"{prefix}format = '{fmt}'"
+    if section == "number":
+        rest = ", ".join(f"'{f}'" for f in SECTION_FORMATS.values())
+        return f"{prefix}format NOT IN ({rest})"
+    return None
+
+
+def section_sql(prefix=""):
+    """A row's section as a value rather than a filter.
+
+    section_of() in SQL, for the one query that needs to group by the section
+    and then build a path from it rather than filter on one.
+    """
+    arms = " ".join(f"WHEN '{f}' THEN '{s}'" for s, f in SECTION_FORMATS.items())
+    return f"CASE {prefix}format {arms} ELSE 'number' END"
 
 
 def shape(rows, con):
@@ -299,12 +383,24 @@ def apply_snapshot(con, post_id, old, editor):
     overwritten, so a restore credits whoever pressed it in `edited_by` --
     which is what `editor` is, and what makes an operator's restore read as
     theirs.
+
+    `sort_key` is the one field not put back as it stands. A snapshot can
+    hold `Inf` -- SQLite keeps it in the column and `json.dumps` writes it
+    into the snapshot without complaint, so any revision taken before
+    `resolve_format` checked for one still carries it -- and putting that
+    back 500s `/api/numbers` and `/api/posts` for every reader, which is the
+    outage ADR-0027 closed on the write path and this is the same rule on the
+    way back in. NULL is already a legal key, so the entry returns with no
+    band rather than with no index at all.
     """
+    key = old["sort_key"]
+    if key is not None and not math.isfinite(key):
+        key = None
     con.execute(
         """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
                             image=?, lang=?, grouped=?, edited_by=?, updated_at=?
            WHERE id=?""",
-        (old["value"], old["format"], old["sort_key"], old["title"], old["body"],
+        (old["value"], old["format"], key, old["title"], old["body"],
          old["image"], old.get("lang"), int(old.get("grouped") or 0), editor,
          now(), post_id),
     )

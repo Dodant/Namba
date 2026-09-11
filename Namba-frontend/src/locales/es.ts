@@ -1,5 +1,6 @@
 import { fmtCount } from '../format'
 import { GLOBAL_NAV, GLOBAL_TERMS } from './shared'
+import type { Section } from '../api'
 import type { Messages } from './en'
 
 /** Spanish (Español). */
@@ -14,14 +15,16 @@ export const ES: Messages = {
       `editado ${when}${name ? ` por ${name === 'anonymous' ? 'anónimo' : name}` : ''}`,
     entries: (n: number) => `${fmtCount(n, 'es')} ${n === 1 ? 'entrada' : 'entradas'}`,
     tags: (n: number) => `${fmtCount(n, 'es')} ${n === 1 ? 'etiqueta' : 'etiquetas'}`,
-    subject: (abbr: boolean, n = 1) => abbr
-      ? (n === 1 ? 'abreviatura' : 'abreviaturas')
-      : n === 1 ? 'número' : 'números',
+    subject: (section: Section, n = 1) => ({
+      number: n === 1 ? 'número' : 'números',
+      abbr: n === 1 ? 'abreviatura' : 'abreviaturas',
+      calendar: n === 1 ? 'fecha' : 'fechas',
+    })[section],
     like: (on: boolean, n: number) =>
       `${on ? 'Quitar me gusta' : 'Me gusta'} — ${fmtCount(n, 'es')} me gusta`,
   },
   format: {
-    INTEGER: 'Entero', DECIMAL: 'Decimal', MIXED: 'Mixto', TIME: 'Hora', ABBR: 'Abreviatura',
+    INTEGER: 'Entero', DECIMAL: 'Decimal', MIXED: 'Mixto', TIME: 'Hora', CALENDAR: 'Calendario', ABBR: 'Abreviatura',
   },
   buckets: {
     '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',
@@ -56,8 +59,9 @@ export const ES: Messages = {
   },
   browse: {
     category: 'Categoría', search: GLOBAL_TERMS.search,
-    summary: (n: number, abbr: boolean) =>
-      `${n === 1 ? 'Una entrada explica' : `${fmtCount(n, 'es')} entradas explican`} ${abbr ? 'esta abreviatura' : 'este número'}.`,
+    summary: (n: number, section: Section) =>
+      `${n === 1 ? 'Una entrada explica' : `${fmtCount(n, 'es')} entradas explican`} ${
+        { number: 'este número', abbr: 'esta abreviatura', calendar: 'esta fecha' }[section]}.`,
     addMeaning: '+ Añadir otro significado',
     emptyValue: (value: string) => `Aún no hay entradas para ${value}.`,
     giveMeaning: 'Añade un significado.', emptyTag: (tag: string) => `Aún no hay entradas con la etiqueta ${tag}.`,
@@ -88,11 +92,21 @@ export const ES: Messages = {
     editIntro: (owner: string) => `Cualquiera puede editar esta entrada${owner ? `, aunque la haya escrito ${owner}` : ''}. La versión reemplazada permanece en el historial y ${owner || 'el autor original'} conserva la autoría.`,
     addIntro: 'Una entrada por significado. Si 42 ya existe, esta entrada se añade como otro significado en lugar de reemplazarlo.',
     guidelines: 'Guía para las entradas', fixedValue: (noun: string) => `fijo — otro ${noun} requiere otra entrada`,
+    date: 'Fecha', month: 'Mes', day: 'Día',
     number: 'Número', abbreviation: 'Abreviatura', groupThousands: 'Usar separadores de miles',
     format: 'Formato', autoDetect: 'Detectar automáticamente', title: 'Título', titleHint: 'a qué se refiere',
-    titlePlaceholder: 'Guía del autoestopista galáctico', details: 'Detalles',
+    titlePlaceholder: (section: Section) => ({
+      number: 'Guía del autoestopista galáctico',
+      abbr: 'POV',
+      calendar: 'Día de las bromas de abril',
+    })[section],
+    details: 'Detalles',
     detailsHint: 'opcional — por qué es este valor y qué significa',
-    detailsPlaceholder: 'La respuesta a la pregunta definitiva sobre la vida, el universo y todo lo demás.',
+    detailsPlaceholder: (section: Section) => ({
+      number: 'La respuesta a la pregunta definitiva sobre la vida, el universo y todo lo demás.',
+      abbr: 'Una expresión para el punto de vista o la perspectiva de una persona concreta.',
+      calendar: 'Un día para intercambiar mentiras inocentes y bromas.',
+    })[section],
     markdown: 'Puedes usar Markdown: **negrita**, *cursiva*, [enlaces](https://…), listas, títulos y tablas. Una sola pulsación de Enter crea un salto de línea.',
     writtenIn: 'Escrito en', categories: 'Categorías',
     categoryHint: (n: number) => `hasta ${fmtCount(n, 'es')} — una película basada en un libro puede usar ambas`,
@@ -114,7 +128,7 @@ export const ES: Messages = {
     language: 'Idioma', languageHint: 'idioma de esta traducción', pickOne: 'Elige uno…',
     translationTitleHint: 'título de la entrada en este idioma', optionalMarkdown: 'opcional — también puedes usar Markdown aquí',
     addThisTranslation: 'Añadir traducción', removeTranslation: 'Eliminar traducción',
-    related: 'Entradas relacionadas', relatedHint: 'otros números que conviene consultar junto a este', unlink: 'Desvincular',
+    related: 'Entradas relacionadas', relatedHint: 'otras entradas que conviene consultar junto a esta', unlink: 'Desvincular',
     linkSearchAria: 'Buscar en la wiki una entrada para vincular',
     linkSearchPlaceholder: 'Buscar en la wiki — p. ej., Regreso al futuro', searching: 'Buscando…',
     search: GLOBAL_TERMS.search, link: 'Vincular', noMatches: 'No hay resultados.',

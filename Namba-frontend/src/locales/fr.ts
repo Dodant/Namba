@@ -1,5 +1,6 @@
 import { fmtCount } from '../format'
 import { GLOBAL_NAV, GLOBAL_TERMS } from './shared'
+import type { Section } from '../api'
 import type { Messages } from './en'
 
 /** French (Français). Its numbers group on a narrow no-break space, which
@@ -15,14 +16,16 @@ export const FR: Messages = {
       `modifié ${when}${name ? ` par ${name === 'anonymous' ? 'anonyme' : name}` : ''}`,
     entries: (n: number) => `${fmtCount(n, 'fr')} ${n === 1 ? 'entrée' : 'entrées'}`,
     tags: (n: number) => `${fmtCount(n, 'fr')} ${n === 1 ? 'étiquette' : 'étiquettes'}`,
-    subject: (abbr: boolean, n = 1) => abbr
-      ? (n === 1 ? 'abréviation' : 'abréviations')
-      : n === 1 ? 'nombre' : 'nombres',
+    subject: (section: Section, n = 1) => ({
+      number: n === 1 ? 'nombre' : 'nombres',
+      abbr: n === 1 ? 'abréviation' : 'abréviations',
+      calendar: n === 1 ? 'date' : 'dates',
+    })[section],
     like: (on: boolean, n: number) =>
       `${on ? 'Retirer le j’aime' : 'J’aime'} — ${fmtCount(n, 'fr')} j’aime`,
   },
   format: {
-    INTEGER: 'Entier', DECIMAL: 'Décimal', MIXED: 'Mixte', TIME: 'Heure', ABBR: 'Abréviation',
+    INTEGER: 'Entier', DECIMAL: 'Décimal', MIXED: 'Mixte', TIME: 'Heure', CALENDAR: 'Calendrier', ABBR: 'Abréviation',
   },
   buckets: {
     '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',
@@ -58,8 +61,9 @@ export const FR: Messages = {
   },
   browse: {
     category: 'Catégorie', search: GLOBAL_TERMS.search,
-    summary: (n: number, abbr: boolean) =>
-      `${n === 1 ? 'Une entrée explique' : `${fmtCount(n, 'fr')} entrées expliquent`} ${abbr ? 'cette abréviation' : 'ce nombre'}.`,
+    summary: (n: number, section: Section) =>
+      `${n === 1 ? 'Une entrée explique' : `${fmtCount(n, 'fr')} entrées expliquent`} ${
+        { number: 'ce nombre', abbr: 'cette abréviation', calendar: 'cette date' }[section]}.`,
     addMeaning: '+ Ajouter une autre signification',
     emptyValue: (value: string) => `Aucune entrée n’est encore associée à ${value}.`,
     giveMeaning: 'Ajoutez une signification.',
@@ -92,11 +96,20 @@ export const FR: Messages = {
     editIntro: (owner: string) => `Tout le monde peut modifier cette entrée${owner ? `, même si elle a été écrite par ${owner}` : ''}. La version remplacée reste dans l’historique et ${owner || 'l’auteur d’origine'} conserve son crédit.`,
     addIntro: 'Une entrée par signification. Si 42 existe déjà, cette entrée ajoute une autre signification au lieu de la remplacer.',
     guidelines: 'Guide des entrées', fixedValue: (noun: string) => `fixe — un autre ${noun} nécessite une autre entrée`,
+    date: 'Date', month: 'Mois', day: 'Jour',
     number: 'Nombre', abbreviation: 'Abréviation', groupThousands: 'Utiliser les séparateurs de milliers',
     format: 'Format', autoDetect: 'Détection automatique', title: 'Titre',
-    titleHint: 'ce à quoi l’entrée fait référence', titlePlaceholder: 'Le Guide du voyageur galactique',
+    titleHint: 'ce à quoi l’entrée fait référence', titlePlaceholder: (section: Section) => ({
+      number: 'Le Guide du voyageur galactique',
+      abbr: 'POV',
+      calendar: 'Poisson d’avril',
+    })[section],
     details: 'Détails', detailsHint: 'facultatif — pourquoi cette valeur et ce qu’elle signifie',
-    detailsPlaceholder: 'La réponse à la grande question sur la vie, l’univers et le reste.',
+    detailsPlaceholder: (section: Section) => ({
+      number: 'La réponse à la grande question sur la vie, l’univers et le reste.',
+      abbr: 'Une expression désignant le point de vue ou la perspective d’une personne donnée.',
+      calendar: 'Un jour où l’on échange mensonges anodins et farces.',
+    })[section],
     markdown: 'Vous pouvez utiliser Markdown : **gras**, *italique*, [liens](https://…), listes, titres et tableaux. Une seule pression sur Entrée crée un saut de ligne.',
     writtenIn: 'Langue du texte', categories: 'Catégories',
     categoryHint: (n: number) => `jusqu’à ${fmtCount(n, 'fr')} — un film adapté d’un livre peut utiliser les deux`,
@@ -120,7 +133,7 @@ export const FR: Messages = {
     translationTitleHint: 'titre de l’entrée dans cette langue',
     optionalMarkdown: 'facultatif — vous pouvez aussi utiliser Markdown ici',
     addThisTranslation: 'Ajouter la traduction', removeTranslation: 'Supprimer la traduction',
-    related: 'Entrées associées', relatedHint: 'd’autres nombres à consulter avec celui-ci', unlink: 'Dissocier',
+    related: 'Entrées associées', relatedHint: 'd’autres entrées à consulter avec celle-ci', unlink: 'Dissocier',
     linkSearchAria: 'Rechercher dans le wiki une entrée à associer',
     linkSearchPlaceholder: 'Rechercher dans le wiki — p. ex. Retour vers le futur', searching: 'Recherche…',
     search: GLOBAL_TERMS.search, link: 'Associer', noMatches: 'Aucun résultat.',

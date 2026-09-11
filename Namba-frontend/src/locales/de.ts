@@ -1,5 +1,6 @@
 import { fmtCount } from '../format'
 import { GLOBAL_NAV, GLOBAL_TERMS } from './shared'
+import type { Section } from '../api'
 import type { Messages } from './en'
 
 /** German (Deutsch). */
@@ -14,14 +15,16 @@ export const DE: Messages = {
       `bearbeitet ${when}${name ? ` von ${name === 'anonymous' ? 'anonym' : name}` : ''}`,
     entries: (n: number) => `${fmtCount(n, 'de')} ${n === 1 ? 'Eintrag' : 'Einträge'}`,
     tags: (n: number) => `${fmtCount(n, 'de')} ${n === 1 ? 'Tag' : 'Tags'}`,
-    subject: (abbr: boolean, n = 1) => abbr
-      ? (n === 1 ? 'Abkürzung' : 'Abkürzungen')
-      : n === 1 ? 'Zahl' : 'Zahlen',
+    subject: (section: Section, n = 1) => ({
+      number: n === 1 ? 'Zahl' : 'Zahlen',
+      abbr: n === 1 ? 'Abkürzung' : 'Abkürzungen',
+      calendar: n === 1 ? 'Kalendertag' : 'Kalendertage',
+    })[section],
     like: (on: boolean, n: number) =>
       `${on ? 'Gefällt mir nicht mehr' : 'Gefällt mir'} — ${fmtCount(n, 'de')} ${n === 1 ? 'Like' : 'Likes'}`,
   },
   format: {
-    INTEGER: 'Ganzzahl', DECIMAL: 'Dezimalzahl', MIXED: 'Gemischt', TIME: 'Uhrzeit', ABBR: 'Abkürzung',
+    INTEGER: 'Ganzzahl', DECIMAL: 'Dezimalzahl', MIXED: 'Gemischt', TIME: 'Uhrzeit', CALENDAR: 'Kalender', ABBR: 'Abkürzung',
   },
   buckets: {
     '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',
@@ -56,8 +59,9 @@ export const DE: Messages = {
   },
   browse: {
     category: 'Kategorie', search: GLOBAL_TERMS.search,
-    summary: (n: number, abbr: boolean) =>
-      `${n === 1 ? 'Ein Eintrag erklärt' : `${fmtCount(n, 'de')} Einträge erklären`} ${abbr ? 'diese Abkürzung' : 'diese Zahl'}.`,
+    summary: (n: number, section: Section) =>
+      `${n === 1 ? 'Ein Eintrag erklärt' : `${fmtCount(n, 'de')} Einträge erklären`} ${
+        { number: 'diese Zahl', abbr: 'diese Abkürzung', calendar: 'dieses Datum' }[section]}.`,
     addMeaning: '+ Weitere Bedeutung hinzufügen',
     emptyValue: (value: string) => `Unter ${value} ist noch nichts eingetragen.`,
     giveMeaning: 'Eine Bedeutung hinzufügen.',
@@ -89,11 +93,21 @@ export const DE: Messages = {
     editIntro: (owner: string) => `Dieser Eintrag kann von allen bearbeitet werden${owner ? `, auch wenn er von ${owner} verfasst wurde` : ''}. Die ersetzte Version bleibt in der Versionsgeschichte und ${owner || 'der ursprüngliche Autor'} wird weiterhin genannt.`,
     addIntro: 'Ein Eintrag pro Bedeutung. Wenn 42 bereits vorhanden ist, wird dieser Eintrag als weitere Bedeutung hinzugefügt, statt den vorhandenen zu ersetzen.',
     guidelines: 'Richtlinien für Einträge', fixedValue: (noun: string) => `fest — eine andere ${noun} benötigt einen eigenen Eintrag`,
+    date: 'Datum', month: 'Monat', day: 'Tag',
     number: 'Zahl', abbreviation: 'Abkürzung', groupThousands: 'Tausendertrennzeichen verwenden',
     format: 'Format', autoDetect: 'Automatisch erkennen', title: 'Titel', titleHint: 'worum es geht',
-    titlePlaceholder: 'Per Anhalter durch die Galaxis', details: 'Details',
+    titlePlaceholder: (section: Section) => ({
+      number: 'Per Anhalter durch die Galaxis',
+      abbr: 'POV',
+      calendar: 'Aprilscherz',
+    })[section],
+    details: 'Details',
     detailsHint: 'optional — warum gerade dieser Wert und was er bedeutet',
-    detailsPlaceholder: 'Die Antwort auf die endgültige Frage nach dem Leben, dem Universum und dem ganzen Rest.',
+    detailsPlaceholder: (section: Section) => ({
+      number: 'Die Antwort auf die endgültige Frage nach dem Leben, dem Universum und dem ganzen Rest.',
+      abbr: 'Ein Ausdruck für die Sicht oder Perspektive einer bestimmten Person.',
+      calendar: 'Ein Tag, an dem man sich harmlose Lügen und Streiche erlaubt.',
+    })[section],
     markdown: 'Markdown ist möglich: **fett**, *kursiv*, [Links](https://…), Listen, Überschriften und Tabellen. Einmal Enter erzeugt einen Zeilenumbruch.',
     writtenIn: 'Sprache des Textes', categories: 'Kategorien',
     categoryHint: (n: number) => `bis zu ${fmtCount(n, 'de')} — eine Buchverfilmung kann beiden Kategorien angehören`,
@@ -117,7 +131,7 @@ export const DE: Messages = {
     translationTitleHint: 'Titel des Eintrags in dieser Sprache',
     optionalMarkdown: 'optional — auch hier ist Markdown möglich',
     addThisTranslation: 'Übersetzung hinzufügen', removeTranslation: 'Übersetzung entfernen',
-    related: 'Verwandte Einträge', relatedHint: 'andere Zahlen, die zu diesem Eintrag passen', unlink: 'Verknüpfung lösen',
+    related: 'Verwandte Einträge', relatedHint: 'andere Einträge, die neben diesen gehören', unlink: 'Verknüpfung lösen',
     linkSearchAria: 'Wiki nach einem zu verknüpfenden Eintrag durchsuchen',
     linkSearchPlaceholder: 'Wiki durchsuchen — z. B. Zurück in die Zukunft', searching: 'Wird gesucht…',
     search: GLOBAL_TERMS.search, link: 'Verknüpfen', noMatches: 'Keine Treffer.',

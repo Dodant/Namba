@@ -32,16 +32,29 @@ package). **Change one, change the other:**
 
 | what | backend | frontend |
 |---|---|---|
-| the 5 formats | `numfmt.py` `FORMATS` | `src/api.ts` `FORMATS` |
+| the 6 formats | `numfmt.py` `FORMATS` | `src/api.ts` `FORMATS` |
 | the two tag limits | `main.py` `TAG_MAX`, `TAGS_PER_POST` | `src/api.ts`, same names |
 | the moderation vocabularies | `db.py` `DELETE_REASONS`, `REPORT_REASONS`, `POST_STATUSES`, `REQUEST_STATUSES`, `REPORT_STATUSES`, `BLOCK_TYPES`, `BLOCK_HOURS` | `src/api.ts`, same names |
-| the index's bands | `numfmt.py` `bucket_of` — computed, not listed | `src/api.ts` `BUCKETS`, `ABBR_BUCKETS` |
+| the index's bands | `numfmt.py` `bucket_of` — computed, not listed | `src/api.ts` `BUCKETS`, `ABBR_BUCKETS`, `MONTH_BUCKETS` |
+| which format is which section | `store.py` `SECTION_FORMATS` | `src/api.ts` `OF_FORMAT` — the same map read the other way |
+| what a calendar date is | `numfmt.py` `_DATE`, `_MONTH_DAYS` | `src/format.ts` `DATE`, `MONTH_DAYS` |
 
-`test_the_two_apps_still_agree` in `test_namba.py` reads `src/api.ts` and checks
-every row of that table, so "change one, change the other" is a thing the suite
-notices rather than a thing you remember.
+`test_the_two_apps_still_agree` in `test_namba.py` reads `src/api.ts` and
+`src/format.ts` and checks every row of that table, so "change one, change the
+other" is a thing the suite notices rather than a thing you remember.
 
-The last row is the odd one and worth reading twice. The other three are lists
+The last two rows joined the table after each had already drifted once. The
+section map is what the edit form asks which format to disable and which to
+drop from the menu, so a format that only the backend knows is in a section
+leaves the form offering a move `edit_post` answers 422 to — no error until
+somebody presses Save. And the date pair is the one place the two languages
+disagree about a character class: Python's `\d` matches every Unicode decimal
+numeral and JavaScript's is ASCII whatever the flags, so a backend `\d` gave
+`١٢-٢٥` and `１２-２５` a `/c/` address each and one day three pages. `[0-9]`
+is the spelling that means the same thing on both sides, and the test compares
+the patterns as text with that substitution made.
+
+The bands row is the odd one and worth reading twice. The vocabulary rows are lists
 on both sides; that one is a **function** on this side and a list on the other,
 so there is nothing to compare literally — the test calls `bucket_of` across
 every branch and compares the set of labels it can return against the set the
@@ -76,11 +89,39 @@ tag's shape, never its membership, and `/api/tags` reports the vocabulary in
 use. A format is a parser branch and has to be agreed on; a tag is not
 (ADR-0010).
 
-Four of the five read digits. `ABBR` is the fifth and reads letters — `UFO`,
-`CSI`, `NASA` — and it is a format rather than a `kind` column because
-`posts.format` is already the one thing that decides how a value is read,
-sorted and addressed. A second column would have been a migration, a second
-hand-copied vocabulary and a branch beside every existing one.
+Four of the six read digits as a number. `ABBR` reads letters — `UFO`, `CSI`,
+`NASA` — and `CALENDAR` reads a day of the year, and both are formats rather
+than a `kind` column because `posts.format` is already the one thing that
+decides how a value is read, sorted and addressed. A second column would have
+been a migration, a second hand-copied vocabulary and a branch beside every
+existing one (ADR-0026).
+
+Five of the six are **checked** rather than believed, and on a wiki with no
+login the claim being checked is always a stranger's. `ABBR` and `CALENDAR`
+are claims about what the value *is* — that it is a word, that it is a date —
+and `is_abbr` and `date_key` in `numfmt.py` are the rules. `INTEGER` and
+`DECIMAL` are the claim that it *reads* as a number, and the check is that
+`float()` gets a finite one out of it.
+
+`TIME` is the one taken at its word: an explicit `TIME` on `1:29:300` files
+with no sort key, and nothing downstream bands or serializes on it. `MIXED`
+claims nothing at all, being the remainder. `resolve_format` in `store.py` is
+where all five bite, so all three writes hit them.
+
+The two number checks are not tidiness. A `sort_key` is load-bearing twice:
+without one an `INTEGER` entry matches no band on the index and is drawn
+nowhere — on the wiki and on no page, the thing the band rule above exists to
+prevent — and a non-finite one cannot be serialized at all, because SQLite
+keeps `NaN` as `NULL` (the first case again) and keeps `Inf` as `Inf`, which
+`json.dumps` refuses. One `{"value": "inf", "format": "INTEGER"}` used to be
+enough to 500 `/api/numbers` and `/api/posts` for every reader until an
+operator found the row.
+
+What the check does **not** do is decide how a number is spelled. `float()`
+reads `-42`, `1e5`, `1_000` and `٤٢`, and all four stay as typed: two
+spellings of a number are two entries sharing a sort key, which is the rule
+for the four that read digits (ADR-0005). Only `CALENDAR` promised the
+opposite, and only its regex says `[0-9]`.
 
 ## Design decisions that are not up for quiet revision
 
@@ -106,7 +147,7 @@ hand-copied vocabulary and a branch beside every existing one.
   the second factor. Password success creates only a five-minute challenge;
   the session cookie is issued after one unused authenticator counter succeeds.
 - **Nothing removes an entry.** `posts.status` is `ACTIVE` / `HIDDEN` /
-  `DELETED`, and a hidden entry drops out of all thirteen public reads and comes
+  `DELETED`, and a hidden entry drops out of all fourteen public reads and comes
   back whole. There is no `DELETE /api/posts/{id}` — the path answers 405 — and
   no delete button anywhere in the front end. An open wiki where one click can
   take a page away has no defence at all, and the fix is not confirming harder:
@@ -217,8 +258,8 @@ hand-copied vocabulary and a branch beside every existing one.
   cache `/assets/` alone.** The bundle is where the bytes are and it is already
   immutable — Vite hashes the names, and `ASSET_CACHE` in `main.py` says a
   year. The document is cheap to answer: `/` and `/guide` and every path that
-  falls through to `noindex` run no query at all, and only `/n/`, `/a/`, `/t/`
-  and `/p/{id}` read the database for their `<head>`.
+  falls through to `noindex` run no query at all, and only `/n/`, `/a/`,
+  `/c/`, `/t/` and `/p/{id}` read the database for their `<head>`.
 
   **An `ABBR` word is one page, and its case is not a spelling to be fixed.**
   `ufo`, `Ufo` and `UFO` are one word and with no accounts there is nobody to
@@ -243,9 +284,9 @@ hand-copied vocabulary and a branch beside every existing one.
   (ADR-0005, ADR-0007). Digits have no case, which is why none of this reaches
   the other four.
 
-  **And `ABBR` is Latin script only — the one format that is checked rather
-  than taken at its word.** The other four are ways of *reading* what was
-  typed and cannot be wrong about it; this one is a claim *about* the value,
+  **And `ABBR` is Latin script only — one of the five formats that are checked
+  rather than taken at their word.** `INTEGER` and `DECIMAL` are checked for
+  being readable as a number; this one is a claim about what the value *is*,
   and on a wiki with no login the claim is a stranger's. `is_abbr` in
   `numfmt.py` is the rule and `resolve_format` in `store.py` is where it bites,
   so both writes hit it. It is not a keyboard preference: `유에프오` and `УФО` are the
@@ -255,14 +296,97 @@ hand-copied vocabulary and a branch beside every existing one.
   means in any language — `lang` and the translations are untouched by this;
   it is the value that is one spelling.
 
-- **`/n/` and `/a/` are two sections over one column, and an entry has one
-  address.** `/a/UFO` is the abbreviation, `/n/42` is the number, and
-  `section_where()` in `main.py` is the single condition that tells them apart
-  — the list endpoint, both `<head>`s and the sitemap all ask it. So a value
-  filed under both, which takes somebody choosing Mixed for `UFO` on purpose,
-  is two entries at two addresses rather than one entry showing up twice. Do
-  not answer an abbreviation at `/n/`: it is the same mistake as storing the
-  comma, one page short of the number.
+- **A fixed calendar date is a day of the year and nothing else.** `CALENDAR`
+  is Christmas and April Fools — a zero-padded `MM-DD` at `/c/12-25`, sorted
+  by `month * 100 + day` the way a `TIME` is sorted by minutes past midnight,
+  and banded by month so the index reads as a calendar. There is no year in
+  it: a date that happens once is a number like any other and belongs at
+  `/n/`.
+
+  **Its other spellings are refused, not folded.** `1-5` does not become
+  `01-05`. Nothing would keep that difference, and one day has to have one
+  address, so refusal is what is left once rewriting is off the table — which
+  is the rule above reached from the other side, and the reason `date_key`
+  both checks the value and hands back the sort key. `02-30` and `13-01` go
+  the same way; `02-29` does not, because a leap day is a fixed date and there
+  is no year here to disagree with it. **`parse_number` does not guess at
+  it** either: `12-25` is Christmas and `80-20` is a ratio, and nothing in
+  either string says which, so this format is reached by picking it, the way
+  `TIME` is on `1:29:300` (ADR-0026).
+
+  **`/c/` is the one section that is a closed set, so an unreadable date is
+  not a page.** There are 366 days: `/c/99-99` is not an empty date page the
+  way `/n/999999` is an empty number one, where nobody has written about that
+  number *yet*. `index_html` in `seo.py` and `CalendarPage` in `App.tsx` each
+  ask `date_key` / `monthDay` before drawing one, so what a crawler reads and
+  what a reader sees agree: the noindex head every mistyped path gets, and the
+  `*` route's own "Nothing here". `index_html` asks for the stored spelling
+  exactly, because `date_key` strips — on a write it reads a value somebody
+  typed, while a path segment *is* the address — and `/c/%2012-25` taking a
+  date page's head and a canonical pointing at itself is one day with two
+  addresses, by a space. Left open, the empty page's "Give it a
+  meaning" link carried the unreadable value to the form, which cannot read it
+  back and starts from today — so the reader who asked for `99-99` filed an
+  entry under this morning. A valid date with no entries is untouched;
+  `/c/01-02` is still a page somebody can be the first to write on.
+
+- **`/n/`, `/a/` and `/c/` are three sections over one column, and an entry
+  has one address.** `/a/UFO` is the abbreviation, `/c/12-25` is the date,
+  `/n/42` is the number, and `SECTION_FORMATS` in `store.py` is the single
+  map that tells them apart — the list endpoint and all three value `<head>`s
+  ask it through `section_where()`, and the sitemap through `section_sql()`,
+  which needs the section as a value to group by rather than as a filter. So a
+  value filed in two of them, which
+  takes somebody choosing Mixed for `UFO` or for `12-25` on purpose, is two
+  entries at two addresses rather than one entry showing up twice. Do not
+  answer an abbreviation or a date at `/n/`: it is the same mistake as storing
+  the comma, one page short of the number.
+
+  `number` is the **remainder** of the three rather than a listed arm, so a
+  seventh format arriving with no thought about sections lands at `/n/`, which
+  is the side where a value with nothing special about how it reads has always
+  answered. `section_of()` and `section_sql()` beside it are the same three
+  names read the other way — a path to build, a column to group by — because a
+  second answer to which section a row is in would be two addresses for one
+  entry.
+
+  **The open form does not move an entry between sections**, for the same
+  reason it will not let the value be retyped: a section is an address, and a
+  page that moves leaves every link to it one page short of the thing it was
+  about. An abbreviation stays an abbreviation, a date stays a date, and a
+  number does not become either — `edit_post` refuses it, reading the format
+  it has *settled* rather than the one that was sent, so an edit carrying only
+  a value is the same refusal and not the way round it. Correcting one that is
+  filed wrong is `POST /api/admin/posts/{id}/value`, the same operator's route
+  that corrects a value, with a name, a snapshot and an audit row behind it.
+
+  The address is all this rule keeps. A sort key is kept a step above it, by
+  `INTEGER` and `DECIMAL` being checked rather than believed, so a re-filed
+  `UFO` or `12-25` is refused there and never reaches this check at all. The
+  two are independent and both are wanted: one keeps an entry where its links
+  point, the other keeps a number a number.
+
+  A **restore is held to the same rule**, because `apply_snapshot` writes the
+  format straight out of the snapshot and the open half would otherwise have
+  a second way in: putting an entry back at `/n/` that answers at `/c/`, and
+  undoing an operator's renumber — a name, a snapshot and an audit row — with
+  one unauthenticated POST carrying none of the three. `restore_revision`
+  refuses a cross-section restore; the operator's own restore is the other
+  caller of `apply_snapshot` and does not come through it, so it still
+  crosses. A restore puts an entry's *words* back, never its address.
+
+  There is **one** move still allowed, and it is into `/c/`: `parse_number`
+  will never hand a date back — `12-25` is as much a ratio as a day — so
+  picking Calendar is all an entry written before somebody noticed it was a
+  date has. It takes the format and **not the value** with it: an entry
+  somebody noticed was a date already reads as one, while the same request
+  carrying a value is not a re-filing, it is `42`'s page becoming
+  Christmas's — and the refusal above then holds it there, since every later
+  edit re-derives a number and reads as a move back out. `ABBR` needs no such
+  door, because the parser already guesses
+  `UFO`. The front end keeps the same shape: on an edit the Format select is
+  `disabled` for an entry already at `/a/` or `/c/`, and Abbreviation is off
+  the menu for one at `/n/`.
 - **A link in an entry stays a link.** No unfurling, no fetched thumbnails.
   Rendering a card means the server fetching a URL a stranger typed, and with
   no accounts there is nobody to rate-limit or ban — `http://169.254.169.254/`

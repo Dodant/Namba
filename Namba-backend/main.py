@@ -24,7 +24,8 @@ import seo
 from db import UPLOAD_DIR, get_db, nfc, now, writing
 from store import (
     LIVE, Text, apply_snapshot, fetch_one, guard_public, resolve_format,
-    section_where, shape, snapshot, ungroup, write_tags,
+    section_of, section_sql, section_where, shape, snapshot, ungroup,
+    write_tags,
 )
 from numfmt import FORMATS, bucket_of
 
@@ -634,7 +635,7 @@ def list_posts(
     if format:
         where.append("p.format = ?")
         args.append(format.upper())
-    # what tells /n/42 from /a/UFO -- see section_where()
+    # what tells /n/42 from /a/UFO from /c/12-25 -- see section_where()
     in_section = section_where(section, "p.")
     if in_section:
         where.append(in_section)
@@ -719,7 +720,7 @@ def get_post(post_id: int, con=Depends(get_db)):
 def list_revisions(post_id: int, con=Depends(get_db)):
     """The newest REVISIONS_SHOWN versions of an entry, as labels.
 
-    Three fields off each snapshot and then the snapshot is dropped, which is
+    Four fields off each snapshot and then the snapshot is dropped, which is
     also what the back office's own revision list does. What this answers is a
     history someone is reading -- what the entry was called, which number it was
     filed under, who and when -- and a restore is a POST that reads the snapshot
@@ -732,11 +733,13 @@ def list_revisions(post_id: int, con=Depends(get_db)):
     rows stay, since they are the only thing standing between vandalism and
     permanent loss, and reverting vandalism means reaching for a recent one.
 
-    `grouped` is here because the value reads through it: without the flag,
-    1000 renders as 1000 in a history whose entry shows 1,000.
+    `grouped` and `format` are here because the value reads through both:
+    without the flag, 1000 renders as 1000 in a history whose entry shows
+    1,000, and without the format a date reads as 12-25 under an entry whose
+    hero says 25 December. Neither is a different number.
     """
     guard_public(con, post_id)
-    # The three fields, asked for by name. SQLite reads them out of the stored
+    # The four fields, asked for by name. SQLite reads them out of the stored
     # JSON, so an entry fought over five hundred times is not five hundred
     # whole entries parsed in Python to draw fifty labels. A key a snapshot
     # does not carry comes back NULL, which is what `.get()` answered.
@@ -744,6 +747,7 @@ def list_revisions(post_id: int, con=Depends(get_db)):
         """SELECT id, author, at,
                   json_extract(snapshot, '$.title')   AS title,
                   json_extract(snapshot, '$.value')   AS value,
+                  json_extract(snapshot, '$.format')  AS format,
                   json_extract(snapshot, '$.grouped') AS grouped
            FROM revisions WHERE post_id = ? ORDER BY id DESC LIMIT ?""",
         (post_id, REVISIONS_SHOWN),
@@ -841,6 +845,47 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
             value, fmt, key = resolve_format(value, None)  # value changed, re-derive
         else:
             fmt, key = current["format"], current["sort_key"]
+        # A section is an **address**, so the open form does not move an entry
+        # between them, for the same reason it will not let the value be
+        # retyped: /a/UFO and /c/12-25 are where those entries answer, and a
+        # page that moves leaves every link to it a page short of the thing it
+        # was about (ADR-0005). Correcting one that is filed wrong is
+        # `POST /api/admin/posts/{id}/value`, which carries a name, a snapshot
+        # and an audit row -- the route that exists for exactly this.
+        #
+        # The address is all this keeps. A value that cannot be read as one
+        # never gets here: `resolve_format` refuses an explicit INTEGER or
+        # DECIMAL it cannot take a finite float out of, one step above, so a
+        # re-filed UFO or 12-25 is a 422 before this line (ADR-0027).
+        #
+        # The one move still allowed is a *number* into the calendar, because
+        # CALENDAR is the one format `parse_number` will never hand back --
+        # 12-25 is as much a ratio as a day (ADR-0026) -- so picking it is all
+        # an entry written before somebody noticed it was a date has. ABBR
+        # needs no such door: the parser already guesses UFO.
+        #
+        # That door takes the format and not the value with it. An entry
+        # somebody noticed was a date already reads as one, so the door it
+        # needs is `{"format": "CALENDAR"}` and nothing else -- while
+        # `{"value": "12-25", "format": "CALENDAR"}` on /n/42 is not a
+        # re-filing, it is 42's page becoming Christmas's, and the refusal
+        # above then holds it there: every later edit re-derives a number,
+        # reads as a move out of /c/, and is refused. One request, a page
+        # somewhere else, and no way back that does not take an operator.
+        #
+        # Read off the settled format and not off `p.format`, so a value sent
+        # with no format -- which re-derives, and 12-25 does not re-derive as
+        # a date -- is the same refusal rather than the way round it.
+        was, goes = section_of(current["format"]), section_of(fmt)
+        if was != goes and not (was == "number" and goes == "calendar"
+                                and value == current["value"]):
+            raise HTTPException(
+                422, "an entry's section is its address: /n/ reads numbers, "
+                     "/a/ abbreviations and /c/ dates, and this form does not "
+                     "move an entry between them. An abbreviation stays one, a "
+                     "date stays one, and a number does not become an "
+                     "abbreviation. Ask an operator to move one that is filed "
+                     "wrong.")
         # author is the first writer and stays put -- on an open wiki, an edit
         # by a stranger must not erase who the entry came from.
         # The conflict check is the last clause and nothing else: one statement,
@@ -910,9 +955,31 @@ def restore_revision(
         if row is None:
             raise HTTPException(404, "revision not found")
         old = json.loads(row["snapshot"])
-        alive = con.execute("SELECT 1 FROM posts WHERE id = ?", (post_id,)).fetchone()
+        alive = con.execute(
+            "SELECT format FROM posts WHERE id = ?", (post_id,)).fetchone()
         rev = None
         if alive:
+            # A section is an address, and this is not the route that moves an
+            # entry between them either. `edit_post` refuses that, but
+            # `apply_snapshot` writes `format` straight out of the snapshot --
+            # so without this the open half puts an entry back at /n/ that
+            # answers at /c/, and undoes an operator's renumber, which carries
+            # a name, a snapshot and an audit row, with one unauthenticated
+            # POST carrying none of the three.
+            #
+            # The operator's own restore is the other caller of
+            # `apply_snapshot` and does not come through here, so it still
+            # crosses -- the same line the renumber draws.
+            #
+            # Only against a row that is here to compare with. The resurrect
+            # branch below has no current section, and refusing to put an
+            # entry back for want of one is the worse answer.
+            if section_of(old["format"]) != section_of(alive["format"]):
+                raise HTTPException(
+                    422, "that version is filed in another section -- /n/ "
+                         "reads numbers, /a/ abbreviations and /c/ dates -- so "
+                         "restoring it would move the entry's address rather "
+                         "than put its words back. Ask an operator, who can.")
             rev = snapshot(con, post_id, author)  # restoring is itself undoable
         else:
             # The post's row is gone. Nothing in this codebase removes a row, so
@@ -1282,7 +1349,7 @@ def robots(request: Request):
 def sitemap(request: Request, con=Depends(get_db)):
     """Every page on this wiki worth indexing, in one file.
 
-    The thirteenth public read, and it carries LIVE like the other twelve: an
+    The fourteenth public read, and it carries LIVE like the other thirteen: an
     entry an operator hid keeps its row, and handing that row to a crawler in a
     list leaks exactly what hiding it was for.
 
@@ -1299,9 +1366,10 @@ def sitemap(request: Request, con=Depends(get_db)):
     urls = [(base, None), (f"{base}guide", None)]
     urls += [(f"{base}p/{r['id']}", r["updated_at"]) for r in con.execute(
         "SELECT id, updated_at FROM posts WHERE status = ? ORDER BY id", (LIVE,))]
-    # grouped by section as well as by value, because the two are two pages:
-    # UFO filed as an abbreviation is /a/UFO and UFO filed as Mixed is /n/UFO,
-    # and value_path() is the one place that decides which.
+    # grouped by section as well as by value, because each section is its own
+    # page: UFO filed as an abbreviation is /a/UFO and UFO filed as Mixed is
+    # /n/UFO, 12-25 as a date is /c/12-25 and as Mixed is /n/12-25, and
+    # value_path() is the one place that decides which.
     #
     # NOCASE, and the spelling off the earliest row, because a <loc> has to be
     # the canonical: `dB` and `DB` are two spellings of one abbreviation, /a/
@@ -1311,14 +1379,13 @@ def sitemap(request: Request, con=Depends(get_db)):
     # is what picks the spelling -- MIN(id) beside MAX(updated_at) is two
     # aggregates, and SQLite only promises a bare column follows one of them.
     # Digits have no case, so folding the number section too changes nothing.
-    urls += [(base + seo.value_path(r["fmt"], r["value"]), r["at"])
+    urls += [(base + seo.value_path(r["section"], r["value"]), r["at"])
              for r in con.execute(
-        "SELECT p.value, g.at, "
-        f"       CASE WHEN {section_where('abbr', 'p.')} THEN 'ABBR' ELSE '' END AS fmt "
+        f"SELECT p.value, g.at, {section_sql('p.')} AS section "
         "FROM posts p JOIN ("
         "    SELECT MIN(id) AS id, MAX(updated_at) AS at FROM posts WHERE status = ? "
-        f"    GROUP BY value COLLATE NOCASE, {section_where('abbr')}"
-        ") g ON g.id = p.id ORDER BY p.value, fmt",
+        f"    GROUP BY value COLLATE NOCASE, {section_sql()}"
+        ") g ON g.id = p.id ORDER BY p.value, section",
         (LIVE,))]
     urls += [(f"{base}t/{seo.enc(r['tag'])}", r["at"]) for r in con.execute(
         "SELECT t.tag, MAX(p.updated_at) AS at FROM post_tags t "

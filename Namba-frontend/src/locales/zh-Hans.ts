@@ -1,5 +1,6 @@
 import { fmtCount } from '../format'
 import { GLOBAL_NAV, GLOBAL_TERMS } from './shared'
+import type { Section } from '../api'
 import type { Messages } from './en'
 
 /** Simplified Chinese (简体中文). The one code here that carries a script
@@ -14,11 +15,12 @@ export const ZH_HANS: Messages = {
     edited: (when: string, name?: string | null) =>
       `${when}编辑${name ? ` · ${name === 'anonymous' ? '匿名用户' : name}` : ''}`,
     entries: (n: number) => `${fmtCount(n, 'zh-Hans')}个条目`, tags: (n: number) => `${fmtCount(n, 'zh-Hans')}个标签`,
-    subject: (abbr: boolean) => abbr ? '缩写' : '数字',
+    subject: (section: Section) =>
+      ({ number: '数字', abbr: '缩写', calendar: '日期' })[section],
     like: (on: boolean, n: number) =>
       `${on ? '取消点赞' : '点赞'} — ${fmtCount(n, 'zh-Hans')}个`,
   },
-  format: { INTEGER: '整数', DECIMAL: '小数', MIXED: '混合', TIME: '时间', ABBR: '缩写' },
+  format: { INTEGER: '整数', DECIMAL: '小数', MIXED: '混合', TIME: '时间', CALENDAR: '日历', ABBR: '缩写' },
   buckets: {
     '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',
     '1000': '1,000 – 9,999', '10000+': '10,000以上',
@@ -51,7 +53,8 @@ export const ZH_HANS: Messages = {
   },
   browse: {
     category: '分类', search: GLOBAL_TERMS.search,
-    summary: (n: number, abbr: boolean) => `共有${fmtCount(n, 'zh-Hans')}个条目解释${abbr ? '这个缩写' : '这个数字'}。`,
+    summary: (n: number, section: Section) =>
+      `共有${fmtCount(n, 'zh-Hans')}个条目解释${({ number: '这个数字', abbr: '这个缩写', calendar: '这个日期' })[section]}。`,
     addMeaning: '+ 添加另一种含义', emptyValue: (value: string) => `${value}下还没有条目。`,
     giveMeaning: '添加一种含义。', emptyTag: (tag: string) => `还没有带有${tag}标签的条目。`,
     noMatches: (q: string) => `没有与“${q}”匹配的结果。请尝试其他关键词，或`,
@@ -79,11 +82,21 @@ export const ZH_HANS: Messages = {
     editIntro: (owner: string) => `任何人都可以编辑此条目${owner ? `。最初的创建者是${owner}` : ''}。被替换的版本会保留在历史记录中，${owner || '最初创建者'}的署名也会保留。`,
     addIntro: '每个条目只记录一个含义。即使42已经存在，新内容也会作为另一种含义加入，而不会替换原条目。',
     guidelines: '条目指南', fixedValue: (noun: string) => `不可更改 — 另一个${noun}应创建为单独条目`,
+    date: '日期', month: '月', day: '日',
     number: '数字', abbreviation: '缩写', groupThousands: '使用千位分隔符', format: '格式',
     autoDetect: '自动检测', title: '标题', titleHint: '它指的是什么',
-    titlePlaceholder: '银河系漫游指南', details: '详细说明',
+    titlePlaceholder: (section: Section) => ({
+      number: '银河系漫游指南',
+      abbr: 'POV',
+      calendar: '愚人节',
+    })[section],
+    details: '详细说明',
     detailsHint: '可选 — 为什么是这个值，它代表什么',
-    detailsPlaceholder: '生命、宇宙以及一切终极问题的答案。',
+    detailsPlaceholder: (section: Section) => ({
+      number: '生命、宇宙以及一切终极问题的答案。',
+      abbr: '表示某个特定人物的视角或看法的说法。',
+      calendar: '互相说些无伤大雅的谎话、开开玩笑的日子。',
+    })[section],
     markdown: '支持Markdown — **粗体**、*斜体*、[链接](https://…)、列表、标题和表格。按一次Enter即可换行。',
     writtenIn: '写作语言', categories: '分类',
     categoryHint: (n: number) => `最多${fmtCount(n, 'zh-Hans')}个 — 由图书改编的电影可以同时选择两者`,
@@ -105,7 +118,7 @@ export const ZH_HANS: Messages = {
     language: '语言', languageHint: '此翻译所使用的语言', pickOne: '请选择…',
     translationTitleHint: '使用该语言填写条目标题', optionalMarkdown: '可选 — 此处也支持Markdown',
     addThisTranslation: '添加翻译', removeTranslation: '移除翻译', related: '相关条目',
-    relatedHint: '适合与此条目一同查看的其他数字', unlink: '取消关联',
+    relatedHint: '适合与本条目一同查看的其他条目', unlink: '取消关联',
     linkSearchAria: '搜索要关联的条目', linkSearchPlaceholder: '搜索维基 — 例如：Back to the Future',
     searching: '搜索中…', search: GLOBAL_TERMS.search, link: '关联', noMatches: '没有匹配的结果。',
   },

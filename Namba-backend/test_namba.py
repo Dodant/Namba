@@ -1,5 +1,6 @@
 """Self-check: python test_namba.py   (no pytest, no fixtures)"""
 import json
+import math
 import os
 import re
 import string
@@ -33,11 +34,14 @@ import auth  # noqa: E402
 import db  # noqa: E402
 import events  # noqa: E402
 import main  # noqa: E402
+import numfmt  # noqa: E402
 import seo  # noqa: E402
 import seo_locale  # noqa: E402
 import sqlite3  # noqa: E402
 import store  # noqa: E402
-from numfmt import FORMATS, bucket_of, grouped_value, is_abbr, parse_number  # noqa: E402
+from numfmt import (  # noqa: E402
+    FORMATS, bucket_of, date_key, grouped_value, is_abbr, parse_number,
+)
 
 # The write limiter counts per IP, and the whole suite is one IP making a
 # hundred writes in a second. Lift it here rather than thin it out in main.py,
@@ -62,11 +66,16 @@ def test_parse():
         "3.15.20": ("MIXED", None),            # two dots
         "80/20": ("MIXED", None),
         "40-40": ("MIXED", None),
+        # and a date is not guessed at either, for the same reason: 12-25 is
+        # Christmas and 80-20 is a ratio, and nothing in either string says
+        # which. CALENDAR is reached by picking it, the way TIME is on 1:29:300
+        "12-25": ("MIXED", None),
+        "02-29": ("MIXED", None),
         "9¾": ("MIXED", None),
         "24/7": ("MIXED", None),
         "25:99": ("MIXED", None),              # colon, but no such time
         "": ("MIXED", None),
-        # letters are the fifth kind, and the punctuation an abbreviation
+        # letters are the last kind, and the punctuation an abbreviation
         # carries inside it comes with them
         "UFO": ("ABBR", None),
         "ufo": ("ABBR", None),                 # the case is settled on write
@@ -96,9 +105,77 @@ def test_parse():
                "", "   ", "-", "...", "UF O", "UFO!"):
         assert not is_abbr(no), no
 
+    # And what may be filed as a date, the other claim about what a value is.
+    # The
+    # key is the check: a value this cannot read is not a date, and the month
+    # has to come back out of it for the band. Padding is part of the spelling
+    # -- `1-5` is refused rather than folded to `01-05`, because nothing here
+    # would keep the difference and one day must have one address (ADR-0005).
+    for raw, want in {"01-01": 101.0, "04-01": 401.0, "12-25": 1225.0,
+                      "02-29": 229.0, "12-31": 1231.0}.items():
+        assert date_key(raw) == want, (raw, date_key(raw))
+    assert date_key(" 12-25 ") == 1225.0, "stripped like every other value"
+    # A digit that is not ASCII is another spelling of the same day, and the
+    # front end cannot read one at all -- so these are refused here too, or
+    # Christmas has three addresses and two of them render as raw characters.
+    for no in ("1-5", "01-5", "1-05", "2026-12-25", "12-32", "02-30", "04-31",
+               "13-01", "00-01", "12-00", "12/25", "12-25x", "", "   ", None,
+               "١٢-٢٥", "１２-２５", "1２-25"):
+        assert date_key(no) is None, no
+
+    # INTEGER and DECIMAL are the claim that the value reads as a number, and
+    # `resolve_format` is where the claim is checked rather than believed --
+    # the sort key it settles off the value is load-bearing twice. Without one
+    # an Integer entry is in no band on the index and is drawn nowhere at all;
+    # with a non-finite one it cannot be serialized, and SQLite keeps NaN as
+    # NULL (the first case again) and Inf as Inf, which json.dumps refuses --
+    # so one such row 500s every list endpoint until an operator finds it.
+    for no in ("9 3/4", "11/22/63", "UFO", "12-25", "nan", "NaN", "inf",
+               "-inf", "Infinity", "0x1f"):
+        for fmt in ("INTEGER", "DECIMAL"):
+            try:
+                store.resolve_format(no, fmt)
+            except Exception as e:
+                assert getattr(e, "status_code", None) == 422, (no, fmt, e)
+            else:
+                raise AssertionError(f"{no!r} was filed as {fmt}")
+    # ...and what an explicit pick is still *for*: a number `parse_number`
+    # would have filed elsewhere. It guesses neither a minus sign nor an
+    # exponent, and both are numbers -- so the check is float(), not a stricter
+    # regex, and bucket_of already takes the magnitude of a negative.
+    for yes, key in (("-42", -42.0), ("1e5", 100000.0), ("42", 42.0),
+                     ("3.14", 3.14), ("0", 0.0),
+                     # float() reads a Python underscore and a non-ASCII
+                     # numeral, and both stay -- two spellings of a number are
+                     # two entries sharing a sort key, which is the rule for
+                     # the four that read digits (ADR-0005). Only CALENDAR
+                     # promised the opposite, and only its regex says [0-9].
+                     ("1_000", 1000.0), ("٤٢", 42.0)):
+        for fmt in ("INTEGER", "DECIMAL"):
+            assert store.resolve_format(yes, fmt) == (yes, fmt, key), (yes, fmt)
+    # TIME is the one still taken at its word: nothing bands or serializes on
+    # its key, so an explicit one on a value that is not a clock files with
+    # none, and MIXED is the remainder and claims nothing at all.
+    assert store.resolve_format("1:29:300", "TIME") == ("1:29:300", "TIME", None)
+    assert store.resolve_format("9 3/4", "MIXED") == ("9 3/4", "MIXED", None)
+    # The check is on the settled format and not on the disagreement, because
+    # `parse_number` hands back float()'s answer too and float("9" * 309) is
+    # `inf` rather than a ValueError -- so the path where the poster and the
+    # parser agree could settle a key the other one is refused for. Nothing
+    # but the 32-character cap on `value` stands between that and the outage,
+    # and a cap is not where this rule should live.
+    assert not math.isfinite(float("9" * 309)), "float() started raising"
+    for given in (None, "INTEGER"):
+        try:
+            store.resolve_format("9" * 400, given)
+        except Exception as e:
+            assert getattr(e, "status_code", None) == 422, (given, e)
+        else:
+            raise AssertionError(f"an overflowing value was filed, given={given!r}")
+
 
 def test_the_two_apps_still_agree():
-    """The hand-copied lists in `../Namba-frontend/src/api.ts` match these ones.
+    """The hand-copied lists in `../Namba-frontend/src/` match these ones.
 
     The root CLAUDE.md calls these "kept in sync by hand" and says change one,
     change the other -- and until this test there was nothing checking that
@@ -116,9 +193,12 @@ def test_the_two_apps_still_agree():
     is the premise, and a check that quietly passes when it cannot look is the
     kind of test that is worse than none.
     """
-    path = os.path.join(db.DIR, os.pardir, "Namba-frontend", "src", "api.ts")
-    assert os.path.isfile(path), f"the other half of the repo is not at {path}"
-    src = open(path, encoding="utf-8").read()
+    def read(name):
+        path = os.path.join(db.DIR, os.pardir, "Namba-frontend", "src", name)
+        assert os.path.isfile(path), f"the other half of the repo is not at {path}"
+        return open(path, encoding="utf-8").read()
+
+    src, fmt_src = read("api.ts"), read("format.ts")
 
     def listed(name):
         """One `export const NAME = [...]` as Python.
@@ -142,8 +222,8 @@ def test_the_two_apps_still_agree():
         assert m, f"{name} is not in api.ts at all"
         return int(m.group(1))
 
-    # the five formats -- a format is a parser branch, it decides which of the
-    # two sections a value is read in, and both sides have to agree on the word
+    # the six formats -- a format is a parser branch, it decides which of the
+    # sections a value is read in, and both sides have to agree on the word
     assert listed("FORMATS") == FORMATS, listed("FORMATS")
     # the five vocabularies the TEXT columns may hold, plus what the panel offers
     for name in ("DELETE_REASONS", "REPORT_REASONS", "POST_STATUSES",
@@ -176,13 +256,45 @@ def test_the_two_apps_still_agree():
     abbrs = {bucket_of(None, "ABBR", c) for c in
              string.ascii_uppercase + string.ascii_lowercase + string.digits}
     assert abbrs == set(listed("ABBR_BUCKETS")), (abbrs, listed("ABBR_BUCKETS"))
-    # and only those two formats band at all, or a list would render one band
+    months = {bucket_of(date_key(f"{m:02d}-01"), "CALENDAR") for m in range(1, 13)}
+    assert months == set(listed("MONTH_BUCKETS")), (months, listed("MONTH_BUCKETS"))
+    # and only those three formats band at all, or a list would render one band
     # per row -- TIME sorts by minutes past midnight, where a magnitude means
     # nothing, and Decimal and Mixed sort by string and read as one list
     for fmt in ("TIME", "DECIMAL", "MIXED"):
         assert bucket_of(100, fmt) is None, fmt
     assert bucket_of(None, "ABBR", "...") is None, "no letter and no digit, no band"
     assert bucket_of(None, "ABBR", ".NET") == "N", "a band comes off the first letter"
+
+    # Which format is which section. `SECTION_FORMATS` is the one map on this
+    # side and `OF_FORMAT` is its copy over there, read the other way round --
+    # and this pair is worth more than a menu item, because the form asks it
+    # what to disable and which format to drop: a seventh format in a new
+    # section that only this side knows about leaves the edit menu offering a
+    # move Save answers 422 to, and nothing errors until somebody presses it.
+    m = re.search(r"const OF_FORMAT\b[^=]*=\s*\{(.*?)\}", src, re.S)
+    assert m, "OF_FORMAT is not in api.ts at all"
+    theirs = dict(re.findall(r"(\w+)\s*:\s*'([^']+)'", m.group(1)))
+    assert theirs == {f: s for s, f in store.SECTION_FORMATS.items()}, theirs
+
+    # What a calendar date is, which lives in format.ts rather than api.ts and
+    # is two halves: the days each month has, and the shape of the value.
+    days = re.search(r"const MONTH_DAYS\b[^=]*=\s*\[(.*?)\]", fmt_src, re.S)
+    assert days, "MONTH_DAYS is not in format.ts at all"
+    assert tuple(int(d) for d in re.findall(r"\d+", days.group(1))) \
+        == numfmt._MONTH_DAYS, days.group(1)
+    # The pattern compared as text, with JavaScript's `\d` written the way
+    # this side has to write it. They are not interchangeable: a Python `\d`
+    # matches every Unicode decimal numeral, so `١٢-٢٥` and `１２-２５` passed
+    # here and not there, and one day had three /c/ addresses. JavaScript's is
+    # ASCII whatever the flags, so `[0-9]` is the spelling that means the same
+    # thing on both sides.
+    shape = re.search(r"const DATE\b[^=]*=\s*/(.*?)/", fmt_src)
+    assert shape, "DATE is not in format.ts at all"
+    assert shape.group(1).replace(r"\d", "[0-9]") == numfmt._DATE.pattern, \
+        (shape.group(1), numfmt._DATE.pattern)
+    assert r"\d" not in numfmt._DATE.pattern, \
+        "a Python \\d here matches ٤ and ４, and a date is ASCII"
 
 
 def test_two_editors_do_not_undo_each_other():
@@ -666,6 +778,29 @@ def test_head_per_route():
     assert "<title>UFO — 1 entry · Namba</title>" in num, num[:400]
     assert "Unidentified" not in num, "the abbreviation reached the number's page"
 
+    # A date is a third section for the same reason: 12-25 filed as a date is
+    # a day of the year, and there is no number 12-25 for it to be about.
+    c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                               "title": "Christmas Day"})
+    page = c.get("/c/12-25").text
+    assert "<title>12-25 — 1 entry · Namba</title>" in page, page[:400]
+    assert 'content="What happens on 12-25 — 1 entry on Namba: ' in page, page[:600]
+    assert 'rel="canonical" href="http://testserver/c/12-25"' in page
+    coll, crumb = _ld(page)[0]
+    assert coll["about"]["name"] == "12-25"
+    assert crumb["itemListElement"][-1]["item"] == "http://testserver/c/12-25"
+    assert "noindex" in c.get("/n/12-25").text, "a date answered at /n/"
+    assert "Christmas" not in c.get("/n/12-25").text
+    # and the same characters filed as Mixed on purpose is a second entry at a
+    # second address, so neither head is leaning on the other being empty
+    c.post("/api/posts", json={"value": "12-25", "format": "MIXED",
+                               "title": "a score somebody wrote 12-25"})
+    date, num = c.get("/c/12-25").text, c.get("/n/12-25").text
+    assert "<title>12-25 — 1 entry · Namba</title>" in date, date[:400]
+    assert "a score" not in date, "the Mixed entry reached the date's page"
+    assert "<title>12-25 — 1 entry · Namba</title>" in num, num[:400]
+    assert "Christmas" not in num, "the date reached the number's page"
+
     # -- a tag page is the same shape, and folds case like tagLabel() does
     page = c.get("/t/BREAKBEAT").text
     assert "<title>breakbeat — 2 entries · Namba</title>" in page, page[:400]
@@ -675,13 +810,28 @@ def test_head_per_route():
     # -- an empty number is a real page and not one to index: /n/ is an open
     # set, so indexing it means an unbounded number of blank pages in front of
     # the ones that say something.
-    for empty in ("/n/999999999", "/t/nothingistaggedthis"):
+    for empty in ("/n/999999999", "/c/01-02", "/t/nothingistaggedthis"):
         page = c.get(empty).text
         assert "noindex" in page, empty
         assert 'rel="canonical"' in page, empty
         # ...and still a card. noindex keeps it out of a search result; it says
         # nothing about the chat window someone pastes "be the first" into.
         assert 'property="og:image" content="http://testserver/og.png"' in page, empty
+
+    # -- ...except /c/, the one closed section. There are 366 days, so an
+    # unreadable one is not an empty date page, it is not a page: no canonical
+    # claiming it exists, the same answer every mistyped path gets. CalendarPage
+    # in App.tsx draws the reader the matching "Nothing here".
+    # The padded spellings go the same way. date_key() strips, because on a
+    # write it reads a value somebody typed -- but here the segment *is* the
+    # address, and monthDay() in format.ts does not strip, so left alone
+    # /c/%2012-25 took a date page's head and a canonical pointing at itself
+    # while the reader was told there was nothing there.
+    for nothing in ("/c/99-99", "/c/1-5", "/c/02-30", "/c/christmas",
+                    "/c/%2012-25", "/c/12-25%20", "/c/%0912-25", "/c/12-25%0A"):
+        page = c.get(nothing).text
+        assert "noindex" in page, nothing
+        assert 'rel="canonical"' not in page, nothing
 
     # -- the entry itself is grouped as its own flag says
     grouped = c.post("/api/posts", json={
@@ -719,6 +869,22 @@ def test_head_per_route():
         "http://testserver/", "http://testserver/a/DNA",
         f"http://testserver/p/{dna['id']}"], crumb
     admin.set_status(dna["id"], "HIDDEN")
+
+    # -- and a date's entry says what happens on it, with the crumb into the
+    # third section. Same argument as the abbreviation above: og_head picks
+    # both off section_of(post["format"]), so a third arm that fell back to
+    # the number's would leave a page that still looks right.
+    yule = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                                      "title": "Christmas Day"}).json()
+    page = c.get(f"/p/{yule['id']}").text
+    assert 'content="Christmas Day — what happens on 12-25, on Namba."' in page, \
+        page[:600]
+    article, crumb = _ld(page)[0]
+    assert article["about"]["name"] == "12-25"
+    assert [i["item"] for i in crumb["itemListElement"]] == [
+        "http://testserver/", "http://testserver/c/12-25",
+        f"http://testserver/p/{yule['id']}"], crumb
+    admin.set_status(yule["id"], "HIDDEN")
 
     # -- and every one of them carries the site's card. An entry, a number, a
     # tag and the front page: four routes, no picture between them, and before
@@ -826,6 +992,22 @@ def test_robots_and_sitemap():
     locs = [u.findtext(f"{ns}loc") for u in
             ElementTree.fromstring(c.get("/sitemap.xml").text).findall(f"{ns}url")]
     assert "http://testserver/a/CSI" not in locs, "a hidden abbreviation was listed"
+
+    # a date is a third section with a third address, and the same characters
+    # filed as Mixed still get theirs
+    cal = c.post("/api/posts", json={"value": "07-14", "format": "CALENDAR",
+                                     "title": "Bastille Day"}).json()
+    c.post("/api/posts", json={"value": "07-14", "format": "MIXED",
+                               "title": "the same characters, filed as a number"})
+    locs = [u.findtext(f"{ns}loc") for u in
+            ElementTree.fromstring(c.get("/sitemap.xml").text).findall(f"{ns}url")]
+    assert "http://testserver/c/07-14" in locs, [x for x in locs if "07" in x]
+    assert "http://testserver/n/07-14" in locs, "the Mixed one has an address too"
+    assert len(locs) == len(set(locs)), "one address per page"
+    admin.set_status(cal["id"], "HIDDEN")
+    locs = [u.findtext(f"{ns}loc") for u in
+            ElementTree.fromstring(c.get("/sitemap.xml").text).findall(f"{ns}url")]
+    assert "http://testserver/c/07-14" not in locs, "a hidden date was listed"
 
     # two spellings of one abbreviation are one page, so they are one <loc> --
     # and it is the spelling the page's own canonical claims, or this file
@@ -1698,12 +1880,34 @@ def test_admin_content_and_dashboard():
                     json={"value": "1971"}).status_code == 409
     assert ops.post(f"/api/admin/posts/{pid}/value",
                     json={"value": "1971", "format": "SHRUG"}).status_code == 422
-    # ABBR is a claim about the value rather than a way of reading it, so it is
-    # checked here too -- this route settles the format through resolve_format
-    # for exactly that reason
+    # ABBR and CALENDAR are claims about the value rather than ways of reading
+    # it, so both are checked here too -- this route settles the format through
+    # resolve_format for exactly that reason
     assert ops.post(f"/api/admin/posts/{pid}/value",
                     json={"value": "1971", "format": "ABBR"}).status_code == 422
-    ops.post(f"/api/admin/posts/{pid}/value", json={"value": "1969"})
+    assert ops.post(f"/api/admin/posts/{pid}/value",
+                    json={"value": "1971", "format": "CALENDAR"}).status_code == 422
+    assert ops.post(f"/api/admin/posts/{pid}/value",
+                    json={"value": "1-5", "format": "CALENDAR"}).status_code == 422
+    # and so are INTEGER and DECIMAL, which are the claim that the value reads
+    # as a number. The operator's route is not the way round that either: a
+    # stored Inf is a key no list response can serialize.
+    for bad in ("9 3/4", "inf"):
+        assert ops.post(f"/api/admin/posts/{pid}/value",
+                        json={"value": bad, "format": "INTEGER"}).status_code == 422, bad
+    # Re-filing is this route's other job, and the panel is the only place it
+    # can be done: an entry filed as a number moves into the calendar section
+    # by an operator saying so, and the section follows the format.
+    dated = ops.post(f"/api/admin/posts/{pid}/value",
+                     json={"value": "12-25", "format": "CALENDAR"})
+    assert dated.status_code == 200, dated.text
+    assert dated.json()["value"] == "12-25", "a date is stored as the two pairs"
+    assert (dated.json()["format"], dated.json()["sort_key"]) == ("CALENDAR", 1225.0)
+    # ...and it moves back out, because auto-detect does not guess a date --
+    # which is the one way this route can un-file one, and why the panel sends
+    # the format it is showing rather than nothing
+    back = ops.post(f"/api/admin/posts/{pid}/value", json={"value": "1969"})
+    assert back.json()["format"] == "INTEGER", "auto-detect guessed a date"
     ops.post(f"/api/admin/posts/{pid}/status", json={"status": "ACTIVE"})
 
     # the counters, and the two that must not double-count each other
@@ -1993,6 +2197,13 @@ def test_bucket():
         got = bucket_of(None, "ABBR", value)
         assert got == want, f"bucket_of(ABBR, {value!r}) = {got}, want {want}"
     assert bucket_of(42.0, "ABBR", "UFO") == "U", "the key had a say in a letter band"
+    # a date is banded by its month, which comes back out of the key -- two
+    # digits, so that no band of this index is spelled like an Integer one
+    for raw, want in [("01-01", "01"), ("04-01", "04"), ("09-30", "09"),
+                      ("10-04", "10"), ("12-25", "12"), ("02-29", "02")]:
+        got = bucket_of(date_key(raw), "CALENDAR")
+        assert got == want, f"bucket_of(CALENDAR, {raw!r}) = {got}, want {want}"
+    assert bucket_of(None, "CALENDAR", "12-25") is None, "no key, no month"
 
 
 def test_api_round_trip():
@@ -2022,6 +2233,17 @@ def test_api_round_trip():
     t = c.post("/api/posts", json={"value": "11:11", "title": "Us (Jeremiah 11:11)",
                                    "format": "MIXED", "tags": ["MOVIE"]}).json()
     assert t["format"] == "MIXED" and t["sort_key"] is None and t["bucket"] is None
+    # ...but not into a number the value is not. test_parse has the table; what
+    # is here is that the route answers it and that the list endpoints are
+    # still standing afterwards -- `inf` used to be written and then fail to
+    # serialize, which left a row that 500'd /api/numbers and /api/posts for
+    # everybody until somebody found it.
+    for bad in ("9 3/4", "inf", "nan"):
+        r = c.post("/api/posts", json={"value": bad, "format": "INTEGER",
+                                       "title": "not a number"})
+        assert r.status_code == 422 and "has to be one" in r.text, (bad, r.text)
+    assert c.get("/api/numbers").status_code == 200, "a refused write reached the table"
+    assert c.get("/api/posts").status_code == 200
 
     # -- the fifth kind. Letters are an abbreviation, they carry no sort key,
     # and the case they were typed in is kept, because case is part of how an
@@ -2106,17 +2328,28 @@ def test_api_round_trip():
     # Mixed "gross" and "GROSS" are two values.
     assert section("banana") == {u["id"], mixed["id"]}, section("banana")
 
-    # re-filing an entry moves which section reads it and leaves the spelling
-    # alone -- the number field is read-only on an edit and sends no value at
-    # all, so there is nothing here for a format to settle but the format
+    # ...and the open form does not move an entry between them. /a/Ufo is
+    # where an abbreviation answers, so re-filing a number as one moves the
+    # page -- which this form does not do to a value either, and which the
+    # operator's renumber is the route for (ADR-0005).
     later = c.post("/api/posts", json={"value": "Ufo", "format": "MIXED",
                                        "title": "not sure yet"}).json()
     assert later["value"] == "Ufo", "MIXED keeps what was typed"
-    fixed = c.patch(f"/api/posts/{later['id']}",
-                    json={"format": "ABBR", "author": "scully"}).json()
-    assert fixed["value"] == "Ufo" and fixed["format"] == "ABBR", fixed
-    assert fixed["author"] == later["author"], "re-filing took the byline over"
-    assert fixed["edited_by"] == "scully"
+    stuck = c.patch(f"/api/posts/{later['id']}",
+                    json={"format": "ABBR", "author": "scully"})
+    assert stuck.status_code == 422 and "stays one" in stuck.text, stuck.text
+    held = c.get(f"/api/posts/{later['id']}").json()
+    assert held["format"] == "MIXED" and held["edited_by"] is None, held
+    # and out of /a/ the same way
+    out = c.patch(f"/api/posts/{mp3['id']}", json={"format": "MIXED", "author": "x"})
+    assert out.status_code == 422 and "stays one" in out.text, out.text
+    # INTEGER is refused one step earlier now, and says the more useful of the
+    # two things: mp3 is not a number. That arm is what used to cost the index
+    # -- the entry kept its value, lost its sort key, and the Integer tab
+    # fills five fixed bands by filtering on one, so it was drawn nowhere.
+    num = c.patch(f"/api/posts/{mp3['id']}", json={"format": "INTEGER", "author": "x"})
+    assert num.status_code == 422 and "has to be one" in num.text, num.text
+    assert c.get(f"/api/posts/{mp3['id']}").json()["format"] == "ABBR"
     # re-filing an existing entry is the other way in, and the number field is
     # read-only on an edit -- so the value the check reads is the stored one.
     # The refusal happens inside the transaction that took the snapshot, so a
@@ -2129,8 +2362,145 @@ def test_api_round_trip():
     assert len(c.get(f"/api/posts/{ko['id']}/revisions").json()) == before, \
         "a refused edit left a snapshot behind"
 
-    for pid in (u["id"], again["id"], mixed["id"], fixed["id"], mp3["id"], ko["id"],
+    for pid in (u["id"], again["id"], mixed["id"], later["id"], mp3["id"], ko["id"],
                 saas["id"], saas2["id"], iot["id"], io["id"]):
+        admin.set_status(pid, "HIDDEN")
+
+    # A date is the other claim about what a value is, and the third section.
+    # The triple it
+    # comes back with is the whole of it: the format that was picked, the key
+    # the check handed over, and the month band that comes back out of the key.
+    xmas = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                                      "title": "Christmas Day"})
+    assert xmas.status_code == 201, xmas.text
+    xmas = xmas.json()
+    assert xmas["format"] == "CALENDAR" and xmas["value"] == "12-25", xmas
+    assert xmas["sort_key"] == 1225.0 and xmas["bucket"] == "12", xmas
+    # the padding is part of the spelling, so every other way of writing it is
+    # refused rather than folded: one day has one address (ADR-0005)
+    for bad in ("1-5", "01-5", "12-32", "02-30", "13-01", "2026-12-25", "12/25",
+                "9¾", "١٢-٢٥", "１２-２５"):
+        r = c.post("/api/posts", json={"value": bad, "format": "CALENDAR",
+                                       "title": "not a date"})
+        assert r.status_code == 422 and "month and day" in r.text, (bad, r.text)
+    # auto-detect does not reach for it -- 12-25 is Christmas and 80-20 is a
+    # ratio, and nothing in either string says which
+    guessed = c.post("/api/posts", json={"value": "04-01", "title": "a guess"}).json()
+    assert guessed["format"] == "MIXED" and guessed["sort_key"] is None, guessed
+    # ...so re-filing is the other way in, and since the number field is
+    # read-only on an edit the check reads the value that is stored
+    fools = c.patch(f"/api/posts/{guessed['id']}",
+                    json={"format": "CALENDAR", "author": "hoaxer"}).json()
+    assert fools["value"] == "04-01" and fools["format"] == "CALENDAR", fools
+    assert fools["sort_key"] == 401.0 and fools["bucket"] == "04", fools
+    assert fools["author"] == guessed["author"], "re-filing took the byline over"
+    # and each of the three sections answers for its own and for nothing else
+    wrote = c.post("/api/posts", json={"value": "12-25", "format": "MIXED",
+                                       "title": "a score somebody wrote 12-25"}).json()
+    def dated(name):
+        return {x["id"] for x in c.get(
+            "/api/posts", params={"value": "12-25", "section": name}).json()}
+    assert dated("calendar") == {xmas["id"]}, dated("calendar")
+    assert dated("number") == {wrote["id"]}, dated("number")
+    assert dated("abbr") == set(), dated("abbr")
+    assert dated("banana") == {xmas["id"], wrote["id"]}, dated("banana")
+    # the Calendar tab of the index: sorted by month * 100 + day, banded by
+    # the month that comes back out of the key, and the Mixed 12-25 filed
+    # above is not on it -- the tab groups by (value, format), so a value in
+    # two sections is two rows and only one of them is here
+    leap = c.post("/api/posts", json={"value": "02-29", "format": "CALENDAR",
+                                      "title": "the leap day"}).json()
+    rows = c.get("/api/numbers", params={"format": "CALENDAR"}).json()
+    assert [r["value"] for r in rows] == ["02-29", "04-01", "12-25"], rows
+    assert [r["bucket"] for r in rows] == ["02", "04", "12"], rows
+    assert all(len(r["entries"]) == 1 for r in rows), "a Mixed row reached the tab"
+    # a history line reads the value through the format the way the hero does,
+    # so the label carries it: 12-25 under an entry whose hero says 25 December
+    # is the format gone missing from the label, not a different date
+    c.patch(f"/api/posts/{xmas['id']}", json={"title": "Christmas", "author": "elf"})
+    rev = c.get(f"/api/posts/{xmas['id']}/revisions").json()[0]
+    assert (rev["value"], rev["format"], rev["grouped"]) == ("12-25", "CALENDAR", False), rev
+    # Re-filing into the section is a way in and not a way back out. /c/04-01
+    # is the entry's address, so moving its format moves the page -- which the
+    # open form may no more do than retype the number, and which the
+    # operator's renumber is the route for (ADR-0002, ADR-0026). Left open,
+    # one PATCH puts the entry at /n/04-01 with no sort key, and since the
+    # Integer tab fills five fixed bands from that key it is then on the wiki
+    # and on no page.
+    was = len(c.get(f"/api/posts/{fools['id']}/revisions").json())
+    stuck = c.patch(f"/api/posts/{fools['id']}",
+                    json={"format": "MIXED", "author": "vandal"})
+    assert stuck.status_code == 422 and "stays one" in stuck.text, stuck.text
+    # INTEGER is refused one step earlier and says why more usefully: 04-01 is
+    # not a number. That arm is the one that used to strand the entry off the
+    # index rather than merely move it.
+    num = c.patch(f"/api/posts/{fools['id']}",
+                  json={"format": "INTEGER", "author": "vandal"})
+    assert num.status_code == 422 and "has to be one" in num.text, num.text
+    # and the same refusal with no format at all: a value on its own re-derives
+    # the format, and 04-01 does not re-derive as a date (ADR-0026), so reading
+    # the settled format rather than what was sent is what closes both
+    slipped = c.patch(f"/api/posts/{fools['id']}",
+                      json={"value": "04-01", "author": "vandal"})
+    assert slipped.status_code == 422, slipped.text
+    held = c.get(f"/api/posts/{fools['id']}").json()
+    assert (held["format"], held["sort_key"], held["bucket"]) \
+        == ("CALENDAR", 401.0, "04"), held
+    assert held["edited_by"] == "hoaxer", "a refused edit signed the entry"
+    assert len(c.get(f"/api/posts/{fools['id']}/revisions").json()) == was, \
+        "a refused edit left a revision saying somebody replaced the entry"
+    # The door takes the format and not the value with it. An entry somebody
+    # noticed was a date already reads as one, so {"format": "CALENDAR"} is
+    # the whole of the move -- while the same request carrying a value is
+    # 42's page becoming Christmas's, and the refusal above then holds it
+    # there, since every later edit re-derives a number and reads as a move
+    # back out. One request, a page somewhere else, and no way back that does
+    # not take an operator.
+    plain = c.post("/api/posts", json={"value": "42", "title": "not a date"}).json()
+    moved = c.patch(f"/api/posts/{plain['id']}",
+                    json={"value": "12-25", "format": "CALENDAR", "author": "vandal"})
+    assert moved.status_code == 422 and "stays one" in moved.text, moved.text
+    still = c.get(f"/api/posts/{plain['id']}").json()
+    assert (still["value"], still["format"]) == ("42", "INTEGER"), still
+    assert c.patch(f"/api/posts/{plain['id']}",
+                   json={"value": "43", "author": "x"}).status_code == 200, \
+        "the refusal trapped an entry that never left /n/"
+    admin.set_status(plain["id"], "HIDDEN")
+    # And a restore is not the way round either. `apply_snapshot` writes the
+    # format straight out of the snapshot, so without a check here the open
+    # half puts an entry back at /n/ that answers at /c/ -- and undoes an
+    # operator's renumber, which carries a name, a snapshot and an audit row,
+    # with one unauthenticated POST carrying none of the three.
+    before = next(v for v in c.get(f"/api/posts/{fools['id']}/revisions").json()
+                  if v["format"] == "MIXED")
+    back = c.post(f"/api/posts/{fools['id']}/revisions/{before['id']}/restore",
+                  json={"author": "vandal"})
+    assert back.status_code == 422 and "another section" in back.text, back.text
+    kept = c.get(f"/api/posts/{fools['id']}").json()
+    assert (kept["format"], kept["bucket"]) == ("CALENDAR", "04"), kept
+    # a restore inside the section is what the route is for and still works
+    same = c.get(f"/api/posts/{xmas['id']}/revisions").json()[0]
+    put = c.post(f"/api/posts/{xmas['id']}/revisions/{same['id']}/restore",
+                 json={"author": "elf"})
+    assert put.status_code == 200 and put.json()["format"] == "CALENDAR", put.text
+    # A key no response can carry does not go back on the row either. SQLite
+    # keeps Inf in the column and json.dumps writes it into a snapshot without
+    # complaint, so a revision taken before resolve_format checked for one
+    # still holds it -- and restoring that 500s every list endpoint for every
+    # reader. It comes back with no band instead of with no index.
+    con = db.connect()
+    with con:
+        raw = json.loads(con.execute(
+            "SELECT snapshot FROM revisions WHERE id = ?", (same["id"],)).fetchone()[0])
+        raw["sort_key"] = float("inf")
+        con.execute("UPDATE revisions SET snapshot = ? WHERE id = ?",
+                    (json.dumps(raw), same["id"]))
+    healed = c.post(f"/api/posts/{xmas['id']}/revisions/{same['id']}/restore",
+                    json={"author": "elf"})
+    assert healed.status_code == 200 and healed.json()["sort_key"] is None, healed.text
+    assert c.get("/api/numbers").status_code == 200, "an Inf key reached a response"
+    assert c.get("/api/posts").status_code == 200, "an Inf key reached a response"
+    for pid in (xmas["id"], fools["id"], wrote["id"], leap["id"]):
         admin.set_status(pid, "HIDDEN")
 
     clock = c.post("/api/posts", json={"value": "09:41", "title": "iPhone keynote",
@@ -2530,12 +2900,12 @@ def test_api_round_trip():
 def test_hidden_is_invisible():
     """Hiding an entry takes it off the wiki, not out of one view of it.
 
-    Thirteen public reads carry the status condition and missing one leaks the
-    body of something an operator took down, so this walks all thirteen: the
+    Fourteen public reads carry the status condition and missing one leaks the
+    body of something an operator took down, so this walks all fourteen: the
     index, the list endpoint the feed and the search share, the entry itself,
     the two vocabularies, its row among another entry's related entries, its
     history, the talk beside it, the <head> written server-side for /p/{id},
-    the three written for the list pages it appears on, and the sitemap handed
+    the four written for the list pages it appears on, and the sitemap handed
     to crawlers.
 
     It moves the column through admin.py because that is the only thing that
@@ -2556,6 +2926,10 @@ def test_hidden_is_invisible():
     # without the condition doing anything.
     ab = c.post("/api/posts", json={"value": "KAP", "format": "ABBR",
                                     "title": "Kaprekar, for short"}).json()
+    # and the date section, so /c/{value} is walked as well. Same argument as
+    # the abbreviation above: its own value, no tag, no translation.
+    cal = c.post("/api/posts", json={"value": "09-17", "format": "CALENDAR",
+                                     "title": "Kaprekar, on a day"}).json()
     c.put(f"/api/posts/{pid}/translations",
           json={"lang": "Klingon", "title": "loSmaH", "body": "loS", "author": "worf"})
     c.post(f"/api/posts/{pid}/comments", json={"body": "It really is every time."})
@@ -2567,6 +2941,7 @@ def test_hidden_is_invisible():
         forgot LIVE has nowhere to keep the word alive from."""
         admin.set_status(pid, status)
         admin.set_status(ab["id"], status)
+        admin.set_status(cal["id"], status)
 
     def seen():
         """Every way a reader could reach this entry. Unique tag and language on
@@ -2590,13 +2965,14 @@ def test_hidden_is_invisible():
             # JSON-LD ItemList, which is a copy of the title outside the app
             "n-head": "Kaprekar" in c.get("/n/6174").text,
             "a-head": "Kaprekar" in c.get("/a/KAP").text,
+            "c-head": "Kaprekar" in c.get("/c/09-17").text,
             "t-head": "Kaprekar" in c.get("/t/kaprekar").text,
             # and the sitemap is a list of every address a crawler should ask
             # for -- a hidden entry's is not one of them
             "sitemap": f"/p/{pid}</loc>" in c.get("/sitemap.xml").text,
         }
 
-    assert len(seen()) == 13 + 1, "thirteen reads, and search is the second on /api/posts"
+    assert len(seen()) == 14 + 1, "fourteen reads, and search is the second on /api/posts"
     assert all(seen().values()), seen()
 
     move("HIDDEN")

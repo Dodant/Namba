@@ -89,7 +89,15 @@ export const canGroupValue = (value: string) => {
 
 /** The value as it should read on screen. Never use it to build a link --
     entryPath() takes the raw value, and /n/1,000 is a different page. */
-export function showValue(value: string, grouped?: boolean, locale = 'en') {
+export function showValue(value: string, grouped?: boolean, locale = 'en',
+                          format?: string) {
+  // A date is not a number: it reads in the locale's own order rather than
+  // with its separators. This function is the one place that decides how a
+  // stored value reads, the way grouped_value() is on the server, so the
+  // branch belongs here and not in six components -- and it is asked off the
+  // row's own format, never guessed from the characters, because a Mixed
+  // 12-25 is a different entry about a different thing.
+  if (format === 'CALENDAR') return showDate(value, locale)
   const match = LOCALIZABLE.exec(value)
   if (!match) return value
   const punctuation = numberPunctuation(locale)
@@ -202,6 +210,81 @@ export const numSize = (shown: string) =>
    reads as 5 weeks or 1 month. The year is twelve of those months rather than
    365 days, so that the five days between them cannot come out as "12 months
    ago" -- the months stop at 11 and hand over. */
+/* A calendar value is a zero-padded MM-DD and reads in the locale's own order:
+   "December 25", "25. Dezember", "12月25日", "12월 25일". Intl knows all seven
+   of those, which is the whole reason the stored value is two numbers and a
+   dash -- the identity is locale-neutral and the reading is not.
+
+   2000 because it is a leap year, and 02-29 is a date somebody will file.
+   Anything this cannot read comes back untouched, the same as showValue does
+   with a value that is not a number: the API refuses the other spellings, so
+   the only way to be here with one is a row written before the format was.
+
+   Cached per locale and per shape, the way RTF below is. Constructing one of
+   these is the expensive part and an index band can run to a few hundred
+   rows. */
+const DTF = new Map<string, Intl.DateTimeFormat>()
+const MONTH_DAYS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+const DATE = /^(\d{2})-(\d{2})$/
+
+function dtf(locale: string, key: string, opts: Intl.DateTimeFormatOptions) {
+  const id = `${locale}|${key}`
+  let made = DTF.get(id)
+  if (!made) DTF.set(id, (made = new Intl.DateTimeFormat(locale, opts)))
+  return made
+}
+
+/** How many days that month has, 1-indexed. February gets 29: a fixed date has
+    no year to disagree with it. The twin of _MONTH_DAYS in numfmt.py. */
+export const monthDays = (month: number) => MONTH_DAYS[month - 1] ?? 31
+
+/** One month's name, for the Calendar index's band headings. */
+export const monthName = (month: number, locale = 'en') =>
+  dtf(locale, 'm', { month: 'long' }).format(new Date(2000, month - 1, 1))
+
+/** A stored calendar value as [month, day], or null if it is not one. The
+    parse the form's two selects and showDate() below both read it through, so
+    there is one answer to what a date is on this side of the wire. */
+export function monthDay(value: string): [number, number] | null {
+  const match = DATE.exec(value)
+  if (!match) return null
+  const month = Number(match[1])
+  const day = Number(match[2])
+  if (month < 1 || month > 12 || day < 1 || day > monthDays(month)) return null
+  return [month, day]
+}
+
+/** Two numbers back into the stored spelling: zero-padded, dash between. The
+    day is clamped to the month, which is what moving off 31 January does. */
+export const monthDayValue = (month: number, day: number) =>
+  `${String(month).padStart(2, '0')}-${String(Math.min(day, monthDays(month))).padStart(2, '0')}`
+
+/** Today, as a stored calendar value. Where the form's selects start, so the
+    pair on screen is always one the API will take. */
+export const todayMonthDay = (now = new Date()) =>
+  monthDayValue(now.getMonth() + 1, now.getDate())
+
+/** The day alone, as plain digits, for the one place the month is already on
+    screen: the Calendar index bands by month, so the heading above a row says
+    September and the column under it only has to say which one.
+
+    No Intl and no suffix. That column is `--mono` with `tabular-nums` and its
+    whole job is that the numerals line up down the page, which a per-locale
+    "11日" would undo -- and the month heading over it is localized already.
+    The whole date is still a hover away in the row's popover and a click away
+    at /c/09-11. Anything that is not a date comes back untouched. */
+export function showDay(value: string) {
+  const picked = monthDay(value)
+  return picked ? String(picked[1]) : value
+}
+
+export function showDate(value: string, locale = 'en') {
+  const picked = monthDay(value)
+  if (!picked) return value
+  return dtf(locale, 'md', { month: 'long', day: 'numeric' })
+    .format(new Date(2000, picked[0] - 1, picked[1]))
+}
+
 const RTF = new Map<string, Intl.RelativeTimeFormat>()
 const MONTH = 30 * 86400
 const SPANS: [Intl.RelativeTimeFormatUnit, number][] = [

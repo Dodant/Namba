@@ -297,7 +297,10 @@ the sitemap.
   SQLite for the label fields with `json_extract`, so a fought-over entry's
   history costs a few hundred bytes a row rather than a whole entry parsed in
   Python to draw a title. `/diff` fetches the two versions actually being
-  looked at. `number` is the position in the admin list rather than a column —
+  looked at. The label fields are the ones a history row *reads* through, which
+  is why `grouped` and `format` are among them and not only the title and the
+  value: without the flag a 1,000 reads as 1000, and without the format a
+  25 December reads as 12-25. `number` is the position in the admin list rather than a column —
   it only means anything in the order it is read in. A key a snapshot does not
   carry comes back `NULL`, which is what `snap.get()` answered.
 - **The diff answers fields and body separately.** A changed sort key inside a
@@ -400,14 +403,18 @@ the sitemap.
   out of a result carries a `noindex` meta instead, because a path disallowed
   in `robots.txt` can never be crawled to *find* that meta — an old link to one
   sits in an index as a bare URL for good.
-- **Six routes get their `<head>` written server-side, and everything else is
-  told not to be indexed.** `seo.index_html()` is the one place that decides
+- **Seven routes get their `<head>` written server-side, and everything else
+  is told not to be indexed.** `seo.index_html()` is the one place that decides
   which:
-  `/` gets the site's own head, `/n/{value}`, `/a/{value}` and `/t/{tag}` get a
-  title, description and `ItemList` naming the entries filed there, `/p/{id}`
-  gets `og_head()`, and `/guide` gets its own article summary. The two value
-  pages are one `head_list()` saying different
-  words — what a number means, what an abbreviation stands for. No crawler
+  `/` gets the site's own head, `/n/{value}`, `/a/{value}`, `/c/{value}` and
+  `/t/{tag}` get a title, description and `ItemList` naming the entries filed
+  there, `/p/{id}` gets `og_head()`, and `/guide` gets its own article summary.
+  The three value pages are one `head_list()` saying different words — what a
+  number means, what an abbreviation stands for, what happens on a date. A
+  date's `<head>` says `12-25` rather than 25 December: the sentence around it
+  is localized and the date is not, because rendering it there means twelve
+  month names in seven languages in `seo_locale.py` to agree with a line the
+  client already draws from `Intl`. No crawler
   runs the JavaScript that would set any of it client-side — that is the reason
   the API serves the front end at all, and `Namba-frontend/CLAUDE.md` says
   nothing in that app should try.
@@ -498,44 +505,98 @@ the sitemap.
   `ON CONFLICT(post_id, lang)` upsert is what makes a rewrite an edit.
 - **`post_links` always stores `a_id < b_id`** (there is a CHECK). Sort the pair
   before insert or delete; read it back with the `UNION` in `get_post`.
-- **`bucket_of` bands INTEGER by magnitude and ABBR by first letter or
-  digit** — A to W, `X-Z`, and `0-9` last — off the value, since an
-  abbreviation has no sort key. Nothing else gets one: a TIME sort key is
-  minutes past midnight, so banding 09:41 by magnitude files it under "100".
-  Both `list_numbers` and `store.shape` call it, so an index row and a post
-  carry the same band; `ABBR_BUCKETS` in `api.ts` is the order the front end
-  draws them in.
+- **`bucket_of` bands INTEGER by magnitude, ABBR by first letter or digit and
+  CALENDAR by month** — A to W, `X-Z`, and `0-9` last, off the value since an
+  abbreviation has no sort key; `01` to `12`, off the key since a date's is
+  `month * 100 + day` and the month is the top of it. Two digits there so that
+  no month is spelled like an Integer band, because the sync test compares the
+  labels as one set. Nothing else gets a band: a TIME sort key is minutes past
+  midnight, so banding 09:41 by magnitude files it under "100". Both
+  `list_numbers` and `store.shape` call it, so an index row and a post carry
+  the same band; `ABBR_BUCKETS` and `MONTH_BUCKETS` in `api.ts` are the order
+  the front end draws them in.
 - **`parse_number` is a suggestion.** `11:11` is a clock, `1:29:300` is
   Heinrich's law; nothing in the string distinguishes them, so the poster's
   explicit `format` wins in `resolve_format`. Letters go to ABBR the same way,
   and the same override applies: `GROSS` is a word, but somebody filing it as
   Mixed is allowed to mean the number.
-- **`resolve_format` hands the value back, not just the format.** Settling
-  which of the five a value is settles how it is spelled: an ABBR word has one
-  stored spelling, so `ufo` and `UFO` are one word at one address. That is
-  `ungroup`'s argument about separators reached from the other end, and it is
-  why both `create_post` and `edit_post` reassign `value` from it — an edit
-  arrives with the number field read-only and no value at all, so the lookup
-  has to happen off the stored one. The spelling is the first writer's rather
-  than upper-case (`SaaS`, not `SAAS`): it takes `con`, finds an ABBR row with
-  the same value `COLLATE NOCASE` in any status and adopts its spelling, and
-  `self_id` keeps the entry being edited out of that lookup so the one entry
-  about a word can still correct its own case. `list_posts` in the abbr
-  section and `head_abbr` compare `NOCASE` the same way, so `/a/ufo` is the
-  `UFO` page and its canonical says so.
-- **`ABBR` is the one format that is refused, and `is_abbr` is the rule.** The
-  other four describe how to *read* what was typed and cannot be wrong about
-  it — `resolve_format` takes an explicit `TIME` on `1:29:300` at its word and
-  files it with no sort key. `ABBR` is a claim *about* the value, so it is
-  checked: Latin letters, digits and `.&/;-`, and at least one letter. It is a
-  422 raised from `resolve_format` rather than a Pydantic validator, because
-  the validator cannot see both halves — an edit sends a `format` and no
-  `value` at all — and because that function is the one place both writes
-  settle the pair. In `edit_post` it is raised **inside** `with con`, so a
-  refused edit rolls back the snapshot it had already taken.
 
-  Two things the shape does *not* say. It is looser than `parse_number`'s
-  branch on purpose: `MP3`, `Y2K` and `COVID-19` carry digits and the parser
+  **It does not guess at a date at all**, which is the same argument taken one
+  step further: `12-25` is Christmas and `80-20` is a ratio, so `12-25` stays
+  a MIXED *suggestion* and CALENDAR is only ever reached by being picked.
+  `test_parse` pins it, along with `40-40`, `24/7` and `11/22/63`, so a branch
+  added here cannot quietly re-file them.
+- **`resolve_format` hands the value back, not just the format.** Settling
+  which of the six a value is settles how it is spelled and what its sort key
+  is. That is `ungroup`'s argument about separators reached from the other
+  end, and it is why all three writes reassign `value` from it — an edit
+  arrives with the number field read-only and no value at all, so the check
+  has to happen off the stored one.
+
+  It is **pure**, and that is load-bearing: no sibling lookup, so a create
+  decides nothing about another row and is the one write with no deciding read
+  to hold the lock over (ADR-0007). An ABBR is therefore stored with the case
+  it was typed in — `dB` is not `DB` — and one word is still one page because
+  the reads fold instead: `list_posts` in the abbr section and `head_abbr`
+  compare `NOCASE`, and the sitemap groups the same way, so `/a/ufo` is the
+  `UFO` page and its canonical says so (ADR-0005).
+- **Five of the six formats are refused when the value does not fit them;
+  `is_abbr`, `date_key` and `float()` are the rules.** `ABBR` and `CALENDAR`
+  are claims about what the value *is*: Latin letters, digits and `.&/;-` with
+  at least one letter; a two-digit month and a day that month has. `INTEGER`
+  and `DECIMAL` are the claim that it reads as a number, and the rule is that
+  `float()` returns a **finite** one.
+
+  `TIME` is the one still taken at its word — `resolve_format` files an
+  explicit `TIME` on `1:29:300` with no sort key, and nothing bands or
+  serializes on that key — and `MIXED` is the remainder and claims nothing.
+
+  Every one is a 422 raised from `resolve_format` rather than a Pydantic
+  validator, because a validator cannot see both halves — an edit sends a
+  `format` and no `value` at all — and because that function is the one place
+  all three writes settle the pair. In `edit_post` they are raised **inside**
+  `with con`, so a refused edit rolls back the snapshot it had already taken.
+
+  **The finite part is not belt-and-braces.** `float('nan')` and
+  `float('inf')` both succeed: SQLite keeps NaN as NULL, which is the
+  no-sort-key case and takes the entry off every Integer band, and it keeps
+  Inf as Inf, which `json.dumps` refuses — so the row commits, the 201 fails
+  to serialize, and `/api/numbers` and `/api/posts` answer 500 for every
+  reader until an operator finds the row. The `<head>` routes and the sitemap
+  keep answering, which is what would make it quiet (ADR-0027).
+
+  **It is asked of the settled format, not of a disagreement.** The check is
+  `fmt in ("INTEGER", "DECIMAL")` after the format is decided rather than a
+  clause inside the branch that runs when the poster and the parser differ,
+  because `parse_number` hands back `float()`'s answer too and
+  `float('9' * 309)` is `inf` rather than a `ValueError` — so the agreeing
+  path could settle a key the disagreeing one is refused for, with nothing
+  but the 32-character cap on `value` between it and the 500. A length cap is
+  not where this rule lives.
+
+  The check does not touch spelling: `-42`, `1e5`, `1_000` and `٤٢` all read
+  and all stay as typed, because two spellings of a number are two entries
+  sharing a sort key (ADR-0005). It is `float()` and not a stricter regex for
+  the first two of those — `parse_number` guesses neither a minus sign nor an
+  exponent, and `bucket_of` already bands a negative by its magnitude.
+
+  `date_key` is the check *and* the sort key, because for a date they are one
+  question: a value it cannot read is not a date, and one it can hands back
+  `month * 100 + day`. It is strict about the padding on purpose — `1-5` is
+  refused rather than folded to `01-05`, since nothing would keep the
+  difference and one day has to have one address (ADR-0026). `02-29` passes:
+  a leap day is a fixed date with no year to disagree with it.
+
+  It answers a third question in `index_html`: **`/c/{value}` is a page only
+  for a value `date_key` can read.** The other two sections are open sets and
+  an empty one is a real page inviting the first entry, but there are 366
+  days, so `/c/99-99` is not an empty date — it falls through to the same
+  noindex head every mistyped path gets, with no canonical claiming it exists.
+  `CalendarPage` in `App.tsx` asks `monthDay` at the same boundary, so the
+  `<head>` and the page agree.
+
+  Two things the *abbreviation* shape does not say. It is looser than
+  `parse_number`'s branch on purpose: `MP3`, `Y2K` and `COVID-19` carry digits and the parser
   will never guess at them, and a gate refusing what a poster explicitly
   picked would be deciding something it was not asked to. And it is not about
   keyboards — `유에프오` and `УФО` are the same abbreviation in another
@@ -543,19 +604,71 @@ the sitemap.
   rule exists to prevent. The entry's own language is not touched: `lang` and the
   translations are as free as anywhere else on this wiki.
 
-  `restore_revision` and `admin_restore` do **not** re-check it, the same way
+  `restore_revision` and `admin_restore` re-check **neither**, the same way
   `write_tags` normalises without validating. A snapshot has to be restorable
   or the history is not a history, and nothing can be written into that state
   any more anyway.
-- **`section_where()` is the only thing that tells `/n/` from `/a/`.**
-  `list_posts`, `head_number`, `head_abbr` and the sitemap all ask it, so a
-  value filed under both sections is two entries at two addresses rather than
-  one entry on two pages. It lives in `store.py` for the reason `ungroup` and
-  `resolve_format` do: two of those four callers are in `main.py` and two are
-  in `seo.py`, and a second answer to which section a row is in would be two
-  addresses for one entry. `value_path()` in `seo.py` is the same rule going
-  the other way and is the twin of `entryPath()` in `api.ts`. An unknown section filters
+- **`SECTION_FORMATS` is the only thing that tells `/n/` from `/a/` from
+  `/c/`.** `list_posts`, `head_number`, `head_abbr` and `head_calendar` ask it
+  through `section_where()` and the sitemap through `section_sql()`, so a
+  value filed in two sections is two entries at two
+  addresses rather than one entry on two pages. It lives in `store.py` for the
+  reason `ungroup` and `resolve_format` do: some of those callers are in
+  `main.py` and some in `seo.py`, and a second answer to which section a row
+  is in would be two addresses for one entry. An unknown section filters
   nothing rather than 422ing, for the reason an unknown `sort` falls back.
+
+  **`edit_post` will not move an entry between sections.** It compares
+  `section_of(fmt)` against `section_of(current["format"])` — the format the
+  route has *settled*, not the `format` that was sent, so an edit carrying
+  only a value is the same 422 and not the way round it. A section is an
+  address and the open form does not change addresses;
+  `POST /api/admin/posts/{id}/value` is the route that does, with a name, a
+  snapshot and an audit row behind it. The one exception is `number` →
+  `calendar`, because `parse_number` never returns `CALENDAR`, so picking it
+  is all an entry written before somebody noticed it was a date has; `ABBR`
+  needs no such door, since the parser already guesses `UFO`. That door takes
+  the format and not the value: `{"value": "12-25", "format": "CALENDAR"}` on
+  `/n/42` is 42's page becoming Christmas's, and the refusal then holds it
+  there, so the comparison is `value == current["value"]` as well.
+
+  **`restore_revision` keeps the same rule**, and it needs its own copy of it:
+  `apply_snapshot` writes `format` straight out of the snapshot, so the open
+  half would otherwise put an entry back at `/n/` that answers at `/c/` and
+  undo an operator's renumber with an unauthenticated POST. Only when the row
+  is there to compare with — the resurrect branch has no current section, and
+  refusing to put an entry back for want of one is the worse answer. The
+  operator's restore is the other caller of `apply_snapshot` and does not come
+  through this route, so it still crosses.
+
+  **`apply_snapshot` drops a `sort_key` no response can carry.** SQLite keeps
+  `Inf` in the column and `json.dumps` writes it into a snapshot without
+  complaint, so any revision taken before `resolve_format` checked for one
+  still holds it, and putting it back 500s `/api/numbers` and `/api/posts` for
+  every reader. `NULL` is already a legal key, so the entry comes back with no
+  band rather than with no index.
+
+  It sits **after** `resolve_format`, so `is_abbr` and `date_key` answer
+  first: a `MIXED` `국정원` re-filed as `ABBR` still reads "Latin letters" and
+  not the section refusal, which is the more useful of the two.
+
+  An entry's address is all it keeps. The sort key is kept a step earlier, by
+  `INTEGER` and `DECIMAL` being checked rather than believed: `resolve_format`
+  refuses `{"value": "9 3/4", "format": "INTEGER"}` on every write, so a value
+  that would reach this check with no key is already a 422 above it. The two
+  rules are independent and both are wanted: this one keeps an entry's
+  address, that one keeps a number a number.
+
+  Every arm is a plain comparison on the column rather than a `CASE`, so
+  `idx_posts_format` is still usable, and **`number` is the remainder**
+  (`format NOT IN ('ABBR', 'CALENDAR')`) rather than a listed arm: a seventh
+  format arriving with no thought about sections lands at `/n/`, which is the
+  safe side. `SECTION_FORMATS` beside it is the one list of them, and
+  `section_of()` and `section_sql()` are the same three names read the other
+  way — a name for a row's format, and SQL for the sitemap, which needs the
+  section as a value to group by rather than as a filter. `value_path()` in
+  `seo.py` turns that name into a path and is the twin of `entryPath()` in
+  `api.ts`.
 
 ## No ORM
 
@@ -580,12 +693,13 @@ No auth on the public half means the input validation *is* the security model
 there. The operator's half has a login, and the notes above are the whole of it.
 
 - Nothing the API offers removes a row. `posts.status` is the whole of
-  moderation and `LIVE` is the condition thirteen public reads carry; the list
+  moderation and `LIVE` is the condition fourteen public reads carry; the list
   of them is in `store.py` above the constant, and `test_hidden_is_invisible`
-  walks all thirteen: eight API reads, four server-written `<head>`s and the
-  sitemap. The latter five are places a hidden row can reach somebody who never called the API. A new public read
+  walks all fourteen: eight API reads, five server-written `<head>`s and the
+  sitemap. The latter six are places a hidden row can reach somebody who never called the API. A new public read
   that touches `posts` joins that list, or it leaks the body of something an
-  operator took down. `head_abbr` arrived with `/a/`.
+  operator took down. `head_abbr` arrived with `/a/` and `head_calendar` with
+  `/c/`.
 
 - Uploads: extension allowlist, 5 MB per file, `UPLOAD_TOTAL_MAX` for the
   directory, and the filename is always `uuid4().hex + ext`. Never build a path

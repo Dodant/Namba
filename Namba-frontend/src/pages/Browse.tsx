@@ -1,15 +1,29 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { api, tagLabel } from '../api'
+import { api, tagLabel, type Format, type Section } from '../api'
 import { canonicalNumber, numSize, showValue } from '../format'
 import PostCard from '../components/PostCard'
 import { useAsync } from '../useAsync'
 import { useUi } from '../uiLocale'
 
-type Mode = 'number' | 'abbr' | 'tag' | 'search'
+type Mode = 'number' | 'abbr' | 'calendar' | 'tag' | 'search'
 
-/** One list of posts, four ways in: a number, an abbreviation, a tag, or a
-    search. The first two are one page about one value and differ only in which
-    section they read; the last two differ only in which filter found the rows. */
+/** One list of posts, five ways in: a number, an abbreviation, a date, a tag,
+    or a search. The first three are one page about one value and differ only in
+    which section they read; the last two differ only in which filter found the
+    rows. */
+
+/* The three modes that are about one value: which section reads the page, and
+   which format the Add pill should preselect so that a reader who follows it
+   lands back in the section they came from. /n/ holds four formats and so
+   preselects none -- Auto-detect is the right answer there and the wrong one
+   at /a/ and /c/, where the format is the whole reason the page exists.
+   Taken off the mode rather than off the rows, because an empty page is
+   exactly where that pill has to be right. */
+const ABOUT_VALUE: Partial<Record<Mode, { section: Section; add?: Format }>> = {
+  number: { section: 'number' },
+  abbr: { section: 'abbr', add: 'ABBR' },
+  calendar: { section: 'calendar', add: 'CALENDAR' },
+}
 export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
   const { locale, m } = useUi()
   const { value: raw = '', tag = '' } = useParams()
@@ -18,14 +32,16 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
   const query = canonicalNumber(q, locale).value
 
   const abbr = mode === 'abbr'
-  /* one value, two sections: a page about a number never shows an entry filed
-     as an abbreviation, and the other way round. See section_where() in main.py */
-  const section = abbr ? 'abbr' : 'number'
+  /* one value, three sections: a page about a number never shows an entry
+     filed as an abbreviation or as a date, or the other way round. See
+     section_where() in store.py */
+  const about = ABOUT_VALUE[mode]
+  const section = about?.section
 
   const posts = useAsync(
     () =>
       api.posts(
-        mode === 'number' || abbr
+        about
           ? { value: raw, section, sort: 'number', lang }
           : mode === 'tag'
             ? { tag, sort: 'number', lang }
@@ -43,14 +59,19 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
     value,
     !!posts.data?.length && posts.data.every((p) => p.grouped),
     locale,
+    /* off the rows rather than off the mode: an empty /c/12-25 has no entry to
+       read a format from and the raw value is the honest thing to show, and a
+       date typed at /n/ is a Mixed entry that must not read as one */
+    posts.data?.[0]?.format,
   )
   /* what /new needs to put the reader back in the section they came from --
      without it, "UFO" typed into a form with Auto-detect is right by luck */
-  const addHref = `/new?value=${encodeURIComponent(value)}${abbr ? '&format=ABBR' : ''}`
+  const addHref = `/new?value=${encodeURIComponent(value)}`
+    + (about?.add ? `&format=${about.add}` : '')
 
   return (
     <>
-      {mode === 'number' || abbr ? (
+      {about ? (
         <div className="hero">
           {/* same rule as the index row: this page is one number shared by
               several entries, so separators need all of them to agree */}
@@ -74,7 +95,7 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
                     are unchanged: "this number" was only vague while nothing
                     on the page was marked up as being the number. */}
                 <p>
-                  {m.browse.summary(n, abbr)}
+                  {m.browse.summary(n, about.section)}
                 </p>
               </>
             ) : null}
@@ -119,7 +140,7 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
         <PostCard
           key={p.id}
           post={p}
-          showNumber={mode !== 'number' && !abbr}
+          showNumber={!about}
           except={mode === 'tag' ? tagLabel(tag) : undefined}
         />
       ))}
@@ -128,7 +149,7 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
         // an empty search is not an empty wiki, and saying "no entries yet" on
         // all three reads as though the place were deserted
         <p className="empty">
-          {mode === 'number' || abbr ? (
+          {about ? (
             <>
               {m.browse.emptyValue(value)}{' '}
               <Link to={addHref}>{m.browse.giveMeaning}</Link>

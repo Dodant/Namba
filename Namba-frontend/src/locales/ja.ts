@@ -1,5 +1,6 @@
 import { fmtCount } from '../format'
 import { GLOBAL_NAV, GLOBAL_TERMS } from './shared'
+import type { Section } from '../api'
 import type { Messages } from './en'
 
 /** Japanese (日本語). */
@@ -14,11 +15,12 @@ export const JA: Messages = {
       ? `${name === 'anonymous' ? '匿名' : name}が${when}に編集`
       : `${when}に編集`,
     entries: (n: number) => `${fmtCount(n, 'ja')}件`, tags: (n: number) => `${fmtCount(n, 'ja')}個のタグ`,
-    subject: (abbr: boolean) => abbr ? '略語' : '数字',
+    subject: (section: Section) =>
+      ({ number: '数字', abbr: '略語', calendar: '日付' })[section],
     like: (on: boolean, n: number) =>
       `${on ? 'いいねを取り消す' : 'いいね'} — ${fmtCount(n, 'ja')}件`,
   },
-  format: { INTEGER: '整数', DECIMAL: '小数', MIXED: '混合', TIME: '時刻', ABBR: '略語' },
+  format: { INTEGER: '整数', DECIMAL: '小数', MIXED: '混合', TIME: '時刻', CALENDAR: 'カレンダー', ABBR: '略語' },
   buckets: {
     '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',
     '1000': '1,000 – 9,999', '10000+': '10,000以上',
@@ -51,7 +53,8 @@ export const JA: Messages = {
   },
   browse: {
     category: 'カテゴリ', search: GLOBAL_TERMS.search,
-    summary: (n: number, abbr: boolean) => `${abbr ? 'この略語' : 'この数字'}を説明する項目が${fmtCount(n, 'ja')}件あります。`,
+    summary: (n: number, section: Section) =>
+      `${({ number: 'この数字', abbr: 'この略語', calendar: 'この日付' })[section]}を説明する項目が${fmtCount(n, 'ja')}件あります。`,
     addMeaning: '+ 別の意味を追加', emptyValue: (value: string) => `${value}の項目はまだありません。`,
     giveMeaning: '意味を追加する。', emptyTag: (tag: string) => `${tag}タグの項目はまだありません。`,
     noMatches: (q: string) => `「${q}」に一致する項目はありません。別の言葉で検索するか、`,
@@ -79,11 +82,21 @@ export const JA: Messages = {
     editIntro: (owner: string) => `誰でもこの項目を編集できます${owner ? `。最初の作成者は${owner}です` : ''}。置き換えられた版は履歴に残り、${owner || '最初の作成者'}のクレジットも維持されます。`,
     addIntro: '1項目につき1つの意味を記載します。42がすでに存在していても、置き換えずに新しい意味として追加されます。',
     guidelines: '項目ガイドライン', fixedValue: (noun: string) => `変更不可 — 別の${noun}は別項目として作成`,
+    date: '日付', month: '月', day: '日',
     number: '数字', abbreviation: '略語', groupThousands: '3桁区切りを使用', format: '形式',
     autoDetect: '自動判定', title: 'タイトル', titleHint: '何を指す数字か',
-    titlePlaceholder: '銀河ヒッチハイク・ガイド', details: '詳細',
-    detailsHint: '任意 — なぜこの数字なのか、何を意味するのか',
-    detailsPlaceholder: '生命、宇宙、そして万物についての究極の疑問の答え。',
+    titlePlaceholder: (section: Section) => ({
+      number: '銀河ヒッチハイク・ガイド',
+      abbr: 'POV',
+      calendar: 'エイプリルフール',
+    })[section],
+    details: '詳細',
+    detailsHint: '任意 — なぜこの値なのか、何を意味するのか',
+    detailsPlaceholder: (section: Section) => ({
+      number: '生命、宇宙、そして万物についての究極の疑問の答え。',
+      abbr: '特定の人物の視点や見方を表す言葉。',
+      calendar: '軽い嘘やいたずらをやり取りする日。',
+    })[section],
     markdown: 'Markdownが使えます — **太字**、*斜体*、[リンク](https://…)、リスト、見出し、表。Enterを1回押すと改行されます。',
     writtenIn: '記述言語', categories: 'カテゴリ',
     categoryHint: (n: number) => `${fmtCount(n, 'ja')}個まで — 本を原作とする映画なら両方を選択可能`,
@@ -105,7 +118,7 @@ export const JA: Messages = {
     language: '言語', languageHint: 'この翻訳で使用する言語', pickOne: '選択…',
     translationTitleHint: 'その言語での項目タイトル', optionalMarkdown: '任意 — ここでもMarkdownを使用可能',
     addThisTranslation: '翻訳を追加', removeTranslation: '翻訳を削除', related: '関連項目',
-    relatedHint: '一緒に見るとよい別の数字', unlink: 'リンクを解除',
+    relatedHint: '一緒に見るとよい別の項目', unlink: 'リンクを解除',
     linkSearchAria: 'リンクする項目を検索', linkSearchPlaceholder: 'ウィキを検索 — 例: Back to the Future',
     searching: '検索中…', search: GLOBAL_TERMS.search, link: 'リンク', noMatches: '一致する項目はありません。',
   },

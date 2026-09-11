@@ -8,8 +8,8 @@ it reads a file -- `main.py` owns where `dist/` is and hands the document in.
 
 The arrow points one way, the same as everywhere else here: `main.py` imports
 this, so **nothing in this file may import main**. What both need is below
-both -- `db.py`, `store.py` for `LIVE` and `section_where`, `numfmt.py` for
-`grouped_value`, and `seo_locale.py` for the words.
+both -- `db.py`, `store.py` for `LIVE`, `section_of` and `section_where`,
+`numfmt.py` for `grouped_value`, and `seo_locale.py` for the words.
 
 Why any of it exists: a crawler does not run the JavaScript that would set a
 title, so the head has to arrive already written, which is the whole reason
@@ -26,8 +26,8 @@ from fastapi.responses import HTMLResponse
 
 import seo_locale
 from db import nfc
-from numfmt import grouped_value
-from store import LIVE, section_where
+from numfmt import date_key, grouped_value
+from store import LIVE, section_of, section_where
 
 # Derived, not spelled again: a locale the interface offers is exactly one
 # seo_locale has prose for. Written out here, the two lists could disagree, and
@@ -139,17 +139,24 @@ def enc(seg: str) -> str:
     return quote(seg, safe="-_.!~*'()")
 
 
-def value_path(fmt: str, value: str) -> str:
-    """Where an entry's value is read: /a/UFO for an abbreviation, /n/42 for a
-    number. The twin of entryPath() in api.ts, and the reason both exist is
-    that a format decides an address -- get it from the row, never guess it
-    from the characters.
+# The two things a section decides out here: the path segment its values are
+# read at, and the noun seo_locale.py says it in. One question each, asked of
+# the same three names, so they sit together rather than a ternary apart.
+SECTION_PATH = {"number": "n", "abbr": "a", "calendar": "c"}
+SECTION_KIND = {"number": "number", "abbr": "abbreviation", "calendar": "calendar"}
+
+
+def value_path(section: str, value: str) -> str:
+    """Where an entry's value is read: /a/UFO for an abbreviation, /c/12-25 for
+    a date, /n/42 for a number. The twin of entryPath() in api.ts, and the
+    reason both exist is that a format decides an address -- take the section
+    off the row through section_of(), never guess it from the characters.
     """
-    return f"{'a' if fmt == 'ABBR' else 'n'}/{enc(value)}"
+    return f"{SECTION_PATH[section]}/{enc(value)}"
 
 
 def path_seg(request, prefix: str) -> Optional[str]:
-    """The one segment after /n/, /a/ or /t/, as the reader typed it.
+    """The one segment after /n/, /a/, /c/ or /t/, as the reader typed it.
 
     Read off the raw path rather than the decoded one the router hands us,
     because a value may contain a slash: 11/22/63 is a date and a number here,
@@ -186,7 +193,7 @@ def write_head(page: str, *, title=None, desc=None, canonical=None,
                robots=None, og=(), ld=None, locale="en") -> str:
     """Put this page's own head into the built index.html.
 
-    One writer for all six public routes. Title and description are *replaced*
+    One writer for all seven public routes. Title and description are *replaced*
     -- two <title>s and the browser keeps the first -- and everything else is
     appended before </head>.
 
@@ -402,6 +409,27 @@ def head_number(con, page, value, base, locale="en"):
                      url=f"{base}n/{enc(value)}", rows=rows, locale=locale)
 
 
+def head_calendar(con, page, value, base, locale="en"):
+    """The date section. Separate from head_number for the reason head_abbr is:
+    a value stored as a date is not filed under the number, and the two say
+    different words -- what 42 means, what happens on 12-25.
+
+    No grouped_value and no NOCASE. There is no thousand in 12-25 and digits
+    have no case, so this is the plainest of the three.
+
+    The subject is the stored MM-DD rather than "25 December". The words around
+    it are localized; the date is not. Rendering it would mean twelve month
+    names in seven languages in seo_locale.py, to agree with a line the client
+    already draws from Intl -- ponytail: the day a crawler reads the month name
+    is the day to write those 84 strings, and not before.
+    """
+    rows = [dict(r) for r in con.execute(
+        "SELECT id, title FROM posts WHERE value = ? AND status = ? "
+        f"AND {section_where('calendar')} ORDER BY id", (value, LIVE))]
+    return head_list(page, base, kind="calendar", subject=value,
+                     url=f"{base}c/{enc(value)}", rows=rows, locale=locale)
+
+
 def head_abbr(con, page, value, base, locale="en"):
     """The same page for the other section. Separate from head_number because
     the two say different words -- what a number means, what an abbreviation
@@ -446,8 +474,9 @@ def og_head(page: str, post: dict, base: str, tags=(), locale="en") -> str:
     # body and "What 2 means, on Namba." was the description on all of them --
     # identical, word for word, on the 29 that share a number. A description
     # that cannot tell two pages apart is one a search engine drops.
+    section = section_of(post["format"])
     desc = og_summary(post["body"]) or clip(seo_locale.post_summary(
-        post["title"], value, post["format"] == "ABBR", locale,
+        post["title"], value, SECTION_KIND[section], locale,
     ))
     img = f"{base}{post['image'].lstrip('/')}" if post["image"] else None
     url = f"{base}p/{post['id']}"
@@ -478,8 +507,8 @@ def og_head(page: str, post: dict, base: str, tags=(), locale="en") -> str:
                    locale=locale)
            + [("article:published_time", post["created_at"]),
               ("article:modified_time", post["updated_at"])],
-        ld=[article, crumbs(base, [(value, base + value_path(post["format"],
-                                                              post["value"])),
+        ld=[article, crumbs(base, [(value, base + value_path(section,
+                                                             post["value"])),
                                    (post["title"], url)])],
     )
 
@@ -506,6 +535,22 @@ def index_html(con, request, path: str, page: str, base: str) -> HTMLResponse:
     abbr = path_seg(request, "a/")
     if abbr is not None:
         return answer(head_abbr(con, page, abbr, base, locale))
+    date = path_seg(request, "c/")
+    # /c/ is the one closed section: a day of the year is a fixed set of 366
+    # addresses, so /c/99-99 is not an empty date page, it is not a page. The
+    # other two are open sets and keep their empty state -- /n/999999 and
+    # /a/QQQ are values nobody has written about yet, which is a different
+    # answer from a value there is no such thing as. date_key() draws the line,
+    # the same function resolve_format() refuses a write with.
+    #
+    # It draws it one character wider than a URL should, though: date_key()
+    # strips, because on a write it reads a value somebody typed, and here
+    # the segment *is* the address. So `/c/%2012-25` would take a date page's
+    # head and a canonical pointing at itself while monthDay() -- which does
+    # not strip -- tells the reader there is nothing there. One day, one
+    # address: the segment has to be the spelling that is stored.
+    if date is not None and date == date.strip() and date_key(date) is not None:
+        return answer(head_calendar(con, page, date, base, locale))
     tag = path_seg(request, "t/")
     if tag is not None:
         return answer(head_tag(con, page, tag, base, locale))

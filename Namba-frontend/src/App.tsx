@@ -4,10 +4,10 @@ import {
 } from 'react'
 import {
   BrowserRouter, Link, Route, Routes, useLocation, useNavigate, useNavigationType,
-  useSearchParams,
+  useParams, useSearchParams,
 } from 'react-router-dom'
 import { api, contentLanguage } from './api'
-import { canonicalNumber, showValue } from './format'
+import { canonicalNumber, monthDay, showValue } from './format'
 import Home from './pages/Home'
 import Browse from './pages/Browse'
 import PostPage from './pages/PostPage'
@@ -387,7 +387,8 @@ function Header({ lang }: { lang: string }) {
                     onClick={() => setQuery('')}
                   >
                     <span className="search-suggestion-value">
-                      {highlightMatches(showValue(post.value, post.grouped, locale), deferredQuery)}
+                      {highlightMatches(showValue(post.value, post.grouped, locale, post.format),
+                                        deferredQuery)}
                     </span>
                     <span>{highlightMatches(post.title, deferredQuery)}</span>
                   </Link>
@@ -599,6 +600,7 @@ function Wiki() {
               <Route path="/" element={<Home lang={lang} />} />
               <Route path="/n/:value" element={<Browse mode="number" lang={lang} />} />
               <Route path="/a/:value" element={<Browse mode="abbr" lang={lang} />} />
+              <Route path="/c/:value" element={<CalendarPage lang={lang} />} />
               <Route path="/t/:tag" element={<Browse mode="tag" lang={lang} />} />
               <Route path="/search" element={<Browse mode="search" lang={lang} />} />
               <Route path="/random" element={<Random />} />
@@ -622,6 +624,20 @@ function Wiki() {
       </div>
     </BrowserRouter>
   )
+}
+
+/* The one section that is a closed set. /n/ and /a/ are open -- any number,
+   any word, and a page with nothing on it yet is an invitation to write the
+   first entry. There are 366 days, so /c/99-99 is not an empty date, it is
+   not a date, and its "Give it a meaning" link would have carried a value the
+   form cannot read and filed today's date instead. Here rather than inside
+   Browse because it is the same answer the * route gives: the path is not a
+   page. index_html() in seo.py draws the line with the same check, so the
+   <head> a crawler gets and the page a reader gets agree. */
+function CalendarPage({ lang }: { lang: string }) {
+  const { value = '' } = useParams()
+  if (!monthDay(value)) return <p className="empty"><NotFound /></p>
+  return <Browse mode="calendar" lang={lang} />
 }
 
 function NotFound() {

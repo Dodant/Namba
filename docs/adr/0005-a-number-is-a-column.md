@@ -108,3 +108,32 @@ each spelling is its own `/n/` page.
   Knock-on, recorded in ADR-0007: `resolve_format` was the only read
   `create_post` decided on, so a create now decides nothing and
   `test_every_write_decides_inside_the_lock` probes eleven routes, not twelve.
+
+- 2026-09-11: a sixth format and a third section, both recorded in ADR-0026.
+  `CALENDAR` is a zero-padded `MM-DD` read at `/c/12-25`, and it is the second
+  format this record's "nothing is taken from a value" rule reaches by
+  *refusal* rather than by leaving the spelling alone: `1-5` cannot be folded
+  to `01-05` and nothing would keep the difference, so one day keeps one
+  address by the other spellings being a 422. `/n/` is the remainder of the
+  three sections now rather than "not ABBR".
+
+- 2026-09-11: **the section joins the value as a field the open form will not
+  change**, also in ADR-0026. "A query on a column is an address" above was
+  written about the value; with three sections over that column, the format
+  decides an address too, so `edit_post` refuses a format that would move an
+  entry between `/n/`, `/a/` and `/c/`. The one exception is *into* `/c/`,
+  because `parse_number` never returns `CALENDAR` and picking it is the only
+  correction an entry filed before somebody noticed it was a date has.
+  Correcting the rest stays where correcting a value is:
+  `POST /api/admin/posts/{id}/value`, with a name, a snapshot and an audit
+  row. Measured first as an index hole rather than as a moved page -- a
+  re-filed `UFO` or `12-25` kept its value, lost its sort key and fell out of
+  every Integer band.
+
+- 2026-09-11: **"the four that read digits cannot be wrong about it" no longer
+  holds for two of them**, recorded in ADR-0027. `INTEGER` and `DECIMAL` are
+  the claim that the value reads as a number and are checked for it; `TIME`
+  is the one still taken at its word and `MIXED` claims nothing. What is
+  unchanged is this record's own rule: the check decides nothing about
+  spelling, so `-42`, `1e5`, `1_000` and `٤٢` all read and all stay as typed,
+  two spellings sharing one sort key.

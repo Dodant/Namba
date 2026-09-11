@@ -32,6 +32,7 @@ TEXT = {
                        "its own sequels."),
         "one": "1 entry", "many": "{n} entries",
         "number_lead": "What {subject} means",
+        "calendar_lead": "What happens on {subject}",
         "abbreviation_lead": "What {subject} stands for",
         "tag_lead": "Numbers tagged {subject}",
         "list": "{lead} — {count} on Namba: {titles}{more}",
@@ -39,6 +40,7 @@ TEXT = {
         "empty_value": "Nothing is filed under {subject} on Namba yet.",
         "empty_tag": "Nothing on Namba is tagged {subject} yet.",
         "post_number": "{title} — what {value} means, on Namba.",
+        "post_calendar": "{title} — what happens on {value}, on Namba.",
         "post_abbreviation": "{title} — what {value} stands for, on Namba.",
     },
     "ko": {
@@ -51,6 +53,7 @@ TEXT = {
                        "나타내는 숫자, 상수는 포함하며 속편의 개수만 세는 숫자는 제외합니다."),
         "one": "항목 1개", "many": "항목 {n}개",
         "number_lead": "{subject}의 의미",
+        "calendar_lead": "{subject}에 무슨 일이 있는지",
         "abbreviation_lead": "{subject}가 나타내는 것",
         "tag_lead": "{subject} 태그가 붙은 숫자",
         "list": "{lead} — Namba의 {count}: {titles}{more}",
@@ -58,6 +61,7 @@ TEXT = {
         "empty_value": "{subject}에 등록된 항목이 아직 없습니다.",
         "empty_tag": "{subject} 태그가 붙은 항목이 아직 없습니다.",
         "post_number": "{title} — Namba에서 {value}가 뜻하는 것.",
+        "post_calendar": "{title} — Namba에서 {value}에 무슨 일이 있는지.",
         "post_abbreviation": "{title} — Namba에서 {value}가 나타내는 것.",
     },
     "ja": {
@@ -70,6 +74,7 @@ TEXT = {
                        "定数は対象ですが、続編の数を数えるだけの数字は対象外です。"),
         "one": "1件の項目", "many": "{n}件の項目",
         "number_lead": "{subject}の意味",
+        "calendar_lead": "{subject}は何の日か",
         "abbreviation_lead": "{subject}が表すもの",
         "tag_lead": "「{subject}」タグの数字",
         "list": "{lead} — Nambaの{count}: {titles}{more}",
@@ -77,6 +82,7 @@ TEXT = {
         "empty_value": "{subject}の項目はまだありません。",
         "empty_tag": "{subject}タグの項目はまだありません。",
         "post_number": "{title} — Nambaで{value}が意味するもの。",
+        "post_calendar": "{title} — Nambaで{value}は何の日か。",
         "post_abbreviation": "{title} — Nambaで{value}が表すもの。",
     },
     "zh-Hans": {
@@ -89,6 +95,7 @@ TEXT = {
                        "仅用于计算续集数量的数字不在此列。"),
         "one": "1个条目", "many": "{n}个条目",
         "number_lead": "{subject}的含义",
+        "calendar_lead": "{subject}是什么日子",
         "abbreviation_lead": "{subject}所代表的含义",
         "tag_lead": "带有“{subject}”标签的数字",
         "list": "{lead} — Namba上的{count}：{titles}{more}",
@@ -96,6 +103,7 @@ TEXT = {
         "empty_value": "{subject}下还没有条目。",
         "empty_tag": "还没有带有{subject}标签的条目。",
         "post_number": "{title} — {value}在Namba上的含义。",
+        "post_calendar": "{title} — {value}在Namba上是什么日子。",
         "post_abbreviation": "{title} — {value}在Namba上所代表的含义。",
     },
     "es": {
@@ -109,6 +117,7 @@ TEXT = {
                        "representa algo o una constante. No un número que solo cuenta sus secuelas."),
         "one": "1 entrada", "many": "{n} entradas",
         "number_lead": "Qué significa {subject}",
+        "calendar_lead": "Qué se celebra el {subject}",
         "abbreviation_lead": "Qué significa la abreviatura {subject}",
         "tag_lead": "Números con la etiqueta {subject}",
         "list": "{lead} — {count} en Namba: {titles}{more}",
@@ -116,6 +125,7 @@ TEXT = {
         "empty_value": "Aún no hay entradas para {subject}.",
         "empty_tag": "Aún no hay entradas con la etiqueta {subject}.",
         "post_number": "{title} — qué significa {value} en Namba.",
+        "post_calendar": "{title} — qué se celebra el {value} en Namba.",
         "post_abbreviation": "{title} — qué significa {value} como abreviatura en Namba.",
     },
     "fr": {
@@ -130,6 +140,7 @@ TEXT = {
                        "fait que compter ses propres suites."),
         "one": "1 entrée", "many": "{n} entrées",
         "number_lead": "Ce que signifie {subject}",
+        "calendar_lead": "Ce qui se passe le {subject}",
         "abbreviation_lead": "Ce que signifie l’abréviation {subject}",
         "tag_lead": "Nombres portant l’étiquette {subject}",
         "list": "{lead} — {count} sur Namba : {titles}{more}",
@@ -137,6 +148,7 @@ TEXT = {
         "empty_value": "Aucune entrée n’est encore associée à {subject}.",
         "empty_tag": "Aucune entrée ne porte encore l’étiquette {subject}.",
         "post_number": "{title} — ce que signifie {value} sur Namba.",
+        "post_calendar": "{title} — ce qui se passe le {value} sur Namba.",
         "post_abbreviation": "{title} — ce que signifie l’abréviation {value} sur Namba.",
     },
     "de": {
@@ -150,6 +162,7 @@ TEXT = {
                        "Fortsetzungen zählt."),
         "one": "1 Eintrag", "many": "{n} Einträge",
         "number_lead": "Was {subject} bedeutet",
+        "calendar_lead": "Was am {subject} passiert",
         "abbreviation_lead": "Wofür die Abkürzung {subject} steht",
         "tag_lead": "Zahlen mit dem Tag {subject}",
         "list": "{lead} — {count} auf Namba: {titles}{more}",
@@ -157,6 +170,7 @@ TEXT = {
         "empty_value": "Unter {subject} ist noch nichts eingetragen.",
         "empty_tag": "Noch keine Einträge mit dem Tag {subject}.",
         "post_number": "{title} — was {value} auf Namba bedeutet.",
+        "post_calendar": "{title} — was am {value} auf Namba passiert.",
         "post_abbreviation": "{title} — wofür {value} auf Namba steht.",
     },
 }
@@ -193,6 +207,11 @@ def empty_summary(kind, subject, locale="en"):
     return words(locale)[key].format(subject=subject)
 
 
-def post_summary(title, value, abbreviation=False, locale="en"):
-    key = "post_abbreviation" if abbreviation else "post_number"
-    return words(locale)[key].format(title=title, value=value)
+def post_summary(title, value, kind="number", locale="en"):
+    """One entry's own description.
+
+    `kind` is the noun the entry's section is spoken in -- the same word
+    list_summary() takes, so there is one vocabulary of kinds rather than a
+    bool per section added.
+    """
+    return words(locale)[f"post_{kind}"].format(title=title, value=value)

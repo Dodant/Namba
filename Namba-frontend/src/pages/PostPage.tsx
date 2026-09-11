@@ -82,7 +82,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
                 <li className="rev" key={r.id}>
                   <b>{r.title}</b>
                   <span>
-                    {showValue(r.value, r.grouped, locale)} · {revisionBy(r.author, m)} · {fmtDate(r.at, locale)}
+                    {showValue(r.value, r.grouped, locale, r.format)} · {revisionBy(r.author, m)} · {fmtDate(r.at, locale)}
                   </span>
                   <button className="btn small" onClick={() => resurrect(r)}>
                     {m.common.restore}
@@ -142,10 +142,10 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
 
         <div className="hero">
           <Link
-            className={`num ${numSize(showValue(post.value, post.grouped, locale))}`}
+            className={`num ${numSize(showValue(post.value, post.grouped, locale, post.format))}`}
             to={entryPath(post.value, post.format)}
           >
-            {showValue(post.value, post.grouped, locale)}
+            {showValue(post.value, post.grouped, locale, post.format)}
           </Link>
           <h1>{shown.title}</h1>
         </div>
@@ -248,7 +248,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
             {post.related.map((r) => (
               <div className="rel" key={r.id}>
                 <Link className="rel-num" to={entryPath(r.value, r.format)}>
-                  {showValue(r.value, r.grouped, locale)}
+                  {showValue(r.value, r.grouped, locale, r.format)}
                 </Link>
                 <div className="rel-main">
                   <Link className="rel-t" to={`/p/${r.id}`}>

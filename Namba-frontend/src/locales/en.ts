@@ -1,5 +1,6 @@
 import { fmtCount } from '../format'
 import { GLOBAL_NAV, GLOBAL_TERMS } from './shared'
+import type { Section } from '../api'
 
 /** English, and the shape every other locale is checked against.
 
@@ -24,8 +25,15 @@ export const EN = {
       `edited ${when}${name ? ` by ${name}` : ''}`,
     entries: (n: number) => `${fmtCount(n, 'en')} ${n === 1 ? 'entry' : 'entries'}`,
     tags: (n: number) => `${fmtCount(n, 'en')} ${n === 1 ? 'tag' : 'tags'}`,
-    subject: (abbr: boolean, n = 1): string =>
-      abbr ? (n === 1 ? 'abbreviation' : 'abbreviations') : n === 1 ? 'number' : 'numbers',
+    /* The noun a section calls its values -- the hero says it and so does
+       every band count. A record rather than nested ternaries: there are
+       three sections now, and the reader of this line wants to see all three
+       at once. */
+    subject: (section: Section, n = 1): string => ({
+      number: n === 1 ? 'number' : 'numbers',
+      abbr: n === 1 ? 'abbreviation' : 'abbreviations',
+      calendar: n === 1 ? 'date' : 'dates',
+    })[section],
     /* The like's accessible name: what pressing it does, and the count it
        carries. A locale's own sentence, because the alternative was a
        `locale === 'ko'` ternary in the component -- a locale set to keep in
@@ -34,7 +42,7 @@ export const EN = {
       `${on ? 'Unlike' : 'Like'} — ${fmtCount(n, 'en')} ${n === 1 ? 'like' : 'likes'}`,
   },
   format: {
-    INTEGER: 'Integer', DECIMAL: 'Decimal', MIXED: 'Mixed', TIME: 'Time', ABBR: 'Abbreviation',
+    INTEGER: 'Integer', DECIMAL: 'Decimal', MIXED: 'Mixed', TIME: 'Time', CALENDAR: 'Calendar', ABBR: 'Abbreviation',
   },
   buckets: {
     '1': '1 – 9', '10': '10 – 99', '100': '100 – 999',
@@ -75,8 +83,9 @@ export const EN = {
   },
   browse: {
     category: 'Category', search: GLOBAL_TERMS.search,
-    summary: (n: number, abbr: boolean) =>
-      `${n === 1 ? 'One entry explains' : `${fmtCount(n, 'en')} entries explain`} this ${abbr ? 'abbreviation' : 'number'}.`,
+    summary: (n: number, section: Section) =>
+      `${n === 1 ? 'One entry explains' : `${fmtCount(n, 'en')} entries explain`} this ${
+        { number: 'number', abbr: 'abbreviation', calendar: 'date' }[section]}.`,
     addMeaning: '+ Add another meaning',
     emptyValue: (value: string) => `Nothing filed under ${value} yet.`,
     giveMeaning: 'Give it a meaning.',
@@ -108,11 +117,20 @@ export const EN = {
     editIntro: (owner: string) => `Anyone can edit this entry${owner ? `, including one written by ${owner}` : ''}. The version you replace stays in the history, and ${owner || 'the original author'} remains credited.`,
     addIntro: 'One entry per meaning. If 42 already exists, this joins it rather than replacing it.',
     guidelines: 'Entry guidelines', fixedValue: (noun: string) => `fixed — another ${noun} is another entry`,
+    date: 'Date', month: 'Month', day: 'Day',
     number: 'Number', abbreviation: 'Abbreviation', groupThousands: 'Use thousands separators',
     format: 'Format', autoDetect: 'Auto-detect', title: 'Title', titleHint: 'what it refers to',
-    titlePlaceholder: "The Hitchhiker's Guide to the Galaxy",
-    details: 'Details', detailsHint: 'optional — why this number, what it means',
-    detailsPlaceholder: 'The Answer to the Ultimate Question of Life, the Universe, and Everything.',
+    titlePlaceholder: (section: Section) => ({
+      number: "The Hitchhiker's Guide to the Galaxy",
+      abbr: 'POV',
+      calendar: "April Fools' Day",
+    })[section],
+    details: 'Details', detailsHint: 'optional — why this value, what it means',
+    detailsPlaceholder: (section: Section) => ({
+      number: 'The Answer to the Ultimate Question of Life, the Universe, and Everything.',
+      abbr: "An expression for a particular person's point of view or perspective.",
+      calendar: 'A day for trading harmless lies and pranks.',
+    })[section],
     markdown: 'Markdown works — **bold**, *italic*, [links](https://…), lists, headings and tables. A single Enter is a line break.',
     writtenIn: 'Written in', categories: 'Categories',
     categoryHint: (n: number) => `up to ${fmtCount(n, 'en')} — a film adapted from a book can use both`,
@@ -137,7 +155,7 @@ export const EN = {
     language: 'Language', languageHint: 'the language used for this translation', pickOne: 'Pick one…',
     translationTitleHint: 'the entry’s title in that language', optionalMarkdown: 'optional — Markdown works here too',
     addThisTranslation: 'Add translation', removeTranslation: 'Remove translation',
-    related: 'Related entries', relatedHint: 'other numbers that belong beside this one', unlink: 'Unlink',
+    related: 'Related entries', relatedHint: 'other entries that belong beside this one', unlink: 'Unlink',
     linkSearchAria: 'Search the wiki for an entry to link',
     linkSearchPlaceholder: 'Search the wiki — e.g. Back to the Future', searching: 'Searching…',
     search: GLOBAL_TERMS.search, link: 'Link', noMatches: 'No matches.',

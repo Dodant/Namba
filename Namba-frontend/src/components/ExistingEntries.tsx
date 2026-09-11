@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, entryPath, type Format, type Post } from '../api'
+import { api, entryPath, sectionOf, type Format, type Post } from '../api'
 import { canonicalNumber, showValue } from '../format'
 import { useAsync } from '../useAsync'
 import { useUi } from '../uiLocale'
@@ -21,8 +21,8 @@ function useDebouncedValue(value: string, delay = 250) {
 
     A number page is a column, not an entry: people can add another meaning
     safely, but should be able to see what is already in that column before
-    writing a duplicate. Abbreviations use their own section for the same
-    reason `/a/UFO` and `/n/UFO` are separate pages. */
+    writing a duplicate. Abbreviations and dates look in their own section for
+    the same reason `/a/UFO`, `/c/12-25` and `/n/UFO` are separate pages. */
 export default function ExistingEntries({
   value,
   format,
@@ -35,7 +35,9 @@ export default function ExistingEntries({
   const { m } = useUi()
   const debounced = useDebouncedValue(value)
   const lookupValue = canonicalNumber(debounced, locale).value
-  const section = format === 'ABBR' ? 'abbr' : format ? 'number' : undefined
+  /* Auto-detect has not decided anything yet, so it looks in every section;
+     a picked format looks only where that format is read. */
+  const section = format ? sectionOf(format) : undefined
   // Never leave an answer for the previous value under the value now being
   // typed. The panel returns after this input has settled for one beat.
   const ready = value === debounced && Boolean(lookupValue)
@@ -48,7 +50,7 @@ export default function ExistingEntries({
   if (!ready || found.loading || found.err || !posts.length) return null
 
   const grouped = posts.every((post) => post.grouped)
-  const shownValue = showValue(lookupValue, grouped, locale)
+  const shownValue = showValue(lookupValue, grouped, locale, posts[0].format)
   const browse = entryPath(lookupValue, posts[0].format)
   const shown = posts.slice(0, 3)
   const more = posts.length - shown.length
@@ -59,7 +61,7 @@ export default function ExistingEntries({
         <Link className="existing-value" to={browse}>
           {shownValue}
         </Link><span aria-hidden="true"> · </span>
-        {m.browse.summary(posts.length, section === 'abbr')}
+        {m.browse.summary(posts.length, sectionOf(posts[0].format))}
       </p>
       <ul>
         {shown.map((post) => (

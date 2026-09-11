@@ -55,10 +55,10 @@ export default function PostCard({
     <article className="card">
       {showNumber && (
         <Link
-          className={`num ${numSize(showValue(post.value, post.grouped, locale))}`}
+          className={`num ${numSize(showValue(post.value, post.grouped, locale, post.format))}`}
           to={entryPath(post.value, post.format)}
         >
-          {showValue(post.value, post.grouped, locale)}
+          {showValue(post.value, post.grouped, locale, post.format)}
         </Link>
       )}
       <div className="main">
