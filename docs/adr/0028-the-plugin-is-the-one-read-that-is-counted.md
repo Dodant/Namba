@@ -50,9 +50,34 @@ a person -- an office is one of them and a laptop on two networks is two.
 
 The write is one INSERT with an upsert and appends rather than decides, so
 `with con:` is the right amount of ceremony and not `db.writing` (ADR-0007).
-It is wrapped in `try/except` besides: a figure on the dashboard must never
-turn a locked database into a 500 on the route every page of the wiki reads
-from.
+
+**It is not one write per call, and that is the part that took a second
+pass.** `/api/posts` carries no limiter -- reads are free here -- so an upsert
+per call put SQLite's single write lock behind an unauthenticated, unmetered
+GET: a client sending the header at a high rate keeps the lock busy, and the
+twelve routes that really do write wait on `db.connect`'s five seconds and
+then 500 with "database is locked". The read spam this wiki accepts by design
+became write starvation it does not. `events._pending` is the answer: the
+first call of a client's day is written straight away, the calls inside the
+following minute are added up in memory, and the next call after that carries
+them in. Every call is still counted; what is bounded is how often the lock is
+taken for them, and the table is bounded with it -- one row per client per day
+is now also at most one *write* per client per minute.
+
+That dict is a fourth structure in process memory beside the three limiters,
+so the one-process rule (ADR-0008) covers it and the note in `CLAUDE.md` names
+it. The cost is stated rather than hidden: whatever is still pending when the
+process stops, or when a client stops asking, is never written. Under a minute
+of one client's polling is the whole exposure.
+
+Two smaller things in the same block. The wait is capped at 50ms for this one
+statement rather than inherited from the connection, because a plugin call
+must not sit on a threadpool slot for five seconds while somebody's save
+commits -- dropping the count is the cheaper answer. And the failure is
+printed. `with con:` commits in `__exit__` and does **not** roll back when the
+commit itself is what failed, so the handler rolls back explicitly: without it
+a full disk leaves the request holding the write lock through every read below
+it.
 
 `GET /api/admin/plugin` answers a window of days, and the panel's *Editor
 plugin* page draws it. No number on either is an install count, and both say
@@ -80,6 +105,20 @@ never a user.
 - `admin.py purge` does not reach this table and does not need to: a row is a
   hash, a day and three integers. Nothing a stranger typed is in it.
 - No retention sweep, for the same reason ADR-0004 declined one.
+- **`ever` only ever goes up, and some of the rise is not people arriving.** A
+  client is an address, so a laptop on mobile broadband or any DHCP-renewing
+  home connection becomes a new client each time its address changes: one
+  install is an arbitrary and slowly rising number of clients over months,
+  while the window's own `clients` stays honest. Worse, `events.SECRET` salts
+  the hash, so a key restored from backup or rotated makes every client new at
+  once and the panel shows a wave of first-time installs that never happened.
+  The page says a client is not a person; it cannot say which of those two
+  things a rise is.
+- A clock that steps backwards across midnight -- an NTP correction after a VM
+  restore -- lands a call on the earlier day, and since `new` is `MIN(day)` per
+  client, a first-time day the operator has already read can move. Small, and
+  accepted: the alternative is pinning a first-seen column, which is a second
+  answer to a question `MIN(day)` already answers.
 
 ## Verified
 
@@ -96,6 +135,26 @@ plugin's own command: the `curl` line out of `SKILL.md`, flags and all, with
 the host pointed at a local server, leaves `plugin_days` holding one row for
 today with `calls` 1, and the ordinary read straight after it leaves that 1.
 
+The lock is measured rather than argued. With another connection holding
+`BEGIN IMMEDIATE`, one plugin `GET /api/posts?limit=1`:
+
+| | |
+|---|---|
+| before the cap, inheriting the connection's five seconds | 5219.8 ms, 200, count dropped |
+| with the 50ms cap | 65.6 ms, 200, count dropped |
+| the same GET with no header | 3.0 ms |
+
+Uncontended, the first call of a window is 3.4 ms and a carried one 3.0 ms
+against 2.5 ms for a plain read, so the counter costs a tenth of a millisecond
+on the ordinary path and nothing at all on the calls it coalesces.
+
+Four of the rules above are pinned by mutation rather than by assertion alone,
+each confirmed to turn the suite red: an exact-match user agent instead of the
+prefix; `COUNT(*)` instead of `SUM(d.day = b.day)`, and a window-scoped `born`
+(both of which make `new` mean "first seen in the window"); dropping the
+carried calls; never writing the first call of a window; and lifting the
+`try/except` out of `list_posts`.
+
 ## History
 
 - 2026-09-11 (`c5d9528`): the plugin ships, in its own repository, and nothing
@@ -106,3 +165,11 @@ today with `calls` 1, and the ordinary read straight after it leaves that 1.
 - 2026-09-11: `-A namba-plugin` added to the plugin's `SKILL.md` -- the half
   of the pair that lives in the other repository -- and its README says what
   the header is for.
+- 2026-09-11: reviewed before merge. The upsert-per-call was the finding three
+  independent passes agreed on, measured at 5219.8 ms for one plugin GET
+  against a held write lock; `events._pending`, the 50ms cap, the explicit
+  rollback and the printed traceback are that review's answer. The panel's
+  fourth tile had been labelled "Entries served" over a count of *calls*, and
+  the plugin asks for five entries a call; the endpoint's three reads were
+  three snapshots and could answer an empty window beside a client count of
+  one.
