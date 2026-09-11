@@ -49,6 +49,31 @@ Codex has no slash command for a skill — ask for it by name instead:
 namba:random-entry
 ```
 
+## Which kinds of entry
+
+With nothing after it, anything on the wiki. Name the kinds you want instead,
+by comma or by space, in any case:
+
+```
+/namba:random-entry time
+/namba:random-entry integer, abbr
+/namba:random-entry decimal mixed calendar
+```
+
+| | |
+|---|---|
+| `integer` | `42`, `1969`, `1024` |
+| `decimal` | `3.14`, `1.618` |
+| `mixed` | `K2`, `C-3PO` — numerals and letters together |
+| `time` | `11:11`, `4:20` |
+| `calendar` | `12-25`, `04-01` — a date with no year |
+| `abbr` | `POV`, `UFO` — the wiki's abbreviations |
+
+Anything else is not a kind, and the skill says so in one line rather than
+quietly showing you everything. Each run asks for one of the kinds you named,
+picked afresh, so `integer, abbr` over a morning is both of them. A kind
+nothing is filed under yet answers with nothing, and the run stays quiet.
+
 ## Every 30 minutes
 
 Claude Code only — `/loop` is its scheduler, and the plugin does not carry one
@@ -58,7 +83,12 @@ of its own:
 /loop 30m /namba:random-entry
 ```
 
-Any interval `/loop` takes works — `/loop 10m`, `/loop 1h`, `/loop 2h`.
+Any interval `/loop` takes works — `/loop 10m`, `/loop 1h`, `/loop 2h`. The
+kinds go along with it:
+
+```
+/loop 30m /namba:random-entry integer abbr
+```
 
 ## Example
 
