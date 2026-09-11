@@ -83,6 +83,15 @@ an account, so the skill treats it as data rather than instructions and reads
 only the two fields it prints. The wiki's entries are never bundled into the
 plugin, so it shows what is on Namba today without the plugin being updated.
 
+The request names itself — `User-Agent: namba-plugin` — so that Namba can
+count how many installs are still being used, which is the one thing an open
+wiki with no accounts cannot otherwise learn about its own plugin. That header
+is everything the call says about you: no account, no cookie, no id, nothing
+about your machine and nothing about what you are working on. Namba keeps a
+salted hash of the address rather than the address, as one count per client per
+day, and an operator sees a total. Take the `-A` out of the skill and the line
+still prints; you are simply counted as nobody.
+
 Needs `curl`. Nothing else.
 
 ## Licence
