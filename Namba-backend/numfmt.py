@@ -12,7 +12,14 @@ _DEC = re.compile(r"^\d+\.\d+$")
 # stored as it was typed (ADR-0005), so refusing the other spellings is the
 # only way left to keep one date at one address. February gets 29 days: a leap
 # day is a fixed date, and there is no year here for it to disagree with.
-_DATE = re.compile(r"^(\d{2})-(\d{2})$")
+#
+# `[0-9]` and not `\d`, which in a Python str pattern is every Unicode decimal
+# numeral: `١٢-٢٥` and `１２-２５` would both read as December 25 and both be
+# stored as typed, which is three addresses for one day. The other formats can
+# take `\d` because two spellings of a number are two entries by design
+# (ADR-0005); this one promised the opposite. The front end's own regex is
+# ASCII by the language's default, so this is also what keeps the two agreeing.
+_DATE = re.compile(r"^([0-9]{2})-([0-9]{2})$")
 _MONTH_DAYS = (31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
 # What parse_number will *guess* is an abbreviation: letters, and the
 # punctuation one carries inside it -- R&D, Ph.D, X-ray, I/O, TL;DR. No digits,

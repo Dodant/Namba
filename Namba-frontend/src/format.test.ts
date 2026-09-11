@@ -41,7 +41,10 @@ test('a date is stored locale-neutral and read in the locale', () => {
   assert.equal(showValue('12-25', false, 'en'), '12-25', 'no format, no claim')
   // anything that is not a date comes back untouched, the same as a value
   // that is not a number does above
-  for (const raw of ['1-5', '02-30', '13-01', '00-01', '12-00', '9¾', '']) {
+  // a digit that is not ASCII is another spelling of the same day, and the
+  // API refuses those for that reason -- this side reads none of them either
+  for (const raw of ['1-5', '02-30', '13-01', '00-01', '12-00', '9¾', '',
+                     '١٢-٢٥', '１２-２５']) {
     assert.equal(showDate(raw, 'en'), raw, raw)
     assert.equal(monthDay(raw), null, raw)
   }

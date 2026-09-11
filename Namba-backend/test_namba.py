@@ -112,8 +112,12 @@ def test_parse():
                       "02-29": 229.0, "12-31": 1231.0}.items():
         assert date_key(raw) == want, (raw, date_key(raw))
     assert date_key(" 12-25 ") == 1225.0, "stripped like every other value"
+    # A digit that is not ASCII is another spelling of the same day, and the
+    # front end cannot read one at all -- so these are refused here too, or
+    # Christmas has three addresses and two of them render as raw characters.
     for no in ("1-5", "01-5", "1-05", "2026-12-25", "12-32", "02-30", "04-31",
-               "13-01", "00-01", "12-00", "12/25", "12-25x", "", "   ", None):
+               "13-01", "00-01", "12-00", "12/25", "12-25x", "", "   ", None,
+               "١٢-٢٥", "１２-２５", "1２-25"):
         assert date_key(no) is None, no
 
 
@@ -764,6 +768,7 @@ def test_head_per_route():
         "http://testserver/", "http://testserver/a/DNA",
         f"http://testserver/p/{dna['id']}"], crumb
     admin.set_status(dna["id"], "HIDDEN")
+
 
     # -- and every one of them carries the site's card. An entry, a number, a
     # tag and the front page: four routes, no picture between them, and before
@@ -2228,7 +2233,8 @@ def test_api_round_trip():
     assert xmas["sort_key"] == 1225.0 and xmas["bucket"] == "12", xmas
     # the padding is part of the spelling, so every other way of writing it is
     # refused rather than folded: one day has one address (ADR-0005)
-    for bad in ("1-5", "01-5", "12-32", "02-30", "13-01", "2026-12-25", "12/25", "9¾"):
+    for bad in ("1-5", "01-5", "12-32", "02-30", "13-01", "2026-12-25", "12/25",
+                "9¾", "١٢-٢٥", "１２-２５"):
         r = c.post("/api/posts", json={"value": bad, "format": "CALENDAR",
                                        "title": "not a date"})
         assert r.status_code == 422 and "month and day" in r.text, (bad, r.text)
