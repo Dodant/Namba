@@ -224,6 +224,7 @@ def shape(rows, con):
         p["bucket"] = bucket_of(p["sort_key"], p["format"], p["value"])
         # sqlite has no bool; the wire and the client both want one
         p["grouped"] = bool(p["grouped"])
+        p["birth_death"] = bool(p["birth_death"])
     q = "SELECT post_id, tag FROM post_tags WHERE post_id IN (%s) ORDER BY tag" % (
         ",".join("?" * len(ids))
     )
@@ -306,16 +307,16 @@ def fetch_one(con, post_id, hidden=False):
 # hidden one back on the wiki. `bucket` is computed from the format and the
 # sort key sitting beside it.
 SNAPSHOT_FIELDS = ("value", "format", "sort_key", "title", "body", "image",
-                   "lang", "grouped", "author", "edited_by", "likes",
-                   "created_at", "updated_at")
+                   "lang", "grouped", "birth_death", "author", "edited_by",
+                   "likes", "created_at", "updated_at")
 
 
 def snapshot_of(post):
     """One entry as a revision keeps it: the fields above, its tags and its
     translations.
 
-    Not every field is read back. `apply_snapshot` puts eleven of them on the
-    row and the diff reads seven; `edited_by` and `updated_at` are stored
+    Not every field is read back. `apply_snapshot` puts twelve of them on the
+    row and the diff reads eight; `edited_by` and `updated_at` are stored
     because a snapshot is the entry *as it was*, and a version that cannot say
     who had last touched it is a worse record for the sake of two columns. The
     line to hold is that this list changes when somebody means it to.
@@ -398,11 +399,12 @@ def apply_snapshot(con, post_id, old, editor):
         key = None
     con.execute(
         """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
-                            image=?, lang=?, grouped=?, edited_by=?, updated_at=?
+                            image=?, lang=?, grouped=?, birth_death=?,
+                            edited_by=?, updated_at=?
            WHERE id=?""",
         (old["value"], old["format"], key, old["title"], old["body"],
-         old["image"], old.get("lang"), int(old.get("grouped") or 0), editor,
-         now(), post_id),
+         old["image"], old.get("lang"), int(old.get("grouped") or 0),
+         int(old.get("birth_death") or 0), editor, now(), post_id),
     )
     write_tags(con, post_id, old.get("tags", []))
     # a snapshot from before translations existed has none, and restoring it

@@ -376,6 +376,7 @@ class PostIn(PostRules):
     tags: List[str] = Field(default_factory=list)
     lang: Optional[str] = Field(default=None, max_length=40)
     grouped: bool = False
+    birth_death: bool = False
 
 
 class PostPatch(PostRules):
@@ -396,6 +397,7 @@ class PostPatch(PostRules):
     tags: Optional[List[str]] = None
     lang: Optional[str] = Field(default=None, max_length=40)
     grouped: Optional[bool] = None
+    birth_death: Optional[bool] = None
 
 
 class TranslationIn(Text):
@@ -548,7 +550,7 @@ def list_numbers(
     flag: the index should be readable without opening a post, not a copy of it.
     """
     sql = ["""SELECT p.id, p.value, p.format, p.sort_key, p.title, p.likes,
-                      p.grouped,
+                      p.grouped, p.birth_death,
                       substr(p.body, 1, ?) AS body, p.image IS NOT NULL AS image
                FROM posts p"""]
     args = [BLURB + 1]
@@ -595,6 +597,10 @@ def list_numbers(
             "body": body[:BLURB] + "\u2026" if len(body) > BLURB else body,
             "image": bool(r["image"]),
             "likes": r["likes"],   # a translation has no likes of its own
+            # off the entry and not the row: one date carries Christmas in the
+            # month's list and a birth in its fold, so the split the Calendar
+            # tab draws is per entry (ADR-0029)
+            "birth_death": bool(r["birth_death"]),
         })
     return out
 
@@ -829,10 +835,10 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
         value, fmt, key = resolve_format(value, p.format)
         cur = con.execute(
             """INSERT INTO posts (value, format, sort_key, title, body, image, author,
-                                  lang, grouped, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                                  lang, grouped, birth_death, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (value, fmt, key, p.title.strip(), p.body, p.image,
-             author, p.lang, int(grouped), ts, ts),
+             author, p.lang, int(grouped), int(p.birth_death), ts, ts),
         )
         write_tags(con, cur.lastrowid, p.tags)
         post_id = cur.lastrowid
@@ -876,6 +882,10 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         # the box has to be settled before the value is, since it decides
         # whether separators in what was typed are stripped or kept
         grouped = p.grouped if "grouped" in sent else bool(current["grouped"])
+        # `in sent` and not `is not None`, or an explicit false could never
+        # take the flag off again -- the form sends every field on every save.
+        birth_death = (p.birth_death if "birth_death" in sent
+                       else bool(current["birth_death"]))
         value = current["value"]
         if p.value is not None:
             value, grouped = ungroup(p.value, grouped, p.number_locale)
@@ -936,8 +946,8 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         # when every value it wrote was the same.
         done = con.execute(
             """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
-                                image=?, lang=?, grouped=?, edited_by=?,
-                                updated_at=? WHERE id=?
+                                image=?, lang=?, grouped=?, birth_death=?,
+                                edited_by=?, updated_at=? WHERE id=?
                             AND (? IS NULL OR updated_at = ?)""",
             (
                 value, fmt, key,
@@ -946,6 +956,7 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
                 p.image if "image" in sent else current["image"],
                 p.lang if "lang" in sent else current["lang"],
                 int(grouped),
+                int(birth_death),
                 editor,
                 now(), post_id,
                 p.base_updated_at, p.base_updated_at,

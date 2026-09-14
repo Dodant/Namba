@@ -2414,6 +2414,41 @@ def test_api_round_trip():
     assert [r["value"] for r in rows] == ["02-29", "04-01", "12-25"], rows
     assert [r["bucket"] for r in rows] == ["02", "04", "12"], rows
     assert all(len(r["entries"]) == 1 for r in rows), "a Mixed row reached the tab"
+    # A birth or a death is a flag on the entry, not a seventh format and not
+    # a section: this is still a CALENDAR date at /c/12-25 with the same key
+    # and the same band. What it changes is where the Calendar tab draws it,
+    # and the tab reads it off the *entry* rather than off the row -- 12-25
+    # carries Christmas in December's list and this in its fold (ADR-0029).
+    newton = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                                        "title": "Isaac Newton born",
+                                        "birth_death": True})
+    assert newton.status_code == 201, newton.text
+    newton = newton.json()
+    assert newton["birth_death"] is True, newton
+    assert (newton["format"], newton["sort_key"], newton["bucket"]) \
+        == ("CALENDAR", 1225.0, "12"), "the flag moved the entry"
+    dec = next(r for r in c.get("/api/numbers", params={"format": "CALENDAR"}).json()
+               if r["value"] == "12-25")
+    assert {e["title"]: e["birth_death"] for e in dec["entries"]} \
+        == {"Christmas Day": False, "Isaac Newton born": True}, dec
+    # an edit that says nothing about the flag leaves it alone
+    quiet = c.patch(f"/api/posts/{newton['id']}",
+                    json={"title": "Isaac Newton is born", "author": "editor"}).json()
+    assert quiet["birth_death"] is True, quiet
+    # and an explicit false takes it off: `in sent` and not `is not None`, or
+    # the default would read as "unchanged" and the box could never be cleared
+    cleared = c.patch(f"/api/posts/{newton['id']}",
+                      json={"birth_death": False, "author": "editor"}).json()
+    assert cleared["birth_death"] is False, cleared
+    # it is content, so a revision keeps it and a restore brings it back --
+    # which is what holds SNAPSHOT_FIELDS and apply_snapshot together
+    prior = c.get(f"/api/posts/{newton['id']}/revisions").json()[0]
+    restored = c.post(f"/api/posts/{newton['id']}/revisions/{prior['id']}/restore",
+                      json={"author": "editor"})
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["birth_death"] is True, \
+        "a restore dropped the flag; a version that cannot say an entry was a " \
+        "birth is a worse record"
     # a history line reads the value through the format the way the hero does,
     # so the label carries it: 12-25 under an entry whose hero says 25 December
     # is the format gone missing from the label, not a different date
@@ -2500,7 +2535,7 @@ def test_api_round_trip():
     assert healed.status_code == 200 and healed.json()["sort_key"] is None, healed.text
     assert c.get("/api/numbers").status_code == 200, "an Inf key reached a response"
     assert c.get("/api/posts").status_code == 200, "an Inf key reached a response"
-    for pid in (xmas["id"], fools["id"], wrote["id"], leap["id"]):
+    for pid in (xmas["id"], fools["id"], wrote["id"], leap["id"], newton["id"]):
         admin.set_status(pid, "HIDDEN")
 
     clock = c.post("/api/posts", json={"value": "09:41", "title": "iPhone keynote",
@@ -3575,7 +3610,8 @@ def test_the_schema_moves_forward_once():
         assert latest, "there are no migrations to number"
         assert con.execute("PRAGMA user_version").fetchone()[0] == latest
         columns = {r["name"] for r in con.execute("PRAGMA table_info(posts)")}
-        assert {"edited_by", "lang", "grouped", "status"} <= columns, columns
+        assert {"edited_by", "lang", "grouped", "birth_death", "status"} <= columns, \
+            columns
 
         # a database from before the list was numbered: version 0, and rows in
         # the shapes the passes exist to fix
@@ -3601,6 +3637,25 @@ def test_the_schema_moves_forward_once():
         db.init()
         assert "FILM" in [r[0] for r in con.execute("SELECT tag FROM post_tags")], \
             "the pass ran again on a database that had already had it"
+
+        # The ALTER arm, which nothing else in this suite walks: every database
+        # a test makes takes its columns from SCHEMA, so a step that adds one
+        # to a database that already exists is always a no-op here and only
+        # ever runs for real on the deployed file. Dropping the column and
+        # standing the version back to just before its step is the one way to
+        # watch it happen. Off `.index()` rather than a literal, so appending a
+        # step later does not quietly stop testing this one.
+        with con:
+            con.execute("ALTER TABLE posts DROP COLUMN birth_death")
+            con.execute("PRAGMA user_version = %d"
+                        % db.MIGRATIONS.index(db._birth_death_column))
+        db.init()
+        assert "birth_death" in {r["name"] for r in
+                                 con.execute("PRAGMA table_info(posts)")}
+        assert con.execute(
+            "SELECT birth_death FROM posts WHERE id = 1").fetchone()[0] == 0, \
+            "an entry written before the fold existed was put in it"
+        assert con.execute("PRAGMA user_version").fetchone()[0] == latest
         con.close()
     finally:
         db.DB_PATH = was
@@ -3644,8 +3699,8 @@ def test_a_snapshot_is_its_own_shape():
         con.close()
     assert set(snap) == {
         "value", "format", "sort_key", "title", "body", "image", "lang",
-        "grouped", "author", "edited_by", "likes", "created_at", "updated_at",
-        "tags", "translations",
+        "grouped", "birth_death", "author", "edited_by", "likes", "created_at",
+        "updated_at", "tags", "translations",
     }, sorted(snap)
     # `id` is not one: `revisions.post_id` is the column that says which entry
     # this was. `status` is not content -- hiding takes no snapshot and a

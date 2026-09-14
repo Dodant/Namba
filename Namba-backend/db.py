@@ -27,6 +27,12 @@ CREATE TABLE IF NOT EXISTS posts (
   edited_by  TEXT,                                 -- whoever touched it last, if anyone
   lang       TEXT,                                 -- what title/body are written in; free-form, like translations.lang
   grouped    INTEGER NOT NULL DEFAULT 0,           -- show the value with thousands separators; display only, never in `value`
+  -- this entry is somebody's birth or somebody's death. Display only, like
+  -- `grouped`: a birth is still a CALENDAR date at /c/12-25, and the format
+  -- is what decides how a value is read, sorted and addressed (ADR-0026).
+  -- One flag for both, and the Calendar index's month fold is the one thing
+  -- that reads it (ADR-0029).
+  birth_death INTEGER NOT NULL DEFAULT 0,
   likes      INTEGER NOT NULL DEFAULT 0,
   -- ACTIVE | HIDDEN | DELETED. Nothing the API can do removes a row: a hidden
   -- entry drops out of every public read and `show` brings it back whole,
@@ -525,6 +531,20 @@ def _text_is_one_normal_form(con):
                     f"WHERE {key} = ?", (*folded, row[key]))
 
 
+def _birth_death_column(con):
+    """`posts.birth_death`, for the Calendar index's month fold.
+
+    Its own step rather than a line in the one above, because that one is
+    numbered 1: a database already at 3 has passed it and would never run it
+    again. 0 on every existing row, which is what every entry written before
+    the fold existed is -- nothing joins the fold it did not ask to.
+    """
+    have = {r["name"] for r in con.execute("PRAGMA table_info(posts)")}
+    if "birth_death" not in have:
+        con.execute(
+            "ALTER TABLE posts ADD COLUMN birth_death INTEGER NOT NULL DEFAULT 0")
+
+
 # In order, and append-only: a step's number is what a database records as
 # having been done, so inserting one in the middle re-runs the wrong thing
 # somewhere. Two of the three are data passes over every row of six tables,
@@ -543,6 +563,7 @@ MIGRATIONS = (
     _columns_added_since_the_first_release,
     _tags_are_lower_case,
     _text_is_one_normal_form,
+    _birth_death_column,
 )
 
 
