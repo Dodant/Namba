@@ -474,6 +474,7 @@ class ReportIn(FlagIn):
 
 class LinkIn(BaseModel):
     other_id: int
+    author: str = Field(default="anonymous", max_length=40)
 
 
 # --- read ---------------------------------------------------------------
@@ -871,9 +872,12 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
     # audit log or a revision diff.
     sent.pop("number_locale", None)
     sent.pop("base_updated_at", None)
+    # A nickname says who pressed Save; it is not entry content. In particular,
+    # it must not make an otherwise unchanged form into an edit of `author`,
+    # which is deliberately immutable.
+    sent.pop("author", None)
     editor = nick(p.author)
     with writing(con):
-        rev = snapshot(con, post_id, editor)
         # Read here and not before the block. The lock is held from the top of
         # it, so from this line to the commit no other writer can get in and
         # what this row says stays true. Read outside, it is a row from before
@@ -958,14 +962,40 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         # of the two things wrong with it. Inside `with writing(con)` like
         # every other refusal here, so it rolls the snapshot back.
         refuse_a_future_year(value, fmt, year)
+        title = p.title.strip() if p.title is not None else current["title"]
+        body = p.body if p.body is not None else current["body"]
+        image = p.image if "image" in sent else current["image"]
+        lang = p.lang if "lang" in sent else current["lang"]
+        tags = p.tags if p.tags is not None else current["tags"]
+
+        # The edit form sends every field. Saving after an immediately-applied
+        # side action such as Link therefore used to create a snapshot and an
+        # EDIT row even though no entry content changed. Keep the optimistic
+        # concurrency promise first: a stale form is still stale, even if its
+        # values happen to match the newer version.
+        if (p.base_updated_at is not None
+                and p.base_updated_at != current["updated_at"]):
+            raise HTTPException(
+                409, "somebody else edited this entry since you opened it -- "
+                     "reload the page and apply your change again")
+        proposed = {
+            "value": value, "format": fmt, "title": title, "body": body,
+            "image": image, "lang": lang, "grouped": bool(grouped),
+            "birth_death": bool(birth_death), "year": year, "tags": tags,
+        }
+        changed = [field for field, value_now in proposed.items()
+                   if value_now != current[field]]
+        if not changed:
+            return current
+
+        rev = snapshot(con, post_id, editor)
         # author is the first writer and stays put -- on an open wiki, an edit
         # by a stranger must not erase who the entry came from.
-        # The conflict check is the last clause and nothing else: one statement,
-        # so there is no read for another writer to slip past. A NULL base skips
-        # it. rowcount is then 0 in exactly one case -- the entry moved on since
-        # the sender read it -- because a row that is missing or hidden already
-        # raised out of fetch_one above, and SQLite counts a row it matched even
-        # when every value it wrote was the same.
+        # Keep the timestamp condition on the write as the final guard as well.
+        # The transaction lock holds the row steady after the explicit check
+        # above; retaining it also keeps this statement safe if that surrounding
+        # flow is rearranged later. A NULL base remains the public API's promise
+        # that a caller may write without first reading.
         done = con.execute(
             """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
                                 image=?, lang=?, grouped=?, birth_death=?,
@@ -973,10 +1003,7 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
                             AND (? IS NULL OR updated_at = ?)""",
             (
                 value, fmt, key,
-                p.title.strip() if p.title is not None else current["title"],
-                p.body if p.body is not None else current["body"],
-                p.image if "image" in sent else current["image"],
-                p.lang if "lang" in sent else current["lang"],
+                title, body, image, lang,
                 int(grouped),
                 int(birth_death),
                 year,
@@ -991,14 +1018,11 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
             raise HTTPException(
                 409, "somebody else edited this entry since you opened it -- "
                      "reload the page and apply your change again")
-        if p.tags is not None:
-            write_tags(con, post_id, p.tags)
-        # which fields were sent, not which actually changed: the diff between
-        # the snapshot and the row is where "changed" is answered, and there is
-        # no point storing a worse copy of it here
+        if "tags" in changed:
+            write_tags(con, post_id, tags)
         events.record(con, "EDIT", client=who, who=editor,
                       target_type="post", target_id=post_id, revision_id=rev,
-                      fields=sorted(sent))
+                      fields=sorted(changed))
     return fetch_one(con, post_id)
 
 
@@ -1332,13 +1356,20 @@ def add_link(post_id: int, link: LinkIn, who=Depends(guard), con=Depends(get_db)
         # counting towards the client's writes in /api/admin/abuse, which is
         # the number a block gets decided on.
         if cur.rowcount:
-            events.record(con, "LINK", client=who, target_type="post",
+            events.record(con, "LINK", client=who, who=nick(link.author),
+                          target_type="post",
                           target_id=post_id, other=link.other_id)
     return get_post(post_id, con)
 
 
 @app.delete("/api/posts/{post_id}/links/{other_id}")
-def remove_link(post_id: int, other_id: int, who=Depends(guard), con=Depends(get_db)):
+def remove_link(
+    post_id: int,
+    other_id: int,
+    author: str = Query(default="anonymous", max_length=40),
+    who=Depends(guard),
+    con=Depends(get_db),
+):
     a, b = sorted((post_id, other_id))
     with writing(con):
         fetch_one(con, post_id)
@@ -1348,7 +1379,8 @@ def remove_link(post_id: int, other_id: int, who=Depends(guard), con=Depends(get
         # later -- and it counts towards the client's writes in /api/admin/abuse,
         # which is the number a block gets decided on.
         if cur.rowcount:
-            events.record(con, "UNLINK", client=who, target_type="post",
+            events.record(con, "UNLINK", client=who, who=nick(author),
+                          target_type="post",
                           target_id=post_id, other=other_id)
     return get_post(post_id, con)
 

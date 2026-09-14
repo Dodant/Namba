@@ -3467,8 +3467,9 @@ def test_linking_a_pair_twice_is_one_event():
             con.close()
 
     assert c.post(f"/api/posts/{x['id']}/links",
-                  json={"other_id": y["id"]}).status_code == 201
+                  json={"other_id": y["id"], "author": "maestr.oh"}).status_code == 201
     assert links() == 1
+    assert _events(action="LINK")[-1]["actor"] == "maestr.oh"
     # same pair, same answer, and the caller cannot tell -- which is the point:
     # it is already linked, so 201 is true
     assert c.post(f"/api/posts/{x['id']}/links",
@@ -3476,6 +3477,31 @@ def test_linking_a_pair_twice_is_one_event():
     assert links() == 1, "a link that was already there wrote a second row"
     assert [r["id"] for r in
             c.get(f"/api/posts/{x['id']}").json()["related"]] == [y["id"]]
+
+
+def test_saving_an_unchanged_entry_is_not_an_edit():
+    """Side panels save immediately. Pressing the form's Save afterwards must
+    not invent a revision or a second activity row for unchanged content.
+    """
+    c = TestClient(main.app)
+    post = c.post("/api/posts", json={
+        "value": "8003", "title": "unchanged", "author": "first",
+    }).json()
+    before_events = len(_events(target_id=post["id"]))
+    before_revisions = len(c.get(f"/api/posts/{post['id']}/revisions").json())
+
+    saved = c.patch(f"/api/posts/{post['id']}", json={
+        "value": post["value"], "format": post["format"],
+        "title": post["title"], "body": post["body"],
+        "image": post["image"], "lang": post["lang"],
+        "grouped": post["grouped"], "birth_death": post["birth_death"],
+        "year": post["year"], "tags": post["tags"],
+        "base_updated_at": post["updated_at"], "author": "maestr.oh",
+    })
+
+    assert saved.status_code == 200
+    assert len(_events(target_id=post["id"])) == before_events
+    assert len(c.get(f"/api/posts/{post['id']}/revisions").json()) == before_revisions
 
 
 def test_a_500_leaves_a_row_in_the_log():

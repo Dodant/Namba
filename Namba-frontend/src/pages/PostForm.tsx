@@ -643,7 +643,12 @@ export default function PostForm() {
           <>
             <Languages post={post} lang={lang} onSaved={setPost} onError={setErr} bumpRevs={() => setRevBump((n) => n + 1)} />
 
-            <LinkPanel post={post} onLinked={setPost} onError={setErr} />
+            <LinkPanel
+              post={post}
+              author={author.trim() || 'anonymous'}
+              onLinked={setPost}
+              onError={setErr}
+            />
           </>
         )}
 
@@ -1083,10 +1088,12 @@ function TranslationEditor({
     same reason as above; Enter in the field still searches. */
 function LinkPanel({
   post,
+  author,
   onLinked,
   onError,
 }: {
   post: Post
+  author: string
   onLinked: (p: Post) => void
   onError: (m: string) => void
 }) {
@@ -1132,7 +1139,15 @@ function LinkPanel({
           <div className="panel-row" key={r.id}>
             <span className="panel-num">{showValue(r.value, r.grouped, locale, r.format)}</span>
             <span className="panel-title ink">{r.title}</span>
-            <button type="button" className="pill" onClick={() => act(() => api.unlink(post.id, r.id))}>
+            <button
+              type="button"
+              className="pill"
+              onClick={() => act(() => api.unlink(
+                post.id,
+                r.id,
+                author,
+              ))}
+            >
               {m.form.unlink}
             </button>
           </div>
@@ -1167,7 +1182,11 @@ function LinkPanel({
               type="button"
               className="pill"
               onClick={async () => {
-                await act(() => api.link(post.id, h.id))
+                await act(() => api.link(
+                  post.id,
+                  h.id,
+                  author,
+                ))
                 const rest = hits.filter((x) => x.id !== h.id)
                 setHits(rest.length ? rest : null) // not "no matches" -- none left
               }}

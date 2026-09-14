@@ -334,11 +334,14 @@ export const api = {
   like: (id: number, on: boolean) =>
     req<{ likes: number }>(`/api/posts/${id}/like`, { method: on ? 'POST' : 'DELETE' }),
 
-  link: (id: number, other_id: number) =>
-    req<Post>(`/api/posts/${id}/links`, json('POST', { other_id })),
+  link: (id: number, other_id: number, author: string) =>
+    req<Post>(`/api/posts/${id}/links`, json('POST', { other_id, author })),
 
-  unlink: (id: number, other_id: number) =>
-    req<Post>(`/api/posts/${id}/links/${other_id}`, { method: 'DELETE' }),
+  unlink: (id: number, other_id: number, author: string) =>
+    req<Post>(
+      `/api/posts/${id}/links/${other_id}?author=${encodeURIComponent(author)}`,
+      { method: 'DELETE' },
+    ),
 
   /** PUT, not POST: writing a language twice is an edit, not a second copy. */
   translate: (id: number, t: { lang: string; title: string; body: string; author: string }) =>
