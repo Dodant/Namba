@@ -150,6 +150,15 @@ every link in the panel is wrong in one of them.
   (`Change the number` on `Entry.tsx`), and a localized date in that box would
   be sent back as the new value. An operator correcting or judging a value
   wants the characters that are stored.
+- **A birth or a death is said where the format is.** The entry page and
+  the sheet draw a `BIRTH / DEATH` badge after the format, and the year as a
+  second `.hash` beside it; the content table puts both after the number,
+  in the column that already says how the number asked to be written. An
+  operator judging a Births entry is judging whether it is a living
+  person's date of birth, which the guide refuses, and could not see the
+  flag at all before. `Row` carries the pair as raw ints off the row like
+  `grouped`, because the list is not `shape()`d; `FullPost` gets them from
+  `Post`. Neither is editable here -- the next bullet.
 - **Editing goes to the wiki's own form, except the number.** `/p/:id/edit` in
   a new tab, as a plain `<a>` because it is another document. There is one place
   that knows how a number value is parsed and how `grouped` follows the commas,

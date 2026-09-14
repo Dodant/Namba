@@ -224,3 +224,10 @@ No rule changed and the guide's own text is untouched.
   no privacy reason for a living person's date of birth; the year is not part
   of what `/api/posts?q=` searches; a date drawn in both of a month's lists
   carries `aria-current="date"` twice.
+- 2026-09-14: the first of those four, the same day, on the requester's
+  call. The back office draws the flag and the year on the entry page, in
+  the sheet and in the content table -- the detail read had carried both
+  since the columns landed, being `SELECT *` through `fetch_one`, and only
+  the list's explicit column list and the three views were short of them.
+  Nothing edits either from the panel; the wiki's form stays the one editor
+  of both, the way it is for every field but the number.
