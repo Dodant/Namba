@@ -390,12 +390,32 @@ export const api = {
 // Names stay English in every interface locale: they are one public byline,
 // not UI text that changes when its reader changes languages.
 const NICK_ADJECTIVES = [
-  'brave', 'bright', 'calm', 'clever', 'cosmic', 'curious', 'gentle', 'golden',
-  'happy', 'lively', 'lucky', 'merry', 'nimble', 'quiet', 'silver', 'swift',
+  'able', 'agile', 'amber', 'ancient', 'aqua', 'artful', 'autumn', 'azure',
+  'bold', 'brave', 'breezy', 'bright', 'brisk', 'calm', 'careful', 'cheerful',
+  'clever', 'cloudy', 'cool', 'coral', 'cosmic', 'cozy', 'crimson', 'curious',
+  'daring', 'dawn', 'eager', 'early', 'emerald', 'fair', 'fancy', 'festive',
+  'fleet', 'flying', 'fresh', 'friendly', 'gentle', 'glad', 'glowing', 'golden',
+  'grand', 'green', 'happy', 'honest', 'icy', 'indigo', 'jolly', 'kind',
+  'lively', 'lucky', 'lunar', 'mellow', 'merry', 'mighty', 'mint', 'misty',
+  'modern', 'neat', 'nimble', 'noble', 'orange', 'peachy', 'playful', 'plucky',
+  'polite', 'proud', 'purple', 'quick', 'quiet', 'radiant', 'rapid', 'ready',
+  'red', 'rosy', 'royal', 'sage', 'sandy', 'shiny', 'silver', 'smart',
+  'smooth', 'solar', 'spring', 'steady', 'stellar', 'sunny', 'swift', 'tidy',
+  'tiny', 'tranquil', 'true', 'velvet', 'violet', 'warm', 'wild', 'wise',
 ] as const
 const NICK_NOUNS = [
-  'badger', 'comet', 'dolphin', 'falcon', 'fox', 'lantern', 'otter', 'panda',
-  'penguin', 'planet', 'rabbit', 'rocket', 'sparrow', 'tiger', 'turtle', 'whale',
+  'acorn', 'albatross', 'alpaca', 'anchor', 'apple', 'aurora', 'badger', 'beacon',
+  'bear', 'beaver', 'birch', 'bison', 'bluebird', 'brook', 'butterfly', 'canyon',
+  'cedar', 'cherry', 'cloud', 'comet', 'coral', 'crane', 'daisy', 'dolphin',
+  'dove', 'dragonfly', 'eagle', 'elm', 'falcon', 'fern', 'finch', 'firefly',
+  'forest', 'fox', 'galaxy', 'garden', 'gazelle', 'glacier', 'grove', 'harbor',
+  'hawk', 'hazel', 'heron', 'hill', 'island', 'ivy', 'juniper', 'koala',
+  'lake', 'lantern', 'lark', 'lemon', 'lotus', 'maple', 'meadow', 'meteor',
+  'moon', 'nebula', 'oak', 'ocean', 'olive', 'orbit', 'oriole', 'otter',
+  'owl', 'panda', 'pebble', 'penguin', 'pine', 'planet', 'plum', 'poppy',
+  'quartz', 'rabbit', 'raven', 'reef', 'river', 'robin', 'rocket', 'sparrow',
+  'star', 'sunrise', 'tiger', 'tulip', 'turtle', 'valley', 'violet', 'walnut',
+  'wave', 'whale', 'willow', 'wren', 'yarrow', 'zephyr', 'zinnia', 'zodiac',
 ] as const
 
 const pick = <T,>(items: readonly T[]) => {
