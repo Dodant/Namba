@@ -53,6 +53,7 @@ export const DE: Messages = {
     hasImage: 'mit Bild', feedIntro: 'Neueste Einträge und Änderungen zuerst.',
     moreRecent: 'Weitere aktuelle Einträge anzeigen',
     empty: 'Noch wurde nichts eingetragen.', entryKinds: 'Eintragsformat', categories: 'Kategorien', all: 'Alle',
+    birthsDeaths: 'Geburten / Todesfälle',
     foldedEntries: (n: number) => `${fmtCount(n, 'de')} ${n === 1 ? 'Eintrag' : 'Einträge'}`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${fmtCount(subjects, 'de')} ${subject} · ${fmtCount(entries, 'de')} ${entries === 1 ? 'Eintrag' : 'Einträge'}`,
@@ -95,6 +96,9 @@ export const DE: Messages = {
     guidelines: 'Richtlinien für Einträge', fixedValue: (noun: string) => `fest — eine andere ${noun} benötigt einen eigenen Eintrag`,
     date: 'Datum', month: 'Monat', day: 'Tag',
     number: 'Zahl', abbreviation: 'Abkürzung', groupThousands: 'Tausendertrennzeichen verwenden',
+    birthDeath: 'Eine Geburt oder ein Tod',
+    birthDeathHint:
+      'erscheint unter Geburten / Todesfälle — niemals das Geburtsdatum einer lebenden Person',
     format: 'Format', autoDetect: 'Automatisch erkennen', title: 'Titel', titleHint: 'worum es geht',
     titlePlaceholder: (section: Section) => ({
       number: 'Per Anhalter durch die Galaxis',

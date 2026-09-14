@@ -147,6 +147,7 @@ export default function PostForm() {
   const [image, setImage] = useState<string | null>(null)
   const [lang, setLang] = useState(LANGS[0])
   const [grouped, setGrouped] = useState(false)
+  const [birthDeath, setBirthDeath] = useState(false)
   /* Which section this form is filling in right now. Auto-detect has decided
      nothing, so it is the number one -- which is what most of this wiki is.
      The noun the fields use follows it, and so do the two placeholders: an
@@ -201,6 +202,7 @@ export default function PostForm() {
     setImage(p.image)
     setLang(p.lang ?? LANGS[0])
     setGrouped(p.grouped)
+    setBirthDeath(p.birth_death)
   }
 
   useEffect(() => {
@@ -237,6 +239,7 @@ export default function PostForm() {
       tags,
       lang: lang.trim() || null,
       grouped,
+      birth_death: birthDeath,
     }
     try {
       const saved = editing
@@ -439,6 +442,40 @@ export default function PostForm() {
                 />
                 {m.form.groupThousands}
                 <span className="hint">{groupedPreview}</span>
+              </label>
+            )}
+            {/* Who was born and who died. Only a date can be one, so this is
+                the Calendar branch of the same row the separator box sits in
+                -- the two never show together, since there is no thousand in
+                12-25.
+
+                Hidden rather than cleared when the format moves off Calendar,
+                which is the opposite of the box above: `grouped` stops meaning
+                anything on a value with no separators to show, while this goes
+                on meaning what it meant, and a mis-click on Format and back
+                must not quietly drop it.
+
+                The hint is the rule, not a description. A Births list is an
+                invitation to file exactly the entry the guide never allows, so
+                it says so where the box is ticked rather than only in /guide.
+                */}
+            {format === 'CALENDAR' && (
+              <label className="field check says-a-rule">
+                <input
+                  type="checkbox"
+                  checked={birthDeath}
+                  onChange={(e) => setBirthDeath(e.target.checked)}
+                />
+                {/* both in one flex item, so the label and the rule under it
+                    read as one sentence and wrap like one. Two items is what
+                    the separator box beside it wants -- its hint is a preview
+                    of the number, three characters long -- and this one is a
+                    sentence, which as a flex item of its own came out as a
+                    second narrow column beside a first. */}
+                <span>
+                  {m.form.birthDeath}{' '}
+                  <span className="hint">{m.form.birthDeathHint}</span>
+                </span>
               </label>
             )}
           </div>

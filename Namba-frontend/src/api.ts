@@ -121,6 +121,10 @@ export type Post = {
   /** show the value with thousands separators. Display only -- `value` never
       carries them, or 1000 and 1,000 stop being the same number. */
   grouped: boolean
+  /** somebody's birth or somebody's death. Display only, like `grouped`: a
+      birth is still a CALENDAR date at /c/12-25 with the same key and the same
+      band, and what it changes is which of a month's two lists draws it. */
+  birth_death: boolean
   author: string
   edited_by: string | null
   /** what this entry's own title and body are written in. Free-form, like a
@@ -169,7 +173,17 @@ export type NumberEntry = {
   /** true only when every entry filed here asked for separators. A row is one
       number written one way, so a disagreement falls back to the plain form. */
   grouped: boolean
-  entries: { id: number; title: string; body: string; image: boolean; likes: number }[]
+  /** `birth_death` is on the entry and not on the row, because the split is
+      per entry: 12-25 carries Christmas in December's list and Newton's birth
+      in its fold, so one date is drawn in each place it has entries for. */
+  entries: {
+    id: number
+    title: string
+    body: string
+    image: boolean
+    likes: number
+    birth_death: boolean
+  }[]
 }
 
 /** A version of an entry, as a label rather than a copy of it. The API reads
@@ -223,6 +237,7 @@ export type PostInput = {
   tags?: Tag[]
   lang?: string | null
   grouped?: boolean
+  birth_death?: boolean
 }
 
 export type Params = Record<string, string | number | undefined | null>

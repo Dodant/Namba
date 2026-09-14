@@ -163,6 +163,44 @@ const FEED_PAGE_SIZE = 20
    past, not one you have to get around. */
 const FOLD_OVER = 10
 
+/* Which rows had to be cut. An index is read down the numerals, so a row is
+   one line and what does not fit is clipped -- but whether a given line was
+   clipped is a measurement, and CSS cannot ask it, so the class goes on from
+   here and `.ix-more` is drawn off it.
+
+   Queried off the document rather than a ref, because `Index` is the only
+   thing in the app that renders an `.ix-link` and the fragment it returns has
+   no element to hang one on -- and at module scope rather than inside the
+   effect that calls it, because it closes over nothing and the Births /
+   Deaths fold has to be able to call it too.
+
+   Three things move a row's width or reveal one: a window resize, the fonts
+   arriving after the first paint with `display=swap` wider than what they
+   replace, and the Births / Deaths fold opening. That third one is about a
+   browser this app cannot ask about. A closed <details> hides its content with
+   `content-visibility` where `::details-content` is implemented, which keeps
+   the rows laid out and measurable while they are hidden, and with
+   `display: none` where it is not -- and measured at `display: none` a row is
+   0 wide, is never marked, and no later pass corrects it, because every other
+   band in this index is open when it is first drawn and nothing else here ever
+   reveals a row. So the fold measures again on open. One layout on a gesture
+   the reader made, and the row is right either way. */
+function measure() {
+  const links = [...document.querySelectorAll<HTMLElement>('.ix-link')]
+  /* Clear first, and that is the whole of this. `See more` costs the line
+     about 60px, so measuring while it is on screen asks "does this fit in the
+     space left after the button", which a cut row can only ever answer yes to
+     -- the control makes the case for its own existence and no row ever gives
+     it back: not a widened window, and not the fonts pass, since a row marked
+     while the fallback font is showing stays marked once Newsreader arrives
+     narrower. So every pass starts from a row with nothing at the end of it
+     and asks the question that was meant: is anything hidden at all. */
+  links.forEach((el) => el.classList.remove('cut'))
+  // read all, then write all -- interleaving them is a layout per row
+  const over = links.map((el) => el.scrollWidth > el.clientWidth + 1)
+  links.forEach((el, i) => el.classList.toggle('cut', over[i]))
+}
+
 /* "8 numbers · 21 entries". The row count on its own says how far the band
    scrolls and nothing about how much is in it -- eight numbers is eight
    entries on a thin band and forty on a busy one, and the second figure is
@@ -170,21 +208,39 @@ const FOLD_OVER = 10
    closed, this line is all it says about itself. The first noun follows the
    section: the Abbreviation band counts abbreviations and the Calendar band
    counts dates, not numbers. */
-/* One band of the index. `keep` and `now` are the Calendar tab's alone: every
-   other band is drawn only when it has rows, and no other index has a band
-   the date makes current. */
+/* One band of the index. `keep`, `now` and `sub` are the Calendar tab's alone:
+   every other band is drawn only when it has rows, no other index has a band
+   the date makes current, and no other index splits one. */
 type Band = {
   label: string
   items: NumberEntry[]
+  sub?: NumberEntry[]
   keep?: boolean
   now?: boolean
 }
 
-function bandCount(items: NumberEntry[], format: Format, m: Messages) {
-  const entries = items.reduce((n, item) => n + item.entries.length, 0)
+/* A month's two lists: what the day means, and who was born or died on it.
+   The split is per *entry* and not per date, so December 25 keeps Christmas in
+   the list above and Newton's birth in the fold below -- one date drawn in each
+   place it has entries for, rather than a whole date going one way because of
+   one of its entries. A row with nothing left on its side drops out. */
+function sideOf(rows: NumberEntry[], want: boolean) {
+  return rows
+    .map((row) => ({ ...row, entries: row.entries.filter((e) => e.birth_death === want) }))
+    .filter((row) => row.entries.length > 0)
+}
+
+function bandCount(items: NumberEntry[], sub: NumberEntry[] | undefined,
+                   format: Format, m: Messages) {
+  /* the whole month, folded entries included: closed, this line is all the
+     band says about itself, so it must not count only half of it. Dates by
+     `value` because a split one is in both lists and is still one date. */
+  const all = sub ? [...items, ...sub] : items
+  const subjects = sub ? new Set(all.map((row) => row.value)).size : all.length
+  const entries = all.reduce((n, item) => n + item.entries.length, 0)
   return m.home.bandCount(
-    items.length,
-    m.common.subject(sectionOf(format), items.length),
+    subjects,
+    m.common.subject(sectionOf(format), subjects),
     entries,
   )
 }
@@ -216,35 +272,10 @@ function Index({ lang }: { lang: string }) {
   const tags = useAsync(() => api.tags(), [])
   const numbers = useAsync(() => api.numbers({ format, tag, lang }), [format, tag, lang], true)
 
-  /* Which rows had to be cut. An index is read down the numerals, so a row is
-     one line and what does not fit is clipped -- but whether a given line was
-     clipped is a measurement, and CSS cannot ask it, so the class goes on from
-     here and `.ix-more` is drawn off it.
-
-     A window resize is the whole of it: nothing else changes a row's width --
-     a band folding changes the height, and the like appearing is opacity. The
-     second pass is for the fonts, which arrive after the first paint with
-     `display=swap` and are wider than what they replace, so measuring once
-     marks the wrong rows on a cold load. Queried off the document rather than
-     a ref because this component is the only thing in the app that renders an
-     `.ix-link`, and the fragment it returns has no element to hang one on. */
+  /* Which rows had to be cut -- see `measure` above. A window resize and the
+     fonts arriving are the two passes it needs; the Births / Deaths fold adds
+     a third of its own, on the element that opens it. */
   useEffect(() => {
-    const measure = () => {
-      const links = [...document.querySelectorAll<HTMLElement>('.ix-link')]
-      /* Clear first, and that is the whole of this. `See more` costs the line
-         about 60px, so measuring while it is on screen asks "does this fit in
-         the space left after the button", which a cut row can only ever answer
-         yes to -- the control makes the case for its own existence and no row
-         ever gives it back: not a widened window, and not the pass below,
-         since a row marked while the fallback font is showing stays marked
-         once Newsreader arrives narrower. So every pass starts from a row with
-         nothing at the end of it and asks the question that was meant: is
-         anything hidden at all. */
-      links.forEach((el) => el.classList.remove('cut'))
-      // read all, then write all -- interleaving them is a layout per row
-      const over = links.map((el) => el.scrollWidth > el.clientWidth + 1)
-      links.forEach((el, i) => el.classList.toggle('cut', over[i]))
-    }
     measure()
     document.fonts.ready.then(measure)
     window.addEventListener('resize', measure)
@@ -282,7 +313,8 @@ function Index({ lang }: { lang: string }) {
                  no thirteenth row to keep in `m.buckets` -- and no 84 of them
                  once every locale answers */
               label: monthName(Number(b), locale),
-              items: rows.filter((n) => n.bucket === b),
+              items: sideOf(rows.filter((n) => n.bucket === b), false),
+              sub: sideOf(rows.filter((n) => n.bucket === b), true),
               /* the one index that draws a band with nothing in it:
                  twelve months are a calendar, and a year missing August reads
                  as a bug rather than as a month nobody has written about. */
@@ -387,13 +419,45 @@ function Index({ lang }: { lang: string }) {
               <summary className="band-head">
                 <h2 className={band.now ? 'now' : undefined}>{band.label}</h2>
                 <span className="rule" />
-                <span className="n">{bandCount(band.items, shownFormat, m)}</span>
+                <span className="n">
+                  {bandCount(band.items, band.sub, shownFormat, m)}
+                </span>
               </summary>
               <ol className="index">
                 {band.items.map((row) => (
                   <IndexRow key={`${row.format}-${row.value}`} row={row} />
                 ))}
               </ol>
+              {/* Who was born and who died, at the foot of the month and
+                  closed. The same disclosure a number past FOLD_OVER gets --
+                  `.ix-fold`, one level in and one step quieter than the band
+                  head above it -- because it is the same gesture at the same
+                  scale. Closed is the point: a month is read for what its days
+                  mean, and this is the list you go looking for.
+
+                  onToggle is not decoration: these are the only rows in the
+                  index that are hidden when they are first drawn, and whether
+                  a hidden row can be measured is the browser's call. See
+                  `measure` above. */}
+              {band.sub && band.sub.length > 0 && (
+                <details className="band-sub" onToggle={measure}>
+                  <summary className="ix-fold">
+                    <span>{m.home.birthsDeaths}</span>
+                    {/* `common.entries` and not `home.foldedEntries`: that one
+                        is a row's own fold, which only opens past FOLD_OVER and
+                        so never has to say "1 entries". This one can hold a
+                        single birth. */}
+                    <span>{m.common.entries(
+                      band.sub.reduce((n, row) => n + row.entries.length, 0),
+                    )}</span>
+                  </summary>
+                  <ol className="index">
+                    {band.sub.map((row) => (
+                      <IndexRow key={`${row.format}-${row.value}`} row={row} />
+                    ))}
+                  </ol>
+                </details>
+              )}
             </details>
           ),
       )}

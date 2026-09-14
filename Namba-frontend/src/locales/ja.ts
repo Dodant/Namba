@@ -47,6 +47,7 @@ export const JA: Messages = {
     hasImage: '画像あり', feedIntro: '最近作成・編集された項目から表示します。',
     moreRecent: 'さらに最近の項目を表示',
     empty: 'まだ項目がありません。', entryKinds: '項目の形式', categories: 'カテゴリ', all: 'すべて',
+    birthsDeaths: '生誕 / 死没',
     foldedEntries: (n: number) => `${fmtCount(n, 'ja')}件の項目`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${subject}${fmtCount(subjects, 'ja')}個 · 項目${fmtCount(entries, 'ja')}件`,
@@ -84,6 +85,9 @@ export const JA: Messages = {
     guidelines: '項目ガイドライン', fixedValue: (noun: string) => `変更不可 — 別の${noun}は別項目として作成`,
     date: '日付', month: '月', day: '日',
     number: '数字', abbreviation: '略語', groupThousands: '3桁区切りを使用', format: '形式',
+    birthDeath: '生誕または死没',
+    birthDeathHint:
+      '生誕 / 死没の一覧に入ります — 存命の人物の生年月日は書けません',
     autoDetect: '自動判定', title: 'タイトル', titleHint: '何を指す数字か',
     titlePlaceholder: (section: Section) => ({
       number: '銀河ヒッチハイク・ガイド',

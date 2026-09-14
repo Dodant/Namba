@@ -631,6 +631,23 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 /* any fold whose summary is an .ix-fold: the index's, and the comments' */
 details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
 .ix-fold:hover, .ix-fold:hover::before { color: var(--ink); }
+/* Who was born and who died, under the month's own list. Its summary is the
+   .ix-fold above -- the same disclosure a number past FOLD_OVER gets, and the
+   caret rule reaches it already -- so this has two jobs: air between the last
+   row and the control that opens the next ones, and the indent.
+
+   The indent is the point. Left at the gutter the caret sits in the band
+   head's own caret column, two disclosures in a line with one meaning the
+   month and one meaning this, and it read as a second heading rather than as
+   more of the list. Moved over it lands under the titles, which is what
+   opening it produces. 104 + 22 is .ix-num's column plus .ix's gap, taken
+   rather than shared: a custom property for one indent is a third place to
+   look, and below 560 the numeral stops being a column at all -- so the
+   indent goes there too, in the media block at the foot of this file, rather
+   than being computed from something that is no longer true. Only the summary
+   moves; the rows it opens are the month's rows and keep the gutter. */
+.band-sub { margin-top: 13px; }
+.band-sub > .ix-fold { margin-left: calc(104px + 22px); }
 
 .ix-e { display: flex; align-items: baseline; gap: 10px; }
 /* One line an entry, always. The index is read down the numerals, and a blurb
@@ -784,6 +801,8 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
      wide -- in a column it was 104. The minimum only bites the one-character
      values and left alignment keeps the glyph where it was. */
   .ix-num { flex: 0 0 auto; min-width: 24px; text-align: left; }
+  /* no column to line up with any more -- see .band-sub above */
+  .band-sub > .ix-fold { margin-left: 0; }
   /* inline, the numeral is competing with the title for the row rather than
      sitting in a column of its own, so the middle sizes shrink too */
   .ix-num.mid { font-size: 16px; }
@@ -1102,7 +1121,11 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    at that width, so the two share the line instead of the title being pushed
    under a number it is the caption for */
 .hero-said { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: min(200px, 100%); }
-.hero-said .kicker {
+/* Not scoped to the hero: /p/:id draws one in its meta row too, for the same
+   job -- a small label naming what the thing below or beside it is filed as.
+   Inside .meta the family and the colour are already right and only the size,
+   the tracking and the caps are doing anything. */
+.kicker {
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--muted);
 }
@@ -1326,8 +1349,8 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 /* The version and the language it is being read in, on the line above the h1
    and pushed to the far edge -- the title anchors the left, the metadata about
    it answers on the right, and the picker's edge lands on the text column's.
-   Mono, 10px and uppercase are .hero-said .kicker's three declarations, taken
-   rather than shared: that class is scoped to the hero and this is not one. */
+   Mono, 10px and uppercase are .kicker's three declarations, taken rather than
+   shared: that class is a label beside a thing and this row is not one. */
 /* Scoped to .guide rather than left bare, and that is not tidiness: .body p
    sets `margin: 0 0 1em` at (0,1,1) and this row is a <p>, so a bare
    .guide-meta lost its own bottom margin to it -- 1em of 10px mono, 10px,
@@ -1412,6 +1435,13 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 /* the preview is what you will get, so it is coloured like the numeral it
    becomes rather than like a hint */
 .field.check .hint { color: var(--accent); }
+/* ...and the birth/death box says a rule rather than showing a preview, so its
+   hint is a hint: the colour every other one on this form has, and the words
+   wrap with the label rather than beside it. align-items goes to the top for
+   the same reason -- centred, a two-line sentence pulls the box to its middle. */
+.field.check.says-a-rule { align-items: flex-start; }
+.field.check.says-a-rule .hint { color: var(--fainter); }
+.field.check.says-a-rule input[type="checkbox"] { margin-top: 2px; }
 /* under the Number input: flex-start so the row of checkbox and words is not
    stretched across the column, no bottom margin because the field it is in
    already carries one, and 400 because .field label reaches it now and 600 is
