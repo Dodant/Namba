@@ -18,6 +18,10 @@
   /* the old terracotta. It now has exactly two jobs: the number match inside
      an index title, and the controls that destroy something */
   --hit: #b4472b;
+  /* the one cool colour in a warm palette, and it has one job: the day it is
+     on the Calendar index. Nothing else on the page is coloured by when it is
+     being read, so a colour nothing else uses is what says so */
+  --today: #1c4f86;
   --faint: #6e6855;       /* placeholders, dropdown carets, rested meta */
   --fainter: #776e57;     /* field hints, like counts at rest */
   --rule: #e7e1d4;        /* separators between rows in a list */
@@ -48,6 +52,7 @@
     /* #f7f4ec on this lighter green is 2.6:1; the dark ink is 6.8:1 */
     --on-accent: #14140f;
     --hit: #e07a56;
+    --today: #7db3e0;
     /* faint and fainter invert rather than carry over: on a dark ground
        "quieter" means darker, and the light pair is pinned against a light
        ground -- carried over here they land at 3.3 and 3.7 to 1 */
@@ -591,6 +596,10 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 /* a handful of values are sentences ("1960년 4월 16일 오후 3시"); shrink those
    rather than widening the column for every "7" */
 .ix-num.long { font-size: 13px; }
+/* Today, and the month it falls in. Colour is all it is on screen, so the day
+   carries aria-current as well -- a reader who cannot see the blue is told the
+   same thing, and a reader who can is not told it twice. */
+.band-head h2.now, .ix-num.now { color: var(--today); }
 /* .ix-list is the same column one level in, for the rows of a number that
    folds -- see the note in Home.tsx. Both here so the two can never drift. */
 .ix-titles, .ix-list {

@@ -417,7 +417,15 @@ sanitiser config to get wrong.
   `keep` on the `Band` type is that one, and it is optional so the other five
   tabs keep the behaviour they had. Its twelve months open like every other
   band: eleven closed headings is the table of contents that default exists to
-  avoid, and a reader who came for April should not have to open April
+  avoid, and a reader who came for April should not have to open April.
+
+  **What the date does instead is colour.** The heading of the month it is and
+  the numeral of the day it is take `--today`, the one cool colour in a warm
+  palette and the only thing on this index coloured by when it is being read
+  rather than by what is written — `Band.now` for the heading, a `.now` on the
+  numeral for the day, both read from `todayMonthDay()` at render so a page
+  left open overnight is right the next time it draws. The day also carries
+  `aria-current="date"`, because colour is otherwise the whole of it
   (ADR-0026).
 
   **And its numeral column says the day alone.** `showDay()`, not

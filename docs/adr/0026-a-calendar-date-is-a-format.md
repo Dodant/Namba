@@ -191,3 +191,11 @@ is a different entry about a different thing.
   open April first. The `open` field on `Band` went with it, so the type
   carries `keep` alone and the index reads no clock — the write form still
   starts at today, which is where a default date is worth having.
+
+- 2026-09-14: and the month it is came back the same day, as colour rather
+  than as a fold. Twelve open months leave the reader needing where in twelve
+  to look, which is what the fold had been answering by hiding eleven of them:
+  the current month's heading and today's numeral take `--today`, the one cool
+  colour in a warm palette, and the day carries `aria-current="date"` so a
+  reader who cannot see the blue is told the same thing. `Band.now` is what
+  the removed `open` became, read at render for the same reason it always was.

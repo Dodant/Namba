@@ -138,7 +138,8 @@ dates a month band (January to December); a TIME gets none, because banding
 **Dates** are for the ones that come round every year — Christmas, April
 Fools, Bastille Day. The value is a month and a day with no year, picked from
 two menus rather than typed, and stored as a zero-padded `12-25`; the index
-draws it as twelve foldable months, all of them open, and the
+draws it as twelve foldable months, all of them open with today's month and
+day in blue, and the
 page reads it in your own language — "December 25", "12월 25일" — while the
 address stays `/c/12-25`. A date that happened once is a number like any other
 and belongs at `/n/`.

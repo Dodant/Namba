@@ -6,7 +6,7 @@ import {
 } from '../api'
 import {
   fmtCount, fmtDate, marker, monthName, numSize, plain, plainLines, showDay,
-  showValue,
+  showValue, todayMonthDay,
 } from '../format'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
@@ -170,12 +170,14 @@ const FOLD_OVER = 10
    closed, this line is all it says about itself. The first noun follows the
    section: the Abbreviation band counts abbreviations and the Calendar band
    counts dates, not numbers. */
-/* One band of the index. `keep` is the Calendar tab's alone: every other band
-   is drawn only when it has rows. */
+/* One band of the index. `keep` and `now` are the Calendar tab's alone: every
+   other band is drawn only when it has rows, and no other index has a band
+   the date makes current. */
 type Band = {
   label: string
   items: NumberEntry[]
   keep?: boolean
+  now?: boolean
 }
 
 function bandCount(items: NumberEntry[], format: Format, m: Messages) {
@@ -285,6 +287,12 @@ function Index({ lang }: { lang: string }) {
                  twelve months are a calendar, and a year missing August reads
                  as a bug rather than as a month nobody has written about. */
               keep: true,
+              /* the month it is, in blue. Every month is open, so what the
+                 reader needs is not a month to open but where in twelve to
+                 look. Read at render rather than held: a page left open
+                 overnight is on the right month the next time it draws.
+                 Local time, because the reader's calendar is the reader's. */
+              now: b === todayMonthDay().slice(0, 2),
             }))
           : [{ label: m.format[shownFormat], items: rows }]
 
@@ -377,7 +385,7 @@ function Index({ lang }: { lang: string }) {
                table of contents, not a wiki. */
             <details className="band" key={band.label} open>
               <summary className="band-head">
-                <h2>{band.label}</h2>
+                <h2 className={band.now ? 'now' : undefined}>{band.label}</h2>
                 <span className="rule" />
                 <span className="n">{bandCount(band.items, shownFormat, m)}</span>
               </summary>
@@ -470,6 +478,8 @@ function IndexRow({ row }: { row: NumberEntry }) {
      The popover below keeps the whole date: a layer has room a row does not,
      and out there the heading is behind it rather than above it. */
   const shownNum = row.format === 'CALENDAR' ? showDay(row.value) : shownValue
+  /* and the day itself, the same blue as the month heading over it */
+  const today = row.format === 'CALENDAR' && row.value === todayMonthDay()
   const entries = row.entries.map((entry) => (
     <IndexEntry
       key={entry.id}
@@ -482,8 +492,11 @@ function IndexRow({ row }: { row: NumberEntry }) {
   return (
     <li className="ix">
       <Link
-        className={`ix-num ${numSize(shownNum)}`}
+        className={`ix-num ${numSize(shownNum)}${today ? ' now' : ''}`}
         to={entryPath(row.value, row.format)}
+        /* the colour is the whole of it on screen; this is the half of it a
+           screen reader gets */
+        aria-current={today ? 'date' : undefined}
         /* only where the column is showing a shortened form: a link whose
            whole accessible name is "11" has lost what the heading above it
            was carrying, and nothing reads a heading for a link it jumps to */
