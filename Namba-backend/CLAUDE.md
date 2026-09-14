@@ -142,6 +142,24 @@ the sitemap.
   `MIGRATIONS` the suite can walk for real, since every test database takes its
   columns from `SCHEMA`; `test_the_schema_moves_forward_once` drops the column
   and stands `user_version` back to watch the `ALTER` happen.
+- **`posts.year` is the year that birth or death was in, and `value` never
+  carries it.** `/c/12-25` is the day of the year (ADR-0026), so a year in the
+  value would be a second page about one day. It rides beside `birth_death`
+  everywhere — the index entry, `SNAPSHOT_FIELDS`, `apply_snapshot`,
+  `DIFF_FIELDS` — and has its own migration step, 5, because step 4 had already
+  run by the time it arrived.
+
+  **`refuse_a_future_year` compares the whole date, not the year.** A birth
+  filed at `12-25` in this year has not happened until Christmas, so a
+  year-only test leaves the last stretch of every year open; the check builds
+  `(year, month, day)` out of the *settled* value and compares it against
+  `now()`. A route check rather than a validator for the reason
+  `resolve_format`'s are — it needs both halves, and an edit sends a year with
+  no value at all — and `ge=1` on the field is the only other bound, since
+  today is the cap. `restore_revision` and `POST /api/admin/posts/{id}/value`
+  do not ask, the way neither re-checks `is_abbr` or `date_key`: a snapshot has
+  to be restorable, and a year that was past when it was written only gets more
+  so (ADR-0029).
 - **`posts.grouped` is how the number is written, not what it is.** `value`
   never carries separators and always uses a dot decimal; `grouped_value()`
   applies the requested UI locale for display and leaves anything that is not

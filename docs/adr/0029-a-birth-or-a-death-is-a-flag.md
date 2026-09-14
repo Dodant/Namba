@@ -73,6 +73,44 @@ that adds one is always a no-op there — which is why
 `test_the_schema_moves_forward_once` now drops the column and stands
 `user_version` back to watch the `ALTER` run.
 
+**A year is a second annotation beside it, and it is never in `value`.**
+ADR-0026 kept the year out of a calendar date because a date that happens once
+is a number and belongs at `/n/`; this is that rule reached from the other side.
+The entry is still *about* the day of the year — it is filed under December 25
+and appears there — and the year says which December 25 it was, the way a date
+page's own lists do. `posts.year`, nullable, and nothing sorts or bands on it.
+Two births on one day are two entries at one address, the way two meanings of
+42 are.
+
+**What is refused is a date that has not happened, not a year past today.**
+Today being the 14th of September, a birth filed at 12-25 in this year has not
+happened, and a year-only test would wave it through for three and a half
+months — so `refuse_a_future_year` builds the whole date out of the settled
+value and compares that. It is a route check and not a validator for the reason
+`resolve_format`'s are: it needs both halves, and an edit sends a year with no
+value at all. `ge=1` on the field is the other end and the only other bound
+there is, since today is the cap.
+
+**Neither `restore_revision` nor the operator's renumber asks**, the way
+neither re-checks `is_abbr` or `date_key`: a snapshot has to be restorable or
+the history is not a history, and it cannot bite anyway — a year that was past
+when it was written only gets more so. The renumber could move a date forward
+past a year already on the row; that route carries a name, a snapshot and an
+audit row, which is the line ADR-0026 already draws.
+
+**The form draws the same rule first, and it is not the one that counts.**
+`<input type="number">` with `min={1}` and a `max` of this year if the day has
+come round and last year if it has not — the stepper, the numeric keyboard and
+a refusal before the request. The 422 is still what settles it: a browser is
+not a trust boundary. The field is offered only when the box is ticked, and
+unticking it clears the year, because a year with no birth beside it is a year
+of nothing and the field it was typed in is gone.
+
+**BC is left out.** An era label is seven locales' worth of words and an
+off-by-one between astronomical and historical year numbering, and nobody asked
+for it. `ge=1` says so. An entry about a death in 44 BC still works — it simply
+carries no year.
+
 **The index and a mark on the entry; `/c/MM-DD` is left alone.** The date page
 is one day and a handful of entries, where a fold is machinery for nothing. The
 mark is a `.kicker` in the entry's meta row, not a link and not a tag — a tag
@@ -87,10 +125,18 @@ No rule changed and the guide's own text is untouched.
 
 ## Consequences
 
-- `posts` gains a column; `SNAPSHOT_FIELDS` goes from thirteen fields to
-  fourteen, `apply_snapshot` writes twelve of them rather than eleven, and
-  `DIFF_FIELDS` reads eight rather than seven.
-- `db.MIGRATIONS` has a fourth step and `PRAGMA user_version` is 4.
+- `posts` gains two columns, both of them in `SNAPSHOT_FIELDS`, in
+  `apply_snapshot` and in `DIFF_FIELDS`: that list goes from thirteen fields to
+  fifteen, `apply_snapshot` writes thirteen of them rather than eleven, and the
+  diff reads nine rather than seven.
+- `db.MIGRATIONS` has a fourth step and a fifth, one per column, and
+  `PRAGMA user_version` is 5. The second is its own rather than a line in the
+  first because the first had already run wherever the fold shipped — which is
+  the append-only rule doing exactly what it is for, one commit apart.
+- The year is drawn in three places off one `.yr` class: leading an index row's
+  line, leading a card's heading (so `/c/12-25`, search and tag pages carry it)
+  and beside the mark in the entry's meta row. Plain digits in every locale —
+  a year is not grouped, so 1642 and never 1,642.
 - **`measure` in `Home.tsx` moved to module scope and the fold calls it on
   open.** Its comment had said a resize was the whole of it, because every
   `<details>` in the index is open when it is first drawn; these are the first
@@ -122,3 +168,10 @@ No rule changed and the guide's own text is untouched.
   shipped in the same change; the browser it was first run against turned out
   not to have it, which is why the note above says what the mechanism is rather
   than asserting a bug.
+- 2026-09-14: the year, asked for the same day. The question it raised was
+  whether a year belongs in `value` — it does not, and the answer is the
+  address rule ADR-0026 already settled: `/c/12-25` is the day of the year, so
+  a year is an annotation on the entry rather than part of where it answers.
+  "No future" was read as the whole date rather than the year alone, which is
+  the reading that does not leave a hole between today and the 31st of
+  December; the test pins it by filing this year's Christmas and being refused.

@@ -969,6 +969,23 @@ words sit in one flex item with the label so a sentence wraps like one. The
 rule is the guide's: a Births list invites exactly the entry `/guide` never
 allows, and it is said where the box is ticked rather than only there.
 
+**Ticking it opens a `Year` field, and unticking clears it** — a year with no
+birth beside it is a year of nothing, and the field it was typed in has gone.
+It is an `<input type="number">`, the one control on this form whose range the
+browser can enforce, with a `max` that mirrors the API: this year if the day
+has already come round, last year if it has not, off `dateValue <=
+todayMonthDay()`. That is a convenience and not the rule — the 422 is what
+settles it, because a browser is not a trust boundary. It sits under the
+checkbox rather than beside the date selects for the reason the separator box
+does: a third control in that row re-measures the two above it underneath the
+choice.
+
+The year is drawn off one `.yr` class in three places — leading an index row's
+line, leading a card's heading, beside the mark in the entry's meta row — and
+as plain digits in every locale, since a year is not grouped. It goes *inside*
+`.ix-link`: the row is one click and one ellipsis, and a year outside it would
+be a second flex item the clipping has to reason about.
+
 **The two placeholders follow the format as well**, because an entry about
 `POV` is not titled after a book about 42 and one about April Fools is not
 either: `titlePlaceholder` and `detailsPlaceholder` take the section and each

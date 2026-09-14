@@ -334,6 +334,23 @@ opposite, and only its regex says `[0-9]`.
   is in `SNAPSHOT_FIELDS`, because a version that cannot say an entry was a
   birth is a worse record (ADR-0029).
 
+  **And `posts.year` says which year that birth or death was in — never
+  `value`.** The rule above about a date having no year in it is this one from
+  the other side: the entry is *about* the day of the year, filed at `/c/12-25`
+  and drawn there, and the year says which December 25 it was. Put it in the
+  value and `/c/12-25` and `/c/1642-12-25` are two pages about one day. Two
+  births on one day are two entries at one address, the way two meanings of 42
+  are. Nothing sorts or bands on it.
+
+  **What is refused is a date that has not happened, not a year past today.**
+  A birth filed at `12-25` in this year has not happened until Christmas, so
+  `refuse_a_future_year` in `main.py` builds the whole date out of the settled
+  value — a year-only test leaves the last three months of every year open.
+  It is a route check and not a validator for the reason `resolve_format`'s
+  are: it needs both halves, and an edit sends a year with no value at all.
+  `restore_revision` and the operator's renumber do not ask, the way neither
+  re-checks `is_abbr` or `date_key`.
+
   **`/c/` is the one section that is a closed set, so an unreadable date is
   not a page.** There are 366 days: `/c/99-99` is not an empty date page the
   way `/n/999999` is an empty number one, where nobody has written about that
