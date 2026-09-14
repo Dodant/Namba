@@ -1760,6 +1760,8 @@ def test_admin_content_and_dashboard():
     mine = next(r for r in rows["rows"] if r["id"] == pid)
     assert mine["status"] == "HIDDEN" and mine["author"] == "armstrong"
     assert mine["edited_by"] == "vandal"
+    assert mine["birth_death"] == 1 and mine["year"] == 1969, \
+        "the content table cannot say an entry is a birth, or which year"
     assert mine["open_reports"] == 0 and mine["pending_requests"] == 0
     # the operator's search escapes LIKE's wildcards too -- same helper, and
     # this is the box an operator hunts a specific entry in
@@ -1774,6 +1776,7 @@ def test_admin_content_and_dashboard():
     full = ops.get(f"/api/admin/posts/{pid}").json()
     assert full["title"] == "Moon landings" and full["revision_count"] == 1
     assert full["reports"] == [] and full["requests"] == []
+    assert full["birth_death"] is True and full["year"] == 1969
     admin.set_status(pid, "ACTIVE")
 
     # FLAGGED is a count and not a column: it moves when the reports do

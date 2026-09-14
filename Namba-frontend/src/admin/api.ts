@@ -93,6 +93,9 @@ export type Row = {
   value: string
   format: string
   grouped: number
+  /** raw ints off the row like `grouped` -- this list is not `shape()`d */
+  birth_death: number
+  year: number | null
   title: string
   status: PostStatus
   author: string

@@ -125,6 +125,12 @@ export default function Entry() {
             <Badge>{post.status}</Badge>
             {!!flagged && <Badge>FLAGGED</Badge>}
             <span className="hash">{post.format}</span>
+            {post.birth_death && <Badge>BIRTH / DEATH</Badge>}
+            {post.year != null && (
+              <span className="hash" title="the year of that birth or death">
+                {post.year}
+              </span>
+            )}
             {post.tags.map((t) => (
               <span className="badge" key={t}>
                 {tagLabel(t)}

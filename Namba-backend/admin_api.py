@@ -650,8 +650,9 @@ def list_all_posts(
         "reports": "open_reports DESC, pending_requests DESC, p.id DESC",
         "number": "p.sort_key IS NULL, p.sort_key, p.value, p.id",
     }.get(sort, "p.updated_at DESC, p.id DESC")
-    sql = f"""SELECT p.id, p.value, p.format, p.grouped, p.title, p.status, p.author,
-                     p.edited_by, p.likes, p.created_at, p.updated_at,
+    sql = f"""SELECT p.id, p.value, p.format, p.grouped, p.birth_death, p.year,
+                     p.title, p.status, p.author, p.edited_by, p.likes,
+                     p.created_at, p.updated_at,
                      (SELECT COUNT(*) FROM reports r
                       WHERE r.post_id = p.id AND r.status = 'OPEN') AS open_reports,
                      (SELECT COUNT(*) FROM delete_requests d
