@@ -15,7 +15,7 @@ from fastapi.responses import (
     FileResponse, JSONResponse, PlainTextResponse, Response,
 )
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
 
 import admin_api
 import db
@@ -271,12 +271,14 @@ def nick(typed):
     """The name a write is filed under.
 
     There are no accounts here, so this is a string somebody typed and nothing
-    more -- but a blank one has to become a word, or a byline reads as a field
-    that failed to load rather than as an anonymous contribution. Every write
-    below asked the same question in the same breath, several of them twice in
-    one function.
+    more. It is still required: a shared ``anonymous`` byline makes unrelated
+    contributors indistinguishable. The web app draws a browser-local English
+    name before the first write; API callers have to choose one themselves.
     """
-    return typed.strip() or "anonymous"
+    name = typed.strip()
+    if not name or name.casefold() == "anonymous":
+        raise HTTPException(422, "choose a nickname or draw one")
+    return name
 
 
 def _clean_tags(v):
@@ -372,7 +374,7 @@ class PostIn(PostRules):
     title: str = Field(min_length=1, max_length=200)
     body: str = Field(default="", max_length=5000)
     image: Optional[str] = Field(default=None, max_length=300)
-    author: str = Field(default="anonymous", max_length=40)
+    author: str = Field(min_length=1, max_length=40)
     tags: List[str] = Field(default_factory=list)
     lang: Optional[str] = Field(default=None, max_length=40)
     grouped: bool = False
@@ -394,7 +396,7 @@ class PostPatch(PostRules):
     title: Optional[str] = Field(default=None, min_length=1, max_length=200)
     body: Optional[str] = Field(default=None, max_length=5000)
     image: Optional[str] = Field(default=None, max_length=300)
-    author: str = Field(default="anonymous", max_length=40)
+    author: str = Field(min_length=1, max_length=40)
     tags: Optional[List[str]] = None
     lang: Optional[str] = Field(default=None, max_length=40)
     grouped: Optional[bool] = None
@@ -406,7 +408,7 @@ class TranslationIn(Text):
     lang: str = Field(min_length=1, max_length=40)
     title: str = Field(min_length=1, max_length=200)
     body: str = Field(default="", max_length=5000)
-    author: str = Field(default="anonymous", max_length=40)
+    author: str = Field(min_length=1, max_length=40)
 
     @field_validator("lang", "title")
     @classmethod
@@ -428,7 +430,7 @@ class CommentIn(Text):
     """
 
     body: str = Field(min_length=1, max_length=COMMENT_MAX)
-    author: str = Field(default="anonymous", max_length=40)
+    author: str = Field(min_length=1, max_length=40)
 
     @field_validator("body")
     @classmethod
@@ -463,7 +465,7 @@ class FlagIn(Text):
 
 class DeleteRequestIn(FlagIn):
     REASONS: ClassVar[tuple] = db.DELETE_REASONS
-    author: str = Field(default="anonymous", max_length=40)
+    author: str = Field(min_length=1, max_length=40)
 
 
 class ReportIn(FlagIn):
@@ -472,9 +474,9 @@ class ReportIn(FlagIn):
     REASONS: ClassVar[tuple] = db.REPORT_REASONS
 
 
-class LinkIn(BaseModel):
+class LinkIn(Text):
     other_id: int
-    author: str = Field(default="anonymous", max_length=40)
+    author: str = Field(min_length=1, max_length=40)
 
 
 # --- read ---------------------------------------------------------------
@@ -1027,18 +1029,17 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
 
 
 class RestoreIn(Text):
-    author: str = Field(default="anonymous", max_length=40)
+    author: str = Field(min_length=1, max_length=40)
 
 
 @app.post("/api/posts/{post_id}/revisions/{rev_id}/restore")
 def restore_revision(
     post_id: int,
     rev_id: int,
-    body: RestoreIn = RestoreIn(),
+    body: RestoreIn,
     who=Depends(guard),
     con=Depends(get_db),
 ):
-    author = nick(body.author)
     with writing(con):
         # All three deciding reads inside the lock. `alive` is the one that has
         # to be: it chooses between UPDATE and INSERT, and read outside it could
@@ -1046,6 +1047,7 @@ def restore_revision(
         # then the UPDATE matches nothing, the event says a restore happened and
         # the entry is still gone.
         guard_public(con, post_id)
+        author = nick(body.author)
         row = con.execute(
             "SELECT snapshot FROM revisions WHERE id = ? AND post_id = ?",
             (rev_id, post_id),
@@ -1174,7 +1176,7 @@ def put_translation(
 def delete_translation(
     post_id: int,
     tr_id: int,
-    author: str = Query(default="anonymous", max_length=40),
+    author: str = Query(..., min_length=1, max_length=40),
     who=Depends(guard),
     con=Depends(get_db),
 ):
@@ -1366,7 +1368,7 @@ def add_link(post_id: int, link: LinkIn, who=Depends(guard), con=Depends(get_db)
 def remove_link(
     post_id: int,
     other_id: int,
-    author: str = Query(default="anonymous", max_length=40),
+    author: str = Query(..., min_length=1, max_length=40),
     who=Depends(guard),
     con=Depends(get_db),
 ):

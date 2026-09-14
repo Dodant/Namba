@@ -27,7 +27,7 @@ with open(os.path.join(_tmp, "dist", "assets", "app.js"), "w") as _fh:
     _fh.write("console.log(1)")
 
 from fastapi import HTTPException  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
+from fastapi.testclient import TestClient as _TestClient  # noqa: E402
 
 import admin  # noqa: E402
 import admin_api  # noqa: E402
@@ -48,6 +48,38 @@ from numfmt import (  # noqa: E402
 # hundred writes in a second. Lift it here rather than thin it out in main.py,
 # where it is the only thing between an open wiki and a script.
 main.WRITE_LIMIT = 10_000
+
+
+class TestClient(_TestClient):
+    """The browser draws a nickname before its first public write.
+
+    Most tests care about the write they name rather than repeating that UI
+    precondition in every fixture, so this client stands in for the browser.
+    Tests of the raw API use ``_TestClient`` directly.
+    """
+
+    def request(self, method, url, **kwargs):
+        verb, path = method.upper(), str(url).split("?", 1)[0]
+        body_named = (
+            (verb == "POST" and path == "/api/posts")
+            or (verb == "PATCH" and re.fullmatch(r"/api/posts/\d+", path))
+            or (verb == "PUT" and re.fullmatch(r"/api/posts/\d+/translations", path))
+            or (verb == "POST" and re.fullmatch(
+                r"/api/posts/\d+/(?:comments|delete-request|links)", path))
+            or (verb == "POST" and re.fullmatch(
+                r"/api/posts/\d+/revisions/\d+/restore", path))
+        )
+        if body_named:
+            payload = kwargs.get("json")
+            kwargs["json"] = ({"author": "test-nickname"} if payload is None
+                              else {"author": "test-nickname", **payload})
+        query_named = verb == "DELETE" and (
+            re.fullmatch(r"/api/posts/\d+/translations/\d+", path)
+            or re.fullmatch(r"/api/posts/\d+/links/\d+", path)
+        )
+        if query_named:
+            kwargs["params"] = {"author": "test-nickname", **(kwargs.get("params") or {})}
+        return super().request(method, url, **kwargs)
 
 
 def test_parse():
@@ -489,7 +521,7 @@ def test_share_card():
     assert len(blocks) == 1, blocks
     art, crumb = json.loads(blocks[0])
     assert art["@type"] == "Article" and art["headline"] == "Taxicab number"
-    assert art["author"]["name"] == "anonymous" and art["about"]["name"] == "1729"
+    assert art["author"]["name"] == "test-nickname" and art["about"]["name"] == "1729"
     assert art["datePublished"] == p["created_at"], art["datePublished"]
     assert crumb["@type"] == "BreadcrumbList"
     assert [i["item"] for i in crumb["itemListElement"]] == [
@@ -3242,7 +3274,7 @@ def test_comments():
     assert [x["body"] for x in said] == [
         "233C, really.", "Paper burns at 451F, or so the title says."
     ]
-    assert said[0]["author"] == "anonymous"   # nobody said who they were
+    assert said[0]["author"] == "test-nickname"  # the browser supplied its drawn name
 
     # the shape is checked the way a tag's is: blank is not a remark, and the
     # cap is the cap. COMMENT_MAX is read off main so the two cannot drift here.
@@ -3505,6 +3537,24 @@ def test_saving_an_unchanged_entry_is_not_an_edit():
     assert saved.status_code == 200
     assert len(_events(target_id=post["id"])) == before_events
     assert len(c.get(f"/api/posts/{post['id']}/revisions").json()) == before_revisions
+
+
+def test_a_public_write_requires_a_nickname():
+    """The browser offers an English generated name, but the open API must
+    still refuse to turn a missing, blank or old generic name into a byline.
+    """
+    c = _TestClient(main.app)
+    for body in (
+        {"value": "8004", "title": "missing"},
+        {"value": "8004", "title": "blank", "author": "   "},
+        {"value": "8004", "title": "generic", "author": "anonymous"},
+    ):
+        assert c.post("/api/posts", json=body).status_code == 422
+    made = c.post("/api/posts", json={
+        "value": "8004", "title": "named", "author": "bright-otter",
+    })
+    assert made.status_code == 201
+    assert made.json()["author"] == "bright-otter"
 
 
 def test_a_500_leaves_a_row_in_the_log():
