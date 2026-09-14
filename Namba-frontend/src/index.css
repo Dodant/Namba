@@ -645,9 +645,16 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
    look, and below 560 the numeral stops being a column at all -- so the
    indent goes there too, in the media block at the foot of this file, rather
    than being computed from something that is no longer true. Only the summary
-   moves; the rows it opens are the month's rows and keep the gutter. */
+   moves; the rows it opens are the month's rows and keep the gutter.
+
+   A translate and not a margin. On a coarse pointer .ix-fold buys its hit box
+   with a padding and a negative margin (the block at the foot of this file),
+   and a margin-left here at (0,2,0) beats that shorthand on the left edge
+   alone -- the caret would land 10px off on every phone. A translate moves
+   the box and its hit-testing together and leaves the four margins to the
+   rule that owns them. */
 .band-sub { margin-top: 13px; }
-.band-sub > .ix-fold { margin-left: calc(104px + 22px); }
+.band-sub > .ix-fold { translate: calc(104px + 22px) 0; }
 
 /* The year a birth or a death was in, leading the line the way a date page
    leads with one. Mono and tabular because it is a figure, and --muted rather
@@ -821,7 +828,7 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
      values and left alignment keeps the glyph where it was. */
   .ix-num { flex: 0 0 auto; min-width: 24px; text-align: left; }
   /* no column to line up with any more -- see .band-sub above */
-  .band-sub > .ix-fold { margin-left: 0; }
+  .band-sub > .ix-fold { translate: none; }
   /* inline, the numeral is competing with the title for the row rather than
      sitting in a column of its own, so the middle sizes shrink too */
   .ix-num.mid { font-size: 16px; }
@@ -1440,8 +1447,12 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 
 /* four digits and a stepper, not a column of the form's width. The number
    input keeps its own spinner: it is the one control here whose range the
-   browser can enforce, which is the point of asking for one. */
+   browser can enforce, which is the point of asking for one. No bottom margin
+   for the same reason the box above it has none: it sits inside the Number
+   field, which already carries one, and a second stacked under it stretched
+   the Format field beside them to match. */
 .year-field input { max-width: 10ch; }
+.num-field .year-field { margin-bottom: 0; }
 
 /* wears .field too -- .field alone would stack it into a column and stretch
    it. It lives inside the Format field rather than beside it in the .row, so
@@ -1790,6 +1801,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   .search input { width: 172px; }
   .field select, .field .coin input, .panel-find input { font-size: 16px; }
   .field.check input[type="checkbox"] { width: 20px; height: 20px; }
+  /* the rule box sits at the top of its sentence and was nudged 2px down to
+     centre a 13px box on the first line; at 20px the centre is 1.5px up */
+  .field.check.says-a-rule input[type="checkbox"] { margin-top: -1.5px; }
 
   .chips { gap: 8px; }
   .chip { padding: 9px 15px; }

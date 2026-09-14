@@ -74,6 +74,8 @@ function whatMoved(was: Post, now: Post, m: Messages): string[] {
     [was.body !== now.body, m.form.details],
     [was.lang !== now.lang, m.form.writtenIn],
     [was.grouped !== now.grouped, m.form.groupThousands],
+    [was.birth_death !== now.birth_death, m.form.birthDeath],
+    [was.year !== now.year, m.form.year],
     [was.image !== now.image, m.form.image],
     [was.tags.join() !== now.tags.join(), m.form.categories],
     [(was.translations ?? []).length !== (now.translations ?? []).length,
@@ -247,8 +249,13 @@ export default function PostForm() {
       tags,
       lang: lang.trim() || null,
       grouped,
-      birth_death: birthDeath,
-      year: birthDeath && year ? Number(year) : null,
+      /* Gated on the format here and not in the state: the box and the year
+         stay ticked and typed while Format is off Calendar, so a mis-click and
+         back loses nothing -- but what the reader cannot see they cannot mean,
+         and an Integer entry filed with a birth ticked three clicks ago is a
+         row in a fold nobody asked for. */
+      birth_death: format === 'CALENDAR' && birthDeath,
+      year: format === 'CALENDAR' && birthDeath && year ? Number(year) : null,
     }
     try {
       const saved = editing
@@ -462,7 +469,8 @@ export default function PostForm() {
                 which is the opposite of the box above: `grouped` stops meaning
                 anything on a value with no separators to show, while this goes
                 on meaning what it meant, and a mis-click on Format and back
-                must not quietly drop it.
+                must not quietly drop it. The payload is where the format
+                decides -- see `submit`.
 
                 The hint is the rule, not a description. A Births list is an
                 invitation to file exactly the entry the guide never allows, so
@@ -515,7 +523,6 @@ export default function PostForm() {
                   inputMode="numeric"
                   min={1}
                   max={maxYear}
-                  placeholder={String(maxYear)}
                   value={year}
                   onChange={(e) => setYear(e.target.value)}
                 />

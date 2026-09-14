@@ -565,7 +565,7 @@ def _birth_year_column(con):
 
 # In order, and append-only: a step's number is what a database records as
 # having been done, so inserting one in the middle re-runs the wrong thing
-# somewhere. Two of the three are data passes over every row of six tables,
+# somewhere. Two of the five are data passes over every row of six tables,
 # which is why they are numbered rather than asked: on every start they were a
 # full scan per process, on a file that only ever grows.
 #

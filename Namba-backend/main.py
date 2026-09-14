@@ -23,11 +23,11 @@ import events
 import seo
 from db import UPLOAD_DIR, get_db, nfc, now, writing
 from store import (
-    LIVE, Text, apply_snapshot, fetch_one, guard_public, resolve_format,
-    section_of, section_sql, section_where, shape, snapshot, ungroup,
-    write_tags,
+    LIVE, Text, apply_snapshot, fetch_one, guard_public, refuse_a_future_year,
+    resolve_format, section_of, section_sql, section_where, shape, snapshot,
+    ungroup, write_tags,
 )
-from numfmt import FORMATS, bucket_of, date_key
+from numfmt import FORMATS, bucket_of
 
 # A tag is whatever people call it, like a translation's language label. What
 # is checked is its shape, not its membership of a list -- the wiki's working
@@ -537,41 +537,6 @@ def list_tags(con=Depends(get_db)):
     ]
 
 
-def refuse_a_future_year(value, fmt, year):
-    """A birth or a death has already happened.
-
-    `ge=1` on the field is the other end and the only other bound there is: a
-    year is capped by today rather than by a number in a model, so this is
-    where the rule lives. It is a route check and not a validator for the
-    reason `resolve_format`'s are: it needs both halves, and an edit sends a
-    year with no value at all -- so it is asked of the value the route has
-    settled.
-
-    The whole date, not just the year. Today is the 14th of September and
-    somebody filing a birth at 12-25 in this year is filing something that has
-    not happened, which is the thing being refused; a year on its own would
-    wave it through for three and a half months. A value with no month and day
-    in it has no such date to build, so the year alone is the test there.
-
-    `restore_revision` does not ask, the way it asks neither `is_abbr` nor
-    `date_key`: a snapshot has to be restorable or the history is not one. It
-    cannot bite anyway -- a year that was past when it was written only gets
-    more so. Neither does the operator's renumber, which could move a date
-    forward past a year already on the row; that route carries a name, a
-    snapshot and an audit row, which is the line ADR-0026 already draws.
-    """
-    if year is None:
-        return
-    today = now()[:10].split("-")
-    key = date_key(value) if fmt == "CALENDAR" else None
-    # 01-01 for a value with no day in it, so the comparison is on the year
-    month, day = (int(key) // 100, int(key) % 100) if key else (1, 1)
-    if (year, month, day) > tuple(int(part) for part in today):
-        raise HTTPException(
-            422, f"a birth or a death has happened, and {year}-{month:02d}-"
-                 f"{day:02d} has not. A year cannot be later than today.")
-
-
 @app.get("/api/numbers")
 def list_numbers(
     format: Optional[str] = None,
@@ -871,14 +836,18 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
         # three statements below landing together, not for a read -- see
         # db.writing() and ADR-0007 for the eleven writes where it is the read.
         value, fmt, key = resolve_format(value, p.format)
-        refuse_a_future_year(value, fmt, p.year)
+        # A year rides only on a birth or a death. The form never sends the
+        # pair, so an API client that does gets the form's own answer -- a
+        # year of nothing dropped -- rather than a 422 on a flag it did send.
+        year = p.year if p.birth_death else None
+        refuse_a_future_year(value, fmt, year)
         cur = con.execute(
             """INSERT INTO posts (value, format, sort_key, title, body, image, author,
                                   lang, grouped, birth_death, year,
                                   created_at, updated_at)
                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (value, fmt, key, p.title.strip(), p.body, p.image,
-             author, p.lang, int(grouped), int(p.birth_death), p.year, ts, ts),
+             author, p.lang, int(grouped), int(p.birth_death), year, ts, ts),
         )
         write_tags(con, cur.lastrowid, p.tags)
         post_id = cur.lastrowid
@@ -930,6 +899,11 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         # nullable, and clearing a year somebody guessed wrong has to be a
         # write rather than a no-op.
         year = p.year if "year" in sent else current["year"]
+        # ...and only ever beside the flag, the way create_post keeps it: an
+        # edit that unticks the box takes the year with it, whether or not the
+        # sender knew there was one.
+        if not birth_death:
+            year = None
         value = current["value"]
         if p.value is not None:
             value, grouped = ungroup(p.value, grouped, p.number_locale)

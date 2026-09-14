@@ -26,6 +26,7 @@ with open(os.path.join(_tmp, "dist", "index.html"), "w") as _fh:
 with open(os.path.join(_tmp, "dist", "assets", "app.js"), "w") as _fh:
     _fh.write("console.log(1)")
 
+from fastapi import HTTPException  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 import admin  # noqa: E402
@@ -1747,7 +1748,7 @@ def test_admin_content_and_dashboard():
         c.patch(f"/api/posts/{pid}", json={
             "title": "Moon landings", "body": "One small step.\nTwo.\nAnd a third.",
             "value": "1970", "grouped": True, "tags": ["space", "history"],
-            "author": "vandal"})
+            "birth_death": True, "year": 1969, "author": "vandal"})
     finally:
         main.now = real
     assert ops.get("/api/admin/stats").json()["edited_today"] >= 1, \
@@ -1802,6 +1803,9 @@ def test_admin_content_and_dashboard():
     assert changed["value"] == ("1969", "1970"), changed
     assert changed["title"] == ("Moon landing", "Moon landings")
     assert changed["grouped"] == (False, True)
+    # the two the fold reads are content, so an operator can see them move
+    assert changed["birth_death"] == (False, True), changed
+    assert changed["year"] == (None, 1969), changed
     assert "body" not in changed, "a body change belongs in the body diff"
     assert "edited_by" not in changed, \
         "every edit changes edited_by, so a row for it says nothing"
@@ -1810,6 +1814,29 @@ def test_admin_content_and_dashboard():
     assert "author" in admin_api.DIFF_FIELDS, "the byline tripwire went missing"
     assert {"sign": "+", "text": "And a third."} in d["body"]
     assert d["tags"] == {"before": ["space"], "after": ["history", "space"]}
+    # A revision from before the two columns existed carries neither key, and
+    # the diff has to read it the way apply_snapshot does -- as the column's
+    # default -- or every old revision of every entry shows a flag that went
+    # from nothing to False, which is a change nobody made.
+    con = db.connect()
+    try:
+        with con:
+            elder = json.loads(con.execute(
+                "SELECT snapshot FROM revisions WHERE id = ?",
+                (revs[0]["id"],)).fetchone()[0])
+            for key in ("birth_death", "year"):
+                del elder[key]
+            elder_id = con.execute(
+                "INSERT INTO revisions (post_id, snapshot, author, at) VALUES (?,?,?,?)",
+                (pid, json.dumps(elder), "first", db.now())).lastrowid
+        same = ops.get(f"/api/admin/posts/{pid}/diff",
+                       params={"a": elder_id, "b": revs[0]["id"]}).json()
+        assert same["fields"] == [], same["fields"]
+        # and gone again, so the numbering below is the entry's own history
+        with con:
+            con.execute("DELETE FROM revisions WHERE id = ?", (elder_id,))
+    finally:
+        con.close()
     assert ops.get(f"/api/admin/posts/{pid}/diff",
                    params={"a": "banana"}).status_code == 422
     assert ops.get(f"/api/admin/posts/{pid}/diff",
@@ -1876,6 +1903,31 @@ def test_admin_content_and_dashboard():
     assert renumbered["action"] == "CONTENT_RENUMBER"
     assert renumbered["value"] == "1969", \
         "the number it was is only recoverable because the snapshot came first"
+    # The renumber is the one route that can move a date forward past a year
+    # already on the row, and it asks the same question the two public writes
+    # do -- or what it leaves behind is an entry every later public edit is
+    # refused for (ADR-0029). The clock is held at midsummer 2000, when that
+    # year's Christmas was still to come.
+    born = c.post("/api/posts", json={"value": "01-01", "format": "CALENDAR",
+                                      "title": "born", "birth_death": True,
+                                      "year": 2000}).json()
+    real = store.now
+    try:
+        store.now = lambda: "2000-06-01T00:00:00+00:00"
+        moved = ops.post(f"/api/admin/posts/{born['id']}/value",
+                         json={"value": "12-25", "format": "CALENDAR"})
+        assert moved.status_code == 422 and "has not" in moved.text, moved.text
+    finally:
+        store.now = real
+    assert c.get(f"/api/posts/{born['id']}").json()["value"] == "01-01", \
+        "a refused renumber moved the entry anyway"
+    # and once that Christmas has passed, the same move is a move
+    moved = ops.post(f"/api/admin/posts/{born['id']}/value",
+                     json={"value": "12-25", "format": "CALENDAR"}).json()
+    assert (moved["value"], moved["year"]) == ("12-25", 2000), moved
+    assert c.patch(f"/api/posts/{born['id']}",
+                   json={"title": "born, still", "author": "x"}).status_code == 200
+    ops.post(f"/api/admin/posts/{born['id']}/status", json={"status": "HIDDEN"})
     assert ops.post(f"/api/admin/posts/{pid}/value",
                     json={"value": "1971"}).status_code == 409
     assert ops.post(f"/api/admin/posts/{pid}/value",
@@ -2437,21 +2489,84 @@ def test_api_round_trip():
     assert newton["year"] == 1642 and newton["value"] == "12-25", newton
     assert next(e for e in dec["entries"] if e["birth_death"])["year"] == 1642
     # ...and a birth that has not happened is refused. The whole date and not
-    # the year alone: this year's Christmas is still to come in September, and
-    # a year-only test waves it through for three and a half months.
-    soon = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
-                                      "title": "not yet", "birth_death": True,
-                                      "year": int(db.now()[:4])})
+    # the year alone: in September this year's Christmas is still to come, and
+    # a year-only test waves it through until it arrives. Off the clock rather
+    # than hard-wired to Christmas, though: 12-25 in this year is a date to
+    # come for fifty-one weeks and a date that has passed for the other one,
+    # and a suite that goes red from the 25th to the 31st of December is a
+    # suite nobody runs that week. Tomorrow is always exactly one day ahead,
+    # and on the 31st it is 01-01 of next year, still refused. Today as the
+    # API counts it: UTC and the fourteen hours to the earliest clock on Earth.
+    today = (datetime.fromisoformat(db.now()) + timedelta(hours=14)).date()
+    tomorrow = today + timedelta(days=1)
+    soon = c.post("/api/posts", json={"value": f"{tomorrow:%m-%d}",
+                                      "format": "CALENDAR", "title": "not yet",
+                                      "birth_death": True, "year": tomorrow.year})
     assert soon.status_code == 422 and "has not" in soon.text, soon.text
+    # the boundary is `>`: a birth today has happened
+    here = c.post("/api/posts", json={"value": f"{today:%m-%d}",
+                                      "format": "CALENDAR", "title": "today",
+                                      "birth_death": True, "year": today.year})
+    assert here.status_code == 201, here.text
+    admin.set_status(here.json()["id"], "HIDDEN")
+    # and a date that never happened at all: 02-29 is a fixed date only while
+    # there is no year beside it, and 1900 had no 29th of February
+    never = c.post("/api/posts", json={"value": "02-29", "format": "CALENDAR",
+                                       "title": "never", "birth_death": True,
+                                       "year": 1900})
+    assert never.status_code == 422 and "leap" in never.text, never.text
+    once = c.post("/api/posts", json={"value": "02-29", "format": "CALENDAR",
+                                      "title": "a leap year", "birth_death": True,
+                                      "year": 2000})
+    assert once.status_code == 201, once.text
+    admin.set_status(once.json()["id"], "HIDDEN")
+    # The clock the rule reads is fourteen hours ahead of UTC -- today is the
+    # latest date it is anywhere -- so a reader's own `max`, drawn from a local
+    # clock, can never allow what the API refuses. Pinned with the clock held,
+    # since a live one only shows it after 10:00 UTC.
+    real = store.now
+    try:
+        store.now = lambda: "2026-09-14T11:00:00+00:00"   # 01:00 on the 15th, UTC+14
+        store.refuse_a_future_year("09-15", "CALENDAR", 2026)
+        for when, value in (("2026-09-14T11:00:00+00:00", "09-16"),
+                            ("2026-09-14T09:00:00+00:00", "09-15")):
+            store.now = lambda when=when: when
+            try:
+                store.refuse_a_future_year(value, "CALENDAR", 2026)
+            except HTTPException as e:
+                assert e.status_code == 422 and "has not" in e.detail, e.detail
+            else:
+                assert False, (when, value, "was let through")
+    finally:
+        store.now = real
     ahead = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
-                                       "title": "not yet", "year": 9999})
+                                       "title": "not yet", "birth_death": True,
+                                       "year": 9999})
     assert ahead.status_code == 422 and "has not" in ahead.text, ahead.text
-    # a year is a year: zero, negative and "1642" the string are all refused
-    # by the model rather than by the route
+    # a year with no birth beside it is dropped rather than refused: the form
+    # never sends the pair, and an API client that only unticks the box must
+    # not be held for the year it left behind
+    alone = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                                       "title": "no flag", "year": 1642}).json()
+    assert alone["year"] is None and alone["birth_death"] is False, alone
+    admin.set_status(alone["id"], "HIDDEN")
+    # a year is a year, and ge=1 on the field is the model's end of it: zero
+    # and a negative are refused before the route sees them, typed as a number
+    # or as a string -- a numeric string is read as its number, which is the
+    # coercion a form posting JSON wants
     for bad in (0, -1, "-3"):
         r = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
                                        "title": "not a year", "year": bad})
         assert r.status_code == 422, (bad, r.text)
+    # a value with no month and day in it is tested on the year alone: this
+    # year came round on the 1st of January and next year has not
+    plain = c.post("/api/posts", json={"value": "1066", "title": "Hastings",
+                                       "birth_death": True, "year": today.year})
+    assert plain.status_code == 201, plain.text
+    admin.set_status(plain.json()["id"], "HIDDEN")
+    assert c.post("/api/posts", json={"value": "1066", "title": "Hastings",
+                                      "birth_death": True,
+                                      "year": today.year + 1}).status_code == 422
     # the same rule on an edit, and read off the *settled* value -- the year
     # field alone arrives with no value at all
     late = c.patch(f"/api/posts/{newton['id']}", json={"year": 9999})
@@ -2473,6 +2588,7 @@ def test_api_round_trip():
     cleared = c.patch(f"/api/posts/{newton['id']}",
                       json={"birth_death": False, "author": "editor"}).json()
     assert cleared["birth_death"] is False, cleared
+    assert cleared["year"] is None, "unticking the box left its year behind"
     # it is content, so a revision keeps it and a restore brings it back --
     # which is what holds SNAPSHOT_FIELDS and apply_snapshot together
     prior = c.get(f"/api/posts/{newton['id']}/revisions").json()[0]
@@ -3672,13 +3788,14 @@ def test_the_schema_moves_forward_once():
         assert "FILM" in [r[0] for r in con.execute("SELECT tag FROM post_tags")], \
             "the pass ran again on a database that had already had it"
 
-        # The ALTER arm, which nothing else in this suite walks: every database
-        # a test makes takes its columns from SCHEMA, so a step that adds one
-        # to a database that already exists is always a no-op here and only
-        # ever runs for real on the deployed file. Dropping the column and
-        # standing the version back to just before its step is the one way to
-        # watch it happen. Off `.index()` rather than a literal, so appending a
-        # step later does not quietly stop testing this one.
+        # The two ALTER arms, which nothing else in this suite walks: every
+        # database a test makes takes its columns from SCHEMA, so a step that
+        # adds one to a database that already exists is always a no-op here and
+        # only ever runs for real on the deployed file. Dropping the columns and
+        # standing the version back to just before the first of their steps is
+        # the one way to watch them happen. Off `.index()` rather than a
+        # literal, so appending a step later does not quietly stop testing
+        # these.
         with con:
             con.execute("ALTER TABLE posts DROP COLUMN birth_death")
             con.execute("ALTER TABLE posts DROP COLUMN year")
@@ -3758,7 +3875,8 @@ def test_a_snapshot_written_by_an_older_version_still_restores():
     """
     c = TestClient(main.app)
     live = c.post("/api/posts", json={"value": "1124", "title": "as it stands",
-                                      "author": "first"}).json()
+                                      "author": "first", "birth_death": True,
+                                      "year": 1124}).json()
     old = {
         "id": live["id"], "value": "1124", "format": "INTEGER", "sort_key": 1124.0,
         "title": "as it was", "body": "the old body", "image": None, "lang": None,
@@ -3782,6 +3900,10 @@ def test_a_snapshot_written_by_an_older_version_still_restores():
     assert back["body"] == "the old body" and back["tags"] == ["book"]
     assert back["author"] == "first", "the first writer is not the restorer"
     assert back["edited_by"] == "arthur"
+    # the two columns that came after this shape: a snapshot that says nothing
+    # about them puts the defaults back, not the live row's values
+    assert back["birth_death"] is False, "a snapshot from before the fold put the entry in it"
+    assert back["year"] is None, "a snapshot from before the year invented one"
 
     con = db.connect()
     try:
