@@ -10,7 +10,9 @@ export const ZH_HANS: Messages = {
   tagline: '汇集数字含义的开放维基',
   common: {
     loading: '加载中…', backToIndex: '返回索引。', addFirst: '添加第一个条目。',
-    anonymous: '匿名', cancel: '取消', save: '保存', edit: '编辑', restore: '恢复',
+    anonymous: '匿名', nicknamePlaceholder: '必须填写昵称', drawNickname: '随机取名',
+    nicknameRequired: '请输入昵称或随机生成一个。',
+    cancel: '取消', save: '保存', edit: '编辑', restore: '恢复',
     by: (name: string) => `${name === 'anonymous' ? '匿名用户' : name}创建`,
     edited: (when: string, name?: string | null) =>
       `${when}编辑${name ? ` · ${name === 'anonymous' ? '匿名用户' : name}` : ''}`,
@@ -47,6 +49,7 @@ export const ZH_HANS: Messages = {
     hasImage: '包含图片', feedIntro: '按最近创建或编辑的时间排序。',
     moreRecent: '显示更多最近条目',
     empty: '还没有任何条目。', entryKinds: '条目格式', categories: '分类', all: '全部',
+    birthsDeaths: '出生 / 逝世',
     foldedEntries: (n: number) => `${fmtCount(n, 'zh-Hans')}个条目`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${fmtCount(subjects, 'zh-Hans')}个${subject} · ${fmtCount(entries, 'zh-Hans')}个条目`,
@@ -84,6 +87,12 @@ export const ZH_HANS: Messages = {
     guidelines: '条目指南', fixedValue: (noun: string) => `不可更改 — 另一个${noun}应创建为单独条目`,
     date: '日期', month: '月', day: '日',
     number: '数字', abbreviation: '缩写', groupThousands: '使用千位分隔符', format: '格式',
+    birthDeath: '出生或逝世',
+    birthDeathHint:
+      '归入出生 / 逝世一栏 — 在世人物的出生日期不可收录',
+    year: '年份',
+    yearHint:
+      '可选 — 事情发生的年份，尚未到来的年份不可填写',
     autoDetect: '自动检测', title: '标题', titleHint: '它指的是什么',
     titlePlaceholder: (section: Section) => ({
       number: '银河系漫游指南',

@@ -650,8 +650,9 @@ def list_all_posts(
         "reports": "open_reports DESC, pending_requests DESC, p.id DESC",
         "number": "p.sort_key IS NULL, p.sort_key, p.value, p.id",
     }.get(sort, "p.updated_at DESC, p.id DESC")
-    sql = f"""SELECT p.id, p.value, p.format, p.grouped, p.title, p.status, p.author,
-                     p.edited_by, p.likes, p.created_at, p.updated_at,
+    sql = f"""SELECT p.id, p.value, p.format, p.grouped, p.birth_death, p.year,
+                     p.title, p.status, p.author, p.edited_by, p.likes,
+                     p.created_at, p.updated_at,
                      (SELECT COUNT(*) FROM reports r
                       WHERE r.post_id = p.id AND r.status = 'OPEN') AS open_reports,
                      (SELECT COUNT(*) FROM delete_requests d
@@ -714,7 +715,8 @@ def all_revisions(post_id: int, _=Depends(auth.require_admin), con=Depends(db.ge
 # every diff saying nothing. `author` is, for the opposite reason -- it must
 # never change, so a row for it is a tripwire rather than noise. `sort_key` is
 # out too: it is derived from `value`, which is right above it.
-DIFF_FIELDS = ("value", "format", "title", "lang", "grouped", "image", "author")
+DIFF_FIELDS = ("value", "format", "title", "lang", "grouped", "birth_death",
+               "year", "image", "author")
 
 
 def _state(con, post_id, ref):
@@ -727,7 +729,11 @@ def _state(con, post_id, ref):
                       (int(ref), post_id)).fetchone()
     if row is None:
         raise HTTPException(404, "no such revision for that entry")
-    return json.loads(row["snapshot"])
+    # A snapshot from before a column existed has no key for it, and it is
+    # read the way apply_snapshot reads it -- as the column's default -- or
+    # every diff against an old revision reports a flag that went from nothing
+    # to False, a change nobody made.
+    return {"grouped": False, "birth_death": False, **json.loads(row["snapshot"])}
 
 
 @router.get("/posts/{post_id}/diff")
@@ -854,6 +860,10 @@ def set_post_value(
     value, fmt, key = store.resolve_format(value, body.format)
     if (value, fmt, grouped) == (was["value"], was["format"], bool(was["grouped"])):
         raise HTTPException(409, "that is the number it already has")
+    # The one route that can move a date forward past a year already on the
+    # row, so it asks what the two public writes ask -- or what it leaves is an
+    # entry every later public edit is refused for (ADR-0029).
+    store.refuse_a_future_year(value, fmt, was["year"])
     label = f"operator {who['email']}"
     with con:
         rev = store.snapshot(con, post_id, label, hidden=True)

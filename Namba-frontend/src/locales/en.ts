@@ -16,6 +16,9 @@ export const EN = {
     backToIndex: 'Back to the index.',
     addFirst: 'Add the first one.',
     anonymous: 'anonymous',
+    nicknamePlaceholder: 'Nickname required',
+    drawNickname: 'Draw a name',
+    nicknameRequired: 'Choose a nickname or draw one.',
     cancel: 'Cancel',
     save: 'Save',
     edit: 'edit',
@@ -77,6 +80,7 @@ export const EN = {
     moreRecent: 'Show more recent entries',
     empty: 'Nothing written yet.',
     entryKinds: 'Entry format', categories: 'Categories', all: 'All',
+    birthsDeaths: 'Births / Deaths',
     foldedEntries: (n: number) => `${fmtCount(n, 'en')} entries`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${fmtCount(subjects, 'en')} ${subject} · ${fmtCount(entries, 'en')} ${entries === 1 ? 'entry' : 'entries'}`,
@@ -119,6 +123,12 @@ export const EN = {
     guidelines: 'Entry guidelines', fixedValue: (noun: string) => `fixed — another ${noun} is another entry`,
     date: 'Date', month: 'Month', day: 'Day',
     number: 'Number', abbreviation: 'Abbreviation', groupThousands: 'Use thousands separators',
+    birthDeath: 'A birth or a death',
+    birthDeathHint:
+      'listed under Births / Deaths — never a living person’s date of birth',
+    year: 'Year',
+    yearHint:
+      'optional — the year it happened, never a year still to come',
     format: 'Format', autoDetect: 'Auto-detect', title: 'Title', titleHint: 'what it refers to',
     titlePlaceholder: (section: Section) => ({
       number: "The Hitchhiker's Guide to the Galaxy",

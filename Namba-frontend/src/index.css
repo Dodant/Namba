@@ -631,6 +631,49 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 /* any fold whose summary is an .ix-fold: the index's, and the comments' */
 details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
 .ix-fold:hover, .ix-fold:hover::before { color: var(--ink); }
+/* Who was born and who died, under the month's own list. Its summary is the
+   .ix-fold above -- the same disclosure a number past FOLD_OVER gets, and the
+   caret rule reaches it already -- so this has two jobs: air between the last
+   row and the control that opens the next ones, and the indent.
+
+   The indent is the point. Left at the gutter the caret sits in the band
+   head's own caret column, two disclosures in a line with one meaning the
+   month and one meaning this, and it read as a second heading rather than as
+   more of the list. Moved over it lands under the titles, which is what
+   opening it produces. 104 + 22 is .ix-num's column plus .ix's gap, taken
+   rather than shared: a custom property for one indent is a third place to
+   look, and below 560 the numeral stops being a column at all -- so the
+   indent goes there too, in the media block at the foot of this file, rather
+   than being computed from something that is no longer true. Only the summary
+   moves; the rows it opens are the month's rows and keep the gutter.
+
+   A translate and not a margin. On a coarse pointer .ix-fold buys its hit box
+   with a padding and a negative margin (the block at the foot of this file),
+   and a margin-left here at (0,2,0) beats that shorthand on the left edge
+   alone -- the caret would land 10px off on every phone. A translate moves
+   the box and its hit-testing together and leaves the four margins to the
+   rule that owns them. */
+.band-sub { margin-top: 13px; }
+.band-sub > .ix-fold { translate: calc(104px + 22px) 0; }
+
+/* The year a birth or a death was in, leading the line the way a date page
+   leads with one. Mono and tabular because it is a figure, and --muted rather
+   than the accent the numeral column wears: the numeral is the address and
+   this is a fact about the entry. One rule for all three places it is drawn --
+   an index row, a card's heading, the entry's own meta row -- because it is
+   the same figure saying the same thing, and the rows around it already set
+   the size in two of the three. */
+.yr {
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+  color: var(--muted); font-weight: 400; letter-spacing: 0;
+  margin-right: 7px;
+}
+/* in a card the heading is 17px serif, so the figure beside it is sized down
+   to the meta row's own type rather than shouting at the title */
+.card h2 .yr { font-size: 12px; }
+/* and in the meta row it is already mono at 10.5 -- only the margin is wrong
+   there, since the row draws its own gap */
+.post-meta .yr { margin-right: 0; }
 
 .ix-e { display: flex; align-items: baseline; gap: 10px; }
 /* One line an entry, always. The index is read down the numerals, and a blurb
@@ -784,6 +827,8 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
      wide -- in a column it was 104. The minimum only bites the one-character
      values and left alignment keeps the glyph where it was. */
   .ix-num { flex: 0 0 auto; min-width: 24px; text-align: left; }
+  /* no column to line up with any more -- see .band-sub above */
+  .band-sub > .ix-fold { translate: none; }
   /* inline, the numeral is competing with the title for the row rather than
      sitting in a column of its own, so the middle sizes shrink too */
   .ix-num.mid { font-size: 16px; }
@@ -1102,7 +1147,11 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    at that width, so the two share the line instead of the title being pushed
    under a number it is the caption for */
 .hero-said { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: min(200px, 100%); }
-.hero-said .kicker {
+/* Not scoped to the hero: /p/:id draws one in its meta row too, for the same
+   job -- a small label naming what the thing below or beside it is filed as.
+   Inside .meta the family and the colour are already right and only the size,
+   the tracking and the caps are doing anything. */
+.kicker {
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--muted);
 }
@@ -1326,8 +1375,8 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 /* The version and the language it is being read in, on the line above the h1
    and pushed to the far edge -- the title anchors the left, the metadata about
    it answers on the right, and the picker's edge lands on the text column's.
-   Mono, 10px and uppercase are .hero-said .kicker's three declarations, taken
-   rather than shared: that class is scoped to the hero and this is not one. */
+   Mono, 10px and uppercase are .kicker's three declarations, taken rather than
+   shared: that class is a label beside a thing and this row is not one. */
 /* Scoped to .guide rather than left bare, and that is not tidiness: .body p
    sets `margin: 0 0 1em` at (0,1,1) and this row is a <p>, so a bare
    .guide-meta lost its own bottom margin to it -- 1em of 10px mono, 10px,
@@ -1396,6 +1445,15 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 }
 .coin .btn { padding: 6px 13px; font-size: 11px; }
 
+/* four digits and a stepper, not a column of the form's width. The number
+   input keeps its own spinner: it is the one control here whose range the
+   browser can enforce, which is the point of asking for one. No bottom margin
+   for the same reason the box above it has none: it sits inside the Number
+   field, which already carries one, and a second stacked under it stretched
+   the Format field beside them to match. */
+.year-field input { max-width: 10ch; }
+.num-field .year-field { margin-bottom: 0; }
+
 /* wears .field too -- .field alone would stack it into a column and stretch
    it. It lives inside the Format field rather than beside it in the .row, so
    the nested rule below takes back the two bits that arrangement decides. */
@@ -1412,6 +1470,13 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 /* the preview is what you will get, so it is coloured like the numeral it
    becomes rather than like a hint */
 .field.check .hint { color: var(--accent); }
+/* ...and the birth/death box says a rule rather than showing a preview, so its
+   hint is a hint: the colour every other one on this form has, and the words
+   wrap with the label rather than beside it. align-items goes to the top for
+   the same reason -- centred, a two-line sentence pulls the box to its middle. */
+.field.check.says-a-rule { align-items: flex-start; }
+.field.check.says-a-rule .hint { color: var(--fainter); }
+.field.check.says-a-rule input[type="checkbox"] { margin-top: 2px; }
 /* under the Number input: flex-start so the row of checkbox and words is not
    stretched across the column, no bottom margin because the field it is in
    already carries one, and 400 because .field label reaches it now and 600 is
@@ -1429,6 +1494,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .field.fmt-field { min-width: 170px; }
 .field .select.narrow { max-width: 220px; }
 .nick-field input { max-width: 340px; }
+.nick-control { display: flex; gap: 7px; align-items: center; }
+.nick-control input { flex: 1; min-width: 0; }
+.nick-control .btn { flex: none; }
 
 /* the one field with a hard border, because it is the entry's identity:
    every other field describes the number, this one is the number */
@@ -1736,6 +1804,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   .search input { width: 172px; }
   .field select, .field .coin input, .panel-find input { font-size: 16px; }
   .field.check input[type="checkbox"] { width: 20px; height: 20px; }
+  /* the rule box sits at the top of its sentence and was nudged 2px down to
+     centre a 13px box on the first line; at 20px the centre is 1.5px up */
+  .field.check.says-a-rule input[type="checkbox"] { margin-top: -1.5px; }
 
   .chips { gap: 8px; }
   .chip { padding: 9px 15px; }

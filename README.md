@@ -144,6 +144,21 @@ page reads it in your own language — "December 25", "12월 25일" — while th
 address stays `/c/12-25`. A date that happened once is a number like any other
 and belongs at `/n/`.
 
+Each month ends with a **Births / Deaths** list of its own, closed until you
+open it — what a day means is one thing and who was born or died on it is
+another, and a checkbox on the form says which an entry is. It is a flag on the
+entry rather than a format of its own: a birth is still a date, sorted and read
+and addressed as one, and it is only the list it appears in that changes. So
+December 25 shows Christmas above and Newton's birth below. A living person's
+date of birth is never an entry here, which the form says beside the box.
+
+Tick it and you can add the **year** as well — 1642 beside "Isaac Newton born".
+The year is written next to the entry and never into the value: `/c/12-25` is
+the day of the year, and a year in the address would make two pages out of one
+day. It cannot be one still to come, and that is the whole date rather than the
+year alone — in September, this year's 25th of December has not happened yet.
+Nor one that never was: 1900 had no 29th of February.
+
 Its other spellings are refused rather than tidied up: `1-5` is not quietly
 turned into `01-05`, because nothing on this wiki rewrites a value and one day
 has to have one page. `02-30` and `13-01` go the same way. `02-29` does not —

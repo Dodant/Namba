@@ -9,7 +9,9 @@ export const KO: Messages = {
   tagline: '숫자의 의미를 모으는 열린 위키',
   common: {
     loading: '불러오는 중…', backToIndex: '색인으로 돌아가기.', addFirst: '첫 엔트리 추가하기.',
-    anonymous: '익명', cancel: '취소', save: '저장', edit: '수정', restore: '복원',
+    anonymous: '익명', nicknamePlaceholder: '닉네임 필수', drawNickname: '이름 뽑기',
+    nicknameRequired: '닉네임을 입력하거나 이름을 뽑아 주세요.',
+    cancel: '취소', save: '저장', edit: '수정', restore: '복원',
     by: (name: string) => `${name === 'anonymous' ? '익명' : name} 작성`,
     edited: (when: string, name?: string | null) => `${when} 수정${name ? ` · ${name === 'anonymous' ? '익명' : name}` : ''}`,
     entries: (n: number) => `엔트리 ${fmtCount(n, 'ko')}개`, tags: (n: number) => `태그 ${fmtCount(n, 'ko')}개`,
@@ -45,6 +47,7 @@ export const KO: Messages = {
     hasImage: '이미지 있음', feedIntro: '최근 작성·수정된 엔트리부터 보여줍니다.',
     moreRecent: '최근 엔트리 더 보기',
     empty: '아직 작성된 엔트리가 없습니다.', entryKinds: '엔트리 형식', categories: '카테고리', all: '전체',
+    birthsDeaths: '출생 / 사망',
     foldedEntries: (n: number) => `엔트리 ${fmtCount(n, 'ko')}개`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${subject} ${fmtCount(subjects, 'ko')}개 · 엔트리 ${fmtCount(entries, 'ko')}개`,
@@ -82,6 +85,12 @@ export const KO: Messages = {
     guidelines: '엔트리 작성 지침', fixedValue: (noun: string) => `고정됨 — 다른 ${noun}에는 별도 엔트리가 필요`,
     date: '날짜', month: '월', day: '일',
     number: '숫자', abbreviation: '줄임말', groupThousands: '천 단위 구분 기호 사용', format: '형식',
+    birthDeath: '출생 또는 사망',
+    birthDeathHint:
+      '출생 / 사망 목록에 표시됩니다 — 생존 인물의 생년월일은 올릴 수 없습니다',
+    year: '연도',
+    yearHint:
+      '선택 — 그 일이 있었던 해, 아직 오지 않은 해는 쓸 수 없습니다',
     autoDetect: '자동 감지', title: '제목', titleHint: '무엇을 가리키는지 작성',
     titlePlaceholder: (section: Section) => ({
       number: '은하수를 여행하는 히치하이커를 위한 안내서',

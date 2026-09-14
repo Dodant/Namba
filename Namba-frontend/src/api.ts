@@ -121,6 +121,15 @@ export type Post = {
   /** show the value with thousands separators. Display only -- `value` never
       carries them, or 1000 and 1,000 stop being the same number. */
   grouped: boolean
+  /** somebody's birth or somebody's death. Display only, like `grouped`: a
+      birth is still a CALENDAR date at /c/12-25 with the same key and the same
+      band, and what it changes is which of a month's two lists draws it. */
+  birth_death: boolean
+  /** which year that birth or death was in, and null wherever nobody said.
+      An annotation and never part of the address: /c/12-25 is the day of the
+      year and `value` carries no year, so this is drawn beside the entry and
+      nothing sorts or bands on it. */
+  year: number | null
   author: string
   edited_by: string | null
   /** what this entry's own title and body are written in. Free-form, like a
@@ -169,7 +178,18 @@ export type NumberEntry = {
   /** true only when every entry filed here asked for separators. A row is one
       number written one way, so a disagreement falls back to the plain form. */
   grouped: boolean
-  entries: { id: number; title: string; body: string; image: boolean; likes: number }[]
+  /** `birth_death` is on the entry and not on the row, because the split is
+      per entry: 12-25 carries Christmas in December's list and Newton's birth
+      in its fold, so one date is drawn in each place it has entries for. */
+  entries: {
+    id: number
+    title: string
+    body: string
+    image: boolean
+    likes: number
+    birth_death: boolean
+    year: number | null
+  }[]
 }
 
 /** A version of an entry, as a label rather than a copy of it. The API reads
@@ -223,6 +243,8 @@ export type PostInput = {
   tags?: Tag[]
   lang?: string | null
   grouped?: boolean
+  birth_death?: boolean
+  year?: number | null
 }
 
 export type Params = Record<string, string | number | undefined | null>
@@ -312,11 +334,14 @@ export const api = {
   like: (id: number, on: boolean) =>
     req<{ likes: number }>(`/api/posts/${id}/like`, { method: on ? 'POST' : 'DELETE' }),
 
-  link: (id: number, other_id: number) =>
-    req<Post>(`/api/posts/${id}/links`, json('POST', { other_id })),
+  link: (id: number, other_id: number, author: string) =>
+    req<Post>(`/api/posts/${id}/links`, json('POST', { other_id, author })),
 
-  unlink: (id: number, other_id: number) =>
-    req<Post>(`/api/posts/${id}/links/${other_id}`, { method: 'DELETE' }),
+  unlink: (id: number, other_id: number, author: string) =>
+    req<Post>(
+      `/api/posts/${id}/links/${other_id}?author=${encodeURIComponent(author)}`,
+      { method: 'DELETE' },
+    ),
 
   /** PUT, not POST: writing a language twice is an edit, not a second copy. */
   translate: (id: number, t: { lang: string; title: string; body: string; author: string }) =>
@@ -362,9 +387,67 @@ export const api = {
 }
 
 // --- browser-local state: no accounts, so the browser remembers instead ---
+// Names stay English in every interface locale: they are one public byline,
+// not UI text that changes when its reader changes languages.
+const NICK_ADJECTIVES = [
+  'able', 'agile', 'amber', 'ancient', 'aqua', 'artful', 'autumn', 'azure',
+  'bold', 'brave', 'breezy', 'bright', 'brisk', 'calm', 'careful', 'cheerful',
+  'clever', 'cloudy', 'cool', 'coral', 'cosmic', 'cozy', 'crimson', 'curious',
+  'daring', 'dawn', 'eager', 'early', 'emerald', 'fair', 'fancy', 'festive',
+  'fleet', 'flying', 'fresh', 'friendly', 'gentle', 'glad', 'glowing', 'golden',
+  'grand', 'green', 'happy', 'honest', 'icy', 'indigo', 'jolly', 'kind',
+  'lively', 'lucky', 'lunar', 'mellow', 'merry', 'mighty', 'mint', 'misty',
+  'modern', 'neat', 'nimble', 'noble', 'orange', 'peachy', 'playful', 'plucky',
+  'polite', 'proud', 'purple', 'quick', 'quiet', 'radiant', 'rapid', 'ready',
+  'red', 'rosy', 'royal', 'sage', 'sandy', 'shiny', 'silver', 'smart',
+  'smooth', 'solar', 'spring', 'steady', 'stellar', 'sunny', 'swift', 'tidy',
+  'tiny', 'tranquil', 'true', 'velvet', 'violet', 'warm', 'wild', 'wise',
+] as const
+const NICK_NOUNS = [
+  'acorn', 'albatross', 'alpaca', 'anchor', 'apple', 'aurora', 'badger', 'beacon',
+  'bear', 'beaver', 'birch', 'bison', 'bluebird', 'brook', 'butterfly', 'canyon',
+  'cedar', 'cherry', 'cloud', 'comet', 'coral', 'crane', 'daisy', 'dolphin',
+  'dove', 'dragonfly', 'eagle', 'elm', 'falcon', 'fern', 'finch', 'firefly',
+  'forest', 'fox', 'galaxy', 'garden', 'gazelle', 'glacier', 'grove', 'harbor',
+  'hawk', 'hazel', 'heron', 'hill', 'island', 'ivy', 'juniper', 'koala',
+  'lake', 'lantern', 'lark', 'lemon', 'lotus', 'maple', 'meadow', 'meteor',
+  'moon', 'nebula', 'oak', 'ocean', 'olive', 'orbit', 'oriole', 'otter',
+  'owl', 'panda', 'pebble', 'penguin', 'pine', 'planet', 'plum', 'poppy',
+  'quartz', 'rabbit', 'raven', 'reef', 'river', 'robin', 'rocket', 'sparrow',
+  'star', 'sunrise', 'tiger', 'tulip', 'turtle', 'valley', 'violet', 'walnut',
+  'wave', 'whale', 'willow', 'wren', 'yarrow', 'zephyr', 'zinnia', 'zodiac',
+] as const
+
+const pick = <T,>(items: readonly T[]) => {
+  if (!globalThis.crypto?.getRandomValues) {
+    return items[Math.floor(Math.random() * items.length)]
+  }
+  const bytes = new Uint32Array(1)
+  globalThis.crypto.getRandomValues(bytes)
+  return items[bytes[0] % items.length]
+}
+
+export const validNickname = (value: string) => {
+  const name = value.trim()
+  return Boolean(name) && name.toLowerCase() !== 'anonymous'
+}
+
+const drawNickname = () => `${pick(NICK_ADJECTIVES)}-${pick(NICK_NOUNS)}`
+
 export const nickname = {
-  get: () => localStorage.getItem('namba.nick') ?? '',
-  set: (v: string) => localStorage.setItem('namba.nick', v),
+  get: () => {
+    const saved = localStorage.getItem('namba.nick') ?? ''
+    if (validNickname(saved)) return saved
+    const generated = drawNickname()
+    localStorage.setItem('namba.nick', generated)
+    return generated
+  },
+  set: (v: string) => localStorage.setItem('namba.nick', v.trim()),
+  draw: () => {
+    const generated = drawNickname()
+    localStorage.setItem('namba.nick', generated)
+    return generated
+  },
 }
 
 /** Which translation the reader prefers for entry text. This is deliberately

@@ -314,6 +314,53 @@ opposite, and only its regex says `[0-9]`.
   either string says which, so this format is reached by picking it, the way
   `TIME` is on `1:29:300` (ADR-0026).
 
+  **A birth or a death is a flag on it, not a seventh format.** A month's list
+  is what its days mean and the fold at the foot of it is who was born and who
+  died on them — `posts.birth_death`, one column for both, beside `grouped`
+  rather than beside `format`, because a birth *is* a `CALENDAR` date: it reads
+  as one, sorts on the same key and answers at `/c/12-25`, and what the flag
+  changes is only which of a month's two lists draws it. A tag was the other
+  candidate and spends one of the two an entry has *and* makes a free-form
+  vocabulary an enum the UI branches on (ADR-0010). Nothing joins the
+  hand-copied table above: no format, no vocabulary, no band.
+
+  The split is **per entry**, so December 25 keeps Christmas in the list and
+  Newton's birth in the fold, and a date is drawn in each place it has entries
+  for. The band head still counts the whole month, since a closed band's one
+  line is all it says about itself. It is **not** refused on the other five
+  formats — the form sends every field on every save, so a 422 on a flag
+  nobody meant to change would leave that entry unsaveable; the checkbox is
+  offered where it means something and nothing else reads the column. And it
+  is in `SNAPSHOT_FIELDS`, because a version that cannot say an entry was a
+  birth is a worse record (ADR-0029).
+
+  **And `posts.year` says which year that birth or death was in — never
+  `value`.** The rule above about a date having no year in it is this one from
+  the other side: the entry is *about* the day of the year, filed at `/c/12-25`
+  and drawn there, and the year says which December 25 it was. Put it in the
+  value and `/c/12-25` and `/c/1642-12-25` are two pages about one day. Two
+  births on one day are two entries at one address, the way two meanings of 42
+  are. Nothing sorts or bands on it.
+
+  **What is refused is a date that has not happened, not a year past today.**
+  A birth filed at `12-25` in this year has not happened until Christmas, so
+  `refuse_a_future_year` in `store.py` builds the whole date out of the settled
+  value — a year-only test leaves the last three months of every year open.
+  It is a check on the settled value and not a validator for the reason
+  `resolve_format` is: it needs both halves, and an edit sends a year with no
+  value at all. The same check refuses `02-29` with a year that had no 29th of
+  February: a leap day is a fixed date only while there is no year beside it
+  to disagree. "Today" is UTC plus fourteen hours — the latest date it is
+  anywhere — so a death filed in Seoul at breakfast has happened, and the
+  form's `max`, drawn from the reader's own clock, can never allow what the
+  API refuses. The operator's renumber asks the same question, being the one
+  route that can move a date forward past a year already on the row; what it
+  would leave is an entry every later public edit is refused for.
+  `restore_revision` does not ask, the way it re-checks neither `is_abbr` nor
+  `date_key`. And a year rides only on a flagged entry: both public writes
+  drop it when `birth_death` is off, which is what the form sends anyway, so
+  an API client that only unticks the box is not held for the year it left.
+
   **`/c/` is the one section that is a closed set, so an unreadable date is
   not a page.** There are 366 days: `/c/99-99` is not an empty date page the
   way `/n/999999` is an empty number one, where nobody has written about that

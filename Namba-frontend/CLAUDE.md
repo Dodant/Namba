@@ -150,6 +150,15 @@ every link in the panel is wrong in one of them.
   (`Change the number` on `Entry.tsx`), and a localized date in that box would
   be sent back as the new value. An operator correcting or judging a value
   wants the characters that are stored.
+- **A birth or a death is said where the format is.** The entry page and
+  the sheet draw a `BIRTH / DEATH` badge after the format, and the year as a
+  second `.hash` beside it; the content table puts both after the number,
+  in the column that already says how the number asked to be written. An
+  operator judging a Births entry is judging whether it is a living
+  person's date of birth, which the guide refuses, and could not see the
+  flag at all before. `Row` carries the pair as raw ints off the row like
+  `grouped`, because the list is not `shape()`d; `FullPost` gets them from
+  `Post`. Neither is editable here -- the next bullet.
 - **Editing goes to the wiki's own form, except the number.** `/p/:id/edit` in
   a new tab, as a plain `<a>` because it is another document. There is one place
   that knows how a number value is parsed and how `grouped` follows the commas,
@@ -418,6 +427,30 @@ sanitiser config to get wrong.
   tabs keep the behaviour they had. Its twelve months open like every other
   band: eleven closed headings is the table of contents that default exists to
   avoid, and a reader who came for April should not have to open April.
+
+  **And every month carries a Births / Deaths fold at the foot of its list**,
+  closed, opening in place — the list above is what the day means and this is
+  who was born and who died on it. `sub` on the `Band` type, beside `keep` and
+  `now` and the Calendar tab's alone. The split is **per entry**: December 25
+  keeps Christmas in the list and Newton's birth in the fold, so a date is drawn
+  in each place it has entries for, and `bandCount` therefore counts both lists
+  and de-duplicates the dates by `value` — a closed band's one line is all it
+  says about itself. The summary is `.ix-fold`, the same disclosure a number
+  past `FOLD_OVER` gets, **indented to the title column**: left at the gutter
+  its caret sat in the band head's own caret column and it read as a second
+  heading rather than as more of the list. Below 560 the numeral stops being a
+  column and the indent goes with it. Its count is `m.common.entries` and not
+  `m.home.foldedEntries`, which only ever opens past ten and so never had to say
+  "1 entries" (ADR-0029).
+
+  **`measure` is at module scope because of that fold, and it calls it on
+  open.** These are the only rows in this index hidden when they are first
+  drawn, and whether a hidden row can be measured is the browser's call: with
+  `::details-content` it stays laid out and measurable, without it the rows are
+  `display: none` and measure 0, are never marked `cut`, and no later pass
+  corrects them — so `.ix-more` would be missing from every row in the fold for
+  good. One layout on a gesture the reader made. **Do not put it back inside
+  the effect.**
 
   **What the date does instead is colour.** The heading of the month it is and
   the numeral of the day it is take `--today`, the one cool colour in a warm
@@ -933,6 +966,40 @@ a create: the value field is `readOnly` on an edit, which is what makes the
 selects a create-only branch. The examples in the hint go through
 `showValue()` with the format, so they read "December 25 · April 1 ·
 February 29" in the reader's own language.
+
+**Calendar is also the one format with a second checkbox**, `A birth or a
+death`, and it is the separator box's opposite in two ways. It is *hidden*
+rather than cleared when the format moves off Calendar — `grouped` stops
+meaning anything on a value with no separators to show, while this goes on
+meaning what it meant, and a mis-click on Format and back must not quietly drop
+it. What is gated on the format is the **payload**: the flag and the year go to
+the API only while Format is Calendar, because what the reader cannot see they
+cannot mean, and an Integer entry filed with a birth ticked three clicks earlier
+is a row in a fold nobody asked for. And its hint is a **rule** rather than a
+preview, so it takes the form's own hint colour rather than the accent the
+grouped preview wears, and its words sit in one flex item with the label so a
+sentence wraps like one. The rule is the guide's: a Births list invites exactly
+the entry `/guide` never allows, and it is said where the box is ticked rather
+than only there.
+
+**Ticking it opens a `Year` field, and unticking clears it** — a year with no
+birth beside it is a year of nothing, and the field it was typed in has gone.
+It is an `<input type="number">`, the one control on this form whose range the
+browser can enforce, with a `max` that mirrors the API: this year if the day
+has already come round, last year if it has not, off `dateValue <=
+todayMonthDay()`. That is a convenience and not the rule — the 422 is what
+settles it, because a browser is not a trust boundary. It reads the reader's
+own clock while the API's is UTC plus fourteen hours, the latest date it is
+anywhere, so nothing this `max` allows is ever refused. It sits under the
+checkbox rather than beside the date selects for the reason the separator box
+does: a third control in that row re-measures the two above it underneath the
+choice.
+
+The year is drawn off one `.yr` class in three places — leading an index row's
+line, leading a card's heading, beside the mark in the entry's meta row — and
+as plain digits in every locale, since a year is not grouped. It goes *inside*
+`.ix-link`: the row is one click and one ellipsis, and a year outside it would
+be a second flex item the clipping has to reason about.
 
 **The two placeholders follow the format as well**, because an entry about
 `POV` is not titled after a book about 42 and one about April Fools is not

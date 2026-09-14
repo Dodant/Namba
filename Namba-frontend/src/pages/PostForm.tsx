@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   api, ApiError, errorText, FORMATS, LANG_CODE, langLabel, MONTH_BUCKETS,
-  nickname, sectionOf, TAG_MAX, tagLabel, TAGS_PER_POST, type Format,
+  nickname, sectionOf, TAG_MAX, tagLabel, TAGS_PER_POST, validNickname, type Format,
   type Post, type Revision, type Tag, type Translation,
 } from '../api'
 import {
@@ -10,6 +10,7 @@ import {
   monthDays, monthDayValue, monthName, showValue, todayMonthDay,
 } from '../format'
 import ExistingEntries from '../components/ExistingEntries'
+import { NicknameField } from '../components/NicknameField'
 import { useAsync } from '../useAsync'
 import { revisionBy, useUi, type Messages } from '../uiLocale'
 
@@ -74,6 +75,8 @@ function whatMoved(was: Post, now: Post, m: Messages): string[] {
     [was.body !== now.body, m.form.details],
     [was.lang !== now.lang, m.form.writtenIn],
     [was.grouped !== now.grouped, m.form.groupThousands],
+    [was.birth_death !== now.birth_death, m.form.birthDeath],
+    [was.year !== now.year, m.form.year],
     [was.image !== now.image, m.form.image],
     [was.tags.join() !== now.tags.join(), m.form.categories],
     [(was.translations ?? []).length !== (now.translations ?? []).length,
@@ -147,6 +150,10 @@ export default function PostForm() {
   const [image, setImage] = useState<string | null>(null)
   const [lang, setLang] = useState(LANGS[0])
   const [grouped, setGrouped] = useState(false)
+  const [birthDeath, setBirthDeath] = useState(false)
+  /* A string rather than a number, because the box can be empty and that is a
+     year nobody said rather than a zero. It goes to the API as null. */
+  const [year, setYear] = useState('')
   /* Which section this form is filling in right now. Auto-detect has decided
      nothing, so it is the number one -- which is what most of this wiki is.
      The noun the fields use follows it, and so do the two placeholders: an
@@ -162,13 +169,17 @@ export default function PostForm() {
      of state kept in step with `value`. */
   const [picked, day] = monthDay(value) ?? monthDay(todayMonthDay())!
   const dateValue = monthDayValue(picked, day)
+  /* The latest year this date can have had: this one if the day has already
+     come round, the one before if it has not. Zero-padded MM-DD compares as a
+     string, which is the whole of the comparison. */
+  const maxYear = new Date().getFullYear() - (dateValue <= todayMonthDay() ? 0 : 1)
   const [coined, setCoined] = useState('')
   const [allCategories, setAllCategories] = useState(false)
   /* the chips are the wiki's working vocabulary, not a list in here. Capped so
      the form cannot grow without bound as people coin more, and unioned with
      what this entry already carries so a rare tag never falls off the end. */
   const vocab = useAsync(() => api.tags(), [])
-  const [author, setAuthor] = useState(nickname.get())
+  const [author, setAuthor] = useState(nickname.get)
   const [err, setErr] = useState('')
   /* Somebody else saved while this form was open. Its own state and not an
      error string: an error is what went wrong with the request, and this is a
@@ -201,6 +212,8 @@ export default function PostForm() {
     setImage(p.image)
     setLang(p.lang ?? LANGS[0])
     setGrouped(p.grouped)
+    setBirthDeath(p.birth_death)
+    setYear(p.year == null ? '' : String(p.year))
   }
 
   useEffect(() => {
@@ -215,6 +228,10 @@ export default function PostForm() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    if (!validNickname(author)) {
+      setErr(m.common.nicknameRequired)
+      return
+    }
     setBusy(true)
     setErr('')
     setClash(null)
@@ -233,10 +250,17 @@ export default function PostForm() {
       title,
       body,
       image,
-      author: author.trim() || 'anonymous',
+      author: author.trim(),
       tags,
       lang: lang.trim() || null,
       grouped,
+      /* Gated on the format here and not in the state: the box and the year
+         stay ticked and typed while Format is off Calendar, so a mis-click and
+         back loses nothing -- but what the reader cannot see they cannot mean,
+         and an Integer entry filed with a birth ticked three clicks ago is a
+         row in a fold nobody asked for. */
+      birth_death: format === 'CALENDAR' && birthDeath,
+      year: format === 'CALENDAR' && birthDeath && year ? Number(year) : null,
     }
     try {
       const saved = editing
@@ -441,6 +465,74 @@ export default function PostForm() {
                 <span className="hint">{groupedPreview}</span>
               </label>
             )}
+            {/* Who was born and who died. Only a date can be one, so this is
+                the Calendar branch of the same row the separator box sits in
+                -- the two never show together, since there is no thousand in
+                12-25.
+
+                Hidden rather than cleared when the format moves off Calendar,
+                which is the opposite of the box above: `grouped` stops meaning
+                anything on a value with no separators to show, while this goes
+                on meaning what it meant, and a mis-click on Format and back
+                must not quietly drop it. The payload is where the format
+                decides -- see `submit`.
+
+                The hint is the rule, not a description. A Births list is an
+                invitation to file exactly the entry the guide never allows, so
+                it says so where the box is ticked rather than only in /guide.
+                */}
+            {format === 'CALENDAR' && (
+              <label className="field check says-a-rule">
+                <input
+                  type="checkbox"
+                  checked={birthDeath}
+                  onChange={(e) => {
+                    setBirthDeath(e.target.checked)
+                    if (!e.target.checked) setYear('')
+                  }}
+                />
+                {/* both in one flex item, so the label and the rule under it
+                    read as one sentence and wrap like one. Two items is what
+                    the separator box beside it wants -- its hint is a preview
+                    of the number, three characters long -- and this one is a
+                    sentence, which as a flex item of its own came out as a
+                    second narrow column beside a first. */}
+                <span>
+                  {m.form.birthDeath}{' '}
+                  <span className="hint">{m.form.birthDeathHint}</span>
+                </span>
+              </label>
+            )}
+            {/* Which year it was in. Under the box rather than beside the date
+                selects: a third control that comes and goes with a choice
+                re-measures the two above it underneath that choice, which is
+                the reason the separator box is down here too.
+
+                type="number" for the stepper, the numeric keyboard and a
+                min/max the browser enforces before the API has to. `max` is
+                the API's own rule drawn client-side -- this year if the date
+                has already come round, last year if it has not -- because a
+                birth or a death has happened, and this year's Christmas has
+                not. The 422 is still what settles it: a browser is not a
+                trust boundary. */}
+            {format === 'CALENDAR' && birthDeath && (
+              <div className="field year-field">
+                <label htmlFor={fid('year')}>
+                  {m.form.year}{' '}
+                  <span className="hint">{m.form.yearHint}</span>
+                </label>
+                <input
+                  id={fid('year')}
+                  className="mono"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={maxYear}
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                />
+              </div>
+            )}
           </div>
           <div className="field fmt-field">
             <label htmlFor={fid('format')}>{m.form.format}</label>
@@ -556,7 +648,12 @@ export default function PostForm() {
           <>
             <Languages post={post} lang={lang} onSaved={setPost} onError={setErr} bumpRevs={() => setRevBump((n) => n + 1)} />
 
-            <LinkPanel post={post} onLinked={setPost} onError={setErr} />
+            <LinkPanel
+              post={post}
+              author={author}
+              onLinked={setPost}
+              onError={setErr}
+            />
           </>
         )}
 
@@ -664,21 +761,13 @@ export default function PostForm() {
           )}
         </div>
 
-        <div className="field nick-field">
-          <label htmlFor={fid('author')}>
-            {m.form.nickname}{' '}
-            <span className="hint">
-              {editing ? m.form.editorHint : m.form.noAccountHint}
-            </span>
-          </label>
-          <input
-            id={fid('author')}
-            maxLength={40}
-            value={author}
-            onChange={(e) => setAuthor(e.target.value)}
-            placeholder={m.common.anonymous}
-          />
-        </div>
+        <NicknameField
+          id={fid('author')}
+          label={m.form.nickname}
+          hint={editing ? m.form.editorHint : m.form.noAccountHint}
+          value={author}
+          onChange={setAuthor}
+        />
 
         {err && (
           <p className="err" role="alert">
@@ -757,7 +846,7 @@ export default function PostForm() {
                     className="pill"
                     onClick={() =>
                       run(
-                        () => api.restore(post.id, r.id, nickname.get() || 'anonymous'),
+                        () => api.restore(post.id, r.id, nickname.get()),
                         true, // a restore replaces the entry, so the fields follow it
                       ).then(() => setRevBump((n) => n + 1))
                     }
@@ -878,12 +967,13 @@ function TranslationEditor({
   const [lang, setLang] = useState(editing?.lang ?? '')
   const [title, setTitle] = useState(editing?.title ?? '')
   const [body, setBody] = useState(editing?.body ?? '')
-  const [author, setAuthor] = useState(nickname.get())
+  const [author, setAuthor] = useState(nickname.get)
   const uid = useId()
   const fid = (name: string) => `${uid}-${name}`
 
   async function save() {
     if (!lang.trim() || !title.trim()) return onError(m.form.requiredTranslation)
+    if (!validNickname(author)) return onError(m.common.nicknameRequired)
     onError('')
     nickname.set(author)
     try {
@@ -892,7 +982,7 @@ function TranslationEditor({
           lang,
           title,
           body,
-          author: author || 'anonymous',
+          author: author.trim(),
         }),
       )
     } catch (e) {
@@ -902,10 +992,12 @@ function TranslationEditor({
 
   async function drop() {
     if (!editing) return
+    if (!validNickname(author)) return onError(m.common.nicknameRequired)
     if (!confirm(m.form.removeTranslationConfirm(editing.lang))) return
     onError('')
+    nickname.set(author)
     try {
-      onSaved(await api.untranslate(post.id, editing.id, nickname.get() || 'anonymous'))
+      onSaved(await api.untranslate(post.id, editing.id, author.trim()))
     } catch (e) {
       onError(errorText(e))
     }
@@ -962,16 +1054,12 @@ function TranslationEditor({
           maxLength={5000}
         />
       </div>
-      <div className="field">
-        <label htmlFor={fid('author')}>{m.form.nickname}</label>
-        <input
-          id={fid('author')}
-          value={author}
-          onChange={(e) => setAuthor(e.target.value)}
-          placeholder={m.common.anonymous}
-          maxLength={40}
-        />
-      </div>
+      <NicknameField
+        id={fid('author')}
+        label={m.form.nickname}
+        value={author}
+        onChange={setAuthor}
+      />
       <div className="actions">
         <button type="button" className="btn primary" onClick={save}>
           {editing ? m.common.save : m.form.addThisTranslation}
@@ -996,10 +1084,12 @@ function TranslationEditor({
     same reason as above; Enter in the field still searches. */
 function LinkPanel({
   post,
+  author,
   onLinked,
   onError,
 }: {
   post: Post
+  author: string
   onLinked: (p: Post) => void
   onError: (m: string) => void
 }) {
@@ -1027,10 +1117,17 @@ function LinkPanel({
 
   async function act(fn: () => Promise<Post>) {
     onError('')
+    if (!validNickname(author)) {
+      onError(m.common.nicknameRequired)
+      return false
+    }
+    nickname.set(author)
     try {
       onLinked(await fn())
+      return true
     } catch (e) {
       onError(errorText(e))
+      return false
     }
   }
 
@@ -1045,7 +1142,15 @@ function LinkPanel({
           <div className="panel-row" key={r.id}>
             <span className="panel-num">{showValue(r.value, r.grouped, locale, r.format)}</span>
             <span className="panel-title ink">{r.title}</span>
-            <button type="button" className="pill" onClick={() => act(() => api.unlink(post.id, r.id))}>
+            <button
+              type="button"
+              className="pill"
+              onClick={() => act(() => api.unlink(
+                post.id,
+                r.id,
+                author.trim(),
+              ))}
+            >
               {m.form.unlink}
             </button>
           </div>
@@ -1080,7 +1185,12 @@ function LinkPanel({
               type="button"
               className="pill"
               onClick={async () => {
-                await act(() => api.link(post.id, h.id))
+                const linked = await act(() => api.link(
+                  post.id,
+                  h.id,
+                  author.trim(),
+                ))
+                if (!linked) return
                 const rest = hits.filter((x) => x.id !== h.id)
                 setHits(rest.length ? rest : null) // not "no matches" -- none left
               }}

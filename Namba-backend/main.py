@@ -15,7 +15,7 @@ from fastapi.responses import (
     FileResponse, JSONResponse, PlainTextResponse, Response,
 )
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
 
 import admin_api
 import db
@@ -23,9 +23,9 @@ import events
 import seo
 from db import UPLOAD_DIR, get_db, nfc, now, writing
 from store import (
-    LIVE, Text, apply_snapshot, fetch_one, guard_public, resolve_format,
-    section_of, section_sql, section_where, shape, snapshot, ungroup,
-    write_tags,
+    LIVE, Text, apply_snapshot, fetch_one, guard_public, refuse_a_future_year,
+    resolve_format, section_of, section_sql, section_where, shape, snapshot,
+    ungroup, write_tags,
 )
 from numfmt import FORMATS, bucket_of
 
@@ -271,12 +271,14 @@ def nick(typed):
     """The name a write is filed under.
 
     There are no accounts here, so this is a string somebody typed and nothing
-    more -- but a blank one has to become a word, or a byline reads as a field
-    that failed to load rather than as an anonymous contribution. Every write
-    below asked the same question in the same breath, several of them twice in
-    one function.
+    more. It is still required: a shared ``anonymous`` byline makes unrelated
+    contributors indistinguishable. The web app draws a browser-local English
+    name before the first write; API callers have to choose one themselves.
     """
-    return typed.strip() or "anonymous"
+    name = typed.strip()
+    if not name or name.casefold() == "anonymous":
+        raise HTTPException(422, "choose a nickname or draw one")
+    return name
 
 
 def _clean_tags(v):
@@ -372,10 +374,12 @@ class PostIn(PostRules):
     title: str = Field(min_length=1, max_length=200)
     body: str = Field(default="", max_length=5000)
     image: Optional[str] = Field(default=None, max_length=300)
-    author: str = Field(default="anonymous", max_length=40)
+    author: str = Field(min_length=1, max_length=40)
     tags: List[str] = Field(default_factory=list)
     lang: Optional[str] = Field(default=None, max_length=40)
     grouped: bool = False
+    birth_death: bool = False
+    year: Optional[int] = Field(default=None, ge=1)
 
 
 class PostPatch(PostRules):
@@ -392,17 +396,19 @@ class PostPatch(PostRules):
     title: Optional[str] = Field(default=None, min_length=1, max_length=200)
     body: Optional[str] = Field(default=None, max_length=5000)
     image: Optional[str] = Field(default=None, max_length=300)
-    author: str = Field(default="anonymous", max_length=40)
+    author: str = Field(min_length=1, max_length=40)
     tags: Optional[List[str]] = None
     lang: Optional[str] = Field(default=None, max_length=40)
     grouped: Optional[bool] = None
+    birth_death: Optional[bool] = None
+    year: Optional[int] = Field(default=None, ge=1)
 
 
 class TranslationIn(Text):
     lang: str = Field(min_length=1, max_length=40)
     title: str = Field(min_length=1, max_length=200)
     body: str = Field(default="", max_length=5000)
-    author: str = Field(default="anonymous", max_length=40)
+    author: str = Field(min_length=1, max_length=40)
 
     @field_validator("lang", "title")
     @classmethod
@@ -424,7 +430,7 @@ class CommentIn(Text):
     """
 
     body: str = Field(min_length=1, max_length=COMMENT_MAX)
-    author: str = Field(default="anonymous", max_length=40)
+    author: str = Field(min_length=1, max_length=40)
 
     @field_validator("body")
     @classmethod
@@ -459,7 +465,7 @@ class FlagIn(Text):
 
 class DeleteRequestIn(FlagIn):
     REASONS: ClassVar[tuple] = db.DELETE_REASONS
-    author: str = Field(default="anonymous", max_length=40)
+    author: str = Field(min_length=1, max_length=40)
 
 
 class ReportIn(FlagIn):
@@ -468,8 +474,9 @@ class ReportIn(FlagIn):
     REASONS: ClassVar[tuple] = db.REPORT_REASONS
 
 
-class LinkIn(BaseModel):
+class LinkIn(Text):
     other_id: int
+    author: str = Field(min_length=1, max_length=40)
 
 
 # --- read ---------------------------------------------------------------
@@ -548,7 +555,7 @@ def list_numbers(
     flag: the index should be readable without opening a post, not a copy of it.
     """
     sql = ["""SELECT p.id, p.value, p.format, p.sort_key, p.title, p.likes,
-                      p.grouped,
+                      p.grouped, p.birth_death, p.year,
                       substr(p.body, 1, ?) AS body, p.image IS NOT NULL AS image
                FROM posts p"""]
     args = [BLURB + 1]
@@ -595,6 +602,11 @@ def list_numbers(
             "body": body[:BLURB] + "\u2026" if len(body) > BLURB else body,
             "image": bool(r["image"]),
             "likes": r["likes"],   # a translation has no likes of its own
+            # off the entry and not the row: one date carries Christmas in the
+            # month's list and a birth in its fold, so the split the Calendar
+            # tab draws is per entry (ADR-0029)
+            "birth_death": bool(r["birth_death"]),
+            "year": r["year"],
         })
     return out
 
@@ -827,12 +839,18 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
         # three statements below landing together, not for a read -- see
         # db.writing() and ADR-0007 for the eleven writes where it is the read.
         value, fmt, key = resolve_format(value, p.format)
+        # A year rides only on a birth or a death. The form never sends the
+        # pair, so an API client that does gets the form's own answer -- a
+        # year of nothing dropped -- rather than a 422 on a flag it did send.
+        year = p.year if p.birth_death else None
+        refuse_a_future_year(value, fmt, year)
         cur = con.execute(
             """INSERT INTO posts (value, format, sort_key, title, body, image, author,
-                                  lang, grouped, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                                  lang, grouped, birth_death, year,
+                                  created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (value, fmt, key, p.title.strip(), p.body, p.image,
-             author, p.lang, int(grouped), ts, ts),
+             author, p.lang, int(grouped), int(p.birth_death), year, ts, ts),
         )
         write_tags(con, cur.lastrowid, p.tags)
         post_id = cur.lastrowid
@@ -856,9 +874,12 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
     # audit log or a revision diff.
     sent.pop("number_locale", None)
     sent.pop("base_updated_at", None)
+    # A nickname says who pressed Save; it is not entry content. In particular,
+    # it must not make an otherwise unchanged form into an edit of `author`,
+    # which is deliberately immutable.
+    sent.pop("author", None)
     editor = nick(p.author)
     with writing(con):
-        rev = snapshot(con, post_id, editor)
         # Read here and not before the block. The lock is held from the top of
         # it, so from this line to the commit no other writer can get in and
         # what this row says stays true. Read outside, it is a row from before
@@ -876,6 +897,19 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         # the box has to be settled before the value is, since it decides
         # whether separators in what was typed are stripped or kept
         grouped = p.grouped if "grouped" in sent else bool(current["grouped"])
+        # `in sent` and not `is not None`, or an explicit false could never
+        # take the flag off again -- the form sends every field on every save.
+        birth_death = (p.birth_death if "birth_death" in sent
+                       else bool(current["birth_death"]))
+        # `in sent`, like the flag above and for the same reason: this one is
+        # nullable, and clearing a year somebody guessed wrong has to be a
+        # write rather than a no-op.
+        year = p.year if "year" in sent else current["year"]
+        # ...and only ever beside the flag, the way create_post keeps it: an
+        # edit that unticks the box takes the year with it, whether or not the
+        # sender knew there was one.
+        if not birth_death:
+            year = None
         value = current["value"]
         if p.value is not None:
             value, grouped = ungroup(p.value, grouped, p.number_locale)
@@ -926,26 +960,55 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
                      "date stays one, and a number does not become an "
                      "abbreviation. Ask an operator to move one that is filed "
                      "wrong.")
+        # After the section rule, so a cross-section edit says the more useful
+        # of the two things wrong with it. Inside `with writing(con)` like
+        # every other refusal here, so it rolls the snapshot back.
+        refuse_a_future_year(value, fmt, year)
+        title = p.title.strip() if p.title is not None else current["title"]
+        body = p.body if p.body is not None else current["body"]
+        image = p.image if "image" in sent else current["image"]
+        lang = p.lang if "lang" in sent else current["lang"]
+        tags = p.tags if p.tags is not None else current["tags"]
+
+        # The edit form sends every field. Saving after an immediately-applied
+        # side action such as Link therefore used to create a snapshot and an
+        # EDIT row even though no entry content changed. Keep the optimistic
+        # concurrency promise first: a stale form is still stale, even if its
+        # values happen to match the newer version.
+        if (p.base_updated_at is not None
+                and p.base_updated_at != current["updated_at"]):
+            raise HTTPException(
+                409, "somebody else edited this entry since you opened it -- "
+                     "reload the page and apply your change again")
+        proposed = {
+            "value": value, "format": fmt, "title": title, "body": body,
+            "image": image, "lang": lang, "grouped": bool(grouped),
+            "birth_death": bool(birth_death), "year": year, "tags": tags,
+        }
+        changed = [field for field, value_now in proposed.items()
+                   if value_now != current[field]]
+        if not changed:
+            return current
+
+        rev = snapshot(con, post_id, editor)
         # author is the first writer and stays put -- on an open wiki, an edit
         # by a stranger must not erase who the entry came from.
-        # The conflict check is the last clause and nothing else: one statement,
-        # so there is no read for another writer to slip past. A NULL base skips
-        # it. rowcount is then 0 in exactly one case -- the entry moved on since
-        # the sender read it -- because a row that is missing or hidden already
-        # raised out of fetch_one above, and SQLite counts a row it matched even
-        # when every value it wrote was the same.
+        # Keep the timestamp condition on the write as the final guard as well.
+        # The transaction lock holds the row steady after the explicit check
+        # above; retaining it also keeps this statement safe if that surrounding
+        # flow is rearranged later. A NULL base remains the public API's promise
+        # that a caller may write without first reading.
         done = con.execute(
             """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
-                                image=?, lang=?, grouped=?, edited_by=?,
-                                updated_at=? WHERE id=?
+                                image=?, lang=?, grouped=?, birth_death=?,
+                                year=?, edited_by=?, updated_at=? WHERE id=?
                             AND (? IS NULL OR updated_at = ?)""",
             (
                 value, fmt, key,
-                p.title.strip() if p.title is not None else current["title"],
-                p.body if p.body is not None else current["body"],
-                p.image if "image" in sent else current["image"],
-                p.lang if "lang" in sent else current["lang"],
+                title, body, image, lang,
                 int(grouped),
+                int(birth_death),
+                year,
                 editor,
                 now(), post_id,
                 p.base_updated_at, p.base_updated_at,
@@ -957,30 +1020,26 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
             raise HTTPException(
                 409, "somebody else edited this entry since you opened it -- "
                      "reload the page and apply your change again")
-        if p.tags is not None:
-            write_tags(con, post_id, p.tags)
-        # which fields were sent, not which actually changed: the diff between
-        # the snapshot and the row is where "changed" is answered, and there is
-        # no point storing a worse copy of it here
+        if "tags" in changed:
+            write_tags(con, post_id, tags)
         events.record(con, "EDIT", client=who, who=editor,
                       target_type="post", target_id=post_id, revision_id=rev,
-                      fields=sorted(sent))
+                      fields=sorted(changed))
     return fetch_one(con, post_id)
 
 
 class RestoreIn(Text):
-    author: str = Field(default="anonymous", max_length=40)
+    author: str = Field(min_length=1, max_length=40)
 
 
 @app.post("/api/posts/{post_id}/revisions/{rev_id}/restore")
 def restore_revision(
     post_id: int,
     rev_id: int,
-    body: RestoreIn = RestoreIn(),
+    body: RestoreIn,
     who=Depends(guard),
     con=Depends(get_db),
 ):
-    author = nick(body.author)
     with writing(con):
         # All three deciding reads inside the lock. `alive` is the one that has
         # to be: it chooses between UPDATE and INSERT, and read outside it could
@@ -988,6 +1047,7 @@ def restore_revision(
         # then the UPDATE matches nothing, the event says a restore happened and
         # the entry is still gone.
         guard_public(con, post_id)
+        author = nick(body.author)
         row = con.execute(
             "SELECT snapshot FROM revisions WHERE id = ? AND post_id = ?",
             (rev_id, post_id),
@@ -1116,7 +1176,7 @@ def put_translation(
 def delete_translation(
     post_id: int,
     tr_id: int,
-    author: str = Query(default="anonymous", max_length=40),
+    author: str = Query(..., min_length=1, max_length=40),
     who=Depends(guard),
     con=Depends(get_db),
 ):
@@ -1298,13 +1358,20 @@ def add_link(post_id: int, link: LinkIn, who=Depends(guard), con=Depends(get_db)
         # counting towards the client's writes in /api/admin/abuse, which is
         # the number a block gets decided on.
         if cur.rowcount:
-            events.record(con, "LINK", client=who, target_type="post",
+            events.record(con, "LINK", client=who, who=nick(link.author),
+                          target_type="post",
                           target_id=post_id, other=link.other_id)
     return get_post(post_id, con)
 
 
 @app.delete("/api/posts/{post_id}/links/{other_id}")
-def remove_link(post_id: int, other_id: int, who=Depends(guard), con=Depends(get_db)):
+def remove_link(
+    post_id: int,
+    other_id: int,
+    author: str = Query(..., min_length=1, max_length=40),
+    who=Depends(guard),
+    con=Depends(get_db),
+):
     a, b = sorted((post_id, other_id))
     with writing(con):
         fetch_one(con, post_id)
@@ -1314,7 +1381,8 @@ def remove_link(post_id: int, other_id: int, who=Depends(guard), con=Depends(get
         # later -- and it counts towards the client's writes in /api/admin/abuse,
         # which is the number a block gets decided on.
         if cur.rowcount:
-            events.record(con, "UNLINK", client=who, target_type="post",
+            events.record(con, "UNLINK", client=who, who=nick(author),
+                          target_type="post",
                           target_id=post_id, other=other_id)
     return get_post(post_id, con)
 

@@ -12,6 +12,8 @@ which format it is filed under has to be answered identically by all three.
 """
 import json
 import math
+from calendar import isleap
+from datetime import datetime, timedelta
 
 from fastapi import HTTPException
 from pydantic import BaseModel, field_validator
@@ -158,6 +160,57 @@ def resolve_format(value, given):
     return value, fmt, key
 
 
+def refuse_a_future_year(value, fmt, year):
+    """A birth or a death has already happened.
+
+    `ge=1` on the field is the other end and the only other bound there is: a
+    year is capped by today rather than by a number in a model, so this is
+    where the rule lives. It is a check on the settled value and not a
+    validator, for the reason `resolve_format` is: it needs both halves, and
+    an edit sends a year with no value at all. Here beside `resolve_format`
+    rather than in `main.py` because the operator's renumber asks it too, and
+    `admin_api` cannot import `main`.
+
+    The whole date, not just the year. In September, somebody filing a birth
+    at 12-25 in this year is filing something that has not happened, which is
+    the thing being refused; a year on its own would wave it through until
+    Christmas. A value with no month and day in it has no such date to build,
+    so the year alone is the test there. And a date that never happened at all
+    is refused the same way: 02-29 is a fixed date only because there is no
+    year beside it to disagree with (ADR-0026), and a year that had no 29th of
+    February is exactly that disagreement.
+
+    "Today" is the latest date it is anywhere on Earth -- UTC and fourteen
+    hours -- rather than the UTC date alone. A death filed in Seoul at eight
+    in the morning has happened, and the form's own `max`, drawn from the
+    reader's clock, can then never allow what this refuses: no local date is
+    later than that one. What it lets through is a date up to fourteen hours
+    early, which is still today somewhere.
+
+    `restore_revision` does not ask, the way it asks neither `is_abbr` nor
+    `date_key`: a snapshot has to be restorable or the history is not one, and
+    it cannot bite anyway -- a year that was past when it was written only
+    gets more so. The operator's renumber does ask, because it is the one
+    route that can move a date forward past a year already on the row, and
+    what that would leave is not the operator's problem but the public form's:
+    every later edit carries the stored pair and is refused for it (ADR-0029).
+    """
+    if year is None:
+        return
+    today = (datetime.fromisoformat(now()) + timedelta(hours=14)).timetuple()[:3]
+    key = date_key(value) if fmt == "CALENDAR" else None
+    # 01-01 for a value with no day in it, so the comparison is on the year
+    month, day = (int(key) // 100, int(key) % 100) if key else (1, 1)
+    if (month, day) == (2, 29) and not isleap(year):
+        raise HTTPException(
+            422, f"there was no 29th of February in {year}. A leap day is a "
+                 "date only in a leap year.")
+    if (year, month, day) > today:
+        raise HTTPException(
+            422, f"a birth or a death has happened, and {year}-{month:02d}-"
+                 f"{day:02d} has not. A year cannot be later than today.")
+
+
 # The sections this one column is read in, and the format that puts a row in
 # each. `number` is the remainder and is deliberately not in here: a format
 # added without a thought about this map lands there, which is the safe side --
@@ -224,6 +277,7 @@ def shape(rows, con):
         p["bucket"] = bucket_of(p["sort_key"], p["format"], p["value"])
         # sqlite has no bool; the wire and the client both want one
         p["grouped"] = bool(p["grouped"])
+        p["birth_death"] = bool(p["birth_death"])
     q = "SELECT post_id, tag FROM post_tags WHERE post_id IN (%s) ORDER BY tag" % (
         ",".join("?" * len(ids))
     )
@@ -306,16 +360,16 @@ def fetch_one(con, post_id, hidden=False):
 # hidden one back on the wiki. `bucket` is computed from the format and the
 # sort key sitting beside it.
 SNAPSHOT_FIELDS = ("value", "format", "sort_key", "title", "body", "image",
-                   "lang", "grouped", "author", "edited_by", "likes",
-                   "created_at", "updated_at")
+                   "lang", "grouped", "birth_death", "year", "author",
+                   "edited_by", "likes", "created_at", "updated_at")
 
 
 def snapshot_of(post):
     """One entry as a revision keeps it: the fields above, its tags and its
     translations.
 
-    Not every field is read back. `apply_snapshot` puts eleven of them on the
-    row and the diff reads seven; `edited_by` and `updated_at` are stored
+    Not every field is read back. `apply_snapshot` puts twelve of them on the
+    row and the diff reads nine; `edited_by` and `updated_at` are stored
     because a snapshot is the entry *as it was*, and a version that cannot say
     who had last touched it is a worse record for the sake of two columns. The
     line to hold is that this list changes when somebody means it to.
@@ -398,11 +452,13 @@ def apply_snapshot(con, post_id, old, editor):
         key = None
     con.execute(
         """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
-                            image=?, lang=?, grouped=?, edited_by=?, updated_at=?
+                            image=?, lang=?, grouped=?, birth_death=?, year=?,
+                            edited_by=?, updated_at=?
            WHERE id=?""",
         (old["value"], old["format"], key, old["title"], old["body"],
-         old["image"], old.get("lang"), int(old.get("grouped") or 0), editor,
-         now(), post_id),
+         old["image"], old.get("lang"), int(old.get("grouped") or 0),
+         int(old.get("birth_death") or 0), old.get("year"), editor, now(),
+         post_id),
     )
     write_tags(con, post_id, old.get("tags", []))
     # a snapshot from before translations existed has none, and restoring it

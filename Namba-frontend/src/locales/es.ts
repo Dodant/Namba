@@ -9,7 +9,9 @@ export const ES: Messages = {
   tagline: 'Una wiki abierta sobre números',
   common: {
     loading: 'Cargando…', backToIndex: 'Volver al índice.', addFirst: 'Añade la primera entrada.',
-    anonymous: 'anónimo', cancel: 'Cancelar', save: 'Guardar', edit: 'editar', restore: 'Restaurar',
+    anonymous: 'anónimo', nicknamePlaceholder: 'Alias obligatorio', drawNickname: 'Generar nombre',
+    nicknameRequired: 'Escribe un alias o genera uno.',
+    cancel: 'Cancelar', save: 'Guardar', edit: 'editar', restore: 'Restaurar',
     by: (name: string) => `por ${name === 'anonymous' ? 'anónimo' : name}`,
     edited: (when: string, name?: string | null) =>
       `editado ${when}${name ? ` por ${name === 'anonymous' ? 'anónimo' : name}` : ''}`,
@@ -53,6 +55,7 @@ export const ES: Messages = {
     hasImage: 'con imagen', feedIntro: 'Entradas y ediciones recientes, de más nuevas a más antiguas.',
     moreRecent: 'Ver más entradas recientes',
     empty: 'Aún no hay entradas.', entryKinds: 'Formato de la entrada', categories: 'Categorías', all: 'Todas',
+    birthsDeaths: 'Nacimientos / Fallecimientos',
     foldedEntries: (n: number) => `${fmtCount(n, 'es')} ${n === 1 ? 'entrada' : 'entradas'}`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${fmtCount(subjects, 'es')} ${subject} · ${fmtCount(entries, 'es')} ${entries === 1 ? 'entrada' : 'entradas'}`,
@@ -94,6 +97,12 @@ export const ES: Messages = {
     guidelines: 'Guía para las entradas', fixedValue: (noun: string) => `fijo — otro ${noun} requiere otra entrada`,
     date: 'Fecha', month: 'Mes', day: 'Día',
     number: 'Número', abbreviation: 'Abreviatura', groupThousands: 'Usar separadores de miles',
+    birthDeath: 'Un nacimiento o un fallecimiento',
+    birthDeathHint:
+      'aparece en Nacimientos / Fallecimientos — nunca la fecha de nacimiento de una persona viva',
+    year: 'Año',
+    yearHint:
+      'opcional — el año en que ocurrió, nunca un año por venir',
     format: 'Formato', autoDetect: 'Detectar automáticamente', title: 'Título', titleHint: 'a qué se refiere',
     titlePlaceholder: (section: Section) => ({
       number: 'Guía del autoestopista galáctico',

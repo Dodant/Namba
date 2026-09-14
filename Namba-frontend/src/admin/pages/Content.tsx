@@ -252,6 +252,12 @@ export default function Content() {
                       it asked to be written, and a table that ignores that
                       shows a different number from the wiki */}
                   {showValue(r.value, !!r.grouped)}
+                  {!!r.birth_death && (
+                    <span className="hash" title="filed as a birth or a death">
+                      {' \u00b7 birth/death'}
+                      {r.year != null && ` ${r.year}`}
+                    </span>
+                  )}
                 </td>
                 <td className="wide">
                   <Link to={`/content/${r.id}`}>{r.title}</Link>

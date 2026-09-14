@@ -26,7 +26,8 @@ with open(os.path.join(_tmp, "dist", "index.html"), "w") as _fh:
 with open(os.path.join(_tmp, "dist", "assets", "app.js"), "w") as _fh:
     _fh.write("console.log(1)")
 
-from fastapi.testclient import TestClient  # noqa: E402
+from fastapi import HTTPException  # noqa: E402
+from fastapi.testclient import TestClient as _TestClient  # noqa: E402
 
 import admin  # noqa: E402
 import admin_api  # noqa: E402
@@ -47,6 +48,38 @@ from numfmt import (  # noqa: E402
 # hundred writes in a second. Lift it here rather than thin it out in main.py,
 # where it is the only thing between an open wiki and a script.
 main.WRITE_LIMIT = 10_000
+
+
+class TestClient(_TestClient):
+    """The browser draws a nickname before its first public write.
+
+    Most tests care about the write they name rather than repeating that UI
+    precondition in every fixture, so this client stands in for the browser.
+    Tests of the raw API use ``_TestClient`` directly.
+    """
+
+    def request(self, method, url, **kwargs):
+        verb, path = method.upper(), str(url).split("?", 1)[0]
+        body_named = (
+            (verb == "POST" and path == "/api/posts")
+            or (verb == "PATCH" and re.fullmatch(r"/api/posts/\d+", path))
+            or (verb == "PUT" and re.fullmatch(r"/api/posts/\d+/translations", path))
+            or (verb == "POST" and re.fullmatch(
+                r"/api/posts/\d+/(?:comments|delete-request|links)", path))
+            or (verb == "POST" and re.fullmatch(
+                r"/api/posts/\d+/revisions/\d+/restore", path))
+        )
+        if body_named:
+            payload = kwargs.get("json")
+            kwargs["json"] = ({"author": "test-nickname"} if payload is None
+                              else {"author": "test-nickname", **payload})
+        query_named = verb == "DELETE" and (
+            re.fullmatch(r"/api/posts/\d+/translations/\d+", path)
+            or re.fullmatch(r"/api/posts/\d+/links/\d+", path)
+        )
+        if query_named:
+            kwargs["params"] = {"author": "test-nickname", **(kwargs.get("params") or {})}
+        return super().request(method, url, **kwargs)
 
 
 def test_parse():
@@ -488,7 +521,7 @@ def test_share_card():
     assert len(blocks) == 1, blocks
     art, crumb = json.loads(blocks[0])
     assert art["@type"] == "Article" and art["headline"] == "Taxicab number"
-    assert art["author"]["name"] == "anonymous" and art["about"]["name"] == "1729"
+    assert art["author"]["name"] == "test-nickname" and art["about"]["name"] == "1729"
     assert art["datePublished"] == p["created_at"], art["datePublished"]
     assert crumb["@type"] == "BreadcrumbList"
     assert [i["item"] for i in crumb["itemListElement"]] == [
@@ -1747,7 +1780,7 @@ def test_admin_content_and_dashboard():
         c.patch(f"/api/posts/{pid}", json={
             "title": "Moon landings", "body": "One small step.\nTwo.\nAnd a third.",
             "value": "1970", "grouped": True, "tags": ["space", "history"],
-            "author": "vandal"})
+            "birth_death": True, "year": 1969, "author": "vandal"})
     finally:
         main.now = real
     assert ops.get("/api/admin/stats").json()["edited_today"] >= 1, \
@@ -1759,6 +1792,8 @@ def test_admin_content_and_dashboard():
     mine = next(r for r in rows["rows"] if r["id"] == pid)
     assert mine["status"] == "HIDDEN" and mine["author"] == "armstrong"
     assert mine["edited_by"] == "vandal"
+    assert mine["birth_death"] == 1 and mine["year"] == 1969, \
+        "the content table cannot say an entry is a birth, or which year"
     assert mine["open_reports"] == 0 and mine["pending_requests"] == 0
     # the operator's search escapes LIKE's wildcards too -- same helper, and
     # this is the box an operator hunts a specific entry in
@@ -1773,6 +1808,7 @@ def test_admin_content_and_dashboard():
     full = ops.get(f"/api/admin/posts/{pid}").json()
     assert full["title"] == "Moon landings" and full["revision_count"] == 1
     assert full["reports"] == [] and full["requests"] == []
+    assert full["birth_death"] is True and full["year"] == 1969
     admin.set_status(pid, "ACTIVE")
 
     # FLAGGED is a count and not a column: it moves when the reports do
@@ -1802,6 +1838,9 @@ def test_admin_content_and_dashboard():
     assert changed["value"] == ("1969", "1970"), changed
     assert changed["title"] == ("Moon landing", "Moon landings")
     assert changed["grouped"] == (False, True)
+    # the two the fold reads are content, so an operator can see them move
+    assert changed["birth_death"] == (False, True), changed
+    assert changed["year"] == (None, 1969), changed
     assert "body" not in changed, "a body change belongs in the body diff"
     assert "edited_by" not in changed, \
         "every edit changes edited_by, so a row for it says nothing"
@@ -1810,6 +1849,29 @@ def test_admin_content_and_dashboard():
     assert "author" in admin_api.DIFF_FIELDS, "the byline tripwire went missing"
     assert {"sign": "+", "text": "And a third."} in d["body"]
     assert d["tags"] == {"before": ["space"], "after": ["history", "space"]}
+    # A revision from before the two columns existed carries neither key, and
+    # the diff has to read it the way apply_snapshot does -- as the column's
+    # default -- or every old revision of every entry shows a flag that went
+    # from nothing to False, which is a change nobody made.
+    con = db.connect()
+    try:
+        with con:
+            elder = json.loads(con.execute(
+                "SELECT snapshot FROM revisions WHERE id = ?",
+                (revs[0]["id"],)).fetchone()[0])
+            for key in ("birth_death", "year"):
+                del elder[key]
+            elder_id = con.execute(
+                "INSERT INTO revisions (post_id, snapshot, author, at) VALUES (?,?,?,?)",
+                (pid, json.dumps(elder), "first", db.now())).lastrowid
+        same = ops.get(f"/api/admin/posts/{pid}/diff",
+                       params={"a": elder_id, "b": revs[0]["id"]}).json()
+        assert same["fields"] == [], same["fields"]
+        # and gone again, so the numbering below is the entry's own history
+        with con:
+            con.execute("DELETE FROM revisions WHERE id = ?", (elder_id,))
+    finally:
+        con.close()
     assert ops.get(f"/api/admin/posts/{pid}/diff",
                    params={"a": "banana"}).status_code == 422
     assert ops.get(f"/api/admin/posts/{pid}/diff",
@@ -1876,6 +1938,31 @@ def test_admin_content_and_dashboard():
     assert renumbered["action"] == "CONTENT_RENUMBER"
     assert renumbered["value"] == "1969", \
         "the number it was is only recoverable because the snapshot came first"
+    # The renumber is the one route that can move a date forward past a year
+    # already on the row, and it asks the same question the two public writes
+    # do -- or what it leaves behind is an entry every later public edit is
+    # refused for (ADR-0029). The clock is held at midsummer 2000, when that
+    # year's Christmas was still to come.
+    born = c.post("/api/posts", json={"value": "01-01", "format": "CALENDAR",
+                                      "title": "born", "birth_death": True,
+                                      "year": 2000}).json()
+    real = store.now
+    try:
+        store.now = lambda: "2000-06-01T00:00:00+00:00"
+        moved = ops.post(f"/api/admin/posts/{born['id']}/value",
+                         json={"value": "12-25", "format": "CALENDAR"})
+        assert moved.status_code == 422 and "has not" in moved.text, moved.text
+    finally:
+        store.now = real
+    assert c.get(f"/api/posts/{born['id']}").json()["value"] == "01-01", \
+        "a refused renumber moved the entry anyway"
+    # and once that Christmas has passed, the same move is a move
+    moved = ops.post(f"/api/admin/posts/{born['id']}/value",
+                     json={"value": "12-25", "format": "CALENDAR"}).json()
+    assert (moved["value"], moved["year"]) == ("12-25", 2000), moved
+    assert c.patch(f"/api/posts/{born['id']}",
+                   json={"title": "born, still", "author": "x"}).status_code == 200
+    ops.post(f"/api/admin/posts/{born['id']}/status", json={"status": "HIDDEN"})
     assert ops.post(f"/api/admin/posts/{pid}/value",
                     json={"value": "1971"}).status_code == 409
     assert ops.post(f"/api/admin/posts/{pid}/value",
@@ -2414,6 +2501,139 @@ def test_api_round_trip():
     assert [r["value"] for r in rows] == ["02-29", "04-01", "12-25"], rows
     assert [r["bucket"] for r in rows] == ["02", "04", "12"], rows
     assert all(len(r["entries"]) == 1 for r in rows), "a Mixed row reached the tab"
+    # A birth or a death is a flag on the entry, not a seventh format and not
+    # a section: this is still a CALENDAR date at /c/12-25 with the same key
+    # and the same band. What it changes is where the Calendar tab draws it,
+    # and the tab reads it off the *entry* rather than off the row -- 12-25
+    # carries Christmas in December's list and this in its fold (ADR-0029).
+    newton = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                                        "title": "Isaac Newton born",
+                                        "birth_death": True, "year": 1642})
+    assert newton.status_code == 201, newton.text
+    newton = newton.json()
+    assert newton["birth_death"] is True, newton
+    assert (newton["format"], newton["sort_key"], newton["bucket"]) \
+        == ("CALENDAR", 1225.0, "12"), "the flag moved the entry"
+    dec = next(r for r in c.get("/api/numbers", params={"format": "CALENDAR"}).json()
+               if r["value"] == "12-25")
+    assert {e["title"]: e["birth_death"] for e in dec["entries"]} \
+        == {"Christmas Day": False, "Isaac Newton born": True}, dec
+    # The year rides along as an annotation, never as part of the address:
+    # /c/12-25 is the day of the year and `value` carries no year, so two
+    # births on one day are two entries at one address (ADR-0026).
+    assert newton["year"] == 1642 and newton["value"] == "12-25", newton
+    assert next(e for e in dec["entries"] if e["birth_death"])["year"] == 1642
+    # ...and a birth that has not happened is refused. The whole date and not
+    # the year alone: in September this year's Christmas is still to come, and
+    # a year-only test waves it through until it arrives. Off the clock rather
+    # than hard-wired to Christmas, though: 12-25 in this year is a date to
+    # come for fifty-one weeks and a date that has passed for the other one,
+    # and a suite that goes red from the 25th to the 31st of December is a
+    # suite nobody runs that week. Tomorrow is always exactly one day ahead,
+    # and on the 31st it is 01-01 of next year, still refused. Today as the
+    # API counts it: UTC and the fourteen hours to the earliest clock on Earth.
+    today = (datetime.fromisoformat(db.now()) + timedelta(hours=14)).date()
+    tomorrow = today + timedelta(days=1)
+    soon = c.post("/api/posts", json={"value": f"{tomorrow:%m-%d}",
+                                      "format": "CALENDAR", "title": "not yet",
+                                      "birth_death": True, "year": tomorrow.year})
+    assert soon.status_code == 422 and "has not" in soon.text, soon.text
+    # the boundary is `>`: a birth today has happened
+    here = c.post("/api/posts", json={"value": f"{today:%m-%d}",
+                                      "format": "CALENDAR", "title": "today",
+                                      "birth_death": True, "year": today.year})
+    assert here.status_code == 201, here.text
+    admin.set_status(here.json()["id"], "HIDDEN")
+    # and a date that never happened at all: 02-29 is a fixed date only while
+    # there is no year beside it, and 1900 had no 29th of February
+    never = c.post("/api/posts", json={"value": "02-29", "format": "CALENDAR",
+                                       "title": "never", "birth_death": True,
+                                       "year": 1900})
+    assert never.status_code == 422 and "leap" in never.text, never.text
+    once = c.post("/api/posts", json={"value": "02-29", "format": "CALENDAR",
+                                      "title": "a leap year", "birth_death": True,
+                                      "year": 2000})
+    assert once.status_code == 201, once.text
+    admin.set_status(once.json()["id"], "HIDDEN")
+    # The clock the rule reads is fourteen hours ahead of UTC -- today is the
+    # latest date it is anywhere -- so a reader's own `max`, drawn from a local
+    # clock, can never allow what the API refuses. Pinned with the clock held,
+    # since a live one only shows it after 10:00 UTC.
+    real = store.now
+    try:
+        store.now = lambda: "2026-09-14T11:00:00+00:00"   # 01:00 on the 15th, UTC+14
+        store.refuse_a_future_year("09-15", "CALENDAR", 2026)
+        for when, value in (("2026-09-14T11:00:00+00:00", "09-16"),
+                            ("2026-09-14T09:00:00+00:00", "09-15")):
+            store.now = lambda when=when: when
+            try:
+                store.refuse_a_future_year(value, "CALENDAR", 2026)
+            except HTTPException as e:
+                assert e.status_code == 422 and "has not" in e.detail, e.detail
+            else:
+                assert False, (when, value, "was let through")
+    finally:
+        store.now = real
+    ahead = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                                       "title": "not yet", "birth_death": True,
+                                       "year": 9999})
+    assert ahead.status_code == 422 and "has not" in ahead.text, ahead.text
+    # a year with no birth beside it is dropped rather than refused: the form
+    # never sends the pair, and an API client that only unticks the box must
+    # not be held for the year it left behind
+    alone = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                                       "title": "no flag", "year": 1642}).json()
+    assert alone["year"] is None and alone["birth_death"] is False, alone
+    admin.set_status(alone["id"], "HIDDEN")
+    # a year is a year, and ge=1 on the field is the model's end of it: zero
+    # and a negative are refused before the route sees them, typed as a number
+    # or as a string -- a numeric string is read as its number, which is the
+    # coercion a form posting JSON wants
+    for bad in (0, -1, "-3"):
+        r = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                                       "title": "not a year", "year": bad})
+        assert r.status_code == 422, (bad, r.text)
+    # a value with no month and day in it is tested on the year alone: this
+    # year came round on the 1st of January and next year has not
+    plain = c.post("/api/posts", json={"value": "1066", "title": "Hastings",
+                                       "birth_death": True, "year": today.year})
+    assert plain.status_code == 201, plain.text
+    admin.set_status(plain.json()["id"], "HIDDEN")
+    assert c.post("/api/posts", json={"value": "1066", "title": "Hastings",
+                                      "birth_death": True,
+                                      "year": today.year + 1}).status_code == 422
+    # the same rule on an edit, and read off the *settled* value -- the year
+    # field alone arrives with no value at all
+    late = c.patch(f"/api/posts/{newton['id']}", json={"year": 9999})
+    assert late.status_code == 422 and "has not" in late.text, late.text
+    assert c.get(f"/api/posts/{newton['id']}").json()["year"] == 1642, \
+        "a refused year was written anyway"
+    # an explicit null clears it -- `in sent` again, since a year somebody
+    # guessed wrong has to be removable
+    none = c.patch(f"/api/posts/{newton['id']}",
+                   json={"year": None, "author": "editor"}).json()
+    assert none["year"] is None, none
+    c.patch(f"/api/posts/{newton['id']}", json={"year": 1642, "author": "editor"})
+    # an edit that says nothing about the flag leaves it alone
+    quiet = c.patch(f"/api/posts/{newton['id']}",
+                    json={"title": "Isaac Newton is born", "author": "editor"}).json()
+    assert quiet["birth_death"] is True, quiet
+    # and an explicit false takes it off: `in sent` and not `is not None`, or
+    # the default would read as "unchanged" and the box could never be cleared
+    cleared = c.patch(f"/api/posts/{newton['id']}",
+                      json={"birth_death": False, "author": "editor"}).json()
+    assert cleared["birth_death"] is False, cleared
+    assert cleared["year"] is None, "unticking the box left its year behind"
+    # it is content, so a revision keeps it and a restore brings it back --
+    # which is what holds SNAPSHOT_FIELDS and apply_snapshot together
+    prior = c.get(f"/api/posts/{newton['id']}/revisions").json()[0]
+    restored = c.post(f"/api/posts/{newton['id']}/revisions/{prior['id']}/restore",
+                      json={"author": "editor"})
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["birth_death"] is True, \
+        "a restore dropped the flag; a version that cannot say an entry was a " \
+        "birth is a worse record"
+    assert restored.json()["year"] == 1642, "a restore dropped the year"
     # a history line reads the value through the format the way the hero does,
     # so the label carries it: 12-25 under an entry whose hero says 25 December
     # is the format gone missing from the label, not a different date
@@ -2500,7 +2720,7 @@ def test_api_round_trip():
     assert healed.status_code == 200 and healed.json()["sort_key"] is None, healed.text
     assert c.get("/api/numbers").status_code == 200, "an Inf key reached a response"
     assert c.get("/api/posts").status_code == 200, "an Inf key reached a response"
-    for pid in (xmas["id"], fools["id"], wrote["id"], leap["id"]):
+    for pid in (xmas["id"], fools["id"], wrote["id"], leap["id"], newton["id"]):
         admin.set_status(pid, "HIDDEN")
 
     clock = c.post("/api/posts", json={"value": "09:41", "title": "iPhone keynote",
@@ -3054,7 +3274,7 @@ def test_comments():
     assert [x["body"] for x in said] == [
         "233C, really.", "Paper burns at 451F, or so the title says."
     ]
-    assert said[0]["author"] == "anonymous"   # nobody said who they were
+    assert said[0]["author"] == "test-nickname"  # the browser supplied its drawn name
 
     # the shape is checked the way a tag's is: blank is not a remark, and the
     # cap is the cap. COMMENT_MAX is read off main so the two cannot drift here.
@@ -3282,8 +3502,9 @@ def test_linking_a_pair_twice_is_one_event():
             con.close()
 
     assert c.post(f"/api/posts/{x['id']}/links",
-                  json={"other_id": y["id"]}).status_code == 201
+                  json={"other_id": y["id"], "author": "maestr.oh"}).status_code == 201
     assert links() == 1
+    assert _events(action="LINK")[-1]["actor"] == "maestr.oh"
     # same pair, same answer, and the caller cannot tell -- which is the point:
     # it is already linked, so 201 is true
     assert c.post(f"/api/posts/{x['id']}/links",
@@ -3291,6 +3512,49 @@ def test_linking_a_pair_twice_is_one_event():
     assert links() == 1, "a link that was already there wrote a second row"
     assert [r["id"] for r in
             c.get(f"/api/posts/{x['id']}").json()["related"]] == [y["id"]]
+
+
+def test_saving_an_unchanged_entry_is_not_an_edit():
+    """Side panels save immediately. Pressing the form's Save afterwards must
+    not invent a revision or a second activity row for unchanged content.
+    """
+    c = TestClient(main.app)
+    post = c.post("/api/posts", json={
+        "value": "8003", "title": "unchanged", "author": "first",
+    }).json()
+    before_events = len(_events(target_id=post["id"]))
+    before_revisions = len(c.get(f"/api/posts/{post['id']}/revisions").json())
+
+    saved = c.patch(f"/api/posts/{post['id']}", json={
+        "value": post["value"], "format": post["format"],
+        "title": post["title"], "body": post["body"],
+        "image": post["image"], "lang": post["lang"],
+        "grouped": post["grouped"], "birth_death": post["birth_death"],
+        "year": post["year"], "tags": post["tags"],
+        "base_updated_at": post["updated_at"], "author": "maestr.oh",
+    })
+
+    assert saved.status_code == 200
+    assert len(_events(target_id=post["id"])) == before_events
+    assert len(c.get(f"/api/posts/{post['id']}/revisions").json()) == before_revisions
+
+
+def test_a_public_write_requires_a_nickname():
+    """The browser offers an English generated name, but the open API must
+    still refuse to turn a missing, blank or old generic name into a byline.
+    """
+    c = _TestClient(main.app)
+    for body in (
+        {"value": "8004", "title": "missing"},
+        {"value": "8004", "title": "blank", "author": "   "},
+        {"value": "8004", "title": "generic", "author": "anonymous"},
+    ):
+        assert c.post("/api/posts", json=body).status_code == 422
+    made = c.post("/api/posts", json={
+        "value": "8004", "title": "named", "author": "bright-otter",
+    })
+    assert made.status_code == 201
+    assert made.json()["author"] == "bright-otter"
 
 
 def test_a_500_leaves_a_row_in_the_log():
@@ -3575,7 +3839,8 @@ def test_the_schema_moves_forward_once():
         assert latest, "there are no migrations to number"
         assert con.execute("PRAGMA user_version").fetchone()[0] == latest
         columns = {r["name"] for r in con.execute("PRAGMA table_info(posts)")}
-        assert {"edited_by", "lang", "grouped", "status"} <= columns, columns
+        assert {"edited_by", "lang", "grouped", "birth_death", "year",
+                "status"} <= columns, columns
 
         # a database from before the list was numbered: version 0, and rows in
         # the shapes the passes exist to fix
@@ -3601,6 +3866,29 @@ def test_the_schema_moves_forward_once():
         db.init()
         assert "FILM" in [r[0] for r in con.execute("SELECT tag FROM post_tags")], \
             "the pass ran again on a database that had already had it"
+
+        # The two ALTER arms, which nothing else in this suite walks: every
+        # database a test makes takes its columns from SCHEMA, so a step that
+        # adds one to a database that already exists is always a no-op here and
+        # only ever runs for real on the deployed file. Dropping the columns and
+        # standing the version back to just before the first of their steps is
+        # the one way to watch them happen. Off `.index()` rather than a
+        # literal, so appending a step later does not quietly stop testing
+        # these.
+        with con:
+            con.execute("ALTER TABLE posts DROP COLUMN birth_death")
+            con.execute("ALTER TABLE posts DROP COLUMN year")
+            con.execute("PRAGMA user_version = %d"
+                        % db.MIGRATIONS.index(db._birth_death_column))
+        db.init()
+        columns = {r["name"] for r in con.execute("PRAGMA table_info(posts)")}
+        assert {"birth_death", "year"} <= columns, columns
+        row = con.execute(
+            "SELECT birth_death, year FROM posts WHERE id = 1").fetchone()
+        assert row["birth_death"] == 0, \
+            "an entry written before the fold existed was put in it"
+        assert row["year"] is None, "a year nobody wrote was invented"
+        assert con.execute("PRAGMA user_version").fetchone()[0] == latest
         con.close()
     finally:
         db.DB_PATH = was
@@ -3644,8 +3932,8 @@ def test_a_snapshot_is_its_own_shape():
         con.close()
     assert set(snap) == {
         "value", "format", "sort_key", "title", "body", "image", "lang",
-        "grouped", "author", "edited_by", "likes", "created_at", "updated_at",
-        "tags", "translations",
+        "grouped", "birth_death", "year", "author", "edited_by", "likes",
+        "created_at", "updated_at", "tags", "translations",
     }, sorted(snap)
     # `id` is not one: `revisions.post_id` is the column that says which entry
     # this was. `status` is not content -- hiding takes no snapshot and a
@@ -3666,7 +3954,8 @@ def test_a_snapshot_written_by_an_older_version_still_restores():
     """
     c = TestClient(main.app)
     live = c.post("/api/posts", json={"value": "1124", "title": "as it stands",
-                                      "author": "first"}).json()
+                                      "author": "first", "birth_death": True,
+                                      "year": 1124}).json()
     old = {
         "id": live["id"], "value": "1124", "format": "INTEGER", "sort_key": 1124.0,
         "title": "as it was", "body": "the old body", "image": None, "lang": None,
@@ -3690,6 +3979,10 @@ def test_a_snapshot_written_by_an_older_version_still_restores():
     assert back["body"] == "the old body" and back["tags"] == ["book"]
     assert back["author"] == "first", "the first writer is not the restorer"
     assert back["edited_by"] == "arthur"
+    # the two columns that came after this shape: a snapshot that says nothing
+    # about them puts the defaults back, not the live row's values
+    assert back["birth_death"] is False, "a snapshot from before the fold put the entry in it"
+    assert back["year"] is None, "a snapshot from before the year invented one"
 
     con = db.connect()
     try:

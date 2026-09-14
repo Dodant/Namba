@@ -63,6 +63,10 @@ export default function PostCard({
       )}
       <div className="main">
         <h2>
+          {/* the same place the index row puts it, for the same reason: a
+              date page reads "1642 Isaac Newton born", and the year is what
+              tells two births on one day apart */}
+          {post.year != null && <span className="yr">{post.year}</span>}
           <Link to={`/p/${post.id}`}>{post.title}</Link>
         </h2>
         {post.body && <p>{plain(post.body)}</p>}
