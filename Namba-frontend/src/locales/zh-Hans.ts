@@ -10,7 +10,9 @@ export const ZH_HANS: Messages = {
   tagline: '汇集数字含义的开放维基',
   common: {
     loading: '加载中…', backToIndex: '返回索引。', addFirst: '添加第一个条目。',
-    anonymous: '匿名', cancel: '取消', save: '保存', edit: '编辑', restore: '恢复',
+    anonymous: '匿名', nicknamePlaceholder: '必须填写昵称', drawNickname: '随机取名',
+    nicknameRequired: '请输入昵称或随机生成一个。',
+    cancel: '取消', save: '保存', edit: '编辑', restore: '恢复',
     by: (name: string) => `${name === 'anonymous' ? '匿名用户' : name}创建`,
     edited: (when: string, name?: string | null) =>
       `${when}编辑${name ? ` · ${name === 'anonymous' ? '匿名用户' : name}` : ''}`,

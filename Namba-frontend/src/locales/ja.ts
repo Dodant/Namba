@@ -9,7 +9,9 @@ export const JA: Messages = {
   tagline: '数字の意味を集めるオープンなウィキ',
   common: {
     loading: '読み込み中…', backToIndex: '一覧に戻る。', addFirst: '最初の項目を追加する。',
-    anonymous: '匿名', cancel: 'キャンセル', save: '保存', edit: '編集', restore: '復元',
+    anonymous: '匿名', nicknamePlaceholder: 'ニックネーム必須', drawNickname: '名前を引く',
+    nicknameRequired: 'ニックネームを入力するか、名前を引いてください。',
+    cancel: 'キャンセル', save: '保存', edit: '編集', restore: '復元',
     by: (name: string) => `${name === 'anonymous' ? '匿名' : name}が作成`,
     edited: (when: string, name?: string | null) => name
       ? `${name === 'anonymous' ? '匿名' : name}が${when}に編集`

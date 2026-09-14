@@ -10,7 +10,9 @@ export const FR: Messages = {
   tagline: 'Un wiki ouvert consacré aux nombres',
   common: {
     loading: 'Chargement…', backToIndex: 'Retour à l’index.', addFirst: 'Ajoutez la première entrée.',
-    anonymous: 'anonyme', cancel: 'Annuler', save: 'Enregistrer', edit: 'modifier', restore: 'Restaurer',
+    anonymous: 'anonyme', nicknamePlaceholder: 'Pseudonyme requis', drawNickname: 'Tirer un nom',
+    nicknameRequired: 'Saisissez un pseudonyme ou tirez-en un.',
+    cancel: 'Annuler', save: 'Enregistrer', edit: 'modifier', restore: 'Restaurer',
     by: (name: string) => `par ${name === 'anonymous' ? 'anonyme' : name}`,
     edited: (when: string, name?: string | null) =>
       `modifié ${when}${name ? ` par ${name === 'anonymous' ? 'anonyme' : name}` : ''}`,

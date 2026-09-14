@@ -4,10 +4,12 @@ import { Link, useParams } from 'react-router-dom'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import {
-  api, entryPath, errorText, nickname, tagLabel, tagPath, type Comment, type Revision,
+  api, entryPath, errorText, nickname, tagLabel, tagPath, validNickname,
+  type Comment, type Revision,
 } from '../api'
 import { fmtCount, fmtDate, numSize, plain, showValue } from '../format'
 import FlagPanel from '../components/FlagPanel'
+import { NicknameField } from '../components/NicknameField'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
 import { revisionBy, useUi } from '../uiLocale'
@@ -53,7 +55,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
      a recovery it never offers. */
   async function resurrect(rev: Revision) {
     try {
-      await api.restore(Number(id), rev.id, nickname.get() || 'anonymous')
+      await api.restore(Number(id), rev.id, nickname.get())
       location.reload() // this render came off a 404; start clean
     } catch (e) {
       setErr(errorText(e))
@@ -344,7 +346,7 @@ function Comments({ id }: { id: string }) {
   const fid = (name: string) => `${uid}-${name}`
   const [said, setSaid] = useState<Comment[] | null>(null)   // null is "loading"
   const [body, setBody] = useState('')
-  const [author, setAuthor] = useState(nickname.get())
+  const [author, setAuthor] = useState(nickname.get)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -358,11 +360,15 @@ function Comments({ id }: { id: string }) {
      wiki remembers it -- it is the one thing a reader should not retype. */
   async function say() {
     if (!body.trim() || busy) return
+    if (!validNickname(author)) {
+      setErr(m.common.nicknameRequired)
+      return
+    }
     setBusy(true)
     setErr('')
     nickname.set(author)
     try {
-      setSaid(await api.comment(id, { author: author.trim() || 'anonymous', body }))
+      setSaid(await api.comment(id, { author: author.trim(), body }))
       setBody('')
     } catch (e) {
       setErr(errorText(e))
@@ -413,16 +419,12 @@ function Comments({ id }: { id: string }) {
       <details className="cmt-compose">
         <summary className="ix-fold">{m.post.saySomething}</summary>
         <div className="cmt-form">
-          <div className="field">
-            <label htmlFor={fid('nick')}>{m.post.nickname}</label>
-            <input
-              id={fid('nick')}
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
-              placeholder={m.common.anonymous}
-              maxLength={40}
-            />
-          </div>
+          <NicknameField
+            id={fid('nick')}
+            label={m.post.nickname}
+            value={author}
+            onChange={setAuthor}
+          />
           <div className="field">
             <label htmlFor={fid('say')}>
               {m.post.saySomething}{' '}

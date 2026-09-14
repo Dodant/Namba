@@ -9,7 +9,9 @@ export const DE: Messages = {
   tagline: 'Ein offenes Wiki über Zahlen',
   common: {
     loading: 'Wird geladen…', backToIndex: 'Zurück zum Index.', addFirst: 'Ersten Eintrag hinzufügen.',
-    anonymous: 'anonym', cancel: 'Abbrechen', save: 'Speichern', edit: 'bearbeiten', restore: 'Wiederherstellen',
+    anonymous: 'anonym', nicknamePlaceholder: 'Anzeigename erforderlich', drawNickname: 'Namen ziehen',
+    nicknameRequired: 'Gib einen Anzeigenamen ein oder ziehe einen.',
+    cancel: 'Abbrechen', save: 'Speichern', edit: 'bearbeiten', restore: 'Wiederherstellen',
     by: (name: string) => `von ${name === 'anonymous' ? 'anonym' : name}`,
     edited: (when: string, name?: string | null) =>
       `bearbeitet ${when}${name ? ` von ${name === 'anonymous' ? 'anonym' : name}` : ''}`,

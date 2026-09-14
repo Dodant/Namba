@@ -9,7 +9,9 @@ export const ES: Messages = {
   tagline: 'Una wiki abierta sobre números',
   common: {
     loading: 'Cargando…', backToIndex: 'Volver al índice.', addFirst: 'Añade la primera entrada.',
-    anonymous: 'anónimo', cancel: 'Cancelar', save: 'Guardar', edit: 'editar', restore: 'Restaurar',
+    anonymous: 'anónimo', nicknamePlaceholder: 'Alias obligatorio', drawNickname: 'Generar nombre',
+    nicknameRequired: 'Escribe un alias o genera uno.',
+    cancel: 'Cancelar', save: 'Guardar', edit: 'editar', restore: 'Restaurar',
     by: (name: string) => `por ${name === 'anonymous' ? 'anónimo' : name}`,
     edited: (when: string, name?: string | null) =>
       `editado ${when}${name ? ` por ${name === 'anonymous' ? 'anónimo' : name}` : ''}`,

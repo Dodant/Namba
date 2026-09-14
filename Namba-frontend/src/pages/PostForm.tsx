@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   api, ApiError, errorText, FORMATS, LANG_CODE, langLabel, MONTH_BUCKETS,
-  nickname, sectionOf, TAG_MAX, tagLabel, TAGS_PER_POST, type Format,
+  nickname, sectionOf, TAG_MAX, tagLabel, TAGS_PER_POST, validNickname, type Format,
   type Post, type Revision, type Tag, type Translation,
 } from '../api'
 import {
@@ -10,6 +10,7 @@ import {
   monthDays, monthDayValue, monthName, showValue, todayMonthDay,
 } from '../format'
 import ExistingEntries from '../components/ExistingEntries'
+import { NicknameField } from '../components/NicknameField'
 import { useAsync } from '../useAsync'
 import { revisionBy, useUi, type Messages } from '../uiLocale'
 
@@ -178,7 +179,7 @@ export default function PostForm() {
      the form cannot grow without bound as people coin more, and unioned with
      what this entry already carries so a rare tag never falls off the end. */
   const vocab = useAsync(() => api.tags(), [])
-  const [author, setAuthor] = useState(nickname.get())
+  const [author, setAuthor] = useState(nickname.get)
   const [err, setErr] = useState('')
   /* Somebody else saved while this form was open. Its own state and not an
      error string: an error is what went wrong with the request, and this is a
@@ -227,6 +228,10 @@ export default function PostForm() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    if (!validNickname(author)) {
+      setErr(m.common.nicknameRequired)
+      return
+    }
     setBusy(true)
     setErr('')
     setClash(null)
@@ -245,7 +250,7 @@ export default function PostForm() {
       title,
       body,
       image,
-      author: author.trim() || 'anonymous',
+      author: author.trim(),
       tags,
       lang: lang.trim() || null,
       grouped,
@@ -645,7 +650,7 @@ export default function PostForm() {
 
             <LinkPanel
               post={post}
-              author={author.trim() || 'anonymous'}
+              author={author}
               onLinked={setPost}
               onError={setErr}
             />
@@ -756,21 +761,13 @@ export default function PostForm() {
           )}
         </div>
 
-        <div className="field nick-field">
-          <label htmlFor={fid('author')}>
-            {m.form.nickname}{' '}
-            <span className="hint">
-              {editing ? m.form.editorHint : m.form.noAccountHint}
-            </span>
-          </label>
-          <input
-            id={fid('author')}
-            maxLength={40}
-            value={author}
-            onChange={(e) => setAuthor(e.target.value)}
-            placeholder={m.common.anonymous}
-          />
-        </div>
+        <NicknameField
+          id={fid('author')}
+          label={m.form.nickname}
+          hint={editing ? m.form.editorHint : m.form.noAccountHint}
+          value={author}
+          onChange={setAuthor}
+        />
 
         {err && (
           <p className="err" role="alert">
@@ -849,7 +846,7 @@ export default function PostForm() {
                     className="pill"
                     onClick={() =>
                       run(
-                        () => api.restore(post.id, r.id, nickname.get() || 'anonymous'),
+                        () => api.restore(post.id, r.id, nickname.get()),
                         true, // a restore replaces the entry, so the fields follow it
                       ).then(() => setRevBump((n) => n + 1))
                     }
@@ -970,12 +967,13 @@ function TranslationEditor({
   const [lang, setLang] = useState(editing?.lang ?? '')
   const [title, setTitle] = useState(editing?.title ?? '')
   const [body, setBody] = useState(editing?.body ?? '')
-  const [author, setAuthor] = useState(nickname.get())
+  const [author, setAuthor] = useState(nickname.get)
   const uid = useId()
   const fid = (name: string) => `${uid}-${name}`
 
   async function save() {
     if (!lang.trim() || !title.trim()) return onError(m.form.requiredTranslation)
+    if (!validNickname(author)) return onError(m.common.nicknameRequired)
     onError('')
     nickname.set(author)
     try {
@@ -984,7 +982,7 @@ function TranslationEditor({
           lang,
           title,
           body,
-          author: author || 'anonymous',
+          author: author.trim(),
         }),
       )
     } catch (e) {
@@ -994,10 +992,12 @@ function TranslationEditor({
 
   async function drop() {
     if (!editing) return
+    if (!validNickname(author)) return onError(m.common.nicknameRequired)
     if (!confirm(m.form.removeTranslationConfirm(editing.lang))) return
     onError('')
+    nickname.set(author)
     try {
-      onSaved(await api.untranslate(post.id, editing.id, nickname.get() || 'anonymous'))
+      onSaved(await api.untranslate(post.id, editing.id, author.trim()))
     } catch (e) {
       onError(errorText(e))
     }
@@ -1054,16 +1054,12 @@ function TranslationEditor({
           maxLength={5000}
         />
       </div>
-      <div className="field">
-        <label htmlFor={fid('author')}>{m.form.nickname}</label>
-        <input
-          id={fid('author')}
-          value={author}
-          onChange={(e) => setAuthor(e.target.value)}
-          placeholder={m.common.anonymous}
-          maxLength={40}
-        />
-      </div>
+      <NicknameField
+        id={fid('author')}
+        label={m.form.nickname}
+        value={author}
+        onChange={setAuthor}
+      />
       <div className="actions">
         <button type="button" className="btn primary" onClick={save}>
           {editing ? m.common.save : m.form.addThisTranslation}
@@ -1121,10 +1117,17 @@ function LinkPanel({
 
   async function act(fn: () => Promise<Post>) {
     onError('')
+    if (!validNickname(author)) {
+      onError(m.common.nicknameRequired)
+      return false
+    }
+    nickname.set(author)
     try {
       onLinked(await fn())
+      return true
     } catch (e) {
       onError(errorText(e))
+      return false
     }
   }
 
@@ -1145,7 +1148,7 @@ function LinkPanel({
               onClick={() => act(() => api.unlink(
                 post.id,
                 r.id,
-                author,
+                author.trim(),
               ))}
             >
               {m.form.unlink}
@@ -1182,11 +1185,12 @@ function LinkPanel({
               type="button"
               className="pill"
               onClick={async () => {
-                await act(() => api.link(
+                const linked = await act(() => api.link(
                   post.id,
                   h.id,
-                  author,
+                  author.trim(),
                 ))
+                if (!linked) return
                 const rest = hits.filter((x) => x.id !== h.id)
                 setHits(rest.length ? rest : null) // not "no matches" -- none left
               }}

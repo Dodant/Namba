@@ -9,7 +9,9 @@ export const KO: Messages = {
   tagline: '숫자의 의미를 모으는 열린 위키',
   common: {
     loading: '불러오는 중…', backToIndex: '색인으로 돌아가기.', addFirst: '첫 엔트리 추가하기.',
-    anonymous: '익명', cancel: '취소', save: '저장', edit: '수정', restore: '복원',
+    anonymous: '익명', nicknamePlaceholder: '닉네임 필수', drawNickname: '이름 뽑기',
+    nicknameRequired: '닉네임을 입력하거나 이름을 뽑아 주세요.',
+    cancel: '취소', save: '저장', edit: '수정', restore: '복원',
     by: (name: string) => `${name === 'anonymous' ? '익명' : name} 작성`,
     edited: (when: string, name?: string | null) => `${when} 수정${name ? ` · ${name === 'anonymous' ? '익명' : name}` : ''}`,
     entries: (n: number) => `엔트리 ${fmtCount(n, 'ko')}개`, tags: (n: number) => `태그 ${fmtCount(n, 'ko')}개`,

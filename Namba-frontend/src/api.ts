@@ -387,9 +387,47 @@ export const api = {
 }
 
 // --- browser-local state: no accounts, so the browser remembers instead ---
+// Names stay English in every interface locale: they are one public byline,
+// not UI text that changes when its reader changes languages.
+const NICK_ADJECTIVES = [
+  'brave', 'bright', 'calm', 'clever', 'cosmic', 'curious', 'gentle', 'golden',
+  'happy', 'lively', 'lucky', 'merry', 'nimble', 'quiet', 'silver', 'swift',
+] as const
+const NICK_NOUNS = [
+  'badger', 'comet', 'dolphin', 'falcon', 'fox', 'lantern', 'otter', 'panda',
+  'penguin', 'planet', 'rabbit', 'rocket', 'sparrow', 'tiger', 'turtle', 'whale',
+] as const
+
+const pick = <T,>(items: readonly T[]) => {
+  if (!globalThis.crypto?.getRandomValues) {
+    return items[Math.floor(Math.random() * items.length)]
+  }
+  const bytes = new Uint32Array(1)
+  globalThis.crypto.getRandomValues(bytes)
+  return items[bytes[0] % items.length]
+}
+
+export const validNickname = (value: string) => {
+  const name = value.trim()
+  return Boolean(name) && name.toLowerCase() !== 'anonymous'
+}
+
+const drawNickname = () => `${pick(NICK_ADJECTIVES)}-${pick(NICK_NOUNS)}`
+
 export const nickname = {
-  get: () => localStorage.getItem('namba.nick') ?? '',
-  set: (v: string) => localStorage.setItem('namba.nick', v),
+  get: () => {
+    const saved = localStorage.getItem('namba.nick') ?? ''
+    if (validNickname(saved)) return saved
+    const generated = drawNickname()
+    localStorage.setItem('namba.nick', generated)
+    return generated
+  },
+  set: (v: string) => localStorage.setItem('namba.nick', v.trim()),
+  draw: () => {
+    const generated = drawNickname()
+    localStorage.setItem('namba.nick', generated)
+    return generated
+  },
 }
 
 /** Which translation the reader prefers for entry text. This is deliberately

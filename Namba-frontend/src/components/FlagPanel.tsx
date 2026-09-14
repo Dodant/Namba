@@ -1,8 +1,9 @@
 import { useId, useState } from 'react'
 import {
-  api, DELETE_REASONS, errorText, nickname, REPORT_REASONS,
+  api, DELETE_REASONS, errorText, nickname, REPORT_REASONS, validNickname,
 } from '../api'
 import { useUi } from '../uiLocale'
+import { NicknameField } from './NicknameField'
 
 /* Two things a reader can do about an entry they think is wrong, and they are
    different things: one says "this is wrong", the other says "this should not be
@@ -32,7 +33,7 @@ export default function FlagPanel({ id }: { id: number | string }) {
   const [kind, setKind] = useState<Kind>('report')
   const [reason, setReason] = useState('')
   const [detail, setDetail] = useState('')
-  const [author, setAuthor] = useState(nickname.get())
+  const [author, setAuthor] = useState(nickname.get)
   const [sent, setSent] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
@@ -50,13 +51,17 @@ export default function FlagPanel({ id }: { id: number | string }) {
 
   async function send() {
     if (!reason || busy) return
+    if (kind === 'remove' && !validNickname(author)) {
+      setErr(m.common.nicknameRequired)
+      return
+    }
     setBusy(true)
     setErr('')
     try {
       if (kind === 'remove') {
         nickname.set(author)
         await api.requestDeletion(id, {
-          reason, detail, author: author.trim() || 'anonymous',
+          reason, detail, author: author.trim(),
         })
       } else {
         await api.report(id, { reason, detail })
@@ -140,16 +145,12 @@ export default function FlagPanel({ id }: { id: number | string }) {
           {/* Only the request takes a name, because only the request has one on
               the API. A report is read once by one person. */}
           {kind === 'remove' && (
-            <div className="field">
-              <label htmlFor={fid('nick')}>{m.flag.nickname}</label>
-              <input
-                id={fid('nick')}
-                value={author}
-                onChange={(e) => setAuthor(e.target.value)}
-                placeholder={m.common.anonymous}
-                maxLength={40}
-              />
-            </div>
+            <NicknameField
+              id={fid('nick')}
+              label={m.flag.nickname}
+              value={author}
+              onChange={setAuthor}
+            />
           )}
           <button
             type="button"
