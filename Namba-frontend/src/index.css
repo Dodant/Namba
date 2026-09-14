@@ -554,9 +554,17 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 .tabs.fmts {
   flex-wrap: nowrap; overflow-x: auto;
   scrollbar-width: none; overscroll-behavior-x: contain;
+  /* The rule is drawn inside the box here, and the tabs stop pulling down
+     over it. An overflow-x of auto computes the other axis to auto too --
+     there is no scroller on one axis only -- so the 1px a tab hangs below
+     the line was a whole scrollable pixel, and a wheel over the strip moved
+     it. Nothing hangs out now, so there is nothing to scroll on that axis,
+     and the underline is the 2px the language tabs draw rather than the 1px
+     a scroll container was clipping it to. */
+  border-bottom: 0; box-shadow: inset 0 -1px var(--line);
 }
 .tabs.fmts::-webkit-scrollbar { display: none; }
-.tabs.fmts a { flex: none; }
+.tabs.fmts a { flex: none; margin-bottom: 0; }
 /* Four tabs read numbers, one reads a day of the year and one reads letters
    -- UFO, CSI, NASA. Those distinctions matter, but an auto margin made
    Abbreviation look like an unrelated action at the far end of a wide row. A
