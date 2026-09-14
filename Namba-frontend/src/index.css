@@ -631,8 +631,9 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
 .ix-t { font-weight: 500; }
 
 /* the count is only interesting for the row you are reading, so it waits at the
-   far right until then. Gated on (hover: hover): on a touch screen there is no
-   hover to wait for, and a control nobody can reveal is a control nobody has */
+   far right until then. Gated on (hover: hover): a touch screen has no hover to
+   wait for, so the count would sit open on every row of the index, and the
+   entry page is where the heart is worth a thumb. Off there instead. */
 .ix-like { margin-left: auto; flex: none; }
 /* borderless here: the row is already the thing you are pointing at, and a
    pill outline put a second box on the page to look at. Transparent rather
@@ -653,6 +654,8 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
   .ix-like { opacity: 0; }
   .ix-e:hover .ix-like, .ix-e:focus-within .ix-like { opacity: 1; }
 }
+/* display, not opacity: out of the row and out of the a11y tree both */
+@media (hover: none) { .ix-like { display: none; } }
 .ix-b { color: var(--muted); font-weight: 300; }
 /* Only on a row that was actually cut, which is why the class comes from
    Home.tsx: overflow is a measurement and no selector can ask for it. Sized
