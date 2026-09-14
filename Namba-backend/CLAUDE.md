@@ -126,6 +126,22 @@ the sitemap.
   reader's own move. The front end defaults to the empty string ("As written")
   and passes the footer preference to `PostPage`, which selects a matching
   translation locally while preserving the tab strip.
+- **`posts.birth_death` is which of a month's two lists draws the entry.** A
+  flag and not a seventh format: a birth is still a `CALENDAR` date, read,
+  sorted and addressed as one, so this sits beside `grouped` rather than beside
+  `format` (ADR-0029). It rides on the **entry** in `/api/numbers`, not on the
+  row, because one date carries Christmas in December's list and Newton's birth
+  in its fold. It is in `SNAPSHOT_FIELDS` and in `apply_snapshot`'s UPDATE, and
+  in `admin_api.DIFF_FIELDS` so an operator can see it move. It is deliberately
+  **not** refused on the other five formats: the form sends every field on every
+  save, so a 422 on a flag nobody meant to change would leave an entry that
+  somehow acquired one unsaveable. Nothing but the Calendar index reads it.
+
+  Its migration is **step 4 and not a line in step 1** — a database already at 3
+  has passed that one and would never run it again. It is also the only arm of
+  `MIGRATIONS` the suite can walk for real, since every test database takes its
+  columns from `SCHEMA`; `test_the_schema_moves_forward_once` drops the column
+  and stands `user_version` back to watch the `ALTER` happen.
 - **`posts.grouped` is how the number is written, not what it is.** `value`
   never carries separators and always uses a dot decimal; `grouped_value()`
   applies the requested UI locale for display and leaves anything that is not

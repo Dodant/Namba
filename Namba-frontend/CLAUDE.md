@@ -419,6 +419,30 @@ sanitiser config to get wrong.
   band: eleven closed headings is the table of contents that default exists to
   avoid, and a reader who came for April should not have to open April.
 
+  **And every month carries a Births / Deaths fold at the foot of its list**,
+  closed, opening in place — the list above is what the day means and this is
+  who was born and who died on it. `sub` on the `Band` type, beside `keep` and
+  `now` and the Calendar tab's alone. The split is **per entry**: December 25
+  keeps Christmas in the list and Newton's birth in the fold, so a date is drawn
+  in each place it has entries for, and `bandCount` therefore counts both lists
+  and de-duplicates the dates by `value` — a closed band's one line is all it
+  says about itself. The summary is `.ix-fold`, the same disclosure a number
+  past `FOLD_OVER` gets, **indented to the title column**: left at the gutter
+  its caret sat in the band head's own caret column and it read as a second
+  heading rather than as more of the list. Below 560 the numeral stops being a
+  column and the indent goes with it. Its count is `m.common.entries` and not
+  `m.home.foldedEntries`, which only ever opens past ten and so never had to say
+  "1 entries" (ADR-0029).
+
+  **`measure` is at module scope because of that fold, and it calls it on
+  open.** These are the only rows in this index hidden when they are first
+  drawn, and whether a hidden row can be measured is the browser's call: with
+  `::details-content` it stays laid out and measurable, without it the rows are
+  `display: none` and measure 0, are never marked `cut`, and no later pass
+  corrects them — so `.ix-more` would be missing from every row in the fold for
+  good. One layout on a gesture the reader made. **Do not put it back inside
+  the effect.**
+
   **What the date does instead is colour.** The heading of the month it is and
   the numeral of the day it is take `--today`, the one cool colour in a warm
   palette and the only thing on this index coloured by when it is being read
@@ -933,6 +957,17 @@ a create: the value field is `readOnly` on an edit, which is what makes the
 selects a create-only branch. The examples in the hint go through
 `showValue()` with the format, so they read "December 25 · April 1 ·
 February 29" in the reader's own language.
+
+**Calendar is also the one format with a second checkbox**, `A birth or a
+death`, and it is the separator box's opposite in two ways. It is *hidden*
+rather than cleared when the format moves off Calendar — `grouped` stops
+meaning anything on a value with no separators to show, while this goes on
+meaning what it meant, and a mis-click on Format and back must not quietly drop
+it. And its hint is a **rule** rather than a preview, so it takes the form's
+own hint colour rather than the accent the grouped preview wears, and its
+words sit in one flex item with the label so a sentence wraps like one. The
+rule is the guide's: a Births list invites exactly the entry `/guide` never
+allows, and it is said where the box is ticked rather than only there.
 
 **The two placeholders follow the format as well**, because an entry about
 `POV` is not titled after a book about 42 and one about April Fools is not

@@ -314,6 +314,26 @@ opposite, and only its regex says `[0-9]`.
   either string says which, so this format is reached by picking it, the way
   `TIME` is on `1:29:300` (ADR-0026).
 
+  **A birth or a death is a flag on it, not a seventh format.** A month's list
+  is what its days mean and the fold at the foot of it is who was born and who
+  died on them — `posts.birth_death`, one column for both, beside `grouped`
+  rather than beside `format`, because a birth *is* a `CALENDAR` date: it reads
+  as one, sorts on the same key and answers at `/c/12-25`, and what the flag
+  changes is only which of a month's two lists draws it. A tag was the other
+  candidate and spends one of the two an entry has *and* makes a free-form
+  vocabulary an enum the UI branches on (ADR-0010). Nothing joins the
+  hand-copied table above: no format, no vocabulary, no band.
+
+  The split is **per entry**, so December 25 keeps Christmas in the list and
+  Newton's birth in the fold, and a date is drawn in each place it has entries
+  for. The band head still counts the whole month, since a closed band's one
+  line is all it says about itself. It is **not** refused on the other five
+  formats — the form sends every field on every save, so a 422 on a flag
+  nobody meant to change would leave that entry unsaveable; the checkbox is
+  offered where it means something and nothing else reads the column. And it
+  is in `SNAPSHOT_FIELDS`, because a version that cannot say an entry was a
+  birth is a worse record (ADR-0029).
+
   **`/c/` is the one section that is a closed set, so an unreadable date is
   not a page.** There are 366 days: `/c/99-99` is not an empty date page the
   way `/n/999999` is an empty number one, where nobody has written about that
