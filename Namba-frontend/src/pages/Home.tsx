@@ -170,12 +170,11 @@ const FOLD_OVER = 10
    closed, this line is all it says about itself. The first noun follows the
    section: the Abbreviation band counts abbreviations and the Calendar band
    counts dates, not numbers. */
-/* One band of the index. `open` and `keep` are the Calendar tab's alone: every
-   other band is open and is drawn only when it has rows. */
+/* One band of the index. `keep` is the Calendar tab's alone: every other band
+   is drawn only when it has rows. */
 type Band = {
   label: string
   items: NumberEntry[]
-  open?: boolean
   keep?: boolean
 }
 
@@ -282,12 +281,7 @@ function Index({ lang }: { lang: string }) {
                  once every locale answers */
               label: monthName(Number(b), locale),
               items: rows.filter((n) => n.bucket === b),
-              /* the month it is now, and only that one. A calendar that opens
-                 at January is a year to scroll past; one that opens at today
-                 is the page the reader came for. Local time, because the
-                 reader's calendar is the reader's. */
-              open: Number(b) === new Date().getMonth() + 1,
-              /* and the one index that draws a band with nothing in it:
+              /* the one index that draws a band with nothing in it:
                  twelve months are a calendar, and a year missing August reads
                  as a bug rather than as a month nobody has written about. */
               keep: true,
@@ -378,11 +372,10 @@ function Index({ lang }: { lang: string }) {
             /* <details>, not a button and a piece of state: the browser
                already knows how to open and close a disclosure, and it
                gets the keyboard and the screen reader right for free.
-               Open by default -- the index is the page, and five closed
-               headings is a table of contents, not a wiki. The Calendar tab
-               is the exception and says so itself: twelve open months are a
-               year to scroll past, so it opens the one it is. */
-            <details className="band" key={band.label} open={band.open ?? true}>
+               Open, every one of them, the Calendar's twelve months
+               included -- the index is the page, and closed headings are a
+               table of contents, not a wiki. */
+            <details className="band" key={band.label} open>
               <summary className="band-head">
                 <h2>{band.label}</h2>
                 <span className="rule" />

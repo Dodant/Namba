@@ -410,14 +410,15 @@ sanitiser config to get wrong.
   the count: it is there to be closed by a reader who wants past a number the
   wiki has taken to, and it never hides an entry from one who did not ask.
 
-  **The Calendar tab breaks both of those defaults, and is the only tab that
-  does.** It opens the month it *is* and closes the other eleven — twelve open
-  months are a year to scroll past, and the page a reader came for is today's
-  — and it draws a month with nothing in it, where every other band is skipped
-  when empty, because twelve months are a calendar and a year missing August
-  reads as a bug rather than as a month nobody has written about. `open` and
-  `keep` on the `Band` type are those two, and they are optional so the other
-  five tabs keep the behaviour they had (ADR-0026).
+  **The Calendar tab breaks one of those defaults, and is the only tab that
+  does.** It draws a month with nothing in it, where every other band is
+  skipped when empty, because twelve months are a calendar and a year missing
+  August reads as a bug rather than as a month nobody has written about.
+  `keep` on the `Band` type is that one, and it is optional so the other five
+  tabs keep the behaviour they had. Its twelve months open like every other
+  band: eleven closed headings is the table of contents that default exists to
+  avoid, and a reader who came for April should not have to open April
+  (ADR-0026).
 
   **And its numeral column says the day alone.** `showDay()`, not
   `showValue()`: the month is the heading over the row, so "September 11" down

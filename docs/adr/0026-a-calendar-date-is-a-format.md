@@ -183,3 +183,11 @@ is a different entry about a different thing.
   cross-section restore; the operator's own restore does not come through
   that route and still crosses, which is the line the renumber already
   draws.
+
+- 2026-09-14: the twelve months all open, on the requester's call. The current
+  month opening was the whole of the date-awareness weighed above, and it cost
+  more than it bought: eleven closed headings is the table of contents every
+  other tab's bands are open to avoid, and a reader who came for April had to
+  open April first. The `open` field on `Band` went with it, so the type
+  carries `keep` alone and the index reads no clock — the write form still
+  starts at today, which is where a default date is worth having.
