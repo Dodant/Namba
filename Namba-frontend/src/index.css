@@ -649,6 +649,25 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
 .band-sub { margin-top: 13px; }
 .band-sub > .ix-fold { margin-left: calc(104px + 22px); }
 
+/* The year a birth or a death was in, leading the line the way a date page
+   leads with one. Mono and tabular because it is a figure, and --muted rather
+   than the accent the numeral column wears: the numeral is the address and
+   this is a fact about the entry. One rule for all three places it is drawn --
+   an index row, a card's heading, the entry's own meta row -- because it is
+   the same figure saying the same thing, and the rows around it already set
+   the size in two of the three. */
+.yr {
+  font-family: var(--mono); font-variant-numeric: tabular-nums;
+  color: var(--muted); font-weight: 400; letter-spacing: 0;
+  margin-right: 7px;
+}
+/* in a card the heading is 17px serif, so the figure beside it is sized down
+   to the meta row's own type rather than shouting at the title */
+.card h2 .yr { font-size: 12px; }
+/* and in the meta row it is already mono at 10.5 -- only the margin is wrong
+   there, since the row draws its own gap */
+.post-meta .yr { margin-right: 0; }
+
 .ix-e { display: flex; align-items: baseline; gap: 10px; }
 /* One line an entry, always. The index is read down the numerals, and a blurb
    that takes a second line puts the next number a line further from the last
@@ -1418,6 +1437,11 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   border-radius: 999px; font-family: var(--mono); font-size: 11px;
 }
 .coin .btn { padding: 6px 13px; font-size: 11px; }
+
+/* four digits and a stepper, not a column of the form's width. The number
+   input keeps its own spinner: it is the one control here whose range the
+   browser can enforce, which is the point of asking for one. */
+.year-field input { max-width: 10ch; }
 
 /* wears .field too -- .field alone would stack it into a column and stretch
    it. It lives inside the Format field rather than beside it in the .row, so

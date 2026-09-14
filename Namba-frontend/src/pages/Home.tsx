@@ -496,6 +496,12 @@ function IndexEntry(
     // and both want the same click
     <div className="ix-e">
       <Link className="ix-link" to={`/p/${entry.id}`}>
+        {/* Inside the link and leading the line, which is where a date page
+            puts a year: the row is one click and one ellipsis, and a year
+            outside it would be a second flex item the clipping has to reason
+            about. Plain digits -- a year is not grouped, so 1642 and not
+            1,642, in any locale. */}
+        {entry.year != null && <span className="yr">{entry.year}</span>}
         <span className="ix-t">{mark(entry.title)}</span>
         {entry.image && <Photo label={m.home.hasImage} />}
         {entry.body && <span className="ix-b"> — {mark(plain(entry.body))}</span>}

@@ -157,6 +157,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
               name their format with. It is here because the flag is otherwise
               invisible to whoever is about to edit the entry. */}
           {post.birth_death && <span className="kicker">{m.home.birthsDeaths}</span>}
+          {post.year != null && <span className="yr">{post.year}</span>}
           {post.tags.map((t) => (
             <Link key={t} className="tag" to={tagPath(t)}>
               {tagLabel(t)}

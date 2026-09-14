@@ -123,6 +123,9 @@ export const EN = {
     birthDeath: 'A birth or a death',
     birthDeathHint:
       'listed under Births / Deaths — never a living person’s date of birth',
+    year: 'Year',
+    yearHint:
+      'optional — the year it happened, never a year still to come',
     format: 'Format', autoDetect: 'Auto-detect', title: 'Title', titleHint: 'what it refers to',
     titlePlaceholder: (section: Section) => ({
       number: "The Hitchhiker's Guide to the Galaxy",

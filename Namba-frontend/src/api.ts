@@ -125,6 +125,11 @@ export type Post = {
       birth is still a CALENDAR date at /c/12-25 with the same key and the same
       band, and what it changes is which of a month's two lists draws it. */
   birth_death: boolean
+  /** which year that birth or death was in, and null wherever nobody said.
+      An annotation and never part of the address: /c/12-25 is the day of the
+      year and `value` carries no year, so this is drawn beside the entry and
+      nothing sorts or bands on it. */
+  year: number | null
   author: string
   edited_by: string | null
   /** what this entry's own title and body are written in. Free-form, like a
@@ -183,6 +188,7 @@ export type NumberEntry = {
     image: boolean
     likes: number
     birth_death: boolean
+    year: number | null
   }[]
 }
 
@@ -238,6 +244,7 @@ export type PostInput = {
   lang?: string | null
   grouped?: boolean
   birth_death?: boolean
+  year?: number | null
 }
 
 export type Params = Record<string, string | number | undefined | null>

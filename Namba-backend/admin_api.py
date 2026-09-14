@@ -715,7 +715,7 @@ def all_revisions(post_id: int, _=Depends(auth.require_admin), con=Depends(db.ge
 # never change, so a row for it is a tripwire rather than noise. `sort_key` is
 # out too: it is derived from `value`, which is right above it.
 DIFF_FIELDS = ("value", "format", "title", "lang", "grouped", "birth_death",
-               "image", "author")
+               "year", "image", "author")
 
 
 def _state(con, post_id, ref):

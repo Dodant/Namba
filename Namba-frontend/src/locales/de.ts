@@ -99,6 +99,9 @@ export const DE: Messages = {
     birthDeath: 'Eine Geburt oder ein Tod',
     birthDeathHint:
       'erscheint unter Geburten / Todesfälle — niemals das Geburtsdatum einer lebenden Person',
+    year: 'Jahr',
+    yearHint:
+      'optional — das Jahr, in dem es geschah, niemals ein künftiges',
     format: 'Format', autoDetect: 'Automatisch erkennen', title: 'Titel', titleHint: 'worum es geht',
     titlePlaceholder: (section: Section) => ({
       number: 'Per Anhalter durch die Galaxis',

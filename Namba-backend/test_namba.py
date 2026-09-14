@@ -2421,7 +2421,7 @@ def test_api_round_trip():
     # carries Christmas in December's list and this in its fold (ADR-0029).
     newton = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
                                         "title": "Isaac Newton born",
-                                        "birth_death": True})
+                                        "birth_death": True, "year": 1642})
     assert newton.status_code == 201, newton.text
     newton = newton.json()
     assert newton["birth_death"] is True, newton
@@ -2431,6 +2431,39 @@ def test_api_round_trip():
                if r["value"] == "12-25")
     assert {e["title"]: e["birth_death"] for e in dec["entries"]} \
         == {"Christmas Day": False, "Isaac Newton born": True}, dec
+    # The year rides along as an annotation, never as part of the address:
+    # /c/12-25 is the day of the year and `value` carries no year, so two
+    # births on one day are two entries at one address (ADR-0026).
+    assert newton["year"] == 1642 and newton["value"] == "12-25", newton
+    assert next(e for e in dec["entries"] if e["birth_death"])["year"] == 1642
+    # ...and a birth that has not happened is refused. The whole date and not
+    # the year alone: this year's Christmas is still to come in September, and
+    # a year-only test waves it through for three and a half months.
+    soon = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                                      "title": "not yet", "birth_death": True,
+                                      "year": int(db.now()[:4])})
+    assert soon.status_code == 422 and "has not" in soon.text, soon.text
+    ahead = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                                       "title": "not yet", "year": 9999})
+    assert ahead.status_code == 422 and "has not" in ahead.text, ahead.text
+    # a year is a year: zero, negative and "1642" the string are all refused
+    # by the model rather than by the route
+    for bad in (0, -1, "-3"):
+        r = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                                       "title": "not a year", "year": bad})
+        assert r.status_code == 422, (bad, r.text)
+    # the same rule on an edit, and read off the *settled* value -- the year
+    # field alone arrives with no value at all
+    late = c.patch(f"/api/posts/{newton['id']}", json={"year": 9999})
+    assert late.status_code == 422 and "has not" in late.text, late.text
+    assert c.get(f"/api/posts/{newton['id']}").json()["year"] == 1642, \
+        "a refused year was written anyway"
+    # an explicit null clears it -- `in sent` again, since a year somebody
+    # guessed wrong has to be removable
+    none = c.patch(f"/api/posts/{newton['id']}",
+                   json={"year": None, "author": "editor"}).json()
+    assert none["year"] is None, none
+    c.patch(f"/api/posts/{newton['id']}", json={"year": 1642, "author": "editor"})
     # an edit that says nothing about the flag leaves it alone
     quiet = c.patch(f"/api/posts/{newton['id']}",
                     json={"title": "Isaac Newton is born", "author": "editor"}).json()
@@ -2449,6 +2482,7 @@ def test_api_round_trip():
     assert restored.json()["birth_death"] is True, \
         "a restore dropped the flag; a version that cannot say an entry was a " \
         "birth is a worse record"
+    assert restored.json()["year"] == 1642, "a restore dropped the year"
     # a history line reads the value through the format the way the hero does,
     # so the label carries it: 12-25 under an entry whose hero says 25 December
     # is the format gone missing from the label, not a different date
@@ -3610,8 +3644,8 @@ def test_the_schema_moves_forward_once():
         assert latest, "there are no migrations to number"
         assert con.execute("PRAGMA user_version").fetchone()[0] == latest
         columns = {r["name"] for r in con.execute("PRAGMA table_info(posts)")}
-        assert {"edited_by", "lang", "grouped", "birth_death", "status"} <= columns, \
-            columns
+        assert {"edited_by", "lang", "grouped", "birth_death", "year",
+                "status"} <= columns, columns
 
         # a database from before the list was numbered: version 0, and rows in
         # the shapes the passes exist to fix
@@ -3647,14 +3681,17 @@ def test_the_schema_moves_forward_once():
         # step later does not quietly stop testing this one.
         with con:
             con.execute("ALTER TABLE posts DROP COLUMN birth_death")
+            con.execute("ALTER TABLE posts DROP COLUMN year")
             con.execute("PRAGMA user_version = %d"
                         % db.MIGRATIONS.index(db._birth_death_column))
         db.init()
-        assert "birth_death" in {r["name"] for r in
-                                 con.execute("PRAGMA table_info(posts)")}
-        assert con.execute(
-            "SELECT birth_death FROM posts WHERE id = 1").fetchone()[0] == 0, \
+        columns = {r["name"] for r in con.execute("PRAGMA table_info(posts)")}
+        assert {"birth_death", "year"} <= columns, columns
+        row = con.execute(
+            "SELECT birth_death, year FROM posts WHERE id = 1").fetchone()
+        assert row["birth_death"] == 0, \
             "an entry written before the fold existed was put in it"
+        assert row["year"] is None, "a year nobody wrote was invented"
         assert con.execute("PRAGMA user_version").fetchone()[0] == latest
         con.close()
     finally:
@@ -3699,8 +3736,8 @@ def test_a_snapshot_is_its_own_shape():
         con.close()
     assert set(snap) == {
         "value", "format", "sort_key", "title", "body", "image", "lang",
-        "grouped", "birth_death", "author", "edited_by", "likes", "created_at",
-        "updated_at", "tags", "translations",
+        "grouped", "birth_death", "year", "author", "edited_by", "likes",
+        "created_at", "updated_at", "tags", "translations",
     }, sorted(snap)
     # `id` is not one: `revisions.post_id` is the column that says which entry
     # this was. `status` is not content -- hiding takes no snapshot and a

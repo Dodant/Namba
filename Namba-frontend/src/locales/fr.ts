@@ -102,6 +102,9 @@ export const FR: Messages = {
     birthDeath: 'Une naissance ou un décès',
     birthDeathHint:
       'classée sous Naissances / Décès — jamais la date de naissance d’une personne vivante',
+    year: 'Année',
+    yearHint:
+      'facultatif — l’année où cela s’est produit, jamais une année à venir',
     format: 'Format', autoDetect: 'Détection automatique', title: 'Titre',
     titleHint: 'ce à quoi l’entrée fait référence', titlePlaceholder: (section: Section) => ({
       number: 'Le Guide du voyageur galactique',

@@ -88,6 +88,9 @@ export const ZH_HANS: Messages = {
     birthDeath: '出生或逝世',
     birthDeathHint:
       '归入出生 / 逝世一栏 — 在世人物的出生日期不可收录',
+    year: '年份',
+    yearHint:
+      '可选 — 事情发生的年份，尚未到来的年份不可填写',
     autoDetect: '自动检测', title: '标题', titleHint: '它指的是什么',
     titlePlaceholder: (section: Section) => ({
       number: '银河系漫游指南',

@@ -33,6 +33,12 @@ CREATE TABLE IF NOT EXISTS posts (
   -- One flag for both, and the Calendar index's month fold is the one thing
   -- that reads it (ADR-0029).
   birth_death INTEGER NOT NULL DEFAULT 0,
+  -- which year that birth or death was in, and NULL wherever nobody said.
+  -- An annotation and not part of the address: /c/12-25 is the day of the
+  -- year, `value` never carries a year, and two births on one day are two
+  -- entries at one address the way two meanings of 42 are (ADR-0026,
+  -- ADR-0029). Nothing sorts or bands on it.
+  year       INTEGER,
   likes      INTEGER NOT NULL DEFAULT 0,
   -- ACTIVE | HIDDEN | DELETED. Nothing the API can do removes a row: a hidden
   -- entry drops out of every public read and `show` brings it back whole,
@@ -545,6 +551,18 @@ def _birth_death_column(con):
             "ALTER TABLE posts ADD COLUMN birth_death INTEGER NOT NULL DEFAULT 0")
 
 
+def _birth_year_column(con):
+    """`posts.year`, the year a birth or a death was in.
+
+    Step 5 and not a line in step 4: that one has already run wherever the
+    fold shipped, and a database that has passed it never runs it again.
+    NULL on every existing row, which is what "nobody said" is.
+    """
+    have = {r["name"] for r in con.execute("PRAGMA table_info(posts)")}
+    if "year" not in have:
+        con.execute("ALTER TABLE posts ADD COLUMN year INTEGER")
+
+
 # In order, and append-only: a step's number is what a database records as
 # having been done, so inserting one in the middle re-runs the wrong thing
 # somewhere. Two of the three are data passes over every row of six tables,
@@ -564,6 +582,7 @@ MIGRATIONS = (
     _tags_are_lower_case,
     _text_is_one_normal_form,
     _birth_death_column,
+    _birth_year_column,
 )
 
 

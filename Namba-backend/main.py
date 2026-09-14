@@ -27,7 +27,7 @@ from store import (
     section_of, section_sql, section_where, shape, snapshot, ungroup,
     write_tags,
 )
-from numfmt import FORMATS, bucket_of
+from numfmt import FORMATS, bucket_of, date_key
 
 # A tag is whatever people call it, like a translation's language label. What
 # is checked is its shape, not its membership of a list -- the wiki's working
@@ -377,6 +377,7 @@ class PostIn(PostRules):
     lang: Optional[str] = Field(default=None, max_length=40)
     grouped: bool = False
     birth_death: bool = False
+    year: Optional[int] = Field(default=None, ge=1)
 
 
 class PostPatch(PostRules):
@@ -398,6 +399,7 @@ class PostPatch(PostRules):
     lang: Optional[str] = Field(default=None, max_length=40)
     grouped: Optional[bool] = None
     birth_death: Optional[bool] = None
+    year: Optional[int] = Field(default=None, ge=1)
 
 
 class TranslationIn(Text):
@@ -535,6 +537,41 @@ def list_tags(con=Depends(get_db)):
     ]
 
 
+def refuse_a_future_year(value, fmt, year):
+    """A birth or a death has already happened.
+
+    `ge=1` on the field is the other end and the only other bound there is: a
+    year is capped by today rather than by a number in a model, so this is
+    where the rule lives. It is a route check and not a validator for the
+    reason `resolve_format`'s are: it needs both halves, and an edit sends a
+    year with no value at all -- so it is asked of the value the route has
+    settled.
+
+    The whole date, not just the year. Today is the 14th of September and
+    somebody filing a birth at 12-25 in this year is filing something that has
+    not happened, which is the thing being refused; a year on its own would
+    wave it through for three and a half months. A value with no month and day
+    in it has no such date to build, so the year alone is the test there.
+
+    `restore_revision` does not ask, the way it asks neither `is_abbr` nor
+    `date_key`: a snapshot has to be restorable or the history is not one. It
+    cannot bite anyway -- a year that was past when it was written only gets
+    more so. Neither does the operator's renumber, which could move a date
+    forward past a year already on the row; that route carries a name, a
+    snapshot and an audit row, which is the line ADR-0026 already draws.
+    """
+    if year is None:
+        return
+    today = now()[:10].split("-")
+    key = date_key(value) if fmt == "CALENDAR" else None
+    # 01-01 for a value with no day in it, so the comparison is on the year
+    month, day = (int(key) // 100, int(key) % 100) if key else (1, 1)
+    if (year, month, day) > tuple(int(part) for part in today):
+        raise HTTPException(
+            422, f"a birth or a death has happened, and {year}-{month:02d}-"
+                 f"{day:02d} has not. A year cannot be later than today.")
+
+
 @app.get("/api/numbers")
 def list_numbers(
     format: Optional[str] = None,
@@ -550,7 +587,7 @@ def list_numbers(
     flag: the index should be readable without opening a post, not a copy of it.
     """
     sql = ["""SELECT p.id, p.value, p.format, p.sort_key, p.title, p.likes,
-                      p.grouped, p.birth_death,
+                      p.grouped, p.birth_death, p.year,
                       substr(p.body, 1, ?) AS body, p.image IS NOT NULL AS image
                FROM posts p"""]
     args = [BLURB + 1]
@@ -601,6 +638,7 @@ def list_numbers(
             # month's list and a birth in its fold, so the split the Calendar
             # tab draws is per entry (ADR-0029)
             "birth_death": bool(r["birth_death"]),
+            "year": r["year"],
         })
     return out
 
@@ -833,12 +871,14 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
         # three statements below landing together, not for a read -- see
         # db.writing() and ADR-0007 for the eleven writes where it is the read.
         value, fmt, key = resolve_format(value, p.format)
+        refuse_a_future_year(value, fmt, p.year)
         cur = con.execute(
             """INSERT INTO posts (value, format, sort_key, title, body, image, author,
-                                  lang, grouped, birth_death, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                                  lang, grouped, birth_death, year,
+                                  created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (value, fmt, key, p.title.strip(), p.body, p.image,
-             author, p.lang, int(grouped), int(p.birth_death), ts, ts),
+             author, p.lang, int(grouped), int(p.birth_death), p.year, ts, ts),
         )
         write_tags(con, cur.lastrowid, p.tags)
         post_id = cur.lastrowid
@@ -886,6 +926,10 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         # take the flag off again -- the form sends every field on every save.
         birth_death = (p.birth_death if "birth_death" in sent
                        else bool(current["birth_death"]))
+        # `in sent`, like the flag above and for the same reason: this one is
+        # nullable, and clearing a year somebody guessed wrong has to be a
+        # write rather than a no-op.
+        year = p.year if "year" in sent else current["year"]
         value = current["value"]
         if p.value is not None:
             value, grouped = ungroup(p.value, grouped, p.number_locale)
@@ -936,6 +980,10 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
                      "date stays one, and a number does not become an "
                      "abbreviation. Ask an operator to move one that is filed "
                      "wrong.")
+        # After the section rule, so a cross-section edit says the more useful
+        # of the two things wrong with it. Inside `with writing(con)` like
+        # every other refusal here, so it rolls the snapshot back.
+        refuse_a_future_year(value, fmt, year)
         # author is the first writer and stays put -- on an open wiki, an edit
         # by a stranger must not erase who the entry came from.
         # The conflict check is the last clause and nothing else: one statement,
@@ -947,7 +995,7 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         done = con.execute(
             """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
                                 image=?, lang=?, grouped=?, birth_death=?,
-                                edited_by=?, updated_at=? WHERE id=?
+                                year=?, edited_by=?, updated_at=? WHERE id=?
                             AND (? IS NULL OR updated_at = ?)""",
             (
                 value, fmt, key,
@@ -957,6 +1005,7 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
                 p.lang if "lang" in sent else current["lang"],
                 int(grouped),
                 int(birth_death),
+                year,
                 editor,
                 now(), post_id,
                 p.base_updated_at, p.base_updated_at,

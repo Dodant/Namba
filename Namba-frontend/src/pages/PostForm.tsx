@@ -148,6 +148,9 @@ export default function PostForm() {
   const [lang, setLang] = useState(LANGS[0])
   const [grouped, setGrouped] = useState(false)
   const [birthDeath, setBirthDeath] = useState(false)
+  /* A string rather than a number, because the box can be empty and that is a
+     year nobody said rather than a zero. It goes to the API as null. */
+  const [year, setYear] = useState('')
   /* Which section this form is filling in right now. Auto-detect has decided
      nothing, so it is the number one -- which is what most of this wiki is.
      The noun the fields use follows it, and so do the two placeholders: an
@@ -163,6 +166,10 @@ export default function PostForm() {
      of state kept in step with `value`. */
   const [picked, day] = monthDay(value) ?? monthDay(todayMonthDay())!
   const dateValue = monthDayValue(picked, day)
+  /* The latest year this date can have had: this one if the day has already
+     come round, the one before if it has not. Zero-padded MM-DD compares as a
+     string, which is the whole of the comparison. */
+  const maxYear = new Date().getFullYear() - (dateValue <= todayMonthDay() ? 0 : 1)
   const [coined, setCoined] = useState('')
   const [allCategories, setAllCategories] = useState(false)
   /* the chips are the wiki's working vocabulary, not a list in here. Capped so
@@ -203,6 +210,7 @@ export default function PostForm() {
     setLang(p.lang ?? LANGS[0])
     setGrouped(p.grouped)
     setBirthDeath(p.birth_death)
+    setYear(p.year == null ? '' : String(p.year))
   }
 
   useEffect(() => {
@@ -240,6 +248,7 @@ export default function PostForm() {
       lang: lang.trim() || null,
       grouped,
       birth_death: birthDeath,
+      year: birthDeath && year ? Number(year) : null,
     }
     try {
       const saved = editing
@@ -464,7 +473,10 @@ export default function PostForm() {
                 <input
                   type="checkbox"
                   checked={birthDeath}
-                  onChange={(e) => setBirthDeath(e.target.checked)}
+                  onChange={(e) => {
+                    setBirthDeath(e.target.checked)
+                    if (!e.target.checked) setYear('')
+                  }}
                 />
                 {/* both in one flex item, so the label and the rule under it
                     read as one sentence and wrap like one. Two items is what
@@ -477,6 +489,37 @@ export default function PostForm() {
                   <span className="hint">{m.form.birthDeathHint}</span>
                 </span>
               </label>
+            )}
+            {/* Which year it was in. Under the box rather than beside the date
+                selects: a third control that comes and goes with a choice
+                re-measures the two above it underneath that choice, which is
+                the reason the separator box is down here too.
+
+                type="number" for the stepper, the numeric keyboard and a
+                min/max the browser enforces before the API has to. `max` is
+                the API's own rule drawn client-side -- this year if the date
+                has already come round, last year if it has not -- because a
+                birth or a death has happened, and this year's Christmas has
+                not. The 422 is still what settles it: a browser is not a
+                trust boundary. */}
+            {format === 'CALENDAR' && birthDeath && (
+              <div className="field year-field">
+                <label htmlFor={fid('year')}>
+                  {m.form.year}{' '}
+                  <span className="hint">{m.form.yearHint}</span>
+                </label>
+                <input
+                  id={fid('year')}
+                  className="mono"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={maxYear}
+                  placeholder={String(maxYear)}
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                />
+              </div>
             )}
           </div>
           <div className="field fmt-field">

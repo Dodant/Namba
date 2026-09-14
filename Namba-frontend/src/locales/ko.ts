@@ -86,6 +86,9 @@ export const KO: Messages = {
     birthDeath: '출생 또는 사망',
     birthDeathHint:
       '출생 / 사망 목록에 표시됩니다 — 생존 인물의 생년월일은 올릴 수 없습니다',
+    year: '연도',
+    yearHint:
+      '선택 — 그 일이 있었던 해, 아직 오지 않은 해는 쓸 수 없습니다',
     autoDetect: '자동 감지', title: '제목', titleHint: '무엇을 가리키는지 작성',
     titlePlaceholder: (section: Section) => ({
       number: '은하수를 여행하는 히치하이커를 위한 안내서',

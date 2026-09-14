@@ -88,6 +88,9 @@ export const JA: Messages = {
     birthDeath: '生誕または死没',
     birthDeathHint:
       '生誕 / 死没の一覧に入ります — 存命の人物の生年月日は書けません',
+    year: '年',
+    yearHint:
+      '任意 — それが起きた年。まだ来ていない年は書けません',
     autoDetect: '自動判定', title: 'タイトル', titleHint: '何を指す数字か',
     titlePlaceholder: (section: Section) => ({
       number: '銀河ヒッチハイク・ガイド',

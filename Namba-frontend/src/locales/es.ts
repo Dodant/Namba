@@ -98,6 +98,9 @@ export const ES: Messages = {
     birthDeath: 'Un nacimiento o un fallecimiento',
     birthDeathHint:
       'aparece en Nacimientos / Fallecimientos — nunca la fecha de nacimiento de una persona viva',
+    year: 'Año',
+    yearHint:
+      'opcional — el año en que ocurrió, nunca un año por venir',
     format: 'Formato', autoDetect: 'Detectar automáticamente', title: 'Título', titleHint: 'a qué se refiere',
     titlePlaceholder: (section: Section) => ({
       number: 'Guía del autoestopista galáctico',
