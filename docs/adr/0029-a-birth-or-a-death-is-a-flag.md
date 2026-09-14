@@ -175,3 +175,52 @@ No rule changed and the guide's own text is untouched.
   "No future" was read as the whole date rather than the year alone, which is
   the reading that does not leave a hole between today and the 31st of
   December; the test pins it by filing this year's Christmas and being refused.
+- 2026-09-14: the pre-merge review of the branch, seven specialist passes and
+  two adversarial ones. What it found, and what changed:
+  - The operator's diff reported `birth_death` going from nothing to false on
+    every revision written before the column existed, because `_state` read
+    the snapshot raw while the live row had the column. It now reads a missing
+    key as the column's default, the way `apply_snapshot` always has.
+  - The form kept the box and the year while Format was moved off Calendar, on
+    purpose, and sent both anyway — so an Integer entry could be filed with a
+    birth ticked three clicks earlier. The state still stays; the payload is
+    gated on the format.
+  - `02-29` with a year that had no 29th of February was stored. ADR-0026
+    accepted the leap day because there was no year to disagree with it; now
+    there can be one, and the check refuses the pair.
+  - "Today" was the UTC date and the form's `max` was the reader's, so for up
+    to nine hours a day a Korean reader filing today's date was told it had
+    not happened. Today is now UTC plus fourteen hours, the latest date it is
+    anywhere, which no local clock can be ahead of. The alternative — the form
+    computing in UTC — agreed with the server exactly and told the same reader
+    that their own today was tomorrow.
+  - **The decision above that the renumber does not ask is reversed.** It
+    could move `01-01` in this year to `12-25` and leave a future date on the
+    row, and from then on every public edit of that entry — a typo in the body
+    — was refused for a year nobody in the request had touched. The route with
+    both halves in hand now asks, and the operator sees the 422 with the value
+    and the year in front of them. `refuse_a_future_year` moved to `store.py`
+    beside `resolve_format` for it, since `admin_api` cannot import `main`.
+  - A year with no flag beside it was accepted by the API and drawn on
+    `/n/42`, while the form sent `null` for the pair and so erased it on the
+    next save. Both public writes now drop the year when the flag is off,
+    which is the form's own answer; refusing it instead would have held an API
+    client that only unticked the box for a year it may not have known about.
+  - The test that pinned the whole-date rule filed this year's Christmas and
+    expected a refusal, which is true for fifty-one weeks and false for the
+    week after Christmas, so the suite would have gone red every December. It
+    now files tomorrow, off the clock the API reads, and pins the fourteen
+    hours with the clock held.
+  - Smaller: two `MIGRATIONS` arms the suite walks, not one; the fold's indent
+    is a `translate` rather than a margin, because on a coarse pointer
+    `.ix-fold` buys its hit box with a negative margin that a more specific
+    `margin-left` had been beating by 10px; the year field inside the Number
+    field carried a second bottom margin; the 409 clash sentence names the
+    flag and the year among what another editor moved; the year input lost a
+    placeholder that showed the one year the hint forbids.
+
+  Weighed and left for later, since none of it is this branch's: the back
+  office does not show the flag or the year on an entry; `REPORT_REASONS` has
+  no privacy reason for a living person's date of birth; the year is not part
+  of what `/api/posts?q=` searches; a date drawn in both of a month's lists
+  carries `aria-current="date"` twice.

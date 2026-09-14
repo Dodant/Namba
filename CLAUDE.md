@@ -344,12 +344,22 @@ opposite, and only its regex says `[0-9]`.
 
   **What is refused is a date that has not happened, not a year past today.**
   A birth filed at `12-25` in this year has not happened until Christmas, so
-  `refuse_a_future_year` in `main.py` builds the whole date out of the settled
+  `refuse_a_future_year` in `store.py` builds the whole date out of the settled
   value — a year-only test leaves the last three months of every year open.
-  It is a route check and not a validator for the reason `resolve_format`'s
-  are: it needs both halves, and an edit sends a year with no value at all.
-  `restore_revision` and the operator's renumber do not ask, the way neither
-  re-checks `is_abbr` or `date_key`.
+  It is a check on the settled value and not a validator for the reason
+  `resolve_format` is: it needs both halves, and an edit sends a year with no
+  value at all. The same check refuses `02-29` with a year that had no 29th of
+  February: a leap day is a fixed date only while there is no year beside it
+  to disagree. "Today" is UTC plus fourteen hours — the latest date it is
+  anywhere — so a death filed in Seoul at breakfast has happened, and the
+  form's `max`, drawn from the reader's own clock, can never allow what the
+  API refuses. The operator's renumber asks the same question, being the one
+  route that can move a date forward past a year already on the row; what it
+  would leave is an entry every later public edit is refused for.
+  `restore_revision` does not ask, the way it re-checks neither `is_abbr` nor
+  `date_key`. And a year rides only on a flagged entry: both public writes
+  drop it when `birth_death` is off, which is what the form sends anyway, so
+  an API client that only unticks the box is not held for the year it left.
 
   **`/c/` is the one section that is a closed set, so an unreadable date is
   not a page.** There are 366 days: `/c/99-99` is not an empty date page the

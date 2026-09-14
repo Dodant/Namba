@@ -157,6 +157,7 @@ The year is written next to the entry and never into the value: `/c/12-25` is
 the day of the year, and a year in the address would make two pages out of one
 day. It cannot be one still to come, and that is the whole date rather than the
 year alone — in September, this year's 25th of December has not happened yet.
+Nor one that never was: 1900 had no 29th of February.
 
 Its other spellings are refused rather than tidied up: `1-5` is not quietly
 turned into `01-05`, because nothing on this wiki rewrites a value and one day

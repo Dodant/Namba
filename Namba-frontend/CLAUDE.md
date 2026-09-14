@@ -963,11 +963,15 @@ death`, and it is the separator box's opposite in two ways. It is *hidden*
 rather than cleared when the format moves off Calendar — `grouped` stops
 meaning anything on a value with no separators to show, while this goes on
 meaning what it meant, and a mis-click on Format and back must not quietly drop
-it. And its hint is a **rule** rather than a preview, so it takes the form's
-own hint colour rather than the accent the grouped preview wears, and its
-words sit in one flex item with the label so a sentence wraps like one. The
-rule is the guide's: a Births list invites exactly the entry `/guide` never
-allows, and it is said where the box is ticked rather than only there.
+it. What is gated on the format is the **payload**: the flag and the year go to
+the API only while Format is Calendar, because what the reader cannot see they
+cannot mean, and an Integer entry filed with a birth ticked three clicks earlier
+is a row in a fold nobody asked for. And its hint is a **rule** rather than a
+preview, so it takes the form's own hint colour rather than the accent the
+grouped preview wears, and its words sit in one flex item with the label so a
+sentence wraps like one. The rule is the guide's: a Births list invites exactly
+the entry `/guide` never allows, and it is said where the box is ticked rather
+than only there.
 
 **Ticking it opens a `Year` field, and unticking clears it** — a year with no
 birth beside it is a year of nothing, and the field it was typed in has gone.
@@ -975,7 +979,9 @@ It is an `<input type="number">`, the one control on this form whose range the
 browser can enforce, with a `max` that mirrors the API: this year if the day
 has already come round, last year if it has not, off `dateValue <=
 todayMonthDay()`. That is a convenience and not the rule — the 422 is what
-settles it, because a browser is not a trust boundary. It sits under the
+settles it, because a browser is not a trust boundary. It reads the reader's
+own clock while the API's is UTC plus fourteen hours, the latest date it is
+anywhere, so nothing this `max` allows is ever refused. It sits under the
 checkbox rather than beside the date selects for the reason the separator box
 does: a third control in that row re-measures the two above it underneath the
 choice.

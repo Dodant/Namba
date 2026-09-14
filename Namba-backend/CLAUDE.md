@@ -138,16 +138,25 @@ the sitemap.
   somehow acquired one unsaveable. Nothing but the Calendar index reads it.
 
   Its migration is **step 4 and not a line in step 1** — a database already at 3
-  has passed that one and would never run it again. It is also the only arm of
-  `MIGRATIONS` the suite can walk for real, since every test database takes its
-  columns from `SCHEMA`; `test_the_schema_moves_forward_once` drops the column
-  and stands `user_version` back to watch the `ALTER` happen.
+  has passed that one and would never run it again. Steps 4 and 5, the two that
+  add a column, are also the only arms of `MIGRATIONS` the suite can walk for
+  real, since every test database takes its columns from `SCHEMA`;
+  `test_the_schema_moves_forward_once` drops both columns and stands
+  `user_version` back to watch the `ALTER`s happen.
 - **`posts.year` is the year that birth or death was in, and `value` never
   carries it.** `/c/12-25` is the day of the year (ADR-0026), so a year in the
   value would be a second page about one day. It rides beside `birth_death`
   everywhere — the index entry, `SNAPSHOT_FIELDS`, `apply_snapshot`,
   `DIFF_FIELDS` — and has its own migration step, 5, because step 4 had already
-  run by the time it arrived.
+  run by the time it arrived. It is only ever beside the flag: `create_post` and
+  `edit_post` both drop it when `birth_death` is off, which is the pair the form
+  never sends. `refuse_a_future_year` lives in `store.py` beside
+  `resolve_format` because `admin_api`'s renumber asks it too and cannot import
+  `main`; its "today" is UTC plus fourteen hours, so a local clock anywhere can
+  never be ahead of it. A snapshot from before either column carries neither
+  key, and `_state` in `admin_api.py` reads the missing key as the column's
+  default the way `apply_snapshot` does — or every old revision diffs as a flag
+  that went from nothing to false.
 
   **`refuse_a_future_year` compares the whole date, not the year.** A birth
   filed at `12-25` in this year has not happened until Christmas, so a
