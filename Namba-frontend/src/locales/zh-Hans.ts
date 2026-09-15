@@ -21,6 +21,8 @@ export const ZH_HANS: Messages = {
       ({ number: '数字', abbr: '缩写', calendar: '日期' })[section],
     like: (on: boolean, n: number) =>
       `${on ? '取消点赞' : '点赞'} — ${fmtCount(n, 'zh-Hans')}个`,
+    candle: (on: boolean, n: number) =>
+      `${on ? '熄灭蜡烛' : '点亮蜡烛'} — ${fmtCount(n, 'zh-Hans')}支`,
   },
   format: { INTEGER: '整数', DECIMAL: '小数', MIXED: '混合', TIME: '时间', CALENDAR: '日历', ABBR: '缩写' },
   buckets: {

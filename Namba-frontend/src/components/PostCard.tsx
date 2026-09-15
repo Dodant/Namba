@@ -4,9 +4,12 @@ import { api, entryPath, liked, tagLabel, tagPath, type Post } from '../api'
 import { fmtCount, fmtDate, numSize, plain, showValue } from '../format'
 import { useUi } from '../uiLocale'
 
-/* Takes the two fields it uses rather than a whole Post, so the number index
-   can hand it a bare entry. */
-export function Like({ post }: { post: { id: number; likes: number } }) {
+/* Takes only the fields it uses rather than a whole Post, so the number index
+   can hand it a bare entry. The API counter stays the same; In Memoriam gives
+   that gesture the memorial language and candle it has on screen. */
+export function Like({ post }: {
+  post: { id: number; likes: number; birth_death?: boolean }
+}) {
   const { locale, m } = useUi()
   const [n, setN] = useState(post.likes)
   const [on, setOn] = useState(() => liked.has(post.id))
@@ -24,7 +27,7 @@ export function Like({ post }: { post: { id: number; likes: number } }) {
     }
   }
 
-  const says = m.common.like(on, n)
+  const says = post.birth_death ? m.common.candle(on, n) : m.common.like(on, n)
 
   return (
     <button
@@ -34,7 +37,9 @@ export function Like({ post }: { post: { id: number; likes: number } }) {
       aria-label={says}
       title={says}
     >
-      ♥ {fmtCount(n, locale)}
+      {post.birth_death
+        ? <>🕯 Light a candle · {fmtCount(n, locale)}</>
+        : <>♥ {fmtCount(n, locale)}</>}
     </button>
   )
 }

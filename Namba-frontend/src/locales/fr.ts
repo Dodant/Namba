@@ -25,6 +25,8 @@ export const FR: Messages = {
     })[section],
     like: (on: boolean, n: number) =>
       `${on ? 'Retirer le j’aime' : 'J’aime'} — ${fmtCount(n, 'fr')} j’aime`,
+    candle: (on: boolean, n: number) =>
+      `${on ? 'Éteindre la bougie' : 'Allumer une bougie'} — ${fmtCount(n, 'fr')} ${n === 1 ? 'bougie' : 'bougies'}`,
   },
   format: {
     INTEGER: 'Entier', DECIMAL: 'Décimal', MIXED: 'Mixte', TIME: 'Heure', CALENDAR: 'Calendrier', ABBR: 'Abréviation',

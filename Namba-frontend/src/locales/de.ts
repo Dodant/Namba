@@ -24,6 +24,8 @@ export const DE: Messages = {
     })[section],
     like: (on: boolean, n: number) =>
       `${on ? 'Gefällt mir nicht mehr' : 'Gefällt mir'} — ${fmtCount(n, 'de')} ${n === 1 ? 'Like' : 'Likes'}`,
+    candle: (on: boolean, n: number) =>
+      `${on ? 'Kerze löschen' : 'Kerze anzünden'} — ${fmtCount(n, 'de')} ${n === 1 ? 'Kerze' : 'Kerzen'}`,
   },
   format: {
     INTEGER: 'Ganzzahl', DECIMAL: 'Dezimalzahl', MIXED: 'Gemischt', TIME: 'Uhrzeit', CALENDAR: 'Kalender', ABBR: 'Abkürzung',

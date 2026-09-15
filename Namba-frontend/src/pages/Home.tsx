@@ -128,7 +128,9 @@ function Feed({ lang }: { lang: string }) {
                   · {m.common.edited(fmtDate(p.updated_at, locale), p.edited_by)}
                 </span>
               )}
-              <span className="likes">♥ {fmtCount(p.likes, locale)}</span>
+              <span className="likes">
+                {p.birth_death ? '🕯' : '♥'} {fmtCount(p.likes, locale)}
+              </span>
             </div>
           </div>
         </article>

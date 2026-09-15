@@ -19,6 +19,8 @@ export const KO: Messages = {
       ({ number: '숫자', abbr: '줄임말', calendar: '날짜' })[section],
     like: (on: boolean, n: number) =>
       `${on ? '좋아요 취소' : '좋아요'} — ${fmtCount(n, 'ko')}개`,
+    candle: (on: boolean, n: number) =>
+      `${on ? '촛불 끄기' : '촛불 밝히기'} — ${fmtCount(n, 'ko')}개`,
   },
   format: { INTEGER: '정수', DECIMAL: '소수', MIXED: '혼합형', TIME: '시간', CALENDAR: '캘린더', ABBR: '줄임말' },
   buckets: {

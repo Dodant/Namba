@@ -24,6 +24,8 @@ export const ES: Messages = {
     })[section],
     like: (on: boolean, n: number) =>
       `${on ? 'Quitar me gusta' : 'Me gusta'} — ${fmtCount(n, 'es')} me gusta`,
+    candle: (on: boolean, n: number) =>
+      `${on ? 'Apagar la vela' : 'Encender una vela'} — ${fmtCount(n, 'es')} ${n === 1 ? 'vela' : 'velas'}`,
   },
   format: {
     INTEGER: 'Entero', DECIMAL: 'Decimal', MIXED: 'Mixto', TIME: 'Hora', CALENDAR: 'Calendario', ABBR: 'Abreviatura',

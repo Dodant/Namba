@@ -21,6 +21,8 @@ export const JA: Messages = {
       ({ number: '数字', abbr: '略語', calendar: '日付' })[section],
     like: (on: boolean, n: number) =>
       `${on ? 'いいねを取り消す' : 'いいね'} — ${fmtCount(n, 'ja')}件`,
+    candle: (on: boolean, n: number) =>
+      `${on ? 'ろうそくを消す' : 'ろうそくを灯す'} — ${fmtCount(n, 'ja')}本`,
   },
   format: { INTEGER: '整数', DECIMAL: '小数', MIXED: '混合', TIME: '時刻', CALENDAR: 'カレンダー', ABBR: '略語' },
   buckets: {

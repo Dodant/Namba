@@ -43,6 +43,8 @@ export const EN = {
        step, in the one place that cannot see this file. */
     like: (on: boolean, n: number) =>
       `${on ? 'Unlike' : 'Like'} — ${fmtCount(n, 'en')} ${n === 1 ? 'like' : 'likes'}`,
+    candle: (on: boolean, n: number) =>
+      `${on ? 'Remove candle' : 'Light a candle'} — ${fmtCount(n, 'en')} ${n === 1 ? 'candle' : 'candles'}`,
   },
   format: {
     INTEGER: 'Integer', DECIMAL: 'Decimal', MIXED: 'Mixed', TIME: 'Time', CALENDAR: 'Calendar', ABBR: 'Abbreviation',

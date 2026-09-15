@@ -712,7 +712,7 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
   padding: 6px 8px; margin: -6px -8px; font-size: 11px; color: var(--fainter);
   font-variant-numeric: tabular-nums;
 }
-/* the heart fills terracotta once it is yours, and hovering previews that */
+/* the response takes terracotta once it is yours, and hovering previews that */
 .ix-like .btn:hover, .ix-like .btn.on { color: var(--hit); }
 @media (hover: hover) {
   .ix-like { opacity: 0; }
@@ -1253,14 +1253,14 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .form > .actions { margin: 26px 0 0; }
 .form > .actions .btn { padding: 10px 18px; }
 
-/* what the entry is filed under and whether you liked it at one end, and what
-   you can do about it -- the credits toggle and Edit -- at the other */
+/* what the entry is filed under and its response at one end, and what you can
+   do about it -- the credits toggle and Edit -- at the other */
 .post-meta { gap: 10px; padding-bottom: 18px; border-bottom: 1px solid var(--rule); }
 /* borderless, the same box as the .meta-btn pair across the row: the two ends
    of .post-meta used to be drawn as two different kinds of thing, an outlined
-   capsule here and a bare label there. The heart still takes terracotta once
-   it is yours, which is the state worth a colour; the outline was not saying
-   that.
+   capsule here and a bare label there. The response still takes terracotta
+   once it is yours, which is the state worth a colour; the outline was not
+   saying that.
 
    Transparent border rather than none, so the height matches the labels and
    the row does not move when .btn.on would have drawn one. */
