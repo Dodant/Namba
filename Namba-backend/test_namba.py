@@ -2544,10 +2544,16 @@ def test_api_round_trip():
     path = f"/api/posts/{historical['id']}"
     entry_before = c.get(path).json()
     revisions_before = c.get(f"{path}/revisions").json()
-    invalid = c.patch(path, json={"on_this_day": None, "title": "Changed"})
-    assert invalid.status_code == 422, invalid.text
-    assert any(e["loc"] == ["body", "on_this_day"]
-               for e in invalid.json()["detail"]), invalid.text
+    # All three flags are NOT NULL columns, so a null is not a value any of
+    # them takes and the type says so: a 422 off the model rather than an
+    # int(None) and a 500 out of the UPDATE. All three and not just the one
+    # this fold added, because guarding only the flag somebody noticed is how
+    # the other two came to be a crash on an open route.
+    for flag in ("grouped", "birth_death", "on_this_day"):
+        invalid = c.patch(path, json={flag: None, "title": "Changed"})
+        assert invalid.status_code == 422, (flag, invalid.text)
+        assert any(e["loc"] == ["body", flag]
+                   for e in invalid.json()["detail"]), (flag, invalid.text)
     assert c.get(path).json() == entry_before, "a rejected null changed the entry"
     assert c.get(f"{path}/revisions").json() == revisions_before
     omitted = c.patch(path, json={"title": "Updated historical event"})

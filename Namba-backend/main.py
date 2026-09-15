@@ -400,19 +400,16 @@ class PostPatch(PostRules):
     author: str = Field(min_length=1, max_length=40)
     tags: Optional[List[str]] = None
     lang: Optional[str] = Field(default=None, max_length=40)
-    grouped: Optional[bool] = None
-    birth_death: Optional[bool] = None
-    on_this_day: Optional[bool] = None
+    # `bool` and not `Optional[bool]`, unlike every field above: these three
+    # are NOT NULL columns, so a null is not a value they can take, and the
+    # type says so -- pydantic answers 422 without a validator to maintain.
+    # Omitted is read off `model_dump(exclude_unset=True)` below and never off
+    # a None, so the default here is the value no caller ever sees. Declaring
+    # them nullable is what made `{"grouped": null}` an `int(None)` and a 500.
+    grouped: bool = False
+    birth_death: bool = False
+    on_this_day: bool = False
     year: Optional[int] = Field(default=None, ge=1)
-
-    @field_validator("on_this_day")
-    @classmethod
-    def on_this_day_not_null(cls, v):
-        # Omitted fields keep their defaults without running this validator.
-        # An explicit null cannot be stored in this non-nullable flag.
-        if v is None:
-            raise ValueError("on_this_day cannot be null")
-        return v
 
 
 class TranslationIn(Text):
