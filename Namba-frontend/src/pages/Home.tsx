@@ -237,9 +237,9 @@ function sideOf(rows: NumberEntry[], want: 'ordinary' | 'on-this-day' | 'memoria
     .filter((row) => row.entries.length > 0)
 }
 
-/* The memorial line contains a year now, but its place in the month does not
-   come from that year or from the person's name. It is a calendar list, read
-   from the first day of the month to the last. */
+/* A dated line carries a year, but its place in the month does not come from
+   that year or from who or what it is about. It is a calendar list, read from
+   the first day of the month to the last. */
 function byCalendarDay(a: NumberEntry, b: NumberEntry) {
   return (monthDay(a.value)?.[1] ?? Number.MAX_SAFE_INTEGER)
     - (monthDay(b.value)?.[1] ?? Number.MAX_SAFE_INTEGER)
@@ -480,7 +480,7 @@ function Index({ lang }: { lang: string }) {
                   </summary>
                   <ol className="index">
                     {sub.items.map((row) => (
-                      <IndexRow key={`${row.format}-${row.value}`} row={row} memorial />
+                      <IndexRow key={`${row.format}-${row.value}`} row={row} dated />
                     ))}
                   </ol>
                 </details>
@@ -507,14 +507,14 @@ function Index({ lang }: { lang: string }) {
     inline it puts a hundred lines and three more levels of nesting between a
     band and the numerals it bands. */
 function IndexEntry(
-  { entry, shownValue, memorialDate, mark }:
+  { entry, shownValue, dateWithYear, mark }:
   {
     entry: NumberEntry['entries'][number]
     /** the number as the row above it draws it: the layer leads with it, the
         way every hero in this app does, which is the shape a row cannot take */
     shownValue: string
-    /** The date and year as one localized phrase in the In Memoriam fold. */
-    memorialDate?: string
+    /** The date and year as one localized phrase, in either dated fold. */
+    dateWithYear?: string
     /** lights up this number in a title or a blurb, written and spelled */
     mark: (text: string) => ReactNode
   },
@@ -526,11 +526,11 @@ function IndexEntry(
     <div className="ix-e">
       <Link className="ix-link" to={`/p/${entry.id}`}>
         {/* Inside the link and leading the line: ordinary rows show the year,
-            while In Memoriam combines the localized date and year into one
+            while a dated row combines the localized date and year into one
             phrase. The row stays one click and one ellipsis; putting either
             outside it would add a second flex item for clipping to manage. */}
-        {memorialDate
-          ? <span className="yr">{memorialDate}</span>
+        {dateWithYear
+          ? <span className="yr">{dateWithYear}</span>
           : entry.year != null && <span className="yr">{entry.year}</span>}
         <span className="ix-t">{mark(entry.title)}</span>
         {entry.image && <Photo label={m.home.hasImage} />}
@@ -567,7 +567,7 @@ function IndexEntry(
 }
 
 /** One number, and every meaning filed under it. */
-function IndexRow({ row, memorial = false }: { row: NumberEntry; memorial?: boolean }) {
+function IndexRow({ row, dated = false }: { row: NumberEntry; dated?: boolean }) {
   const { locale, m } = useUi()
   const rx = marker(row, locale)
   const shownValue = showValue(row.value, row.grouped, locale, row.format)
@@ -581,23 +581,23 @@ function IndexRow({ row, memorial = false }: { row: NumberEntry; memorial?: bool
   /* and the day itself, the same blue as the month heading over it */
   const today = row.format === 'CALENDAR' && row.value === todayMonthDay()
   const entries = row.entries.map((entry) => {
-    const memorialDate = memorial
+    const dateWithYear = dated
       ? showDateWithYear(row.value, entry.year, locale)
       : undefined
     return (
       <IndexEntry
         key={entry.id}
         entry={entry}
-        shownValue={memorialDate ?? shownValue}
-        memorialDate={memorialDate}
+        shownValue={dateWithYear ?? shownValue}
+        dateWithYear={dateWithYear}
         mark={(text) => mark(text, rx)}
       />
     )
   })
 
   return (
-    <li className={`ix${memorial ? ' memorial' : ''}`}>
-      {!memorial && <Link
+    <li className={`ix${dated ? ' dated' : ''}`}>
+      {!dated && <Link
         className={`ix-num ${numSize(shownNum)}${today ? ' now' : ''}`}
         to={entryPath(row.value, row.format)}
         /* the colour is the whole of it on screen; this is the half of it a

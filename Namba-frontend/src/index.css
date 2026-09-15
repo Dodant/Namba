@@ -664,21 +664,21 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
 /* Both dated folds read as one phrase -- "October 5, 2011 Steve Jobs" -- rather
    than splitting the day into the numeral gutter and the year into the title.
    It still begins where ordinary titles begin, beneath the fold summary. */
-.ix.memorial { padding-left: calc(104px + 22px); }
-.ix.memorial .yr {
+.ix.dated { padding-left: calc(104px + 22px); }
+.ix.dated .yr {
   display: inline-block; width: 20ch;
   margin-right: 12px; font-size: 15.5px; white-space: nowrap;
 }
-/* A fixed date column makes every person's name start on the same vertical
-   line. Its measure follows each locale's longest ordinary date phrase so a
-   longer month name does not spill into the name column. */
-html:lang(en) .ix.memorial .yr { width: 19ch; }
-html:lang(fr) .ix.memorial .yr,
-html:lang(de) .ix.memorial .yr { width: 20ch; }
-html:lang(es) .ix.memorial .yr { width: 26ch; }
-html:lang(ko) .ix.memorial .yr { width: 18ch; }
-html:lang(ja) .ix.memorial .yr,
-html:lang(zh-Hans) .ix.memorial .yr { width: 15ch; }
+/* A fixed date column makes every title start on the same vertical line. Its
+   measure follows each locale's longest ordinary date phrase so a longer month
+   name does not spill into the title column. */
+html:lang(en) .ix.dated .yr { width: 19ch; }
+html:lang(fr) .ix.dated .yr,
+html:lang(de) .ix.dated .yr { width: 20ch; }
+html:lang(es) .ix.dated .yr { width: 26ch; }
+html:lang(ko) .ix.dated .yr { width: 18ch; }
+html:lang(ja) .ix.dated .yr,
+html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
 
 /* The year of the dated event, leading the line the way a date page
    leads with one. Mono and tabular because it is a figure, and --muted rather
@@ -853,7 +853,7 @@ html:lang(zh-Hans) .ix.memorial .yr { width: 15ch; }
   .ix-num { flex: 0 0 auto; min-width: 24px; text-align: left; }
   /* no column to line up with any more -- see .band-sub above */
   .band-sub > .ix-fold { translate: none; }
-  .ix.memorial { padding-left: 0; }
+  .ix.dated { padding-left: 0; }
   /* inline, the numeral is competing with the title for the row rather than
      sitting in a column of its own, so the middle sizes shrink too */
   .ix-num.mid { font-size: 16px; }

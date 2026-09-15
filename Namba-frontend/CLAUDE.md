@@ -995,7 +995,7 @@ settles it, because a browser is not a trust boundary. It reads the reader's
 own clock while the API's is UTC plus fourteen hours, the latest date it is
 anywhere, so nothing this `max` allows is ever refused. It sits under the
 Date label beside the month and day controls, because it is the third part of a
-memorial date rather than a separate annotation to fill later. On a narrow row
+dated entry's date rather than a separate annotation to fill later. On a narrow row
 the three controls wrap rather than squeeze.
 
 The year is drawn off one `.yr` class in three places — leading an index row's
