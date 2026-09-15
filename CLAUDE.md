@@ -314,10 +314,10 @@ opposite, and only its regex says `[0-9]`.
   either string says which, so this format is reached by picking it, the way
   `TIME` is on `1:29:300` (ADR-0026).
 
-  **A birth or a death is a flag on it, not a seventh format.** A month's list
-  is what its days mean and the fold at the foot of it is who was born and who
-  died on them — `posts.birth_death`, one column for both, beside `grouped`
-  rather than beside `format`, because a birth *is* a `CALENDAR` date: it reads
+  **In Memoriam is a flag on a death date, not a seventh format.** A month's
+  list is what its days mean and the fold at the foot of it is who died on
+  them — `posts.birth_death`, its legacy storage name, beside `grouped`
+  rather than beside `format`, because a death *is* a `CALENDAR` date: it reads
   as one, sorts on the same key and answers at `/c/12-25`, and what the flag
   changes is only which of a month's two lists draws it. A tag was the other
   candidate and spends one of the two an entry has *and* makes a free-form
@@ -325,25 +325,25 @@ opposite, and only its regex says `[0-9]`.
   hand-copied table above: no format, no vocabulary, no band.
 
   The split is **per entry**, so December 25 keeps Christmas in the list and
-  Newton's birth in the fold, and a date is drawn in each place it has entries
+  a memorial entry in the fold, and a date is drawn in each place it has entries
   for. The band head still counts the whole month, since a closed band's one
   line is all it says about itself. It is **not** refused on the other five
   formats — the form sends every field on every save, so a 422 on a flag
   nobody meant to change would leave that entry unsaveable; the checkbox is
   offered where it means something and nothing else reads the column. And it
   is in `SNAPSHOT_FIELDS`, because a version that cannot say an entry was a
-  birth is a worse record (ADR-0029).
+  death is a worse record (ADR-0029).
 
-  **And `posts.year` says which year that birth or death was in — never
+  **And `posts.year` says which year that death was in — never
   `value`.** The rule above about a date having no year in it is this one from
   the other side: the entry is *about* the day of the year, filed at `/c/12-25`
   and drawn there, and the year says which December 25 it was. Put it in the
   value and `/c/12-25` and `/c/1642-12-25` are two pages about one day. Two
-  births on one day are two entries at one address, the way two meanings of 42
+  deaths on one day are two entries at one address, the way two meanings of 42
   are. Nothing sorts or bands on it.
 
   **What is refused is a date that has not happened, not a year past today.**
-  A birth filed at `12-25` in this year has not happened until Christmas, so
+  A death filed at `12-25` in this year has not happened until Christmas, so
   `refuse_a_future_year` in `store.py` builds the whole date out of the settled
   value — a year-only test leaves the last three months of every year open.
   It is a check on the settled value and not a validator for the reason

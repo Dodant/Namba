@@ -126,12 +126,12 @@ the sitemap.
   reader's own move. The front end defaults to the empty string ("As written")
   and passes the footer preference to `PostPage`, which selects a matching
   translation locally while preserving the tab strip.
-- **`posts.birth_death` is which of a month's two lists draws the entry.** A
-  flag and not a seventh format: a birth is still a `CALENDAR` date, read,
+- **`posts.birth_death` is the legacy storage name for In Memoriam.** A flag
+  and not a seventh format: a death is still a `CALENDAR` date, read,
   sorted and addressed as one, so this sits beside `grouped` rather than beside
   `format` (ADR-0029). It rides on the **entry** in `/api/numbers`, not on the
-  row, because one date carries Christmas in December's list and Newton's birth
-  in its fold. It is in `SNAPSHOT_FIELDS` and in `apply_snapshot`'s UPDATE, and
+  row, because one date can carry an ordinary meaning and a memorial entry in
+  its fold. It is in `SNAPSHOT_FIELDS` and in `apply_snapshot`'s UPDATE, and
   in `admin_api.DIFF_FIELDS` so an operator can see it move. It is deliberately
   **not** refused on the other five formats: the form sends every field on every
   save, so a 422 on a flag nobody meant to change would leave an entry that
@@ -143,7 +143,7 @@ the sitemap.
   real, since every test database takes its columns from `SCHEMA`;
   `test_the_schema_moves_forward_once` drops both columns and stands
   `user_version` back to watch the `ALTER`s happen.
-- **`posts.year` is the year that birth or death was in, and `value` never
+- **`posts.year` is the year of death, and `value` never
   carries it.** `/c/12-25` is the day of the year (ADR-0026), so a year in the
   value would be a second page about one day. It rides beside `birth_death`
   everywhere — the index entry, `SNAPSHOT_FIELDS`, `apply_snapshot`,
@@ -158,7 +158,7 @@ the sitemap.
   default the way `apply_snapshot` does — or every old revision diffs as a flag
   that went from nothing to false.
 
-  **`refuse_a_future_year` compares the whole date, not the year.** A birth
+  **`refuse_a_future_year` compares the whole date, not the year.** A death
   filed at `12-25` in this year has not happened until Christmas, so a
   year-only test leaves the last stretch of every year open; the check builds
   `(year, month, day)` out of the *settled* value and compares it against

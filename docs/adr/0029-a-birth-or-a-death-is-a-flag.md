@@ -1,4 +1,4 @@
-# ADR-0029: A birth or a death is a flag, not a format
+# ADR-0029: In Memoriam is a flag, not a format
 
 - Status: accepted
 - Date: 2026-09-14
@@ -6,12 +6,11 @@
 ## Context
 
 The Calendar tab draws twelve month bands, each a flat list of dates
-(ADR-0026). Wikipedia's date pages split what a day *means* from who was born
-and who died on it, and this wiki had no way to say which an entry was:
-"Isaac Newton born" sat in December beside "Christmas" with nothing between
-them.
+(ADR-0026). This wiki had no way to split what a day *means* from the people
+who died on it: a memorial entry sat beside an annual observance with nothing
+between them.
 
-Asked for as a **Births / Deaths** section at the foot of every month,
+Shown as an **In Memoriam** section at the foot of every month,
 closed, opening in place, with a checkbox on the write form.
 
 Three things had to be settled: what the flag *is*, where a flagged entry goes,
@@ -22,8 +21,8 @@ and whether the fold reaches past the index.
 **A column on `posts`, not a seventh format and not a section.**
 `posts.format` decides how a value is read, sorted and addressed, which is the
 argument that made `ABBR` and then `CALENDAR` formats rather than a `kind`
-column (ADR-0026). It lands the other way here: a birth *is* a `CALENDAR` date,
-it reads as a date, it sorts on `month * 100 + day`, and it answers at
+column (ADR-0026). It lands the other way here: a death date *is* a `CALENDAR`
+date, it reads as a date, it sorts on `month * 100 + day`, and it answers at
 `/c/12-25` beside Christmas. None of the three things a format decides changes,
 so what is left is how the entry is *drawn* — which is `posts.grouped`'s kind of
 fact, and it sits beside it in the table.
@@ -33,20 +32,19 @@ fact, and it sits beside it in the table.
 it, and a UI that branches on a tag's name turns a free-form vocabulary into a
 hidden enum, which is the thing ADR-0010 exists to prevent.
 
-**One flag for both, because one checkbox was what was asked for.** Two
-sections, Wikipedia's shape, would have meant a three-way vocabulary
-(none / birth / death), and a vocabulary is a row in the hand-copied table
-(ADR-0009) and a `<select>` where a checkbox was wanted. A boolean is neither.
+**One flag, because In Memoriam is one state.** An entry is either an ordinary
+calendar date or the death date of a deceased person. There is no event-kind
+vocabulary to maintain and no birth option to offer; a boolean is sufficient.
 
 **Nothing joins that table.** No format, no vocabulary, no band label:
 `bucket_of` is untouched and `test_the_two_apps_still_agree` needed no new row.
 `grouped` is not in the table either, and this is the same kind of column.
 
-**The split is per entry, not per date.** December 25 keeps Christmas in the
-month's list and Newton's birth in its fold, so a date is drawn in each place it
-has entries for rather than a whole date going one way because of one of its
-entries. `/api/numbers` therefore carries `birth_death` on the **entry** and not
-on the row.
+**The split is per entry, not per date.** A date can keep an observance in the
+month's list and a person's death in its fold, so a date is drawn in each place
+it has entries for rather than a whole date going one way because of one of its
+entries. `/api/numbers` therefore carries `birth_death`, its legacy storage
+name, on the **entry** and not on the row.
 
 **The band head counts the whole month.** A closed band's one line is all it
 says about itself, so it must not count only the half that is not folded; dates
@@ -61,7 +59,7 @@ column. A flag on an Integer entry is inert rather than refused.
 
 **It is content, so a revision keeps it.** `birth_death` is in
 `SNAPSHOT_FIELDS` and `apply_snapshot` writes it back: a version that cannot say
-an entry was a birth is a worse record, the same argument `edited_by` and
+an entry was In Memoriam is a worse record, the same argument `edited_by` and
 `updated_at` are in that list for (ADR-0023). It is in `DIFF_FIELDS` too,
 because an edit can change it and the diff is where an operator sees what moved.
 
@@ -79,11 +77,11 @@ is a number and belongs at `/n/`; this is that rule reached from the other side.
 The entry is still *about* the day of the year — it is filed under December 25
 and appears there — and the year says which December 25 it was, the way a date
 page's own lists do. `posts.year`, nullable, and nothing sorts or bands on it.
-Two births on one day are two entries at one address, the way two meanings of
+Two deaths on one day are two entries at one address, the way two meanings of
 42 are.
 
 **What is refused is a date that has not happened, not a year past today.**
-Today being the 14th of September, a birth filed at 12-25 in this year has not
+Today being the 14th of September, a death filed at 12-25 in this year has not
 happened, and a year-only test would wave it through for three and a half
 months — so `refuse_a_future_year` builds the whole date out of the settled
 value and compares that. It is a route check and not a validator for the reason
@@ -103,7 +101,7 @@ audit row, which is the line ADR-0026 already draws.
 come round and last year if it has not — the stepper, the numeric keyboard and
 a refusal before the request. The 422 is still what settles it: a browser is
 not a trust boundary. The field is offered only when the box is ticked, and
-unticking it clears the year, because a year with no birth beside it is a year
+unticking it clears the year, because a year with no death beside it is a year
 of nothing and the field it was typed in is gone.
 
 **BC is left out.** An era label is seven locales' worth of words and an
@@ -117,11 +115,10 @@ mark is a `.kicker` in the entry's meta row, not a link and not a tag — a tag
 goes to `/t/` and this goes nowhere — because the flag is otherwise invisible to
 whoever is about to edit the entry.
 
-**And the checkbox's hint is a rule.** The guide lists *a living person's date
-of birth* under **Never eligible** and *a living person's birthday* as "Not an
-entry" in its calendar table. A Births list is an invitation to file exactly
-that, so the rule is said where the box is ticked rather than only in `/guide`.
-No rule changed and the guide's own text is untouched.
+**And the checkbox's hint is a rule.** In Memoriam accepts only the date on
+which a deceased person died. It does not accept a birth date, whether the
+person is living or dead, so the rule is said where the box is ticked rather
+than left implicit in the section name.
 
 ## Consequences
 
@@ -156,11 +153,16 @@ No rule changed and the guide's own text is untouched.
   that one belongs to a row's own fold, which only opens past `FOLD_OVER` and so
   never has to say "1 entries".
 - Two things were weighed and left out. **A fold on `/c/MM-DD`**: one day and a
-  handful of entries is not a list to get past. **A `birth` / `death`
-  distinction**: it is a vocabulary, and the checkbox was the ask.
+  handful of entries is not a list to get past. **An event-kind enum**: In
+  Memoriam is death-only, so a second vocabulary would add no information.
 
 ## History
 
+- 2026-09-15: renamed the section **In Memoriam** and narrowed its contract to
+  death dates only. Birth dates do not belong in the fold, including those of
+  people who have since died. The database and API keep `birth_death` as a
+  legacy field name so existing rows and clients do not require a destructive
+  migration; its product meaning is now only the In Memoriam flag.
 - 2026-09-14: decided and built. The three questions above were put to the
   requester before anything was written; the answers were one checkbox and one
   combined section, a flagged entry leaving the month's main list, and the index
@@ -183,7 +185,7 @@ No rule changed and the guide's own text is untouched.
     key as the column's default, the way `apply_snapshot` always has.
   - The form kept the box and the year while Format was moved off Calendar, on
     purpose, and sent both anyway — so an Integer entry could be filed with a
-    birth ticked three clicks earlier. The state still stays; the payload is
+    flag ticked three clicks earlier. The state still stays; the payload is
     gated on the format.
   - `02-29` with a year that had no 29th of February was stored. ADR-0026
     accepted the leap day because there was no year to disagree with it; now

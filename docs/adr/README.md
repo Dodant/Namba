@@ -41,4 +41,4 @@ the rule it introduces.
 | [0026](0026-a-calendar-date-is-a-format.md) | A fixed calendar date is a format, and a third section | accepted | 2026-09-11 |
 | [0027](0027-a-number-format-says-the-value-is-a-number.md) | A number format says the value is a number, and that is checked | accepted | 2026-09-11 |
 | [0028](0028-the-plugin-is-the-one-read-that-is-counted.md) | The editor plugin's read is counted, and it is not an event | accepted | 2026-09-11 |
-| [0029](0029-a-birth-or-a-death-is-a-flag.md) | A birth or a death is a flag, not a format | accepted | 2026-09-14 |
+| [0029](0029-a-birth-or-a-death-is-a-flag.md) | In Memoriam is a flag, not a format | accepted | 2026-09-14, revised 2026-09-15 |
