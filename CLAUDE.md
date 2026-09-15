@@ -316,7 +316,8 @@ opposite, and only its regex says `[0-9]`.
 
   **In Memoriam is a flag on a death date, not a seventh format.** A month's
   list is what its days mean and the fold at the foot of it is who died on
-  them — `posts.birth_death`, its legacy storage name, beside `grouped`
+  them — `posts.in_memoriam`, named for that fold the way `on_this_day` is
+  and sitting beside `grouped`
   rather than beside `format`, because a death *is* a `CALENDAR` date: it reads
   as one, sorts on the same key and answers at `/c/12-25`, and what the flag
   changes is only which of a month's lists draws it. A tag was the other

@@ -158,6 +158,36 @@ than left implicit in the section name.
 
 ## History
 
+- 2026-09-15: **`posts.birth_death` is now `posts.in_memoriam`.** The entry
+  below kept the old column name on the grounds that a rename was destructive
+  and bought nothing; what changed is that `on_this_day` arrived beside it.
+  Two dated flags, one named for its fold and one named for a pair of events
+  only half of which it can hold, read as a difference in kind between them —
+  and the name promised births, which the narrowed contract had already ruled
+  out. The rename is `ALTER TABLE ... RENAME COLUMN` in migration step 7, so
+  the rows come across; no index, view or trigger named the column. It is a
+  breaking change to the public wire field, which `/api/numbers` and
+  `/api/posts` both carry, and the front end moves in the same commit.
+
+  **`revisions` was not rewritten**, and that is the part worth reading twice.
+  Rewriting every snapshot to change one key is an edit to the one table
+  nothing here edits, and doing it through SQLite's JSON functions
+  re-serializes a stranger's title on the way past. So a snapshot older than
+  this spells the key `birth_death` for good, and `store.load_snapshot` reads
+  either spelling. That function is also now the single door every snapshot
+  reader goes through — the public restore, the operator's restore and the
+  operator's diff — because the failure mode of forgetting is not an error: it
+  is a flag that reads false, in a route that answers 200, quietly unticking
+  In Memoriam on the entry being restored. It absorbed the missing-key default
+  the 2026-09-14 review added to `_state`, which is the same question asked
+  about a different vintage of snapshot.
+
+  Asked for directly, on the grounds that the flag does not cover births. Held
+  by `test_a_snapshot_that_spells_the_flag_the_old_way_still_restores` and by a
+  second arm in `test_the_schema_moves_forward_once` that stands a database
+  back to the old column with the flag set and watches the value come across;
+  both were checked by mutation, and the upgrade was run end to end against a
+  database built by the previous commit's `db.py`.
 - 2026-09-15: **a restore no longer puts back a dated flag with no year.**
   Making the year mandatory (the entry below) reached the two public write
   routes and left `apply_snapshot` alone, so restoring a snapshot taken before

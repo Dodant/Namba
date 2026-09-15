@@ -126,7 +126,8 @@ the sitemap.
   reader's own move. The front end defaults to the empty string ("As written")
   and passes the footer preference to `PostPage`, which selects a matching
   translation locally while preserving the tab strip.
-- **`posts.birth_death` is the legacy storage name for In Memoriam.** A flag
+- **`posts.in_memoriam` is the In Memoriam flag, named for the fold it
+  draws.** A flag
   and not a seventh format: a death is still a `CALENDAR` date, read,
   sorted and addressed as one, so this sits beside `grouped` rather than beside
   `format` (ADR-0029). It rides on the **entry** in `/api/numbers`, not on the
@@ -138,13 +139,30 @@ the sitemap.
   somehow acquired one unsaveable. Nothing but the Calendar index reads it.
 
   Its migration is **step 4 and not a line in step 1** — a database already at 3
-  has passed that one and would never run it again. Steps 4, 5 and 6, the three
-  that add a column, are also the only arms of `MIGRATIONS` the suite can walk for
+  has passed that one and would never run it again. Step 4 adds the column as
+  `birth_death`, which is the name it was added under, and **step 7 renames it**:
+  a step is what was done, so the earlier one still writes what it wrote and
+  the rename is its own arm at the foot of the list. Steps 4, 5, 6 and 7 are
+  also the only arms of `MIGRATIONS` the suite can walk for
   real, since every test database takes its columns from `SCHEMA`;
-  `test_the_schema_moves_forward_once` drops all three columns and stands
-  `user_version` back to watch the `ALTER`s happen.
+  `test_the_schema_moves_forward_once` drops the three columns and stands
+  `user_version` back to watch the `ALTER`s happen, then stands it back once
+  more with the old column in place to watch the rename carry a set flag
+  across.
+
+  **`revisions` was not rewritten, so a snapshot can spell it either way.**
+  That table is the one thing here nothing edits, and rewriting every row to
+  change a key would be an edit to the record — through SQLite's own JSON
+  functions at that, which re-serialize a stranger's title on the way past.
+  `store.load_snapshot` is where both spellings are read, and it is the one
+  door every reader of a snapshot goes through: the public restore, the
+  operator's restore and the operator's diff. It answers for the other way a
+  revision can be older than the columns, too — a flag with no key at all
+  reads as the column's default, or a diff against an old revision reports a
+  change nobody made. **Parse a snapshot anywhere else and the flag silently
+  reads false**, in a route that answers 200.
 - **`posts.on_this_day` is the mutually-exclusive historical-event flag.** It
-  follows `birth_death` through the index entry, snapshots, restores, diffs and
+  follows `in_memoriam` through the index entry, snapshots, restores, diffs and
   admin reads, and migration step 6 defaults every existing row to false.
   The public form exposes ordinary / On this day / In Memoriam as one radio
   group, while both write routes independently reject both flags being true.
