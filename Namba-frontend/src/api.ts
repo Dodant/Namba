@@ -438,16 +438,12 @@ export const nickname = {
   get: () => {
     const saved = localStorage.getItem('namba.nick') ?? ''
     if (validNickname(saved)) return saved
-    const generated = drawNickname()
-    localStorage.setItem('namba.nick', generated)
-    return generated
+    return drawNickname()
   },
   set: (v: string) => localStorage.setItem('namba.nick', v.trim()),
-  draw: () => {
-    const generated = drawNickname()
-    localStorage.setItem('namba.nick', generated)
-    return generated
-  },
+  /* Drawing is only a draft choice. The form persists whichever name is in
+     the field when the visitor actually submits a write. */
+  draw: drawNickname,
 }
 
 /** Which translation the reader prefers for entry text. This is deliberately
