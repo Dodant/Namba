@@ -9,7 +9,7 @@ import assert from 'node:assert/strict'
 import {
   canGroupValue, canonicalNumber, cleanNumberInput, fmtCount, fmtDate, marker,
   monthDay, monthDays, monthDayValue, monthName, numSize, plain, plainLines,
-  showDate, showDay, showValue, todayMonthDay,
+  showDate, showDateWithYear, showDay, showValue, todayMonthDay,
 } from './format.ts'
 
 test('a value typed in any interface locale reaches the API in one spelling', () => {
@@ -32,6 +32,9 @@ test('a date is stored locale-neutral and read in the locale', () => {
   assert.equal(showDate('12-25', 'en'), 'December 25')
   assert.equal(showDate('12-25', 'ko'), '12월 25일')
   assert.equal(showDate('12-25', 'de'), '25. Dezember')
+  assert.equal(showDateWithYear('10-05', 2011, 'en'), 'October 5, 2011')
+  assert.equal(showDateWithYear('10-05', 2011, 'ko'), '2011년 10월 5일')
+  assert.equal(showDateWithYear('10-05', null, 'en'), 'October 5')
   assert.equal(showDate('02-29', 'en'), 'February 29', 'a leap day is a fixed date')
   assert.equal(monthName(9, 'en'), 'September')
   // and it is asked off the row's format, never guessed from the characters:

@@ -285,6 +285,19 @@ export function showDate(value: string, locale = 'en') {
     .format(new Date(2000, picked[0] - 1, picked[1]))
 }
 
+/** A death date as one localized phrase: "October 5, 2011", not a day in one
+    column and a detached year in another. Years below 100 need setFullYear;
+    the Date constructor otherwise silently turns them into 1900..1999. */
+export function showDateWithYear(value: string, year: number | null, locale = 'en') {
+  if (year == null) return showDate(value, locale)
+  const picked = monthDay(value)
+  if (!picked) return value
+  const date = new Date(2000, picked[0] - 1, picked[1])
+  date.setFullYear(year)
+  return dtf(locale, 'mdy', { year: 'numeric', month: 'long', day: 'numeric' })
+    .format(date)
+}
+
 const RTF = new Map<string, Intl.RelativeTimeFormat>()
 const MONTH = 30 * 86400
 const SPANS: [Intl.RelativeTimeFormatUnit, number][] = [

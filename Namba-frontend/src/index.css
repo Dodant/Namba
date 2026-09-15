@@ -655,6 +655,10 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
    rule that owns them. */
 .band-sub { margin-top: 13px; }
 .band-sub > .ix-fold { translate: calc(104px + 22px) 0; }
+/* In Memoriam reads as one phrase -- "October 5, 2011 Steve Jobs" -- rather
+   than splitting the day into the numeral gutter and the year into the title.
+   It still begins where ordinary titles begin, beneath the fold summary. */
+.ix.memorial { padding-left: calc(104px + 22px); }
 
 /* The year of the death, leading the line the way a date page
    leads with one. Mono and tabular because it is a figure, and --muted rather
@@ -829,6 +833,7 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
   .ix-num { flex: 0 0 auto; min-width: 24px; text-align: left; }
   /* no column to line up with any more -- see .band-sub above */
   .band-sub > .ix-fold { translate: none; }
+  .ix.memorial { padding-left: 0; }
   /* inline, the numeral is competing with the title for the row rather than
      sitting in a column of its own, so the middle sizes shrink too */
   .ix-num.mid { font-size: 16px; }

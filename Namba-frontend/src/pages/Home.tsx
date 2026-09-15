@@ -5,8 +5,8 @@ import {
   tagLabel, tagPath, type Format, type NumberEntry, type Post,
 } from '../api'
 import {
-  fmtCount, fmtDate, marker, monthName, numSize, plain, plainLines, showDay,
-  showValue, todayMonthDay,
+  fmtCount, fmtDate, marker, monthDay, monthName, numSize, plain, plainLines, showDay,
+  showDateWithYear, showValue, todayMonthDay,
 } from '../format'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
@@ -171,8 +171,8 @@ const FOLD_OVER = 10
    Queried off the document rather than a ref, because `Index` is the only
    thing in the app that renders an `.ix-link` and the fragment it returns has
    no element to hang one on -- and at module scope rather than inside the
-   effect that calls it, because it closes over nothing and the Births /
-   Deaths fold has to be able to call it too.
+   effect that calls it, because it closes over nothing and the In Memoriam
+   fold has to be able to call it too.
 
    Three things move a row's width or reveal one: a window resize, the fonts
    arriving after the first paint with `display=swap` wider than what they
@@ -228,6 +228,14 @@ function sideOf(rows: NumberEntry[], want: boolean) {
   return rows
     .map((row) => ({ ...row, entries: row.entries.filter((e) => e.birth_death === want) }))
     .filter((row) => row.entries.length > 0)
+}
+
+/* The memorial line contains a year now, but its place in the month does not
+   come from that year or from the person's name. It is a calendar list, read
+   from the first day of the month to the last. */
+function byCalendarDay(a: NumberEntry, b: NumberEntry) {
+  return (monthDay(a.value)?.[1] ?? Number.MAX_SAFE_INTEGER)
+    - (monthDay(b.value)?.[1] ?? Number.MAX_SAFE_INTEGER)
 }
 
 function bandCount(items: NumberEntry[], sub: NumberEntry[] | undefined,
@@ -314,7 +322,7 @@ function Index({ lang }: { lang: string }) {
                  once every locale answers */
               label: monthName(Number(b), locale),
               items: sideOf(rows.filter((n) => n.bucket === b), false),
-              sub: sideOf(rows.filter((n) => n.bucket === b), true),
+              sub: sideOf(rows.filter((n) => n.bucket === b), true).sort(byCalendarDay),
               /* the one index that draws a band with nothing in it:
                  twelve months are a calendar, and a year missing August reads
                  as a bug rather than as a month nobody has written about. */
@@ -453,7 +461,7 @@ function Index({ lang }: { lang: string }) {
                   </summary>
                   <ol className="index">
                     {band.sub.map((row) => (
-                      <IndexRow key={`${row.format}-${row.value}`} row={row} />
+                      <IndexRow key={`${row.format}-${row.value}`} row={row} memorial />
                     ))}
                   </ol>
                 </details>
@@ -472,7 +480,7 @@ function Index({ lang }: { lang: string }) {
 }
 
 
-/** One entry filed under a number: the line, the layer behind it, and the like.
+/** One entry filed under a number: the line, the layer behind it, and its response.
 
     Its own component because a row is three things at once -- a line clipped
     to one line, a popover that lays the same entry out with the room a layer
@@ -480,28 +488,31 @@ function Index({ lang }: { lang: string }) {
     inline it puts a hundred lines and three more levels of nesting between a
     band and the numerals it bands. */
 function IndexEntry(
-  { entry, shownValue, mark }:
+  { entry, shownValue, memorialDate, mark }:
   {
     entry: NumberEntry['entries'][number]
     /** the number as the row above it draws it: the layer leads with it, the
         way every hero in this app does, which is the shape a row cannot take */
     shownValue: string
+    /** The date and year as one localized phrase in the In Memoriam fold. */
+    memorialDate?: string
     /** lights up this number in a title or a blurb, written and spelled */
     mark: (text: string) => ReactNode
   },
 ) {
   const { m } = useUi()
   return (
-    // the like sits outside the link: a button inside an anchor is invalid,
+    // the response sits outside the link: a button inside an anchor is invalid,
     // and both want the same click
     <div className="ix-e">
       <Link className="ix-link" to={`/p/${entry.id}`}>
-        {/* Inside the link and leading the line, which is where a date page
-            puts a year: the row is one click and one ellipsis, and a year
-            outside it would be a second flex item the clipping has to reason
-            about. Plain digits -- a year is not grouped, so 1642 and not
-            1,642, in any locale. */}
-        {entry.year != null && <span className="yr">{entry.year}</span>}
+        {/* Inside the link and leading the line: ordinary rows show the year,
+            while In Memoriam combines the localized date and year into one
+            phrase. The row stays one click and one ellipsis; putting either
+            outside it would add a second flex item for clipping to manage. */}
+        {memorialDate
+          ? <span className="yr">{memorialDate}</span>
+          : entry.year != null && <span className="yr">{entry.year}</span>}
         <span className="ix-t">{mark(entry.title)}</span>
         {entry.image && <Photo label={m.home.hasImage} />}
         {entry.body && <span className="ix-b"> — {mark(plain(entry.body))}</span>}
@@ -537,7 +548,7 @@ function IndexEntry(
 }
 
 /** One number, and every meaning filed under it. */
-function IndexRow({ row }: { row: NumberEntry }) {
+function IndexRow({ row, memorial = false }: { row: NumberEntry; memorial?: boolean }) {
   const { locale, m } = useUi()
   const rx = marker(row, locale)
   const shownValue = showValue(row.value, row.grouped, locale, row.format)
@@ -550,18 +561,24 @@ function IndexRow({ row }: { row: NumberEntry }) {
   const shownNum = row.format === 'CALENDAR' ? showDay(row.value) : shownValue
   /* and the day itself, the same blue as the month heading over it */
   const today = row.format === 'CALENDAR' && row.value === todayMonthDay()
-  const entries = row.entries.map((entry) => (
-    <IndexEntry
-      key={entry.id}
-      entry={entry}
-      shownValue={shownValue}
-      mark={(text) => mark(text, rx)}
-    />
-  ))
+  const entries = row.entries.map((entry) => {
+    const memorialDate = memorial
+      ? showDateWithYear(row.value, entry.year, locale)
+      : undefined
+    return (
+      <IndexEntry
+        key={entry.id}
+        entry={entry}
+        shownValue={memorialDate ?? shownValue}
+        memorialDate={memorialDate}
+        mark={(text) => mark(text, rx)}
+      />
+    )
+  })
 
   return (
-    <li className="ix">
-      <Link
+    <li className={`ix${memorial ? ' memorial' : ''}`}>
+      {!memorial && <Link
         className={`ix-num ${numSize(shownNum)}${today ? ' now' : ''}`}
         to={entryPath(row.value, row.format)}
         /* the colour is the whole of it on screen; this is the half of it a
@@ -573,16 +590,16 @@ function IndexRow({ row }: { row: NumberEntry }) {
         aria-label={shownNum === shownValue ? undefined : shownValue}
       >
         {shownNum}
-      </Link>
+      </Link>}
       {/* <details> and not a piece of state, the same as the band above it:
           the browser owns the collapse and gets the keyboard and the screen
           reader right for free.
 
           Open, so a fold never hides an entry from a reader who did not ask --
           it is there to be closed by someone who wants past this number, and
-          the summary says what closing it costs. The numeral stays outside it:
-          it is a link to /n/:value, and a link inside a summary is one click
-          that has to be two things. */}
+          the summary says what closing it costs. On ordinary rows the numeral
+          stays outside it: it is a link to /n/:value, and a link inside a
+          summary is one click that has to be two things. */}
       {row.entries.length > FOLD_OVER ? (
         <details className="ix-titles" open>
           <summary className="ix-fold">{m.home.foldedEntries(row.entries.length)}</summary>
