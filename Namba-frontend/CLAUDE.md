@@ -1191,6 +1191,15 @@ every `항목은` into `엔트리은`, and no build step can see it. If a term c
 grep the new word with its
 next character and read the list.
 
+**The two Calendar folds keep their English names in all seven locales, and
+that is a decision rather than a gap.** `On this day` and `In Memoriam` name
+the folds the way a masthead names a paper — one spelling each, so a fold is
+the same thing to every reader and on every page it is drawn. Everything
+around them is still chosen per language: the group's caption, the ordinary
+choice, and the rule under each radio. This is the one place that says so,
+because an English label over localized rows is exactly what a missing
+translation looks like — the pair has already been reported as one once.
+
 **Section headings are noun phrases — "3. Number mining", not "One work is not
 a quarry" — and that is the citation design, not a house style.** The point of
 the ids is that a delete request links to a rule; "see §Number mining" reads
