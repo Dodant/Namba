@@ -2566,6 +2566,25 @@ def test_api_round_trip():
     enabled_event = c.patch(path, json={"on_this_day": True, "year": 800})
     assert enabled_event.status_code == 200, enabled_event.text
     assert enabled_event.json()["on_this_day"] is True
+    # The exclusion is a rule about the entry and not about the create route:
+    # an edit arrives with one flag while the other is already on the row, and
+    # the merge with `current` is where it has to be caught -- a client that
+    # sends only `birth_death` never mentions the second flag at all.
+    clash = c.patch(path, json={"birth_death": True})
+    assert clash.status_code == 422 and "mutually exclusive" in clash.text, clash.text
+    held = c.get(path).json()
+    assert (held["birth_death"], held["on_this_day"]) == (False, True), \
+        "a refused pair of flags was written anyway"
+    pair = c.patch(path, json={"birth_death": True, "on_this_day": True,
+                               "year": 800})
+    assert pair.status_code == 422 and "mutually exclusive" in pair.text, pair.text
+    # ...and saying which one it now is, which the form does on every save, is
+    # the request that moves an entry between the two folds
+    swapped = c.patch(path, json={"birth_death": True, "on_this_day": False,
+                                  "year": 800})
+    assert swapped.status_code == 200, swapped.text
+    assert (swapped.json()["birth_death"], swapped.json()["on_this_day"]) \
+        == (True, False), swapped.json()
     admin.set_status(historical["id"], "HIDDEN")
     # In Memoriam is a dated memorial, not a loose classification: the year of
     # death is required on both public write routes.
@@ -2573,6 +2592,14 @@ def test_api_round_trip():
                                               "title": "No year",
                                               "birth_death": True})
     assert missing_year.status_code == 422 and "requires a year" in missing_year.text
+    # ...and it rides on *either* dated flag, so the historical fold is held to
+    # the same rule rather than to `birth_death` alone
+    event_no_year = c.post("/api/posts", json={"value": "10-05",
+                                               "format": "CALENDAR",
+                                               "title": "No year",
+                                               "on_this_day": True})
+    assert event_no_year.status_code == 422 \
+        and "requires a year" in event_no_year.text, event_no_year.text
     # ...and a death that has not happened is refused. The whole date and not
     # the year alone: in September this year's Christmas is still to come, and
     # a year-only test waves it through until it arrives. Off the clock rather
@@ -2588,6 +2615,14 @@ def test_api_round_trip():
                                       "format": "CALENDAR", "title": "not yet",
                                       "birth_death": True, "year": tomorrow.year})
     assert soon.status_code == 422 and "has not" in soon.text, soon.text
+    # the same clock and the same refusal for an event that has not happened
+    soon_event = c.post("/api/posts", json={"value": f"{tomorrow:%m-%d}",
+                                            "format": "CALENDAR",
+                                            "title": "not yet",
+                                            "on_this_day": True,
+                                            "year": tomorrow.year})
+    assert soon_event.status_code == 422 and "has not" in soon_event.text, \
+        soon_event.text
     # the boundary is `>`: a death today has happened
     here = c.post("/api/posts", json={"value": f"{today:%m-%d}",
                                       "format": "CALENDAR", "title": "today",
