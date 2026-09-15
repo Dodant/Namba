@@ -150,7 +150,8 @@ checkbox on the form says which an entry is. It is a flag on the entry rather
 than a format of its own: a death date is still a date, sorted, read and
 addressed as one, and only the list it appears in changes.
 
-Tick it and you can add the **year of death** as well.
+Tick it and the **year of death** becomes required, attached to the month and
+day as the third part of Date.
 The year is written next to the entry and never into the value: `/c/12-25` is
 the day of the year, and a year in the address would make two pages out of one
 day. It cannot be one still to come, and that is the whole date rather than the

@@ -981,18 +981,18 @@ grouped preview wears, and its words sit in one flex item with the label so a
 sentence wraps like one. The rule is stated where the box is ticked: only the
 date a deceased person died belongs in this fold.
 
-**Ticking it opens a `Year` field, and unticking clears it** — a year with no
-death beside it is a year of nothing, and the field it was typed in has gone.
-It is an `<input type="number">`, the one control on this form whose range the
-browser can enforce, with a `max` that mirrors the API: this year if the day
+**Ticking it attaches a required `Year` control to Date, and unticking clears
+it** — a year with no death beside it is a year of nothing. It is an
+`<input type="number">`, the one control on this form whose range the browser
+can enforce, with a `max` that mirrors the API: this year if the day
 has already come round, last year if it has not, off `dateValue <=
 todayMonthDay()`. That is a convenience and not the rule — the 422 is what
 settles it, because a browser is not a trust boundary. It reads the reader's
 own clock while the API's is UTC plus fourteen hours, the latest date it is
 anywhere, so nothing this `max` allows is ever refused. It sits under the
-checkbox rather than beside the date selects for the reason the separator box
-does: a third control in that row re-measures the two above it underneath the
-choice.
+Date label beside the month and day controls, because it is the third part of a
+memorial date rather than a separate annotation to fill later. On a narrow row
+the three controls wrap rather than squeeze.
 
 The year is drawn off one `.yr` class in three places — leading an index row's
 line, leading a card's heading, beside the mark in the entry's meta row — and

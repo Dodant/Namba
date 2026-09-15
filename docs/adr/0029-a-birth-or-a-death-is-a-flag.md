@@ -100,9 +100,9 @@ audit row, which is the line ADR-0026 already draws.
 `<input type="number">` with `min={1}` and a `max` of this year if the day has
 come round and last year if it has not — the stepper, the numeric keyboard and
 a refusal before the request. The 422 is still what settles it: a browser is
-not a trust boundary. The field is offered only when the box is ticked, and
-unticking it clears the year, because a year with no death beside it is a year
-of nothing and the field it was typed in is gone.
+not a trust boundary. The field is required when the box is ticked and is
+attached to the month and day as the third Date control. Unticking clears the
+year, because a year with no death beside it is a year of nothing.
 
 **BC is left out.** An era label is seven locales' worth of words and an
 off-by-one between astronomical and historical year numbering, and nobody asked
@@ -163,6 +163,10 @@ than left implicit in the section name.
   people who have since died. The database and API keep `birth_death` as a
   legacy field name so existing rows and clients do not require a destructive
   migration; its product meaning is now only the In Memoriam flag.
+- 2026-09-15: made the year of death mandatory for In Memoriam. The form puts
+  it beside month and day as part of Date, and both public write routes reject
+  a memorial with no year. The database column remains nullable because every
+  ordinary entry has no death year.
 - 2026-09-14: decided and built. The three questions above were put to the
   requester before anything was written; the answers were one checkbox and one
   combined section, a flagged entry leaving the month's main list, and the index

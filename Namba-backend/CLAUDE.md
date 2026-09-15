@@ -158,6 +158,10 @@ the sitemap.
   default the way `apply_snapshot` does — or every old revision diffs as a flag
   that went from nothing to false.
 
+  Every In Memoriam entry requires this year on create and edit. The column is
+  still nullable because ordinary entries do not have a death year; unticking
+  the flag clears it, while a flagged write with no year is a 422.
+
   **`refuse_a_future_year` compares the whole date, not the year.** A death
   filed at `12-25` in this year has not happened until Christmas, so a
   year-only test leaves the last stretch of every year open; the check builds
