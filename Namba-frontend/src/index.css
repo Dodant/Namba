@@ -659,7 +659,20 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
    than splitting the day into the numeral gutter and the year into the title.
    It still begins where ordinary titles begin, beneath the fold summary. */
 .ix.memorial { padding-left: calc(104px + 22px); }
-.ix.memorial .yr { margin-right: 12px; font-size: 15.5px; }
+.ix.memorial .yr {
+  display: inline-block; width: 20ch;
+  margin-right: 12px; font-size: 15.5px; white-space: nowrap;
+}
+/* A fixed date column makes every person's name start on the same vertical
+   line. Its measure follows each locale's longest ordinary date phrase so a
+   longer month name does not spill into the name column. */
+html:lang(en) .ix.memorial .yr { width: 19ch; }
+html:lang(fr) .ix.memorial .yr,
+html:lang(de) .ix.memorial .yr { width: 20ch; }
+html:lang(es) .ix.memorial .yr { width: 26ch; }
+html:lang(ko) .ix.memorial .yr { width: 18ch; }
+html:lang(ja) .ix.memorial .yr,
+html:lang(zh-Hans) .ix.memorial .yr { width: 15ch; }
 
 /* The year of the death, leading the line the way a date page
    leads with one. Mono and tabular because it is a figure, and --muted rather
