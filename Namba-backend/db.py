@@ -39,7 +39,9 @@ CREATE TABLE IF NOT EXISTS posts (
   on_this_day INTEGER NOT NULL DEFAULT 0,
   -- which year the death or historical event occurred, required for either
   -- dated fold and NULL otherwise. An annotation and not part of the address:
-  -- /c/12-25 is the day of the year and `value` never carries a year.
+  -- /c/12-25 is the day of the year, `value` never carries a year, and two
+  -- dated entries on one day are two entries at one address the way two
+  -- meanings of 42 are (ADR-0026, ADR-0029). Nothing sorts or bands on it.
   year       INTEGER,
   likes      INTEGER NOT NULL DEFAULT 0,
   -- ACTIVE | HIDDEN | DELETED. Nothing the API can do removes a row: a hidden

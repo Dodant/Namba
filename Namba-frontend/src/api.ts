@@ -123,13 +123,14 @@ export type Post = {
   grouped: boolean
   /** The date a deceased person died. Display only, like `grouped`: it is still
       a CALENDAR date with the same key and band; this only changes which of a
-      month's two lists draws it. */
+      month's three lists draws it. */
   birth_death: boolean
   /** A historical event that occurred on this calendar date. Mutually
       exclusive with In Memoriam. */
   on_this_day: boolean
   /** The year of the death or historical event, required for either dated
-      fold and null otherwise. It is never part of the address. */
+      fold and null otherwise. It is never part of the address, and nothing
+      sorts or bands on it. */
   year: number | null
   author: string
   edited_by: string | null

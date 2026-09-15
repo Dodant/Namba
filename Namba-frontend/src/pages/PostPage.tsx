@@ -153,7 +153,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
         </div>
 
         <div className="meta post-meta">
-          {/* Which of the month's two lists this entry is in. Not a link and
+          {/* Which of the month's three lists this entry is in. Not a link and
               not a tag: a tag goes to /t/ and this goes nowhere, so it takes
               the kicker's type -- the same small mono label the value pages
               name their format with. It is here because the flag is otherwise

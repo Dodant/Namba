@@ -433,8 +433,9 @@ sanitiser config to get wrong.
   The list above is what the day means, the first fold is what happened on it,
   and the second is who died on it. `subs` on the `Band` type, beside `keep` and
   `now` and the Calendar tab's alone. The split is **per entry**: December 25
-  keeps an ordinary meaning in the list and a memorial entry in the fold, so a date is drawn
-  in each place it has entries for, and `bandCount` therefore counts both lists
+  can keep an ordinary meaning in the list, a historical event in the first fold
+  and a memorial entry in the second, so a date is drawn in each place it has
+  entries for, and `bandCount` therefore counts the month's list and both folds
   and de-duplicates the dates by `value` — a closed band's one line is all it
   says about itself. The summary is `.ix-fold`, the same disclosure a number
   past `FOLD_OVER` gets, **indented to the title column**: left at the gutter
@@ -976,12 +977,13 @@ meaning anything on a value with no separators to show, while this goes on
 meaning what it meant, and a mis-click on Format and back must not quietly drop
 it. What is gated on the format is the **payload**: the flag and the year go to
 the API only while Format is Calendar, because what the reader cannot see they
-cannot mean, and an Integer entry filed with In Memoriam ticked three clicks earlier
+cannot mean, and an Integer entry left on In Memoriam three clicks earlier
 is a row in a fold nobody asked for. And its hint is a **rule** rather than a
 preview, so it takes the form's own hint colour rather than the accent the
 grouped preview wears, and its words sit in one flex item with the label so a
-sentence wraps like one. The rule is stated where the box is ticked: only the
-date a deceased person died belongs in this fold.
+sentence wraps like one. Each dated choice states its own rule beside its
+radio: a historical event that happened on the date, and only the date a
+deceased person died.
 
 **Picking either dated fold attaches a required `Year` control to Date, and
 returning to ordinary clears it** — a year with no event beside it is a year of nothing. It is an

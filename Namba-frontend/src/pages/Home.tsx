@@ -249,7 +249,7 @@ function bandCount(items: NumberEntry[], subs: Band['subs'],
                    format: Format, m: Messages) {
   /* the whole month, folded entries included: closed, this line is all the
      band says about itself, so it must not count only half of it. Dates by
-     `value` because a split one is in both lists and is still one date. */
+     `value` because a split one is in more than one list and is still one date. */
   const all = subs ? [...items, ...subs.flatMap((sub) => sub.items)] : items
   const subjects = subs ? new Set(all.map((row) => row.value)).size : all.length
   const entries = all.reduce((n, item) => n + item.entries.length, 0)
@@ -471,7 +471,7 @@ function Index({ lang }: { lang: string }) {
                     {/* `common.entries` and not `home.foldedEntries`: that one
                         is a row's own fold, which only opens past FOLD_OVER and
                         so never has to say "1 entries". This one can hold a
-                  single dated entry. */}
+                        single dated entry. */}
                     <span>
                       {sub.label} · {m.common.entries(
                         sub.items.reduce((n, row) => n + row.entries.length, 0),
