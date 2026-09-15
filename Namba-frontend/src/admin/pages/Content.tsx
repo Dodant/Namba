@@ -253,8 +253,8 @@ export default function Content() {
                       shows a different number from the wiki */}
                   {showValue(r.value, !!r.grouped)}
                   {!!r.birth_death && (
-                    <span className="hash" title="filed as a birth or a death">
-                      {' \u00b7 birth/death'}
+                    <span className="hash" title="filed under In Memoriam">
+                      {' \u00b7 In Memoriam'}
                       {r.year != null && ` ${r.year}`}
                     </span>
                   )}

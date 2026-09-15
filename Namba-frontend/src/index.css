@@ -631,7 +631,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 /* any fold whose summary is an .ix-fold: the index's, and the comments' */
 details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
 .ix-fold:hover, .ix-fold:hover::before { color: var(--ink); }
-/* Who was born and who died, under the month's own list. Its summary is the
+/* Who died, under the month's own list. Its summary is the
    .ix-fold above -- the same disclosure a number past FOLD_OVER gets, and the
    caret rule reaches it already -- so this has two jobs: air between the last
    row and the control that opens the next ones, and the indent.
@@ -656,7 +656,7 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
 .band-sub { margin-top: 13px; }
 .band-sub > .ix-fold { translate: calc(104px + 22px) 0; }
 
-/* The year a birth or a death was in, leading the line the way a date page
+/* The year of the death, leading the line the way a date page
    leads with one. Mono and tabular because it is a figure, and --muted rather
    than the accent the numeral column wears: the numeral is the address and
    this is a fact about the entry. One rule for all three places it is drawn --
@@ -1470,7 +1470,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 /* the preview is what you will get, so it is coloured like the numeral it
    becomes rather than like a hint */
 .field.check .hint { color: var(--accent); }
-/* ...and the birth/death box says a rule rather than showing a preview, so its
+/* ...and the In Memoriam box says a rule rather than showing a preview, so its
    hint is a hint: the colour every other one on this form has, and the words
    wrap with the label rather than beside it. align-items goes to the top for
    the same reason -- centred, a two-line sentence pulls the box to its middle. */

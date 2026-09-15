@@ -75,7 +75,7 @@ function whatMoved(was: Post, now: Post, m: Messages): string[] {
     [was.body !== now.body, m.form.details],
     [was.lang !== now.lang, m.form.writtenIn],
     [was.grouped !== now.grouped, m.form.groupThousands],
-    [was.birth_death !== now.birth_death, m.form.birthDeath],
+    [was.birth_death !== now.birth_death, m.form.inMemoriam],
     [was.year !== now.year, m.form.year],
     [was.image !== now.image, m.form.image],
     [was.tags.join() !== now.tags.join(), m.form.categories],
@@ -150,7 +150,7 @@ export default function PostForm() {
   const [image, setImage] = useState<string | null>(null)
   const [lang, setLang] = useState(LANGS[0])
   const [grouped, setGrouped] = useState(false)
-  const [birthDeath, setBirthDeath] = useState(false)
+  const [inMemoriam, setInMemoriam] = useState(false)
   /* A string rather than a number, because the box can be empty and that is a
      year nobody said rather than a zero. It goes to the API as null. */
   const [year, setYear] = useState('')
@@ -212,7 +212,7 @@ export default function PostForm() {
     setImage(p.image)
     setLang(p.lang ?? LANGS[0])
     setGrouped(p.grouped)
-    setBirthDeath(p.birth_death)
+    setInMemoriam(p.birth_death)
     setYear(p.year == null ? '' : String(p.year))
   }
 
@@ -257,10 +257,10 @@ export default function PostForm() {
       /* Gated on the format here and not in the state: the box and the year
          stay ticked and typed while Format is off Calendar, so a mis-click and
          back loses nothing -- but what the reader cannot see they cannot mean,
-         and an Integer entry filed with a birth ticked three clicks ago is a
+         and an Integer entry filed with In Memoriam ticked three clicks ago is a
          row in a fold nobody asked for. */
-      birth_death: format === 'CALENDAR' && birthDeath,
-      year: format === 'CALENDAR' && birthDeath && year ? Number(year) : null,
+      birth_death: format === 'CALENDAR' && inMemoriam,
+      year: format === 'CALENDAR' && inMemoriam && year ? Number(year) : null,
     }
     try {
       const saved = editing
@@ -465,7 +465,7 @@ export default function PostForm() {
                 <span className="hint">{groupedPreview}</span>
               </label>
             )}
-            {/* Who was born and who died. Only a date can be one, so this is
+            {/* The date a deceased person died. Only a date can be one, so this is
                 the Calendar branch of the same row the separator box sits in
                 -- the two never show together, since there is no thousand in
                 12-25.
@@ -477,17 +477,16 @@ export default function PostForm() {
                 must not quietly drop it. The payload is where the format
                 decides -- see `submit`.
 
-                The hint is the rule, not a description. A Births list is an
-                invitation to file exactly the entry the guide never allows, so
-                it says so where the box is ticked rather than only in /guide.
+                The hint is the rule, not a description: In Memoriam is only
+                the date a deceased person died.
                 */}
             {format === 'CALENDAR' && (
               <label className="field check says-a-rule">
                 <input
                   type="checkbox"
-                  checked={birthDeath}
+                  checked={inMemoriam}
                   onChange={(e) => {
-                    setBirthDeath(e.target.checked)
+                    setInMemoriam(e.target.checked)
                     if (!e.target.checked) setYear('')
                   }}
                 />
@@ -498,8 +497,8 @@ export default function PostForm() {
                     sentence, which as a flex item of its own came out as a
                     second narrow column beside a first. */}
                 <span>
-                  {m.form.birthDeath}{' '}
-                  <span className="hint">{m.form.birthDeathHint}</span>
+                  {m.form.inMemoriam}{' '}
+                  <span className="hint">{m.form.inMemoriamHint}</span>
                 </span>
               </label>
             )}
@@ -512,10 +511,10 @@ export default function PostForm() {
                 min/max the browser enforces before the API has to. `max` is
                 the API's own rule drawn client-side -- this year if the date
                 has already come round, last year if it has not -- because a
-                birth or a death has happened, and this year's Christmas has
+                death has happened, and this year's Christmas has
                 not. The 422 is still what settles it: a browser is not a
                 trust boundary. */}
-            {format === 'CALENDAR' && birthDeath && (
+            {format === 'CALENDAR' && inMemoriam && (
               <div className="field year-field">
                 <label htmlFor={fid('year')}>
                   {m.form.year}{' '}

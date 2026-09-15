@@ -55,7 +55,7 @@ export const DE: Messages = {
     hasImage: 'mit Bild', feedIntro: 'Neueste Einträge und Änderungen zuerst.',
     moreRecent: 'Weitere aktuelle Einträge anzeigen',
     empty: 'Noch wurde nichts eingetragen.', entryKinds: 'Eintragsformat', categories: 'Kategorien', all: 'Alle',
-    birthsDeaths: 'Geburten / Todesfälle',
+    inMemoriam: 'In Memoriam',
     foldedEntries: (n: number) => `${fmtCount(n, 'de')} ${n === 1 ? 'Eintrag' : 'Einträge'}`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${fmtCount(subjects, 'de')} ${subject} · ${fmtCount(entries, 'de')} ${entries === 1 ? 'Eintrag' : 'Einträge'}`,
@@ -98,9 +98,8 @@ export const DE: Messages = {
     guidelines: 'Richtlinien für Einträge', fixedValue: (noun: string) => `fest — eine andere ${noun} benötigt einen eigenen Eintrag`,
     date: 'Datum', month: 'Monat', day: 'Tag',
     number: 'Zahl', abbreviation: 'Abkürzung', groupThousands: 'Tausendertrennzeichen verwenden',
-    birthDeath: 'Eine Geburt oder ein Tod',
-    birthDeathHint:
-      'erscheint unter Geburten / Todesfälle — niemals das Geburtsdatum einer lebenden Person',
+    inMemoriam: 'In Memoriam',
+    inMemoriamHint: 'der Todestag einer verstorbenen Person',
     year: 'Jahr',
     yearHint:
       'optional — das Jahr, in dem es geschah, niemals ein künftiges',

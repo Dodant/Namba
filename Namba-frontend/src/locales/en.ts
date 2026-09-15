@@ -80,7 +80,7 @@ export const EN = {
     moreRecent: 'Show more recent entries',
     empty: 'Nothing written yet.',
     entryKinds: 'Entry format', categories: 'Categories', all: 'All',
-    birthsDeaths: 'Births / Deaths',
+    inMemoriam: 'In Memoriam',
     foldedEntries: (n: number) => `${fmtCount(n, 'en')} entries`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${fmtCount(subjects, 'en')} ${subject} · ${fmtCount(entries, 'en')} ${entries === 1 ? 'entry' : 'entries'}`,
@@ -123,9 +123,8 @@ export const EN = {
     guidelines: 'Entry guidelines', fixedValue: (noun: string) => `fixed — another ${noun} is another entry`,
     date: 'Date', month: 'Month', day: 'Day',
     number: 'Number', abbreviation: 'Abbreviation', groupThousands: 'Use thousands separators',
-    birthDeath: 'A birth or a death',
-    birthDeathHint:
-      'listed under Births / Deaths — never a living person’s date of birth',
+    inMemoriam: 'In Memoriam',
+    inMemoriamHint: 'the date a deceased person died',
     year: 'Year',
     yearHint:
       'optional — the year it happened, never a year still to come',

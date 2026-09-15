@@ -121,11 +121,11 @@ export type Post = {
   /** show the value with thousands separators. Display only -- `value` never
       carries them, or 1000 and 1,000 stop being the same number. */
   grouped: boolean
-  /** somebody's birth or somebody's death. Display only, like `grouped`: a
-      birth is still a CALENDAR date at /c/12-25 with the same key and the same
-      band, and what it changes is which of a month's two lists draws it. */
+  /** The date a deceased person died. Display only, like `grouped`: it is still
+      a CALENDAR date with the same key and band; this only changes which of a
+      month's two lists draws it. */
   birth_death: boolean
-  /** which year that birth or death was in, and null wherever nobody said.
+  /** which year that death was in, and null wherever nobody said.
       An annotation and never part of the address: /c/12-25 is the day of the
       year and `value` carries no year, so this is drawn beside the entry and
       nothing sorts or bands on it. */
@@ -178,9 +178,9 @@ export type NumberEntry = {
   /** true only when every entry filed here asked for separators. A row is one
       number written one way, so a disagreement falls back to the plain form. */
   grouped: boolean
-  /** `birth_death` is on the entry and not on the row, because the split is
-      per entry: 12-25 carries Christmas in December's list and Newton's birth
-      in its fold, so one date is drawn in each place it has entries for. */
+  /** `birth_death` is the legacy storage name for In Memoriam and is on the
+      entry, not the row: one date can carry an ordinary meaning in the month's
+      list and a person's death in the fold. */
   entries: {
     id: number
     title: string

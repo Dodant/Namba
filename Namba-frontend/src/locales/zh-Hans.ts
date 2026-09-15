@@ -49,7 +49,7 @@ export const ZH_HANS: Messages = {
     hasImage: '包含图片', feedIntro: '按最近创建或编辑的时间排序。',
     moreRecent: '显示更多最近条目',
     empty: '还没有任何条目。', entryKinds: '条目格式', categories: '分类', all: '全部',
-    birthsDeaths: '出生 / 逝世',
+    inMemoriam: 'In Memoriam',
     foldedEntries: (n: number) => `${fmtCount(n, 'zh-Hans')}个条目`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${fmtCount(subjects, 'zh-Hans')}个${subject} · ${fmtCount(entries, 'zh-Hans')}个条目`,
@@ -87,9 +87,8 @@ export const ZH_HANS: Messages = {
     guidelines: '条目指南', fixedValue: (noun: string) => `不可更改 — 另一个${noun}应创建为单独条目`,
     date: '日期', month: '月', day: '日',
     number: '数字', abbreviation: '缩写', groupThousands: '使用千位分隔符', format: '格式',
-    birthDeath: '出生或逝世',
-    birthDeathHint:
-      '归入出生 / 逝世一栏 — 在世人物的出生日期不可收录',
+    inMemoriam: 'In Memoriam',
+    inMemoriamHint: '已故人物的逝世日期',
     year: '年份',
     yearHint:
       '可选 — 事情发生的年份，尚未到来的年份不可填写',

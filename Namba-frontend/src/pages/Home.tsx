@@ -176,7 +176,7 @@ const FOLD_OVER = 10
 
    Three things move a row's width or reveal one: a window resize, the fonts
    arriving after the first paint with `display=swap` wider than what they
-   replace, and the Births / Deaths fold opening. That third one is about a
+   replace, and the In Memoriam fold opening. That third one is about a
    browser this app cannot ask about. A closed <details> hides its content with
    `content-visibility` where `::details-content` is implemented, which keeps
    the rows laid out and measurable while they are hidden, and with
@@ -219,9 +219,9 @@ type Band = {
   now?: boolean
 }
 
-/* A month's two lists: what the day means, and who was born or died on it.
+/* A month's two lists: what the day means, and who died on it.
    The split is per *entry* and not per date, so December 25 keeps Christmas in
-   the list above and Newton's birth in the fold below -- one date drawn in each
+   the list above and a memorial entry in the fold below -- one date drawn in each
    place it has entries for, rather than a whole date going one way because of
    one of its entries. A row with nothing left on its side drops out. */
 function sideOf(rows: NumberEntry[], want: boolean) {
@@ -273,7 +273,7 @@ function Index({ lang }: { lang: string }) {
   const numbers = useAsync(() => api.numbers({ format, tag, lang }), [format, tag, lang], true)
 
   /* Which rows had to be cut -- see `measure` above. A window resize and the
-     fonts arriving are the two passes it needs; the Births / Deaths fold adds
+     fonts arriving are the two passes it needs; the In Memoriam fold adds
      a third of its own, on the element that opens it. */
   useEffect(() => {
     measure()
@@ -428,7 +428,7 @@ function Index({ lang }: { lang: string }) {
                   <IndexRow key={`${row.format}-${row.value}`} row={row} />
                 ))}
               </ol>
-              {/* Who was born and who died, at the foot of the month and
+              {/* Dates connected to people who have died, at the foot of the month and
                   closed. The same disclosure a number past FOLD_OVER gets --
                   `.ix-fold`, one level in and one step quieter than the band
                   head above it -- because it is the same gesture at the same
@@ -442,11 +442,11 @@ function Index({ lang }: { lang: string }) {
               {band.sub && band.sub.length > 0 && (
                 <details className="band-sub" onToggle={measure}>
                   <summary className="ix-fold">
-                    <span>{m.home.birthsDeaths}</span>
+                    <span>{m.home.inMemoriam}</span>
                     {/* `common.entries` and not `home.foldedEntries`: that one
                         is a row's own fold, which only opens past FOLD_OVER and
                         so never has to say "1 entries". This one can hold a
-                        single birth. */}
+                        single memorial entry. */}
                     <span>{m.common.entries(
                       band.sub.reduce((n, row) => n + row.entries.length, 0),
                     )}</span>
