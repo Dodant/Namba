@@ -207,8 +207,8 @@ def refuse_a_future_year(value, fmt, year):
                  "date only in a leap year.")
     if (year, month, day) > today:
         raise HTTPException(
-            422, f"a historical event has happened, and {year}-{month:02d}-"
-                 f"{day:02d} has not. A year cannot be later than today.")
+            422, f"{year}-{month:02d}-{day:02d} has not happened yet. A dated "
+                 f"entry cannot be later than today.")
 
 
 # The sections this one column is read in, and the format that puts a row in
