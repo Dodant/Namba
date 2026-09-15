@@ -362,9 +362,11 @@ opposite, and only its regex says `[0-9]`.
   route that can move a date forward past a year already on the row; what it
   would leave is an entry every later public edit is refused for.
   `restore_revision` does not ask, the way it re-checks neither `is_abbr` nor
-  `date_key`. A year is required on every flagged public write and rides only
-  on that flag: both public writes drop it when `birth_death` is off, so an API
-  client that returns both flags to false is not held for the year it left. The form
+  `date_key` — but `apply_snapshot` drops a dated flag whose snapshot carries
+  no year, since that pair is one both write routes refuse and putting it back
+  leaves an entry every later public edit answers 422 to. A year is required on every flagged public write and rides only
+  on those flags: both public writes drop it when neither dated flag is set, so an
+  API client that returns both flags to false is not held for the year it left. The form
   attaches the required year to month and day as the third Date control.
 
   **`/c/` is the one section that is a closed set, so an unreadable date is

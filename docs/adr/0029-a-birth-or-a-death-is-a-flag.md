@@ -158,6 +158,19 @@ than left implicit in the section name.
 
 ## History
 
+- 2026-09-15: **a restore no longer puts back a dated flag with no year.**
+  Making the year mandatory (the entry below) reached the two public write
+  routes and left `apply_snapshot` alone, so restoring a snapshot taken before
+  that rule — every memorial revision older than it — produced a live row the
+  write routes refuse. The entry then answered 422 to every later public edit,
+  including one that named neither the flag nor the year, and the restore route
+  is public and unauthenticated. `apply_snapshot` now clears the flag when the
+  snapshot carries no year: the restore still succeeds, which is what "a
+  snapshot has to be restorable" asks, and what is dropped is the half the
+  snapshot had nothing to support. Found by the pre-merge review of
+  `feat/on-this-day`, which widened the same trap to `on_this_day`; held by
+  `test_api_round_trip`, which restores a doctored snapshot and then edits the
+  entry.
 - 2026-09-15: renamed the section **In Memoriam** and narrowed its contract to
   death dates only. Birth dates do not belong in the fold, including those of
   people who have since died. The database and API keep `birth_death` as a

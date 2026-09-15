@@ -2684,6 +2684,51 @@ def test_api_round_trip():
         "a restore dropped the flag; a version that cannot say an entry was a " \
         "death is a worse record"
     assert restored.json()["year"] == 1642, "a restore dropped the year"
+    # The historical fold rides the same pair of SNAPSHOT_FIELDS and
+    # apply_snapshot, and it needs saying separately: the restore is public,
+    # unauthenticated and the third write that reaches this column, so the two
+    # above cannot stand in for it.
+    crowned = c.post("/api/posts", json={"value": "08-15", "format": "CALENDAR",
+                                         "title": "an emperor was crowned",
+                                         "on_this_day": True, "year": 800}).json()
+    c.patch(f"/api/posts/{crowned['id']}",
+            json={"on_this_day": False, "author": "editor"})
+    was = c.get(f"/api/posts/{crowned['id']}/revisions").json()[0]
+    back = c.post(f"/api/posts/{crowned['id']}/revisions/{was['id']}/restore",
+                  json={"author": "editor"})
+    assert back.status_code == 200, back.text
+    assert back.json()["on_this_day"] is True, \
+        "a restore dropped the historical fold; a version that cannot say an " \
+        "entry was an event is a worse record"
+    assert back.json()["year"] == 800, "a restore dropped the year beside it"
+    # A snapshot taken before the year was required carries a flag with no
+    # year, which is a pair both write routes refuse. Put back as it stands it
+    # leaves an entry every later public edit answers 422 to, for a field the
+    # editor never sent -- so the flag goes rather than the restore.
+    con = db.connect()
+    try:
+        with con:
+            elder = json.loads(con.execute(
+                "SELECT snapshot FROM revisions WHERE id = ?",
+                (was["id"],)).fetchone()[0])
+            del elder["year"]
+            elder_id = con.execute(
+                "INSERT INTO revisions (post_id, snapshot, author, at) VALUES (?,?,?,?)",
+                (crowned["id"], json.dumps(elder), "editor", db.now())).lastrowid
+    finally:
+        con.close()
+    yearless = c.post(
+        f"/api/posts/{crowned['id']}/revisions/{elder_id}/restore",
+        json={"author": "editor"})
+    assert yearless.status_code == 200, yearless.text
+    assert yearless.json()["on_this_day"] is False \
+        and yearless.json()["year"] is None, yearless.json()
+    typo = c.patch(f"/api/posts/{crowned['id']}",
+                   json={"title": "an emperor was crowned here",
+                         "author": "reader"})
+    assert typo.status_code == 200, \
+        "a restored entry refused an edit that never mentioned the flag"
+    admin.set_status(crowned["id"], "HIDDEN")
     # a history line reads the value through the format the way the hero does,
     # so the label carries it: 12-25 under an entry whose hero says 25 December
     # is the format gone missing from the label, not a different date

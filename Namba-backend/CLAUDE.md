@@ -174,10 +174,20 @@ the sitemap.
   `now()`. A route check rather than a validator for the reason
   `resolve_format`'s are — it needs both halves, and an edit sends a year with
   no value at all — and `ge=1` on the field is the only other bound, since
-  today is the cap. `restore_revision` and `POST /api/admin/posts/{id}/value`
-  do not ask, the way neither re-checks `is_abbr` or `date_key`: a snapshot has
-  to be restorable, and a year that was past when it was written only gets more
-  so (ADR-0029).
+  today is the cap. `restore_revision` does not ask, the way it re-checks
+  neither `is_abbr` nor `date_key`: a snapshot has to be restorable, and a year
+  that was past when it was written only gets more so. `POST
+  /api/admin/posts/{id}/value` **does** ask, being the one route that can move a
+  date forward past a year already on the row — what it would otherwise leave is
+  an entry every later public edit is refused for (ADR-0029).
+
+  **What a restore does check is that a flag has its year.** `apply_snapshot`
+  drops a dated flag whose snapshot carries none: a snapshot taken before the
+  year was required holds that pair, both write routes refuse it, and put back
+  as it stands it leaves an entry answering 422 to every later public edit — for
+  a field the editor never sent, on the one write that re-checks nothing. The
+  flag goes rather than the restore, because a history has to be restorable and
+  a flag with no year behind it is the half the snapshot cannot support.
 - **`posts.grouped` is how the number is written, not what it is.** `value`
   never carries separators and always uses a dot decimal; `grouped_value()`
   applies the requested UI locale for display and leaves anything that is not

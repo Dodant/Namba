@@ -451,6 +451,19 @@ def apply_snapshot(con, post_id, old, editor):
     key = old["sort_key"]
     if key is not None and not math.isfinite(key):
         key = None
+    # ...and the dated flags are the second. A year rides only on one of them
+    # and every flagged write requires it, but a snapshot taken before that was
+    # so carries the flag with no year -- a pair the write routes refuse. Put it
+    # back as it stands and every later public edit of that entry answers 422
+    # for a field the editor never sent, which is an entry nobody can fix. The
+    # flag goes rather than the restore: a history has to be restorable, and a
+    # flag with no year behind it is the half the snapshot cannot support
+    # (ADR-0029).
+    year = old.get("year")
+    birth_death = int(old.get("birth_death") or 0)
+    on_this_day = int(old.get("on_this_day") or 0)
+    if year is None:
+        birth_death = on_this_day = 0
     con.execute(
         """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
                             image=?, lang=?, grouped=?, birth_death=?, on_this_day=?, year=?,
@@ -458,8 +471,7 @@ def apply_snapshot(con, post_id, old, editor):
            WHERE id=?""",
         (old["value"], old["format"], key, old["title"], old["body"],
          old["image"], old.get("lang"), int(old.get("grouped") or 0),
-         int(old.get("birth_death") or 0), int(old.get("on_this_day") or 0),
-         old.get("year"), editor, now(),
+         birth_death, on_this_day, year, editor, now(),
          post_id),
     )
     write_tags(con, post_id, old.get("tags", []))
