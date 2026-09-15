@@ -76,7 +76,7 @@ function whatMoved(was: Post, now: Post, m: Messages): string[] {
     [was.lang !== now.lang, m.form.writtenIn],
     [was.grouped !== now.grouped, m.form.groupThousands],
     [was.on_this_day !== now.on_this_day, m.form.onThisDay],
-    [was.birth_death !== now.birth_death, m.form.inMemoriam],
+    [was.in_memoriam !== now.in_memoriam, m.form.inMemoriam],
     [was.year !== now.year, m.form.year],
     [was.image !== now.image, m.form.image],
     [was.tags.join() !== now.tags.join(), m.form.categories],
@@ -215,7 +215,7 @@ export default function PostForm() {
     setLang(p.lang ?? LANGS[0])
     setGrouped(p.grouped)
     setOnThisDay(p.on_this_day)
-    setInMemoriam(p.birth_death)
+    setInMemoriam(p.in_memoriam)
     setYear(p.year == null ? '' : String(p.year))
   }
 
@@ -262,7 +262,7 @@ export default function PostForm() {
          back loses nothing -- but what the reader cannot see they cannot mean,
          and an Integer entry filed with In Memoriam ticked three clicks ago is a
          row in a fold nobody asked for. */
-      birth_death: format === 'CALENDAR' && inMemoriam,
+      in_memoriam: format === 'CALENDAR' && inMemoriam,
       on_this_day: format === 'CALENDAR' && onThisDay,
       year: format === 'CALENDAR' && (inMemoriam || onThisDay) && year
         ? Number(year) : null,

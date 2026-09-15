@@ -1,5 +1,4 @@
 """Namba API -- an open, no-login wiki of numbers."""
-import json
 import os
 import re
 import time
@@ -23,9 +22,9 @@ import events
 import seo
 from db import UPLOAD_DIR, get_db, nfc, now, writing
 from store import (
-    LIVE, Text, apply_snapshot, fetch_one, guard_public, refuse_a_future_year,
-    resolve_format, section_of, section_sql, section_where, shape, snapshot,
-    ungroup, write_tags,
+    LIVE, Text, apply_snapshot, fetch_one, guard_public, load_snapshot,
+    refuse_a_future_year, resolve_format, section_of, section_sql,
+    section_where, shape, snapshot, ungroup, write_tags,
 )
 from numfmt import FORMATS, bucket_of
 
@@ -378,7 +377,7 @@ class PostIn(PostRules):
     tags: List[str] = Field(default_factory=list)
     lang: Optional[str] = Field(default=None, max_length=40)
     grouped: bool = False
-    birth_death: bool = False
+    in_memoriam: bool = False
     on_this_day: bool = False
     year: Optional[int] = Field(default=None, ge=1)
 
@@ -407,7 +406,7 @@ class PostPatch(PostRules):
     # a None, so the default here is the value no caller ever sees. Declaring
     # them nullable is what made `{"grouped": null}` an `int(None)` and a 500.
     grouped: bool = False
-    birth_death: bool = False
+    in_memoriam: bool = False
     on_this_day: bool = False
     year: Optional[int] = Field(default=None, ge=1)
 
@@ -563,7 +562,7 @@ def list_numbers(
     flag: the index should be readable without opening a post, not a copy of it.
     """
     sql = ["""SELECT p.id, p.value, p.format, p.sort_key, p.title, p.likes,
-                      p.grouped, p.birth_death, p.on_this_day, p.year,
+                      p.grouped, p.in_memoriam, p.on_this_day, p.year,
                       substr(p.body, 1, ?) AS body, p.image IS NOT NULL AS image
                FROM posts p"""]
     args = [BLURB + 1]
@@ -613,7 +612,7 @@ def list_numbers(
             # off the entry and not the row: one date carries an ordinary meaning
             # in the month's list and a death in its fold, so the split the Calendar
             # tab draws is per entry (ADR-0029)
-            "birth_death": bool(r["birth_death"]),
+            "in_memoriam": bool(r["in_memoriam"]),
             "on_this_day": bool(r["on_this_day"]),
             "year": r["year"],
         })
@@ -848,20 +847,20 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
         # three statements below landing together, not for a read -- see
         # db.writing() and ADR-0007 for the eleven writes where it is the read.
         value, fmt, key = resolve_format(value, p.format)
-        if p.birth_death and p.on_this_day:
+        if p.in_memoriam and p.on_this_day:
             raise HTTPException(422, "On this day and In Memoriam are mutually exclusive")
-        dated = p.birth_death or p.on_this_day
+        dated = p.in_memoriam or p.on_this_day
         if dated and p.year is None:
             raise HTTPException(422, "On this day or In Memoriam requires a year")
         year = p.year if dated else None
         refuse_a_future_year(value, fmt, year)
         cur = con.execute(
             """INSERT INTO posts (value, format, sort_key, title, body, image, author,
-                                  lang, grouped, birth_death, on_this_day, year,
+                                  lang, grouped, in_memoriam, on_this_day, year,
                                   created_at, updated_at)
                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (value, fmt, key, p.title.strip(), p.body, p.image,
-             author, p.lang, int(grouped), int(p.birth_death), int(p.on_this_day),
+             author, p.lang, int(grouped), int(p.in_memoriam), int(p.on_this_day),
              year, ts, ts),
         )
         write_tags(con, cur.lastrowid, p.tags)
@@ -911,11 +910,11 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         grouped = p.grouped if "grouped" in sent else bool(current["grouped"])
         # `in sent` and not `is not None`, or an explicit false could never
         # take the flag off again -- the form sends every field on every save.
-        birth_death = (p.birth_death if "birth_death" in sent
-                       else bool(current["birth_death"]))
+        in_memoriam = (p.in_memoriam if "in_memoriam" in sent
+                       else bool(current["in_memoriam"]))
         on_this_day = (p.on_this_day if "on_this_day" in sent
                        else bool(current["on_this_day"]))
-        if birth_death and on_this_day:
+        if in_memoriam and on_this_day:
             raise HTTPException(422, "On this day and In Memoriam are mutually exclusive")
         # `in sent`, like the flag above and for the same reason: this column is
         # nullable for ordinary entries, so an explicit null must be distinct
@@ -924,7 +923,7 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         # ...and only ever beside the flag, the way create_post keeps it: an
         # edit that unticks the box takes the year with it, whether or not the
         # sender knew there was one.
-        if not (birth_death or on_this_day):
+        if not (in_memoriam or on_this_day):
             year = None
         elif year is None:
             raise HTTPException(422, "On this day or In Memoriam requires a year")
@@ -1001,7 +1000,7 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         proposed = {
             "value": value, "format": fmt, "title": title, "body": body,
             "image": image, "lang": lang, "grouped": bool(grouped),
-            "birth_death": bool(birth_death), "on_this_day": bool(on_this_day),
+            "in_memoriam": bool(in_memoriam), "on_this_day": bool(on_this_day),
             "year": year, "tags": tags,
         }
         changed = [field for field, value_now in proposed.items()
@@ -1019,14 +1018,14 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         # that a caller may write without first reading.
         done = con.execute(
             """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
-                                image=?, lang=?, grouped=?, birth_death=?,
+                                image=?, lang=?, grouped=?, in_memoriam=?,
                                 on_this_day=?, year=?, edited_by=?, updated_at=? WHERE id=?
                             AND (? IS NULL OR updated_at = ?)""",
             (
                 value, fmt, key,
                 title, body, image, lang,
                 int(grouped),
-                int(birth_death),
+                int(in_memoriam),
                 int(on_this_day),
                 year,
                 editor,
@@ -1074,7 +1073,7 @@ def restore_revision(
         ).fetchone()
         if row is None:
             raise HTTPException(404, "revision not found")
-        old = json.loads(row["snapshot"])
+        old = load_snapshot(row["snapshot"])
         alive = con.execute(
             "SELECT format FROM posts WHERE id = ?", (post_id,)).fetchone()
         rev = None

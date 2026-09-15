@@ -124,7 +124,7 @@ export type Post = {
   /** The date a deceased person died. Display only, like `grouped`: it is still
       a CALENDAR date with the same key and band; this only changes which of a
       month's three lists draws it. */
-  birth_death: boolean
+  in_memoriam: boolean
   /** A historical event that occurred on this calendar date. Mutually
       exclusive with In Memoriam. */
   on_this_day: boolean
@@ -188,7 +188,7 @@ export type NumberEntry = {
     body: string
     image: boolean
     likes: number
-    birth_death: boolean
+    in_memoriam: boolean
     on_this_day: boolean
     year: number | null
   }[]
@@ -245,7 +245,7 @@ export type PostInput = {
   tags?: Tag[]
   lang?: string | null
   grouped?: boolean
-  birth_death?: boolean
+  in_memoriam?: boolean
   on_this_day?: boolean
   year?: number | null
 }

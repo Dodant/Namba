@@ -30,11 +30,11 @@ CREATE TABLE IF NOT EXISTS posts (
   -- this entry is the date a deceased person died. Display only, like
   -- `grouped`: a death is still a CALENDAR date, and the format
   -- is what decides how a value is read, sorted and addressed (ADR-0026).
-  -- The Calendar index's In Memoriam fold is the one thing that reads it
-  -- (ADR-0029). The column name is retained for migration compatibility.
-  birth_death INTEGER NOT NULL DEFAULT 0,
+  -- The Calendar index's In Memoriam fold is the one thing that reads it,
+  -- and this is named for that fold the way `on_this_day` is (ADR-0029).
+  in_memoriam INTEGER NOT NULL DEFAULT 0,
   -- this entry records a historical event that happened on this date. It is
-  -- mutually exclusive with birth_death and, like it, only changes which
+  -- mutually exclusive with in_memoriam and, like it, only changes which
   -- Calendar fold draws the entry.
   on_this_day INTEGER NOT NULL DEFAULT 0,
   -- which year the death or historical event occurred, required for either
@@ -542,7 +542,11 @@ def _text_is_one_normal_form(con):
 
 
 def _birth_death_column(con):
-    """`posts.birth_death`, the legacy name for the In Memoriam flag.
+    """`posts.birth_death`, the column `in_memoriam` was added as.
+
+    The name it is added under and not the name it ends up with: a step is
+    what was done, so this one still writes what it wrote, and the rename is
+    its own step at the foot of the list.
 
     Its own step rather than a line in the one above, because that one is
     numbered 1: a database already at 3 has passed it and would never run it
@@ -579,6 +583,31 @@ def _on_this_day_column(con):
             "ALTER TABLE posts ADD COLUMN on_this_day INTEGER NOT NULL DEFAULT 0")
 
 
+def _birth_death_is_now_in_memoriam(con):
+    """`posts.birth_death` takes the name of the fold it draws.
+
+    The column was named for a birth or a death and only ever held a death,
+    so the name offered a second thing the flag cannot be. `on_this_day`
+    arriving beside it is what made that read as a difference between the
+    two: one named for its fold, one named for a pair of events.
+
+    A rename and not a second column with a copy -- nothing needs both, and
+    `ALTER TABLE ... RENAME COLUMN` carries the rows. No index, view or
+    trigger names this column, which is the other half of what makes it one
+    statement.
+
+    `revisions` is untouched, and that is the trade this step makes. Every
+    snapshot on disk spells the key the old way, and rewriting them would be
+    an edit to the record for the sake of a name -- through SQLite's own JSON
+    functions at that, which re-serialize a stranger's title on the way past.
+    `store.load_snapshot` reads either spelling instead, which is where every
+    reader of a snapshot already goes.
+    """
+    have = {r["name"] for r in con.execute("PRAGMA table_info(posts)")}
+    if "birth_death" in have and "in_memoriam" not in have:
+        con.execute("ALTER TABLE posts RENAME COLUMN birth_death TO in_memoriam")
+
+
 # In order, and append-only: a step's number is what a database records as
 # having been done, so inserting one in the middle re-runs the wrong thing
 # somewhere. Two of the six are data passes over every row of six tables,
@@ -600,6 +629,7 @@ MIGRATIONS = (
     _birth_death_column,
     _birth_year_column,
     _on_this_day_column,
+    _birth_death_is_now_in_memoriam,
 )
 
 

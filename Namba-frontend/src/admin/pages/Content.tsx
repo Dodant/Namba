@@ -258,7 +258,7 @@ export default function Content() {
                       {r.year != null && ` ${r.year}`}
                     </span>
                   )}
-                  {!!r.birth_death && (
+                  {!!r.in_memoriam && (
                     <span className="hash" title="filed under In Memoriam">
                       {' \u00b7 In Memoriam'}
                       {r.year != null && ` ${r.year}`}

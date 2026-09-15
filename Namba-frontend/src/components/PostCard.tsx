@@ -8,7 +8,7 @@ import { useUi } from '../uiLocale'
    can hand it a bare entry. The API counter stays the same; In Memoriam gives
    that gesture the memorial language and candle it has on screen. */
 export function Like({ post }: {
-  post: { id: number; likes: number; birth_death?: boolean }
+  post: { id: number; likes: number; in_memoriam?: boolean }
 }) {
   const { locale, m } = useUi()
   const [n, setN] = useState(post.likes)
@@ -27,7 +27,7 @@ export function Like({ post }: {
     }
   }
 
-  const says = post.birth_death ? m.common.candle(on, n) : m.common.like(on, n)
+  const says = post.in_memoriam ? m.common.candle(on, n) : m.common.like(on, n)
 
   return (
     <button
@@ -37,7 +37,7 @@ export function Like({ post }: {
       aria-label={says}
       title={says}
     >
-      {post.birth_death
+      {post.in_memoriam
         ? <>🕯 Light a candle · {fmtCount(n, locale)}</>
         : <>♥ {fmtCount(n, locale)}</>}
     </button>

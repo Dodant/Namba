@@ -129,7 +129,7 @@ function Feed({ lang }: { lang: string }) {
                 </span>
               )}
               <span className="likes">
-                {p.birth_death ? '🕯' : '♥'} {fmtCount(p.likes, locale)}
+                {p.in_memoriam ? '🕯' : '♥'} {fmtCount(p.likes, locale)}
               </span>
             </div>
           </div>
@@ -229,10 +229,10 @@ function sideOf(rows: NumberEntry[], want: 'ordinary' | 'on-this-day' | 'memoria
     .map((row) => ({
       ...row,
       entries: row.entries.filter((e) => want === 'memorial'
-        ? e.birth_death
+        ? e.in_memoriam
         : want === 'on-this-day'
           ? e.on_this_day
-          : !e.birth_death && !e.on_this_day),
+          : !e.in_memoriam && !e.on_this_day),
     }))
     .filter((row) => row.entries.length > 0)
 }

@@ -225,7 +225,7 @@ export function EntrySheet(
             {!!flagged && <Badge>FLAGGED</Badge>}
             <span className="hash">{post.format}</span>
             {post.on_this_day && <Badge>ON THIS DAY</Badge>}
-            {post.birth_death && <Badge>IN MEMORIAM</Badge>}
+            {post.in_memoriam && <Badge>IN MEMORIAM</Badge>}
             {post.year != null && (
               <span className="hash" title="the year of the event">
                 {post.year}

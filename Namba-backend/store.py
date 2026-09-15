@@ -277,7 +277,7 @@ def shape(rows, con):
         p["bucket"] = bucket_of(p["sort_key"], p["format"], p["value"])
         # sqlite has no bool; the wire and the client both want one
         p["grouped"] = bool(p["grouped"])
-        p["birth_death"] = bool(p["birth_death"])
+        p["in_memoriam"] = bool(p["in_memoriam"])
         p["on_this_day"] = bool(p["on_this_day"])
     q = "SELECT post_id, tag FROM post_tags WHERE post_id IN (%s) ORDER BY tag" % (
         ",".join("?" * len(ids))
@@ -361,7 +361,7 @@ def fetch_one(con, post_id, hidden=False):
 # hidden one back on the wiki. `bucket` is computed from the format and the
 # sort key sitting beside it.
 SNAPSHOT_FIELDS = ("value", "format", "sort_key", "title", "body", "image",
-                   "lang", "grouped", "birth_death", "on_this_day", "year", "author",
+                   "lang", "grouped", "in_memoriam", "on_this_day", "year", "author",
                    "edited_by", "likes", "created_at", "updated_at")
 
 
@@ -420,6 +420,31 @@ def write_tags(con, post_id, tags):
     )
 
 
+def load_snapshot(raw):
+    """A stored revision, read into the field names the code uses today.
+
+    Every reader of `revisions.snapshot` comes through here, because a
+    snapshot is the one thing this wiki writes and never rewrites: it is as
+    old as the day it was taken, and the columns have moved since. Two ways,
+    so far. A column that did not exist yet has no key at all, and what it
+    meant is the column's default -- read as a missing key instead, a diff
+    against an old revision reports a flag going from nothing to false, which
+    is a change nobody made. And `in_memoriam` was stored as `birth_death`
+    until the flag took the name of its fold, so every revision older than
+    that rename spells it the other way; read as absent, a restore would
+    quietly untick In Memoriam on the entry it was restoring.
+
+    Reading both here rather than at the three call sites is the point. A
+    caller that forgets is not an error anywhere -- it is a flag that reads
+    false, in a route that answers 200.
+    """
+    old = json.loads(raw)
+    if "birth_death" in old:
+        old.setdefault("in_memoriam", old["birth_death"])
+        del old["birth_death"]
+    return {"grouped": False, "in_memoriam": False, "on_this_day": False, **old}
+
+
 def apply_snapshot(con, post_id, old, editor):
     """Put a snapshot's fields back onto an entry, with its tags and its
     translations.
@@ -460,18 +485,18 @@ def apply_snapshot(con, post_id, old, editor):
     # flag with no year behind it is the half the snapshot cannot support
     # (ADR-0029).
     year = old.get("year")
-    birth_death = int(old.get("birth_death") or 0)
+    in_memoriam = int(old.get("in_memoriam") or 0)
     on_this_day = int(old.get("on_this_day") or 0)
     if year is None:
-        birth_death = on_this_day = 0
+        in_memoriam = on_this_day = 0
     con.execute(
         """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
-                            image=?, lang=?, grouped=?, birth_death=?, on_this_day=?, year=?,
+                            image=?, lang=?, grouped=?, in_memoriam=?, on_this_day=?, year=?,
                             edited_by=?, updated_at=?
            WHERE id=?""",
         (old["value"], old["format"], key, old["title"], old["body"],
          old["image"], old.get("lang"), int(old.get("grouped") or 0),
-         birth_death, on_this_day, year, editor, now(),
+         in_memoriam, on_this_day, year, editor, now(),
          post_id),
     )
     write_tags(con, post_id, old.get("tags", []))
