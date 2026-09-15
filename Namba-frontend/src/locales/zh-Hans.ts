@@ -51,7 +51,7 @@ export const ZH_HANS: Messages = {
     hasImage: '包含图片', feedIntro: '按最近创建或编辑的时间排序。',
     moreRecent: '显示更多最近条目',
     empty: '还没有任何条目。', entryKinds: '条目格式', categories: '分类', all: '全部',
-    inMemoriam: 'In Memoriam',
+    onThisDay: 'On this day', inMemoriam: 'In Memoriam',
     foldedEntries: (n: number) => `${fmtCount(n, 'zh-Hans')}个条目`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${fmtCount(subjects, 'zh-Hans')}个${subject} · ${fmtCount(entries, 'zh-Hans')}个条目`,
@@ -89,11 +89,13 @@ export const ZH_HANS: Messages = {
     guidelines: '条目指南', fixedValue: (noun: string) => `不可更改 — 另一个${noun}应创建为单独条目`,
     date: '日期', month: '月', day: '日',
     number: '数字', abbreviation: '缩写', groupThousands: '使用千位分隔符', format: '格式',
+    calendarRole: '日期类型', calendarOrdinary: '普通日期',
+    onThisDay: 'On this day', onThisDayHint: '这一天发生的历史事件',
     inMemoriam: 'In Memoriam',
     inMemoriamHint: '已故人物的逝世日期',
     year: '年份',
     yearHint:
-      '必填 — 逝世年份，尚未到来的年份不可填写',
+      '必填 — 事件发生的年份，尚未到来的年份不可填写',
     autoDetect: '自动检测', title: '标题', titleHint: '它指的是什么',
     titlePlaceholder: (section: Section) => ({
       number: '银河系漫游指南',

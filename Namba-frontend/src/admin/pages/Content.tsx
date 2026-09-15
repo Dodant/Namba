@@ -252,6 +252,12 @@ export default function Content() {
                       it asked to be written, and a table that ignores that
                       shows a different number from the wiki */}
                   {showValue(r.value, !!r.grouped)}
+                  {!!r.on_this_day && (
+                    <span className="hash" title="filed under On this day">
+                      {' \u00b7 On this day'}
+                      {r.year != null && ` ${r.year}`}
+                    </span>
+                  )}
                   {!!r.birth_death && (
                     <span className="hash" title="filed under In Memoriam">
                       {' \u00b7 In Memoriam'}

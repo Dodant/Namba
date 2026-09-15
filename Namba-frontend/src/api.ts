@@ -125,10 +125,11 @@ export type Post = {
       a CALENDAR date with the same key and band; this only changes which of a
       month's two lists draws it. */
   birth_death: boolean
-  /** which year that death was in, required for In Memoriam and null otherwise.
-      An annotation and never part of the address: /c/12-25 is the day of the
-      year and `value` carries no year, so this is drawn beside the entry and
-      nothing sorts or bands on it. */
+  /** A historical event that occurred on this calendar date. Mutually
+      exclusive with In Memoriam. */
+  on_this_day: boolean
+  /** The year of the death or historical event, required for either dated
+      fold and null otherwise. It is never part of the address. */
   year: number | null
   author: string
   edited_by: string | null
@@ -178,9 +179,8 @@ export type NumberEntry = {
   /** true only when every entry filed here asked for separators. A row is one
       number written one way, so a disagreement falls back to the plain form. */
   grouped: boolean
-  /** `birth_death` is the legacy storage name for In Memoriam and is on the
-      entry, not the row: one date can carry an ordinary meaning in the month's
-      list and a person's death in the fold. */
+  /** The two dated-fold flags live on each entry, not the row: one date can
+      carry an ordinary meaning, a historical event and a death. */
   entries: {
     id: number
     title: string
@@ -188,6 +188,7 @@ export type NumberEntry = {
     image: boolean
     likes: number
     birth_death: boolean
+    on_this_day: boolean
     year: number | null
   }[]
 }
@@ -244,6 +245,7 @@ export type PostInput = {
   lang?: string | null
   grouped?: boolean
   birth_death?: boolean
+  on_this_day?: boolean
   year?: number | null
 }
 

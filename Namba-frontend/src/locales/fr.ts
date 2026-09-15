@@ -59,7 +59,7 @@ export const FR: Messages = {
     feedIntro: 'Entrées et modifications récentes, des plus nouvelles aux plus anciennes.',
     moreRecent: 'Afficher plus d’entrées récentes',
     empty: 'Aucune entrée pour le moment.', entryKinds: 'Format de l’entrée', categories: 'Catégories', all: 'Toutes',
-    inMemoriam: 'In Memoriam',
+    onThisDay: 'On this day', inMemoriam: 'In Memoriam',
     foldedEntries: (n: number) => `${fmtCount(n, 'fr')} ${n === 1 ? 'entrée' : 'entrées'}`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${fmtCount(subjects, 'fr')} ${subject} · ${fmtCount(entries, 'fr')} ${entries === 1 ? 'entrée' : 'entrées'}`,
@@ -103,11 +103,13 @@ export const FR: Messages = {
     guidelines: 'Guide des entrées', fixedValue: (noun: string) => `fixe — un autre ${noun} nécessite une autre entrée`,
     date: 'Date', month: 'Mois', day: 'Jour',
     number: 'Nombre', abbreviation: 'Abréviation', groupThousands: 'Utiliser les séparateurs de milliers',
+    calendarRole: 'Type de date', calendarOrdinary: 'Date ordinaire',
+    onThisDay: 'On this day', onThisDayHint: 'un événement historique survenu à cette date',
     inMemoriam: 'In Memoriam',
     inMemoriamHint: 'la date de décès d’une personne défunte',
     year: 'Année',
     yearHint:
-      'obligatoire — l’année du décès, jamais une année à venir',
+      'obligatoire — l’année de l’événement, jamais une année à venir',
     format: 'Format', autoDetect: 'Détection automatique', title: 'Titre',
     titleHint: 'ce à quoi l’entrée fait référence', titlePlaceholder: (section: Section) => ({
       number: 'Le Guide du voyageur galactique',

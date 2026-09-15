@@ -158,6 +158,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
               the kicker's type -- the same small mono label the value pages
               name their format with. It is here because the flag is otherwise
               invisible to whoever is about to edit the entry. */}
+          {post.on_this_day && <span className="kicker">{m.home.onThisDay}</span>}
           {post.birth_death && <span className="kicker">{m.home.inMemoriam}</span>}
           {post.year != null && <span className="yr">{post.year}</span>}
           {post.tags.map((t) => (

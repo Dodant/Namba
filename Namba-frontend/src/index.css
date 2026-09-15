@@ -631,7 +631,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 /* any fold whose summary is an .ix-fold: the index's, and the comments' */
 details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
 .ix-fold:hover, .ix-fold:hover::before { color: var(--ink); }
-/* Who died, under the month's own list. Its summary is the
+/* Historical events and deaths, under the month's own list. Their summaries are the
    .ix-fold above -- the same disclosure a number past FOLD_OVER gets, and the
    caret rule reaches it already -- so this has two jobs: air between the last
    row and the control that opens the next ones, and the indent.
@@ -655,7 +655,7 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
    rule that owns them. */
 .band-sub { margin-top: 13px; }
 .band-sub > .ix-fold { translate: calc(104px + 22px) 0; }
-/* In Memoriam reads as one phrase -- "October 5, 2011 Steve Jobs" -- rather
+/* Both dated folds read as one phrase -- "October 5, 2011 Steve Jobs" -- rather
    than splitting the day into the numeral gutter and the year into the title.
    It still begins where ordinary titles begin, beneath the fold summary. */
 .ix.memorial { padding-left: calc(104px + 22px); }
@@ -674,7 +674,7 @@ html:lang(ko) .ix.memorial .yr { width: 18ch; }
 html:lang(ja) .ix.memorial .yr,
 html:lang(zh-Hans) .ix.memorial .yr { width: 15ch; }
 
-/* The year of the death, leading the line the way a date page
+/* The year of the dated event, leading the line the way a date page
    leads with one. Mono and tabular because it is a figure, and --muted rather
    than the accent the numeral column wears: the numeral is the address and
    this is a fact about the entry. One rule for all three places it is drawn --
@@ -1479,7 +1479,8 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   font-family: var(--mono); font-size: 11px; color: var(--muted);
   cursor: pointer; text-transform: none; letter-spacing: 0;
 }
-.field.check input[type="checkbox"] {
+.field.check input[type="checkbox"],
+.field.check input[type="radio"] {
   width: auto; margin: 0; padding: 0; border: 0; font-size: 11px;
   accent-color: var(--accent); cursor: pointer;
 }
@@ -1492,7 +1493,17 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    the same reason -- centred, a two-line sentence pulls the box to its middle. */
 .field.check.says-a-rule { align-items: flex-start; }
 .field.check.says-a-rule .hint { color: var(--fainter); }
-.field.check.says-a-rule input[type="checkbox"] { margin-top: 2px; }
+.field.check.says-a-rule input[type="checkbox"],
+.field.check.says-a-rule input[type="radio"] { margin-top: 2px; }
+.calendar-role {
+  display: flex; flex-wrap: wrap; gap: 8px 18px;
+  margin: 0 0 20px; padding: 0; border: 0;
+}
+.calendar-role legend {
+  width: 100%; margin-bottom: 3px;
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+}
+.calendar-role .field.check { margin: 0; }
 /* under the Number input: flex-start so the row of checkbox and words is not
    stretched across the column, no bottom margin because the field it is in
    already carries one, and 400 because .field label reaches it now and 600 is

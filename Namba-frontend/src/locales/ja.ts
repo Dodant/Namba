@@ -51,7 +51,7 @@ export const JA: Messages = {
     hasImage: '画像あり', feedIntro: '最近作成・編集された項目から表示します。',
     moreRecent: 'さらに最近の項目を表示',
     empty: 'まだ項目がありません。', entryKinds: '項目の形式', categories: 'カテゴリ', all: 'すべて',
-    inMemoriam: 'In Memoriam',
+    onThisDay: 'On this day', inMemoriam: 'In Memoriam',
     foldedEntries: (n: number) => `${fmtCount(n, 'ja')}件の項目`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${subject}${fmtCount(subjects, 'ja')}個 · 項目${fmtCount(entries, 'ja')}件`,
@@ -89,11 +89,13 @@ export const JA: Messages = {
     guidelines: '項目ガイドライン', fixedValue: (noun: string) => `変更不可 — 別の${noun}は別項目として作成`,
     date: '日付', month: '月', day: '日',
     number: '数字', abbreviation: '略語', groupThousands: '3桁区切りを使用', format: '形式',
+    calendarRole: '日付の種類', calendarOrdinary: '通常の日付',
+    onThisDay: 'On this day', onThisDayHint: 'この日に起きた歴史的な出来事',
     inMemoriam: 'In Memoriam',
     inMemoriamHint: '故人の命日',
     year: '年',
     yearHint:
-      '必須 — 没年。まだ来ていない年は書けません',
+      '必須 — 出来事が起きた年。まだ来ていない年は書けません',
     autoDetect: '自動判定', title: 'タイトル', titleHint: '何を指す数字か',
     titlePlaceholder: (section: Section) => ({
       number: '銀河ヒッチハイク・ガイド',

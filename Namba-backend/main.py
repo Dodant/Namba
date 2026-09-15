@@ -379,6 +379,7 @@ class PostIn(PostRules):
     lang: Optional[str] = Field(default=None, max_length=40)
     grouped: bool = False
     birth_death: bool = False
+    on_this_day: bool = False
     year: Optional[int] = Field(default=None, ge=1)
 
 
@@ -401,6 +402,7 @@ class PostPatch(PostRules):
     lang: Optional[str] = Field(default=None, max_length=40)
     grouped: Optional[bool] = None
     birth_death: Optional[bool] = None
+    on_this_day: Optional[bool] = None
     year: Optional[int] = Field(default=None, ge=1)
 
 
@@ -555,7 +557,7 @@ def list_numbers(
     flag: the index should be readable without opening a post, not a copy of it.
     """
     sql = ["""SELECT p.id, p.value, p.format, p.sort_key, p.title, p.likes,
-                      p.grouped, p.birth_death, p.year,
+                      p.grouped, p.birth_death, p.on_this_day, p.year,
                       substr(p.body, 1, ?) AS body, p.image IS NOT NULL AS image
                FROM posts p"""]
     args = [BLURB + 1]
@@ -606,6 +608,7 @@ def list_numbers(
             # in the month's list and a death in its fold, so the split the Calendar
             # tab draws is per entry (ADR-0029)
             "birth_death": bool(r["birth_death"]),
+            "on_this_day": bool(r["on_this_day"]),
             "year": r["year"],
         })
     return out
@@ -839,20 +842,21 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
         # three statements below landing together, not for a read -- see
         # db.writing() and ADR-0007 for the eleven writes where it is the read.
         value, fmt, key = resolve_format(value, p.format)
-        # A year rides only on an In Memoriam death, and every memorial needs
-        # one. Keep both halves of that rule here: the browser is not a trust
-        # boundary and an API client can send either field on its own.
-        if p.birth_death and p.year is None:
-            raise HTTPException(422, "In Memoriam requires a year of death")
-        year = p.year if p.birth_death else None
+        if p.birth_death and p.on_this_day:
+            raise HTTPException(422, "On this day and In Memoriam are mutually exclusive")
+        dated = p.birth_death or p.on_this_day
+        if dated and p.year is None:
+            raise HTTPException(422, "On this day or In Memoriam requires a year")
+        year = p.year if dated else None
         refuse_a_future_year(value, fmt, year)
         cur = con.execute(
             """INSERT INTO posts (value, format, sort_key, title, body, image, author,
-                                  lang, grouped, birth_death, year,
+                                  lang, grouped, birth_death, on_this_day, year,
                                   created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (value, fmt, key, p.title.strip(), p.body, p.image,
-             author, p.lang, int(grouped), int(p.birth_death), year, ts, ts),
+             author, p.lang, int(grouped), int(p.birth_death), int(p.on_this_day),
+             year, ts, ts),
         )
         write_tags(con, cur.lastrowid, p.tags)
         post_id = cur.lastrowid
@@ -903,6 +907,10 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         # take the flag off again -- the form sends every field on every save.
         birth_death = (p.birth_death if "birth_death" in sent
                        else bool(current["birth_death"]))
+        on_this_day = (p.on_this_day if "on_this_day" in sent
+                       else bool(current["on_this_day"]))
+        if birth_death and on_this_day:
+            raise HTTPException(422, "On this day and In Memoriam are mutually exclusive")
         # `in sent`, like the flag above and for the same reason: this column is
         # nullable for ordinary entries, so an explicit null must be distinct
         # from an omitted field before the required-memorial rule below runs.
@@ -910,10 +918,10 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         # ...and only ever beside the flag, the way create_post keeps it: an
         # edit that unticks the box takes the year with it, whether or not the
         # sender knew there was one.
-        if not birth_death:
+        if not (birth_death or on_this_day):
             year = None
         elif year is None:
-            raise HTTPException(422, "In Memoriam requires a year of death")
+            raise HTTPException(422, "On this day or In Memoriam requires a year")
         value = current["value"]
         if p.value is not None:
             value, grouped = ungroup(p.value, grouped, p.number_locale)
@@ -987,7 +995,8 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         proposed = {
             "value": value, "format": fmt, "title": title, "body": body,
             "image": image, "lang": lang, "grouped": bool(grouped),
-            "birth_death": bool(birth_death), "year": year, "tags": tags,
+            "birth_death": bool(birth_death), "on_this_day": bool(on_this_day),
+            "year": year, "tags": tags,
         }
         changed = [field for field, value_now in proposed.items()
                    if value_now != current[field]]
@@ -1005,13 +1014,14 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         done = con.execute(
             """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
                                 image=?, lang=?, grouped=?, birth_death=?,
-                                year=?, edited_by=?, updated_at=? WHERE id=?
+                                on_this_day=?, year=?, edited_by=?, updated_at=? WHERE id=?
                             AND (? IS NULL OR updated_at = ?)""",
             (
                 value, fmt, key,
                 title, body, image, lang,
                 int(grouped),
                 int(birth_death),
+                int(on_this_day),
                 year,
                 editor,
                 now(), post_id,

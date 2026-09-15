@@ -1792,7 +1792,8 @@ def test_admin_content_and_dashboard():
     mine = next(r for r in rows["rows"] if r["id"] == pid)
     assert mine["status"] == "HIDDEN" and mine["author"] == "armstrong"
     assert mine["edited_by"] == "vandal"
-    assert mine["birth_death"] == 1 and mine["year"] == 1969, \
+    assert mine["birth_death"] == 1 and mine["on_this_day"] == 0 \
+        and mine["year"] == 1969, \
         "the content table cannot say an entry is In Memoriam, or which year"
     assert mine["open_reports"] == 0 and mine["pending_requests"] == 0
     # the operator's search escapes LIKE's wildcards too -- same helper, and
@@ -1808,7 +1809,8 @@ def test_admin_content_and_dashboard():
     full = ops.get(f"/api/admin/posts/{pid}").json()
     assert full["title"] == "Moon landings" and full["revision_count"] == 1
     assert full["reports"] == [] and full["requests"] == []
-    assert full["birth_death"] is True and full["year"] == 1969
+    assert full["birth_death"] is True and full["on_this_day"] is False \
+        and full["year"] == 1969
     admin.set_status(pid, "ACTIVE")
 
     # FLAGGED is a count and not a column: it moves when the reports do
@@ -1849,7 +1851,7 @@ def test_admin_content_and_dashboard():
     assert "author" in admin_api.DIFF_FIELDS, "the byline tripwire went missing"
     assert {"sign": "+", "text": "And a third."} in d["body"]
     assert d["tags"] == {"before": ["space"], "after": ["history", "space"]}
-    # A revision from before the two columns existed carries neither key, and
+    # A revision from before the dated-fold columns existed carries none of the keys, and
     # the diff has to read it the way apply_snapshot does -- as the column's
     # default -- or every old revision of every entry shows a flag that went
     # from nothing to False, which is a change nobody made.
@@ -1859,7 +1861,7 @@ def test_admin_content_and_dashboard():
             elder = json.loads(con.execute(
                 "SELECT snapshot FROM revisions WHERE id = ?",
                 (revs[0]["id"],)).fetchone()[0])
-            for key in ("birth_death", "year"):
+            for key in ("birth_death", "on_this_day", "year"):
                 del elder[key]
             elder_id = con.execute(
                 "INSERT INTO revisions (post_id, snapshot, author, at) VALUES (?,?,?,?)",
@@ -2523,6 +2525,23 @@ def test_api_round_trip():
     # deaths on one day are two entries at one address (ADR-0026).
     assert memorial["year"] == 1642 and memorial["value"] == "12-25", memorial
     assert next(e for e in dec["entries"] if e["birth_death"])["year"] == 1642
+    # Historical events use a separate fold on the same date and share the
+    # year annotation, but can never also be memorial entries.
+    historical = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                                             "title": "A historical event",
+                                             "on_this_day": True, "year": 800})
+    assert historical.status_code == 201, historical.text
+    historical = historical.json()
+    assert historical["on_this_day"] is True and historical["birth_death"] is False
+    dec = next(r for r in c.get("/api/numbers", params={"format": "CALENDAR"}).json()
+               if r["value"] == "12-25")
+    event = next(e for e in dec["entries"] if e["title"] == "A historical event")
+    assert event["on_this_day"] is True and event["year"] == 800, event
+    both = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                                      "title": "Both", "on_this_day": True,
+                                      "birth_death": True, "year": 800})
+    assert both.status_code == 422 and "mutually exclusive" in both.text
+    admin.set_status(historical["id"], "HIDDEN")
     # In Memoriam is a dated memorial, not a loose classification: the year of
     # death is required on both public write routes.
     missing_year = c.post("/api/posts", json={"value": "10-05", "format": "CALENDAR",
@@ -3536,6 +3555,7 @@ def test_saving_an_unchanged_entry_is_not_an_edit():
         "title": post["title"], "body": post["body"],
         "image": post["image"], "lang": post["lang"],
         "grouped": post["grouped"], "birth_death": post["birth_death"],
+        "on_this_day": post["on_this_day"],
         "year": post["year"], "tags": post["tags"],
         "base_updated_at": post["updated_at"], "author": "maestr.oh",
     })
@@ -3845,7 +3865,7 @@ def test_the_schema_moves_forward_once():
         assert latest, "there are no migrations to number"
         assert con.execute("PRAGMA user_version").fetchone()[0] == latest
         columns = {r["name"] for r in con.execute("PRAGMA table_info(posts)")}
-        assert {"edited_by", "lang", "grouped", "birth_death", "year",
+        assert {"edited_by", "lang", "grouped", "birth_death", "on_this_day", "year",
                 "status"} <= columns, columns
 
         # a database from before the list was numbered: version 0, and rows in
@@ -3883,15 +3903,16 @@ def test_the_schema_moves_forward_once():
         # these.
         with con:
             con.execute("ALTER TABLE posts DROP COLUMN birth_death")
+            con.execute("ALTER TABLE posts DROP COLUMN on_this_day")
             con.execute("ALTER TABLE posts DROP COLUMN year")
             con.execute("PRAGMA user_version = %d"
                         % db.MIGRATIONS.index(db._birth_death_column))
         db.init()
         columns = {r["name"] for r in con.execute("PRAGMA table_info(posts)")}
-        assert {"birth_death", "year"} <= columns, columns
+        assert {"birth_death", "on_this_day", "year"} <= columns, columns
         row = con.execute(
-            "SELECT birth_death, year FROM posts WHERE id = 1").fetchone()
-        assert row["birth_death"] == 0, \
+            "SELECT birth_death, on_this_day, year FROM posts WHERE id = 1").fetchone()
+        assert row["birth_death"] == 0 and row["on_this_day"] == 0, \
             "an entry written before the fold existed was put in it"
         assert row["year"] is None, "a year nobody wrote was invented"
         assert con.execute("PRAGMA user_version").fetchone()[0] == latest
@@ -3938,7 +3959,7 @@ def test_a_snapshot_is_its_own_shape():
         con.close()
     assert set(snap) == {
         "value", "format", "sort_key", "title", "body", "image", "lang",
-        "grouped", "birth_death", "year", "author", "edited_by", "likes",
+        "grouped", "birth_death", "on_this_day", "year", "author", "edited_by", "likes",
         "created_at", "updated_at", "tags", "translations",
     }, sorted(snap)
     # `id` is not one: `revisions.post_id` is the column that says which entry
@@ -3985,9 +4006,10 @@ def test_a_snapshot_written_by_an_older_version_still_restores():
     assert back["body"] == "the old body" and back["tags"] == ["book"]
     assert back["author"] == "first", "the first writer is not the restorer"
     assert back["edited_by"] == "arthur"
-    # the two columns that came after this shape: a snapshot that says nothing
+    # the dated-fold columns that came after this shape: a snapshot that says nothing
     # about them puts the defaults back, not the live row's values
     assert back["birth_death"] is False, "a snapshot from before the fold put the entry in it"
+    assert back["on_this_day"] is False, "an old snapshot invented a historical event"
     assert back["year"] is None, "a snapshot from before the year invented one"
 
     con = db.connect()

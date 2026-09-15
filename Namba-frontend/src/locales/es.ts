@@ -57,7 +57,7 @@ export const ES: Messages = {
     hasImage: 'con imagen', feedIntro: 'Entradas y ediciones recientes, de más nuevas a más antiguas.',
     moreRecent: 'Ver más entradas recientes',
     empty: 'Aún no hay entradas.', entryKinds: 'Formato de la entrada', categories: 'Categorías', all: 'Todas',
-    inMemoriam: 'In Memoriam',
+    onThisDay: 'On this day', inMemoriam: 'In Memoriam',
     foldedEntries: (n: number) => `${fmtCount(n, 'es')} ${n === 1 ? 'entrada' : 'entradas'}`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${fmtCount(subjects, 'es')} ${subject} · ${fmtCount(entries, 'es')} ${entries === 1 ? 'entrada' : 'entradas'}`,
@@ -99,11 +99,13 @@ export const ES: Messages = {
     guidelines: 'Guía para las entradas', fixedValue: (noun: string) => `fijo — otro ${noun} requiere otra entrada`,
     date: 'Fecha', month: 'Mes', day: 'Día',
     number: 'Número', abbreviation: 'Abreviatura', groupThousands: 'Usar separadores de miles',
+    calendarRole: 'Tipo de fecha', calendarOrdinary: 'Fecha normal',
+    onThisDay: 'On this day', onThisDayHint: 'un acontecimiento histórico ocurrido en esta fecha',
     inMemoriam: 'In Memoriam',
     inMemoriamHint: 'la fecha de fallecimiento de una persona difunta',
     year: 'Año',
     yearHint:
-      'obligatorio — el año de fallecimiento, nunca un año por venir',
+      'obligatorio — el año del acontecimiento, nunca un año por venir',
     format: 'Formato', autoDetect: 'Detectar automáticamente', title: 'Título', titleHint: 'a qué se refiere',
     titlePlaceholder: (section: Section) => ({
       number: 'Guía del autoestopista galáctico',

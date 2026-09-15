@@ -216,19 +216,24 @@ function measure() {
 type Band = {
   label: string
   items: NumberEntry[]
-  sub?: NumberEntry[]
+  subs?: { label: string; items: NumberEntry[] }[]
   keep?: boolean
   now?: boolean
 }
 
-/* A month's two lists: what the day means, and who died on it.
-   The split is per *entry* and not per date, so December 25 keeps Christmas in
-   the list above and a memorial entry in the fold below -- one date drawn in each
-   place it has entries for, rather than a whole date going one way because of
-   one of its entries. A row with nothing left on its side drops out. */
-function sideOf(rows: NumberEntry[], want: boolean) {
+/* A month's three lists: what the day means, what happened on it, and who died
+   on it. The split is per *entry* and not per date, so December 25 can appear
+   in every list without moving the whole date because of one entry. */
+function sideOf(rows: NumberEntry[], want: 'ordinary' | 'on-this-day' | 'memorial') {
   return rows
-    .map((row) => ({ ...row, entries: row.entries.filter((e) => e.birth_death === want) }))
+    .map((row) => ({
+      ...row,
+      entries: row.entries.filter((e) => want === 'memorial'
+        ? e.birth_death
+        : want === 'on-this-day'
+          ? e.on_this_day
+          : !e.birth_death && !e.on_this_day),
+    }))
     .filter((row) => row.entries.length > 0)
 }
 
@@ -240,13 +245,13 @@ function byCalendarDay(a: NumberEntry, b: NumberEntry) {
     - (monthDay(b.value)?.[1] ?? Number.MAX_SAFE_INTEGER)
 }
 
-function bandCount(items: NumberEntry[], sub: NumberEntry[] | undefined,
+function bandCount(items: NumberEntry[], subs: Band['subs'],
                    format: Format, m: Messages) {
   /* the whole month, folded entries included: closed, this line is all the
      band says about itself, so it must not count only half of it. Dates by
      `value` because a split one is in both lists and is still one date. */
-  const all = sub ? [...items, ...sub] : items
-  const subjects = sub ? new Set(all.map((row) => row.value)).size : all.length
+  const all = subs ? [...items, ...subs.flatMap((sub) => sub.items)] : items
+  const subjects = subs ? new Set(all.map((row) => row.value)).size : all.length
   const entries = all.reduce((n, item) => n + item.entries.length, 0)
   return m.home.bandCount(
     subjects,
@@ -323,8 +328,19 @@ function Index({ lang }: { lang: string }) {
                  no thirteenth row to keep in `m.buckets` -- and no 84 of them
                  once every locale answers */
               label: monthName(Number(b), locale),
-              items: sideOf(rows.filter((n) => n.bucket === b), false),
-              sub: sideOf(rows.filter((n) => n.bucket === b), true).sort(byCalendarDay),
+              items: sideOf(rows.filter((n) => n.bucket === b), 'ordinary'),
+              subs: [
+                {
+                  label: m.home.onThisDay,
+                  items: sideOf(rows.filter((n) => n.bucket === b), 'on-this-day')
+                    .sort(byCalendarDay),
+                },
+                {
+                  label: m.home.inMemoriam,
+                  items: sideOf(rows.filter((n) => n.bucket === b), 'memorial')
+                    .sort(byCalendarDay),
+                },
+              ],
               /* the one index that draws a band with nothing in it:
                  twelve months are a calendar, and a year missing August reads
                  as a bug rather than as a month nobody has written about. */
@@ -430,7 +446,7 @@ function Index({ lang }: { lang: string }) {
                 <h2 className={band.now ? 'now' : undefined}>{band.label}</h2>
                 <span className="rule" />
                 <span className="n">
-                  {bandCount(band.items, band.sub, shownFormat, m)}
+                  {bandCount(band.items, band.subs, shownFormat, m)}
                 </span>
               </summary>
               <ol className="index">
@@ -449,26 +465,26 @@ function Index({ lang }: { lang: string }) {
                   index that are hidden when they are first drawn, and whether
                   a hidden row can be measured is the browser's call. See
                   `measure` above. */}
-              {band.sub && band.sub.length > 0 && (
-                <details className="band-sub" onToggle={measure}>
+              {band.subs?.map((sub) => sub.items.length > 0 && (
+                <details className="band-sub" onToggle={measure} key={sub.label}>
                   <summary className="ix-fold">
                     {/* `common.entries` and not `home.foldedEntries`: that one
                         is a row's own fold, which only opens past FOLD_OVER and
                         so never has to say "1 entries". This one can hold a
-                        single memorial entry. */}
+                  single dated entry. */}
                     <span>
-                      {m.home.inMemoriam} · {m.common.entries(
-                        band.sub.reduce((n, row) => n + row.entries.length, 0),
+                      {sub.label} · {m.common.entries(
+                        sub.items.reduce((n, row) => n + row.entries.length, 0),
                       )}
                     </span>
                   </summary>
                   <ol className="index">
-                    {band.sub.map((row) => (
+                    {sub.items.map((row) => (
                       <IndexRow key={`${row.format}-${row.value}`} row={row} memorial />
                     ))}
                   </ol>
                 </details>
-              )}
+              ))}
             </details>
           ),
       )}

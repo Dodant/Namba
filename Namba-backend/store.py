@@ -161,7 +161,7 @@ def resolve_format(value, given):
 
 
 def refuse_a_future_year(value, fmt, year):
-    """A death filed under In Memoriam has already happened.
+    """A death or historical event filed in a dated fold has already happened.
 
     `ge=1` on the field is the other end and the only other bound there is: a
     year is capped by today rather than by a number in a model, so this is
@@ -207,7 +207,7 @@ def refuse_a_future_year(value, fmt, year):
                  "date only in a leap year.")
     if (year, month, day) > today:
         raise HTTPException(
-            422, f"a death has happened, and {year}-{month:02d}-"
+            422, f"a historical event has happened, and {year}-{month:02d}-"
                  f"{day:02d} has not. A year cannot be later than today.")
 
 
@@ -278,6 +278,7 @@ def shape(rows, con):
         # sqlite has no bool; the wire and the client both want one
         p["grouped"] = bool(p["grouped"])
         p["birth_death"] = bool(p["birth_death"])
+        p["on_this_day"] = bool(p["on_this_day"])
     q = "SELECT post_id, tag FROM post_tags WHERE post_id IN (%s) ORDER BY tag" % (
         ",".join("?" * len(ids))
     )
@@ -360,7 +361,7 @@ def fetch_one(con, post_id, hidden=False):
 # hidden one back on the wiki. `bucket` is computed from the format and the
 # sort key sitting beside it.
 SNAPSHOT_FIELDS = ("value", "format", "sort_key", "title", "body", "image",
-                   "lang", "grouped", "birth_death", "year", "author",
+                   "lang", "grouped", "birth_death", "on_this_day", "year", "author",
                    "edited_by", "likes", "created_at", "updated_at")
 
 
@@ -452,12 +453,13 @@ def apply_snapshot(con, post_id, old, editor):
         key = None
     con.execute(
         """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
-                            image=?, lang=?, grouped=?, birth_death=?, year=?,
+                            image=?, lang=?, grouped=?, birth_death=?, on_this_day=?, year=?,
                             edited_by=?, updated_at=?
            WHERE id=?""",
         (old["value"], old["format"], key, old["title"], old["body"],
          old["image"], old.get("lang"), int(old.get("grouped") or 0),
-         int(old.get("birth_death") or 0), old.get("year"), editor, now(),
+         int(old.get("birth_death") or 0), int(old.get("on_this_day") or 0),
+         old.get("year"), editor, now(),
          post_id),
     )
     write_tags(con, post_id, old.get("tags", []))

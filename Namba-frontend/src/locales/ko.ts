@@ -49,7 +49,7 @@ export const KO: Messages = {
     hasImage: '이미지 있음', feedIntro: '최근 작성·수정된 엔트리부터 보여줍니다.',
     moreRecent: '최근 엔트리 더 보기',
     empty: '아직 작성된 엔트리가 없습니다.', entryKinds: '엔트리 형식', categories: '카테고리', all: '전체',
-    inMemoriam: 'In Memoriam',
+    onThisDay: 'On this day', inMemoriam: 'In Memoriam',
     foldedEntries: (n: number) => `엔트리 ${fmtCount(n, 'ko')}개`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${subject} ${fmtCount(subjects, 'ko')}개 · 엔트리 ${fmtCount(entries, 'ko')}개`,
@@ -87,11 +87,13 @@ export const KO: Messages = {
     guidelines: '엔트리 작성 지침', fixedValue: (noun: string) => `고정됨 — 다른 ${noun}에는 별도 엔트리가 필요`,
     date: '날짜', month: '월', day: '일',
     number: '숫자', abbreviation: '줄임말', groupThousands: '천 단위 구분 기호 사용', format: '형식',
+    calendarRole: '날짜 유형', calendarOrdinary: '일반 날짜',
+    onThisDay: 'On this day', onThisDayHint: '이 날짜에 일어난 역사적 사건',
     inMemoriam: 'In Memoriam',
     inMemoriamHint: '고인이 된 인물의 사망일',
     year: '연도',
     yearHint:
-      '필수 — 사망 연도, 아직 오지 않은 해는 쓸 수 없습니다',
+      '필수 — 사건이 일어난 연도, 아직 오지 않은 해는 쓸 수 없습니다',
     autoDetect: '자동 감지', title: '제목', titleHint: '무엇을 가리키는지 작성',
     titlePlaceholder: (section: Section) => ({
       number: '은하수를 여행하는 히치하이커를 위한 안내서',

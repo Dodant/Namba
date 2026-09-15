@@ -33,11 +33,13 @@ CREATE TABLE IF NOT EXISTS posts (
   -- The Calendar index's In Memoriam fold is the one thing that reads it
   -- (ADR-0029). The column name is retained for migration compatibility.
   birth_death INTEGER NOT NULL DEFAULT 0,
-  -- which year that death was in, required for In Memoriam and NULL otherwise.
-  -- An annotation and not part of the address: /c/12-25 is the day of the
-  -- year, `value` never carries a year, and two deaths on one day are two
-  -- entries at one address the way two meanings of 42 are (ADR-0026,
-  -- ADR-0029). Nothing sorts or bands on it.
+  -- this entry records a historical event that happened on this date. It is
+  -- mutually exclusive with birth_death and, like it, only changes which
+  -- Calendar fold draws the entry.
+  on_this_day INTEGER NOT NULL DEFAULT 0,
+  -- which year the death or historical event occurred, required for either
+  -- dated fold and NULL otherwise. An annotation and not part of the address:
+  -- /c/12-25 is the day of the year and `value` never carries a year.
   year       INTEGER,
   likes      INTEGER NOT NULL DEFAULT 0,
   -- ACTIVE | HIDDEN | DELETED. Nothing the API can do removes a row: a hidden
@@ -563,9 +565,21 @@ def _birth_year_column(con):
         con.execute("ALTER TABLE posts ADD COLUMN year INTEGER")
 
 
+def _on_this_day_column(con):
+    """The Calendar index's historical-event fold.
+
+    Existing entries remain ordinary or In Memoriam entries; none is silently
+    classified as a historical event during the migration.
+    """
+    have = {r["name"] for r in con.execute("PRAGMA table_info(posts)")}
+    if "on_this_day" not in have:
+        con.execute(
+            "ALTER TABLE posts ADD COLUMN on_this_day INTEGER NOT NULL DEFAULT 0")
+
+
 # In order, and append-only: a step's number is what a database records as
 # having been done, so inserting one in the middle re-runs the wrong thing
-# somewhere. Two of the five are data passes over every row of six tables,
+# somewhere. Two of the six are data passes over every row of six tables,
 # which is why they are numbered rather than asked: on every start they were a
 # full scan per process, on a file that only ever grows.
 #
@@ -583,6 +597,7 @@ MIGRATIONS = (
     _text_is_one_normal_form,
     _birth_death_column,
     _birth_year_column,
+    _on_this_day_column,
 )
 
 

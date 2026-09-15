@@ -125,9 +125,10 @@ export default function Entry() {
             <Badge>{post.status}</Badge>
             {!!flagged && <Badge>FLAGGED</Badge>}
             <span className="hash">{post.format}</span>
+            {post.on_this_day && <Badge>ON THIS DAY</Badge>}
             {post.birth_death && <Badge>IN MEMORIAM</Badge>}
             {post.year != null && (
-              <span className="hash" title="the year of death">
+              <span className="hash" title="the year of the event">
                 {post.year}
               </span>
             )}

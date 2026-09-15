@@ -650,7 +650,7 @@ def list_all_posts(
         "reports": "open_reports DESC, pending_requests DESC, p.id DESC",
         "number": "p.sort_key IS NULL, p.sort_key, p.value, p.id",
     }.get(sort, "p.updated_at DESC, p.id DESC")
-    sql = f"""SELECT p.id, p.value, p.format, p.grouped, p.birth_death, p.year,
+    sql = f"""SELECT p.id, p.value, p.format, p.grouped, p.birth_death, p.on_this_day, p.year,
                      p.title, p.status, p.author, p.edited_by, p.likes,
                      p.created_at, p.updated_at,
                      (SELECT COUNT(*) FROM reports r
@@ -716,7 +716,7 @@ def all_revisions(post_id: int, _=Depends(auth.require_admin), con=Depends(db.ge
 # never change, so a row for it is a tripwire rather than noise. `sort_key` is
 # out too: it is derived from `value`, which is right above it.
 DIFF_FIELDS = ("value", "format", "title", "lang", "grouped", "birth_death",
-               "year", "image", "author")
+               "on_this_day", "year", "image", "author")
 
 
 def _state(con, post_id, ref):
@@ -733,7 +733,8 @@ def _state(con, post_id, ref):
     # read the way apply_snapshot reads it -- as the column's default -- or
     # every diff against an old revision reports a flag that went from nothing
     # to False, a change nobody made.
-    return {"grouped": False, "birth_death": False, **json.loads(row["snapshot"])}
+    return {"grouped": False, "birth_death": False, "on_this_day": False,
+            **json.loads(row["snapshot"])}
 
 
 @router.get("/posts/{post_id}/diff")

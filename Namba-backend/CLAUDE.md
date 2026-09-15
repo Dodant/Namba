@@ -138,29 +138,34 @@ the sitemap.
   somehow acquired one unsaveable. Nothing but the Calendar index reads it.
 
   Its migration is **step 4 and not a line in step 1** — a database already at 3
-  has passed that one and would never run it again. Steps 4 and 5, the two that
-  add a column, are also the only arms of `MIGRATIONS` the suite can walk for
+  has passed that one and would never run it again. Steps 4, 5 and 6, the three
+  that add a column, are also the only arms of `MIGRATIONS` the suite can walk for
   real, since every test database takes its columns from `SCHEMA`;
-  `test_the_schema_moves_forward_once` drops both columns and stands
+  `test_the_schema_moves_forward_once` drops all three columns and stands
   `user_version` back to watch the `ALTER`s happen.
-- **`posts.year` is the year of death, and `value` never
+- **`posts.on_this_day` is the mutually-exclusive historical-event flag.** It
+  follows `birth_death` through the index entry, snapshots, restores, diffs and
+  admin reads, and migration step 6 defaults every existing row to false.
+  The public form exposes ordinary / On this day / In Memoriam as one radio
+  group, while both write routes independently reject both flags being true.
+- **`posts.year` is the year of the death or historical event, and `value` never
   carries it.** `/c/12-25` is the day of the year (ADR-0026), so a year in the
-  value would be a second page about one day. It rides beside `birth_death`
+  value would be a second page about one day. It rides beside either dated flag
   everywhere — the index entry, `SNAPSHOT_FIELDS`, `apply_snapshot`,
   `DIFF_FIELDS` — and has its own migration step, 5, because step 4 had already
   run by the time it arrived. It is only ever beside the flag: `create_post` and
-  `edit_post` both drop it when `birth_death` is off, which is the pair the form
+  `edit_post` both drop it when both flags are off, which is the pair the form
   never sends. `refuse_a_future_year` lives in `store.py` beside
   `resolve_format` because `admin_api`'s renumber asks it too and cannot import
   `main`; its "today" is UTC plus fourteen hours, so a local clock anywhere can
-  never be ahead of it. A snapshot from before either column carries neither
+  never be ahead of it. A snapshot from before these columns carries none of their
   key, and `_state` in `admin_api.py` reads the missing key as the column's
   default the way `apply_snapshot` does — or every old revision diffs as a flag
   that went from nothing to false.
 
-  Every In Memoriam entry requires this year on create and edit. The column is
-  still nullable because ordinary entries do not have a death year; unticking
-  the flag clears it, while a flagged write with no year is a 422.
+  Every On this day and In Memoriam entry requires this year on create and edit.
+  The column is still nullable because ordinary entries do not have an event
+  year; choosing ordinary clears it, while a dated write with no year is a 422.
 
   **`refuse_a_future_year` compares the whole date, not the year.** A death
   filed at `12-25` in this year has not happened until Christmas, so a

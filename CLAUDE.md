@@ -319,27 +319,32 @@ opposite, and only its regex says `[0-9]`.
   them — `posts.birth_death`, its legacy storage name, beside `grouped`
   rather than beside `format`, because a death *is* a `CALENDAR` date: it reads
   as one, sorts on the same key and answers at `/c/12-25`, and what the flag
-  changes is only which of a month's two lists draws it. A tag was the other
+  changes is only which of a month's lists draws it. A tag was the other
   candidate and spends one of the two an entry has *and* makes a free-form
   vocabulary an enum the UI branches on (ADR-0010). Nothing joins the
   hand-copied table above: no format, no vocabulary, no band.
 
-  The split is **per entry**, so December 25 keeps Christmas in the list and
-  a memorial entry in the fold, and a date is drawn in each place it has entries
-  for. The band head still counts the whole month, since a closed band's one
+  **On this day is the parallel historical-event flag.** `posts.on_this_day`
+  sends an entry to the closed fold immediately above In Memoriam, with no
+  divider. The form's ordinary / On this day / In Memoriam radio group and the
+  two public write routes keep the dated flags mutually exclusive (ADR-0030).
+
+  The split is **per entry**, so December 25 can have ordinary, historical and
+  memorial entries, and a date is drawn in each place it has entries for. The
+  band head still counts the whole month, since a closed band's one
   line is all it says about itself. It is **not** refused on the other five
   formats — the form sends every field on every save, so a 422 on a flag
-  nobody meant to change would leave that entry unsaveable; the checkbox is
+  nobody meant to change would leave that entry unsaveable; the radio group is
   offered where it means something and nothing else reads the column. And it
   is in `SNAPSHOT_FIELDS`, because a version that cannot say an entry was a
   death is a worse record (ADR-0029).
 
-  **And `posts.year` says which year that death was in — never
+  **And `posts.year` says which year that death or event was in — never
   `value`.** The rule above about a date having no year in it is this one from
   the other side: the entry is *about* the day of the year, filed at `/c/12-25`
   and drawn there, and the year says which December 25 it was. Put it in the
   value and `/c/12-25` and `/c/1642-12-25` are two pages about one day. Two
-  deaths on one day are two entries at one address, the way two meanings of 42
+  dated events on one day are two entries at one address, the way two meanings of 42
   are. Nothing sorts or bands on it.
 
   **What is refused is a date that has not happened, not a year past today.**
@@ -359,7 +364,7 @@ opposite, and only its regex says `[0-9]`.
   `restore_revision` does not ask, the way it re-checks neither `is_abbr` nor
   `date_key`. A year is required on every flagged public write and rides only
   on that flag: both public writes drop it when `birth_death` is off, so an API
-  client that only unticks the box is not held for the year it left. The form
+  client that returns both flags to false is not held for the year it left. The form
   attaches the required year to month and day as the third Date control.
 
   **`/c/` is the one section that is a closed set, so an unreadable date is

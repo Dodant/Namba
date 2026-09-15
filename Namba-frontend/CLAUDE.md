@@ -428,9 +428,10 @@ sanitiser config to get wrong.
   band: eleven closed headings is the table of contents that default exists to
   avoid, and a reader who came for April should not have to open April.
 
-  **And every month carries an In Memoriam fold at the foot of its list**,
-  closed, opening in place — the list above is what the day means and this is
-  who died on it. `sub` on the `Band` type, beside `keep` and
+  **And every month carries On this day and In Memoriam folds at the foot of
+  its list**, closed, opening in place and in that order with no dividing rule.
+  The list above is what the day means, the first fold is what happened on it,
+  and the second is who died on it. `subs` on the `Band` type, beside `keep` and
   `now` and the Calendar tab's alone. The split is **per entry**: December 25
   keeps an ordinary meaning in the list and a memorial entry in the fold, so a date is drawn
   in each place it has entries for, and `bandCount` therefore counts both lists
@@ -967,8 +968,9 @@ selects a create-only branch. The examples in the hint go through
 `showValue()` with the format, so they read "December 25 · April 1 ·
 February 29" in the reader's own language.
 
-**Calendar is also the one format with a second checkbox**, `In Memoriam`,
-and it is the separator box's opposite in two ways. It is *hidden*
+**Calendar is also the one format with a role radio group**: ordinary date,
+`On this day`, or `In Memoriam`. The radio group makes the two dated folds
+mutually exclusive and gives an editor a way back to an ordinary date. It is *hidden*
 rather than cleared when the format moves off Calendar — `grouped` stops
 meaning anything on a value with no separators to show, while this goes on
 meaning what it meant, and a mis-click on Format and back must not quietly drop
@@ -981,8 +983,8 @@ grouped preview wears, and its words sit in one flex item with the label so a
 sentence wraps like one. The rule is stated where the box is ticked: only the
 date a deceased person died belongs in this fold.
 
-**Ticking it attaches a required `Year` control to Date, and unticking clears
-it** — a year with no death beside it is a year of nothing. It is an
+**Picking either dated fold attaches a required `Year` control to Date, and
+returning to ordinary clears it** — a year with no event beside it is a year of nothing. It is an
 `<input type="number">`, the one control on this form whose range the browser
 can enforce, with a `max` that mirrors the API: this year if the day
 has already come round, last year if it has not, off `dateValue <=

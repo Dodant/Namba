@@ -42,3 +42,4 @@ the rule it introduces.
 | [0027](0027-a-number-format-says-the-value-is-a-number.md) | A number format says the value is a number, and that is checked | accepted | 2026-09-11 |
 | [0028](0028-the-plugin-is-the-one-read-that-is-counted.md) | The editor plugin's read is counted, and it is not an event | accepted | 2026-09-11 |
 | [0029](0029-a-birth-or-a-death-is-a-flag.md) | In Memoriam is a flag, not a format | accepted | 2026-09-14, revised 2026-09-15 |
+| [0030](0030-on-this-day-is-a-calendar-role.md) | On this day is a mutually exclusive Calendar role | accepted | 2026-09-15 |
