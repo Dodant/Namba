@@ -129,7 +129,7 @@ function Feed({ lang }: { lang: string }) {
                 </span>
               )}
               <span className="likes">
-                {p.birth_death ? '🕯' : '♥'} {fmtCount(p.likes, locale)}
+                {p.in_memoriam ? '🕯' : '♥'} {fmtCount(p.likes, locale)}
               </span>
             </div>
           </div>
@@ -216,37 +216,42 @@ function measure() {
 type Band = {
   label: string
   items: NumberEntry[]
-  sub?: NumberEntry[]
+  subs?: { label: string; items: NumberEntry[] }[]
   keep?: boolean
   now?: boolean
 }
 
-/* A month's two lists: what the day means, and who died on it.
-   The split is per *entry* and not per date, so December 25 keeps Christmas in
-   the list above and a memorial entry in the fold below -- one date drawn in each
-   place it has entries for, rather than a whole date going one way because of
-   one of its entries. A row with nothing left on its side drops out. */
-function sideOf(rows: NumberEntry[], want: boolean) {
+/* A month's three lists: what the day means, what happened on it, and who died
+   on it. The split is per *entry* and not per date, so December 25 can appear
+   in every list without moving the whole date because of one entry. */
+function sideOf(rows: NumberEntry[], want: 'ordinary' | 'on-this-day' | 'memorial') {
   return rows
-    .map((row) => ({ ...row, entries: row.entries.filter((e) => e.birth_death === want) }))
+    .map((row) => ({
+      ...row,
+      entries: row.entries.filter((e) => want === 'memorial'
+        ? e.in_memoriam
+        : want === 'on-this-day'
+          ? e.on_this_day
+          : !e.in_memoriam && !e.on_this_day),
+    }))
     .filter((row) => row.entries.length > 0)
 }
 
-/* The memorial line contains a year now, but its place in the month does not
-   come from that year or from the person's name. It is a calendar list, read
-   from the first day of the month to the last. */
+/* A dated line carries a year, but its place in the month does not come from
+   that year or from who or what it is about. It is a calendar list, read from
+   the first day of the month to the last. */
 function byCalendarDay(a: NumberEntry, b: NumberEntry) {
   return (monthDay(a.value)?.[1] ?? Number.MAX_SAFE_INTEGER)
     - (monthDay(b.value)?.[1] ?? Number.MAX_SAFE_INTEGER)
 }
 
-function bandCount(items: NumberEntry[], sub: NumberEntry[] | undefined,
+function bandCount(items: NumberEntry[], subs: Band['subs'],
                    format: Format, m: Messages) {
   /* the whole month, folded entries included: closed, this line is all the
      band says about itself, so it must not count only half of it. Dates by
-     `value` because a split one is in both lists and is still one date. */
-  const all = sub ? [...items, ...sub] : items
-  const subjects = sub ? new Set(all.map((row) => row.value)).size : all.length
+     `value` because a split one is in more than one list and is still one date. */
+  const all = subs ? [...items, ...subs.flatMap((sub) => sub.items)] : items
+  const subjects = subs ? new Set(all.map((row) => row.value)).size : all.length
   const entries = all.reduce((n, item) => n + item.entries.length, 0)
   return m.home.bandCount(
     subjects,
@@ -323,8 +328,19 @@ function Index({ lang }: { lang: string }) {
                  no thirteenth row to keep in `m.buckets` -- and no 84 of them
                  once every locale answers */
               label: monthName(Number(b), locale),
-              items: sideOf(rows.filter((n) => n.bucket === b), false),
-              sub: sideOf(rows.filter((n) => n.bucket === b), true).sort(byCalendarDay),
+              items: sideOf(rows.filter((n) => n.bucket === b), 'ordinary'),
+              subs: [
+                {
+                  label: m.home.onThisDay,
+                  items: sideOf(rows.filter((n) => n.bucket === b), 'on-this-day')
+                    .sort(byCalendarDay),
+                },
+                {
+                  label: m.home.inMemoriam,
+                  items: sideOf(rows.filter((n) => n.bucket === b), 'memorial')
+                    .sort(byCalendarDay),
+                },
+              ],
               /* the one index that draws a band with nothing in it:
                  twelve months are a calendar, and a year missing August reads
                  as a bug rather than as a month nobody has written about. */
@@ -430,7 +446,7 @@ function Index({ lang }: { lang: string }) {
                 <h2 className={band.now ? 'now' : undefined}>{band.label}</h2>
                 <span className="rule" />
                 <span className="n">
-                  {bandCount(band.items, band.sub, shownFormat, m)}
+                  {bandCount(band.items, band.subs, shownFormat, m)}
                 </span>
               </summary>
               <ol className="index">
@@ -449,26 +465,26 @@ function Index({ lang }: { lang: string }) {
                   index that are hidden when they are first drawn, and whether
                   a hidden row can be measured is the browser's call. See
                   `measure` above. */}
-              {band.sub && band.sub.length > 0 && (
-                <details className="band-sub" onToggle={measure}>
+              {band.subs?.map((sub) => sub.items.length > 0 && (
+                <details className="band-sub" onToggle={measure} key={sub.label}>
                   <summary className="ix-fold">
                     {/* `common.entries` and not `home.foldedEntries`: that one
                         is a row's own fold, which only opens past FOLD_OVER and
                         so never has to say "1 entries". This one can hold a
-                        single memorial entry. */}
+                        single dated entry. */}
                     <span>
-                      {m.home.inMemoriam} · {m.common.entries(
-                        band.sub.reduce((n, row) => n + row.entries.length, 0),
+                      {sub.label} · {m.common.entries(
+                        sub.items.reduce((n, row) => n + row.entries.length, 0),
                       )}
                     </span>
                   </summary>
                   <ol className="index">
-                    {band.sub.map((row) => (
-                      <IndexRow key={`${row.format}-${row.value}`} row={row} memorial />
+                    {sub.items.map((row) => (
+                      <IndexRow key={`${row.format}-${row.value}`} row={row} dated />
                     ))}
                   </ol>
                 </details>
-              )}
+              ))}
             </details>
           ),
       )}
@@ -491,14 +507,14 @@ function Index({ lang }: { lang: string }) {
     inline it puts a hundred lines and three more levels of nesting between a
     band and the numerals it bands. */
 function IndexEntry(
-  { entry, shownValue, memorialDate, mark }:
+  { entry, shownValue, dateWithYear, mark }:
   {
     entry: NumberEntry['entries'][number]
     /** the number as the row above it draws it: the layer leads with it, the
         way every hero in this app does, which is the shape a row cannot take */
     shownValue: string
-    /** The date and year as one localized phrase in the In Memoriam fold. */
-    memorialDate?: string
+    /** The date and year as one localized phrase, in either dated fold. */
+    dateWithYear?: string
     /** lights up this number in a title or a blurb, written and spelled */
     mark: (text: string) => ReactNode
   },
@@ -510,11 +526,11 @@ function IndexEntry(
     <div className="ix-e">
       <Link className="ix-link" to={`/p/${entry.id}`}>
         {/* Inside the link and leading the line: ordinary rows show the year,
-            while In Memoriam combines the localized date and year into one
+            while a dated row combines the localized date and year into one
             phrase. The row stays one click and one ellipsis; putting either
             outside it would add a second flex item for clipping to manage. */}
-        {memorialDate
-          ? <span className="yr">{memorialDate}</span>
+        {dateWithYear
+          ? <span className="yr">{dateWithYear}</span>
           : entry.year != null && <span className="yr">{entry.year}</span>}
         <span className="ix-t">{mark(entry.title)}</span>
         {entry.image && <Photo label={m.home.hasImage} />}
@@ -551,7 +567,7 @@ function IndexEntry(
 }
 
 /** One number, and every meaning filed under it. */
-function IndexRow({ row, memorial = false }: { row: NumberEntry; memorial?: boolean }) {
+function IndexRow({ row, dated = false }: { row: NumberEntry; dated?: boolean }) {
   const { locale, m } = useUi()
   const rx = marker(row, locale)
   const shownValue = showValue(row.value, row.grouped, locale, row.format)
@@ -565,23 +581,23 @@ function IndexRow({ row, memorial = false }: { row: NumberEntry; memorial?: bool
   /* and the day itself, the same blue as the month heading over it */
   const today = row.format === 'CALENDAR' && row.value === todayMonthDay()
   const entries = row.entries.map((entry) => {
-    const memorialDate = memorial
+    const dateWithYear = dated
       ? showDateWithYear(row.value, entry.year, locale)
       : undefined
     return (
       <IndexEntry
         key={entry.id}
         entry={entry}
-        shownValue={memorialDate ?? shownValue}
-        memorialDate={memorialDate}
+        shownValue={dateWithYear ?? shownValue}
+        dateWithYear={dateWithYear}
         mark={(text) => mark(text, rx)}
       />
     )
   })
 
   return (
-    <li className={`ix${memorial ? ' memorial' : ''}`}>
-      {!memorial && <Link
+    <li className={`ix${dated ? ' dated' : ''}`}>
+      {!dated && <Link
         className={`ix-num ${numSize(shownNum)}${today ? ' now' : ''}`}
         to={entryPath(row.value, row.format)}
         /* the colour is the whole of it on screen; this is the half of it a

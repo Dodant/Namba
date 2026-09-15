@@ -75,7 +75,8 @@ function whatMoved(was: Post, now: Post, m: Messages): string[] {
     [was.body !== now.body, m.form.details],
     [was.lang !== now.lang, m.form.writtenIn],
     [was.grouped !== now.grouped, m.form.groupThousands],
-    [was.birth_death !== now.birth_death, m.form.inMemoriam],
+    [was.on_this_day !== now.on_this_day, m.form.onThisDay],
+    [was.in_memoriam !== now.in_memoriam, m.form.inMemoriam],
     [was.year !== now.year, m.form.year],
     [was.image !== now.image, m.form.image],
     [was.tags.join() !== now.tags.join(), m.form.categories],
@@ -150,9 +151,10 @@ export default function PostForm() {
   const [image, setImage] = useState<string | null>(null)
   const [lang, setLang] = useState(LANGS[0])
   const [grouped, setGrouped] = useState(false)
+  const [onThisDay, setOnThisDay] = useState(false)
   const [inMemoriam, setInMemoriam] = useState(false)
-  /* A string rather than a number because the box begins empty. Once In
-     Memoriam is ticked the control is required; until then empty is not zero. */
+  /* A string rather than a number because the box begins empty. Once either
+     dated Calendar fold is picked the control is required. */
   const [year, setYear] = useState('')
   /* Which section this form is filling in right now. Auto-detect has decided
      nothing, so it is the number one -- which is what most of this wiki is.
@@ -212,7 +214,8 @@ export default function PostForm() {
     setImage(p.image)
     setLang(p.lang ?? LANGS[0])
     setGrouped(p.grouped)
-    setInMemoriam(p.birth_death)
+    setOnThisDay(p.on_this_day)
+    setInMemoriam(p.in_memoriam)
     setYear(p.year == null ? '' : String(p.year))
   }
 
@@ -259,8 +262,10 @@ export default function PostForm() {
          back loses nothing -- but what the reader cannot see they cannot mean,
          and an Integer entry filed with In Memoriam ticked three clicks ago is a
          row in a fold nobody asked for. */
-      birth_death: format === 'CALENDAR' && inMemoriam,
-      year: format === 'CALENDAR' && inMemoriam && year ? Number(year) : null,
+      in_memoriam: format === 'CALENDAR' && inMemoriam,
+      on_this_day: format === 'CALENDAR' && onThisDay,
+      year: format === 'CALENDAR' && (inMemoriam || onThisDay) && year
+        ? Number(year) : null,
     }
     try {
       const saved = editing
@@ -403,7 +408,7 @@ export default function PostForm() {
                     value={showValue(value, grouped, locale, format)}
                   />
                 )}
-                {inMemoriam && (
+                {(inMemoriam || onThisDay) && (
                   <input
                     id={fid('year')}
                     className="mono year-input"
@@ -492,42 +497,31 @@ export default function PostForm() {
                 <span className="hint">{groupedPreview}</span>
               </label>
             )}
-            {/* The date a deceased person died. Only a date can be one, so this is
-                the Calendar branch of the same row the separator box sits in
-                -- the two never show together, since there is no thousand in
-                12-25.
-
-                Hidden rather than cleared when the format moves off Calendar,
-                which is the opposite of the box above: `grouped` stops meaning
-                anything on a value with no separators to show, while this goes
-                on meaning what it meant, and a mis-click on Format and back
-                must not quietly drop it. The payload is where the format
-                decides -- see `submit`.
-
-                The hint is the rule, not a description: In Memoriam is only
-                the date a deceased person died.
-                */}
+            {/* Calendar entries have one mutually-exclusive role. The ordinary
+                choice is explicit so an editor can move an entry back out of
+                either fold; the year belongs to the two historical choices. */}
             {format === 'CALENDAR' && (
-              <label className="field check says-a-rule">
-                <input
-                  type="checkbox"
-                  checked={inMemoriam}
-                  onChange={(e) => {
-                    setInMemoriam(e.target.checked)
-                    if (!e.target.checked) setYear('')
-                  }}
-                />
-                {/* both in one flex item, so the label and the rule under it
-                    read as one sentence and wrap like one. Two items is what
-                    the separator box beside it wants -- its hint is a preview
-                    of the number, three characters long -- and this one is a
-                    sentence, which as a flex item of its own came out as a
-                    second narrow column beside a first. */}
-                <span>
-                  {m.form.inMemoriam}{' '}
-                  <span className="hint">{m.form.inMemoriamHint}</span>
-                </span>
-              </label>
+              <fieldset className="calendar-role">
+                <legend>{m.form.calendarRole}</legend>
+                <label className="field check says-a-rule">
+                  <input type="radio" name={fid('calendar-role')}
+                    checked={!onThisDay && !inMemoriam}
+                    onChange={() => { setOnThisDay(false); setInMemoriam(false); setYear('') }} />
+                  <span>{m.form.calendarOrdinary}</span>
+                </label>
+                <label className="field check says-a-rule">
+                  <input type="radio" name={fid('calendar-role')}
+                    checked={onThisDay}
+                    onChange={() => { setOnThisDay(true); setInMemoriam(false) }} />
+                  <span>{m.form.onThisDay}{' '}<span className="hint">{m.form.onThisDayHint}</span></span>
+                </label>
+                <label className="field check says-a-rule">
+                  <input type="radio" name={fid('calendar-role')}
+                    checked={inMemoriam}
+                    onChange={() => { setInMemoriam(true); setOnThisDay(false) }} />
+                  <span>{m.form.inMemoriam}{' '}<span className="hint">{m.form.inMemoriamHint}</span></span>
+                </label>
+              </fieldset>
             )}
           </div>
           <div className="field fmt-field">

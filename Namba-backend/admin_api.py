@@ -11,7 +11,6 @@ The two login steps and logout are reachable without a live session. `me` and
 every operator route depend on `auth.require_admin`.
 """
 import difflib
-import json
 import secrets
 import sqlite3
 from datetime import datetime, timedelta, timezone
@@ -650,7 +649,7 @@ def list_all_posts(
         "reports": "open_reports DESC, pending_requests DESC, p.id DESC",
         "number": "p.sort_key IS NULL, p.sort_key, p.value, p.id",
     }.get(sort, "p.updated_at DESC, p.id DESC")
-    sql = f"""SELECT p.id, p.value, p.format, p.grouped, p.birth_death, p.year,
+    sql = f"""SELECT p.id, p.value, p.format, p.grouped, p.in_memoriam, p.on_this_day, p.year,
                      p.title, p.status, p.author, p.edited_by, p.likes,
                      p.created_at, p.updated_at,
                      (SELECT COUNT(*) FROM reports r
@@ -715,8 +714,8 @@ def all_revisions(post_id: int, _=Depends(auth.require_admin), con=Depends(db.ge
 # every diff saying nothing. `author` is, for the opposite reason -- it must
 # never change, so a row for it is a tripwire rather than noise. `sort_key` is
 # out too: it is derived from `value`, which is right above it.
-DIFF_FIELDS = ("value", "format", "title", "lang", "grouped", "birth_death",
-               "year", "image", "author")
+DIFF_FIELDS = ("value", "format", "title", "lang", "grouped", "in_memoriam",
+               "on_this_day", "year", "image", "author")
 
 
 def _state(con, post_id, ref):
@@ -729,11 +728,10 @@ def _state(con, post_id, ref):
                       (int(ref), post_id)).fetchone()
     if row is None:
         raise HTTPException(404, "no such revision for that entry")
-    # A snapshot from before a column existed has no key for it, and it is
-    # read the way apply_snapshot reads it -- as the column's default -- or
-    # every diff against an old revision reports a flag that went from nothing
-    # to False, a change nobody made.
-    return {"grouped": False, "birth_death": False, **json.loads(row["snapshot"])}
+    # Through `load_snapshot`, which is what knows the two ways a revision can
+    # be older than the columns: a flag with no key at all, and `in_memoriam`
+    # spelled the way it was stored before it took its fold's name.
+    return store.load_snapshot(row["snapshot"])
 
 
 @router.get("/posts/{post_id}/diff")
@@ -904,7 +902,7 @@ def admin_restore(
                       (rev_id, post_id)).fetchone()
     if row is None:
         raise HTTPException(404, "no such revision for that entry")
-    old = json.loads(row["snapshot"])
+    old = store.load_snapshot(row["snapshot"])
     label = f"operator {who['email']}"
     with con:
         rev = store.snapshot(con, post_id, label, hidden=True)

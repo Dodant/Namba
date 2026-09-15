@@ -126,7 +126,8 @@ the sitemap.
   reader's own move. The front end defaults to the empty string ("As written")
   and passes the footer preference to `PostPage`, which selects a matching
   translation locally while preserving the tab strip.
-- **`posts.birth_death` is the legacy storage name for In Memoriam.** A flag
+- **`posts.in_memoriam` is the In Memoriam flag, named for the fold it
+  draws.** A flag
   and not a seventh format: a death is still a `CALENDAR` date, read,
   sorted and addressed as one, so this sits beside `grouped` rather than beside
   `format` (ADR-0029). It rides on the **entry** in `/api/numbers`, not on the
@@ -138,29 +139,51 @@ the sitemap.
   somehow acquired one unsaveable. Nothing but the Calendar index reads it.
 
   Its migration is **step 4 and not a line in step 1** — a database already at 3
-  has passed that one and would never run it again. Steps 4 and 5, the two that
-  add a column, are also the only arms of `MIGRATIONS` the suite can walk for
+  has passed that one and would never run it again. Step 4 adds the column as
+  `birth_death`, which is the name it was added under, and **step 7 renames it**:
+  a step is what was done, so the earlier one still writes what it wrote and
+  the rename is its own arm at the foot of the list. Steps 4, 5, 6 and 7 are
+  also the only arms of `MIGRATIONS` the suite can walk for
   real, since every test database takes its columns from `SCHEMA`;
-  `test_the_schema_moves_forward_once` drops both columns and stands
-  `user_version` back to watch the `ALTER`s happen.
-- **`posts.year` is the year of death, and `value` never
+  `test_the_schema_moves_forward_once` drops the three columns and stands
+  `user_version` back to watch the `ALTER`s happen, then stands it back once
+  more with the old column in place to watch the rename carry a set flag
+  across.
+
+  **`revisions` was not rewritten, so a snapshot can spell it either way.**
+  That table is the one thing here nothing edits, and rewriting every row to
+  change a key would be an edit to the record — through SQLite's own JSON
+  functions at that, which re-serialize a stranger's title on the way past.
+  `store.load_snapshot` is where both spellings are read, and it is the one
+  door every reader of a snapshot goes through: the public restore, the
+  operator's restore and the operator's diff. It answers for the other way a
+  revision can be older than the columns, too — a flag with no key at all
+  reads as the column's default, or a diff against an old revision reports a
+  change nobody made. **Parse a snapshot anywhere else and the flag silently
+  reads false**, in a route that answers 200.
+- **`posts.on_this_day` is the mutually-exclusive historical-event flag.** It
+  follows `in_memoriam` through the index entry, snapshots, restores, diffs and
+  admin reads, and migration step 6 defaults every existing row to false.
+  The public form exposes ordinary / On this day / In Memoriam as one radio
+  group, while both write routes independently reject both flags being true.
+- **`posts.year` is the year of the death or historical event, and `value` never
   carries it.** `/c/12-25` is the day of the year (ADR-0026), so a year in the
-  value would be a second page about one day. It rides beside `birth_death`
+  value would be a second page about one day. It rides beside either dated flag
   everywhere — the index entry, `SNAPSHOT_FIELDS`, `apply_snapshot`,
   `DIFF_FIELDS` — and has its own migration step, 5, because step 4 had already
   run by the time it arrived. It is only ever beside the flag: `create_post` and
-  `edit_post` both drop it when `birth_death` is off, which is the pair the form
+  `edit_post` both drop it when both flags are off, which is the pair the form
   never sends. `refuse_a_future_year` lives in `store.py` beside
   `resolve_format` because `admin_api`'s renumber asks it too and cannot import
   `main`; its "today" is UTC plus fourteen hours, so a local clock anywhere can
-  never be ahead of it. A snapshot from before either column carries neither
+  never be ahead of it. A snapshot from before these columns carries none of their
   key, and `_state` in `admin_api.py` reads the missing key as the column's
   default the way `apply_snapshot` does — or every old revision diffs as a flag
   that went from nothing to false.
 
-  Every In Memoriam entry requires this year on create and edit. The column is
-  still nullable because ordinary entries do not have a death year; unticking
-  the flag clears it, while a flagged write with no year is a 422.
+  Every On this day and In Memoriam entry requires this year on create and edit.
+  The column is still nullable because ordinary entries do not have an event
+  year; choosing ordinary clears it, while a dated write with no year is a 422.
 
   **`refuse_a_future_year` compares the whole date, not the year.** A death
   filed at `12-25` in this year has not happened until Christmas, so a
@@ -169,10 +192,20 @@ the sitemap.
   `now()`. A route check rather than a validator for the reason
   `resolve_format`'s are — it needs both halves, and an edit sends a year with
   no value at all — and `ge=1` on the field is the only other bound, since
-  today is the cap. `restore_revision` and `POST /api/admin/posts/{id}/value`
-  do not ask, the way neither re-checks `is_abbr` or `date_key`: a snapshot has
-  to be restorable, and a year that was past when it was written only gets more
-  so (ADR-0029).
+  today is the cap. `restore_revision` does not ask, the way it re-checks
+  neither `is_abbr` nor `date_key`: a snapshot has to be restorable, and a year
+  that was past when it was written only gets more so. `POST
+  /api/admin/posts/{id}/value` **does** ask, being the one route that can move a
+  date forward past a year already on the row — what it would otherwise leave is
+  an entry every later public edit is refused for (ADR-0029).
+
+  **What a restore does check is that a flag has its year.** `apply_snapshot`
+  drops a dated flag whose snapshot carries none: a snapshot taken before the
+  year was required holds that pair, both write routes refuse it, and put back
+  as it stands it leaves an entry answering 422 to every later public edit — for
+  a field the editor never sent, on the one write that re-checks nothing. The
+  flag goes rather than the restore, because a history has to be restorable and
+  a flag with no year behind it is the half the snapshot cannot support.
 - **`posts.grouped` is how the number is written, not what it is.** `value`
   never carries separators and always uses a dot decimal; `grouped_value()`
   applies the requested UI locale for display and leaves anything that is not

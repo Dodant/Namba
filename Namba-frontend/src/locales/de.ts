@@ -57,7 +57,7 @@ export const DE: Messages = {
     hasImage: 'mit Bild', feedIntro: 'Neueste Einträge und Änderungen zuerst.',
     moreRecent: 'Weitere aktuelle Einträge anzeigen',
     empty: 'Noch wurde nichts eingetragen.', entryKinds: 'Eintragsformat', categories: 'Kategorien', all: 'Alle',
-    inMemoriam: 'In Memoriam',
+    onThisDay: 'On this day', inMemoriam: 'In Memoriam',
     foldedEntries: (n: number) => `${fmtCount(n, 'de')} ${n === 1 ? 'Eintrag' : 'Einträge'}`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${fmtCount(subjects, 'de')} ${subject} · ${fmtCount(entries, 'de')} ${entries === 1 ? 'Eintrag' : 'Einträge'}`,
@@ -100,11 +100,13 @@ export const DE: Messages = {
     guidelines: 'Richtlinien für Einträge', fixedValue: (noun: string) => `fest — eine andere ${noun} benötigt einen eigenen Eintrag`,
     date: 'Datum', month: 'Monat', day: 'Tag',
     number: 'Zahl', abbreviation: 'Abkürzung', groupThousands: 'Tausendertrennzeichen verwenden',
+    calendarRole: 'Datumsart', calendarOrdinary: 'Gewöhnliches Datum',
+    onThisDay: 'On this day', onThisDayHint: 'ein historisches Ereignis an diesem Datum',
     inMemoriam: 'In Memoriam',
     inMemoriamHint: 'der Todestag einer verstorbenen Person',
     year: 'Jahr',
     yearHint:
-      'erforderlich — das Todesjahr, niemals ein künftiges',
+      'erforderlich — das Jahr des Ereignisses, niemals ein künftiges',
     format: 'Format', autoDetect: 'Automatisch erkennen', title: 'Titel', titleHint: 'worum es geht',
     titlePlaceholder: (section: Section) => ({
       number: 'Per Anhalter durch die Galaxis',

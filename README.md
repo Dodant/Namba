@@ -141,17 +141,18 @@ two menus rather than typed, and stored as a zero-padded `12-25`; the index
 draws it as twelve foldable months, all of them open with today's month and
 day in blue, and the
 page reads it in your own language — "December 25", "12월 25일" — while the
-address stays `/c/12-25`. A date that happened once is a number like any other
-and belongs at `/n/`.
+address stays `/c/12-25`. A one-time historical event can also be attached to
+the recurring date through the **On this day** choice and its year.
 
-Each month ends with an **In Memoriam** list of its own, closed until you
-open it — what a day means is one thing and who died on it is another, and a
-checkbox on the form says which an entry is. It is a flag on the entry rather
-than a format of its own: a death date is still a date, sorted, read and
-addressed as one, and only the list it appears in changes.
+Each month ends with two closed lists of its own: **On this day**, followed
+without a divider by **In Memoriam**. The first records historical events and
+the second records who died on the date. A radio group keeps those roles
+mutually exclusive and also lets an entry remain an ordinary recurring date.
+Both are flags on the entry rather than formats of their own: the date is
+still sorted, read and addressed as one, and only its list changes.
 
-Tick it and the **year of death** becomes required, attached to the month and
-day as the third part of Date.
+Pick either dated list and the **year of the event** becomes required, attached
+to the month and day as the third part of Date.
 The year is written next to the entry and never into the value: `/c/12-25` is
 the day of the year, and a year in the address would make two pages out of one
 day. It cannot be one still to come, and that is the whole date rather than the

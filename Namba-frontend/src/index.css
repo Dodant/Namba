@@ -631,7 +631,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 /* any fold whose summary is an .ix-fold: the index's, and the comments' */
 details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
 .ix-fold:hover, .ix-fold:hover::before { color: var(--ink); }
-/* Who died, under the month's own list. Its summary is the
+/* Historical events and deaths, under the month's own list. Their summaries are the
    .ix-fold above -- the same disclosure a number past FOLD_OVER gets, and the
    caret rule reaches it already -- so this has two jobs: air between the last
    row and the control that opens the next ones, and the indent.
@@ -654,27 +654,33 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
    the box and its hit-testing together and leaves the four margins to the
    rule that owns them. */
 .band-sub { margin-top: 13px; }
+/* ...and more than that between two of them. 13px is the month's list to the
+   first fold; with that fold open its rows end where the next summary begins,
+   and both sit at the same indent, so the second reads as one more row of the
+   first rather than as its sibling. The same argument the indent above makes,
+   one level down. */
+.band-sub + .band-sub { margin-top: 20px; }
 .band-sub > .ix-fold { translate: calc(104px + 22px) 0; }
-/* In Memoriam reads as one phrase -- "October 5, 2011 Steve Jobs" -- rather
+/* Both dated folds read as one phrase -- "October 5, 2011 Steve Jobs" -- rather
    than splitting the day into the numeral gutter and the year into the title.
    It still begins where ordinary titles begin, beneath the fold summary. */
-.ix.memorial { padding-left: calc(104px + 22px); }
-.ix.memorial .yr {
+.ix.dated { padding-left: calc(104px + 22px); }
+.ix.dated .yr {
   display: inline-block; width: 20ch;
   margin-right: 12px; font-size: 15.5px; white-space: nowrap;
 }
-/* A fixed date column makes every person's name start on the same vertical
-   line. Its measure follows each locale's longest ordinary date phrase so a
-   longer month name does not spill into the name column. */
-html:lang(en) .ix.memorial .yr { width: 19ch; }
-html:lang(fr) .ix.memorial .yr,
-html:lang(de) .ix.memorial .yr { width: 20ch; }
-html:lang(es) .ix.memorial .yr { width: 26ch; }
-html:lang(ko) .ix.memorial .yr { width: 18ch; }
-html:lang(ja) .ix.memorial .yr,
-html:lang(zh-Hans) .ix.memorial .yr { width: 15ch; }
+/* A fixed date column makes every title start on the same vertical line. Its
+   measure follows each locale's longest ordinary date phrase so a longer month
+   name does not spill into the title column. */
+html:lang(en) .ix.dated .yr { width: 19ch; }
+html:lang(fr) .ix.dated .yr,
+html:lang(de) .ix.dated .yr { width: 20ch; }
+html:lang(es) .ix.dated .yr { width: 26ch; }
+html:lang(ko) .ix.dated .yr { width: 18ch; }
+html:lang(ja) .ix.dated .yr,
+html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
 
-/* The year of the death, leading the line the way a date page
+/* The year of the dated event, leading the line the way a date page
    leads with one. Mono and tabular because it is a figure, and --muted rather
    than the accent the numeral column wears: the numeral is the address and
    this is a fact about the entry. One rule for all three places it is drawn --
@@ -847,7 +853,7 @@ html:lang(zh-Hans) .ix.memorial .yr { width: 15ch; }
   .ix-num { flex: 0 0 auto; min-width: 24px; text-align: left; }
   /* no column to line up with any more -- see .band-sub above */
   .band-sub > .ix-fold { translate: none; }
-  .ix.memorial { padding-left: 0; }
+  .ix.dated { padding-left: 0; }
   /* inline, the numeral is competing with the title for the row rather than
      sitting in a column of its own, so the middle sizes shrink too */
   .ix-num.mid { font-size: 16px; }
@@ -1479,7 +1485,8 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   font-family: var(--mono); font-size: 11px; color: var(--muted);
   cursor: pointer; text-transform: none; letter-spacing: 0;
 }
-.field.check input[type="checkbox"] {
+.field.check input[type="checkbox"],
+.field.check input[type="radio"] {
   width: auto; margin: 0; padding: 0; border: 0; font-size: 11px;
   accent-color: var(--accent); cursor: pointer;
 }
@@ -1492,7 +1499,34 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    the same reason -- centred, a two-line sentence pulls the box to its middle. */
 .field.check.says-a-rule { align-items: flex-start; }
 .field.check.says-a-rule .hint { color: var(--fainter); }
-.field.check.says-a-rule input[type="checkbox"] { margin-top: 2px; }
+.field.check.says-a-rule input[type="checkbox"],
+.field.check.says-a-rule input[type="radio"] { margin-top: 2px; }
+/* A grid and not a flex row. `.field.check` is `flex: none` for the column it
+   was written for (the comment above it says so), which as a flex item here
+   means it cannot shrink: each radio is sized to its label-plus-rule sentence
+   on one line, and at phone width that sentence is wider than the field. A
+   fieldset carries a UA min-width of min-content and this file has no fieldset
+   reset, so it left the column rather than wrapping. In a grid the row
+   stretches, the sentence wraps, `flex: none` is inert, and
+   `.num-field .field.check`'s `align-self` lands on the block axis where it
+   changes nothing. */
+.calendar-role {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px;
+  min-width: 0;
+  /* no bottom margin: the .num-field this sits in already carries one, the
+     same reason .num-field .field.check below zeroes its own. */
+  margin: 0; padding: 0; border: 0;
+}
+/* the form's own label voice -- 10.5 at 600, uppercase and tracked, the way
+   .field label is. At 11 and 400 it was the hint's face instead, so DATE TYPE
+   read as a sentence among NUMBER, FORMAT and TITLE rather than as their
+   sibling; the weight is the separation, as the block up there says. */
+.calendar-role legend {
+  width: 100%; margin-bottom: 8px;
+  font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+}
+.calendar-role .field.check { margin: 0; }
 /* under the Number input: flex-start so the row of checkbox and words is not
    stretched across the column, no bottom margin because the field it is in
    already carries one, and 400 because .field label reaches it now and 600 is
@@ -1821,10 +1855,12 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   .acts { --ctl-font: 16px; }
   .search input { width: 172px; }
   .field select, .field .coin input, .panel-find input { font-size: 16px; }
-  .field.check input[type="checkbox"] { width: 20px; height: 20px; }
+  .field.check input[type="checkbox"],
+  .field.check input[type="radio"] { width: 20px; height: 20px; }
   /* the rule box sits at the top of its sentence and was nudged 2px down to
      centre a 13px box on the first line; at 20px the centre is 1.5px up */
-  .field.check.says-a-rule input[type="checkbox"] { margin-top: -1.5px; }
+  .field.check.says-a-rule input[type="checkbox"],
+  .field.check.says-a-rule input[type="radio"] { margin-top: -1.5px; }
 
   .chips { gap: 8px; }
   .chip { padding: 9px 15px; }

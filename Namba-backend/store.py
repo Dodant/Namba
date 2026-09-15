@@ -161,7 +161,7 @@ def resolve_format(value, given):
 
 
 def refuse_a_future_year(value, fmt, year):
-    """A death filed under In Memoriam has already happened.
+    """A death or historical event filed in a dated fold has already happened.
 
     `ge=1` on the field is the other end and the only other bound there is: a
     year is capped by today rather than by a number in a model, so this is
@@ -207,8 +207,8 @@ def refuse_a_future_year(value, fmt, year):
                  "date only in a leap year.")
     if (year, month, day) > today:
         raise HTTPException(
-            422, f"a death has happened, and {year}-{month:02d}-"
-                 f"{day:02d} has not. A year cannot be later than today.")
+            422, f"{year}-{month:02d}-{day:02d} has not happened yet. A dated "
+                 f"entry cannot be later than today.")
 
 
 # The sections this one column is read in, and the format that puts a row in
@@ -277,7 +277,8 @@ def shape(rows, con):
         p["bucket"] = bucket_of(p["sort_key"], p["format"], p["value"])
         # sqlite has no bool; the wire and the client both want one
         p["grouped"] = bool(p["grouped"])
-        p["birth_death"] = bool(p["birth_death"])
+        p["in_memoriam"] = bool(p["in_memoriam"])
+        p["on_this_day"] = bool(p["on_this_day"])
     q = "SELECT post_id, tag FROM post_tags WHERE post_id IN (%s) ORDER BY tag" % (
         ",".join("?" * len(ids))
     )
@@ -360,7 +361,7 @@ def fetch_one(con, post_id, hidden=False):
 # hidden one back on the wiki. `bucket` is computed from the format and the
 # sort key sitting beside it.
 SNAPSHOT_FIELDS = ("value", "format", "sort_key", "title", "body", "image",
-                   "lang", "grouped", "birth_death", "year", "author",
+                   "lang", "grouped", "in_memoriam", "on_this_day", "year", "author",
                    "edited_by", "likes", "created_at", "updated_at")
 
 
@@ -419,6 +420,31 @@ def write_tags(con, post_id, tags):
     )
 
 
+def load_snapshot(raw):
+    """A stored revision, read into the field names the code uses today.
+
+    Every reader of `revisions.snapshot` comes through here, because a
+    snapshot is the one thing this wiki writes and never rewrites: it is as
+    old as the day it was taken, and the columns have moved since. Two ways,
+    so far. A column that did not exist yet has no key at all, and what it
+    meant is the column's default -- read as a missing key instead, a diff
+    against an old revision reports a flag going from nothing to false, which
+    is a change nobody made. And `in_memoriam` was stored as `birth_death`
+    until the flag took the name of its fold, so every revision older than
+    that rename spells it the other way; read as absent, a restore would
+    quietly untick In Memoriam on the entry it was restoring.
+
+    Reading both here rather than at the three call sites is the point. A
+    caller that forgets is not an error anywhere -- it is a flag that reads
+    false, in a route that answers 200.
+    """
+    old = json.loads(raw)
+    if "birth_death" in old:
+        old.setdefault("in_memoriam", old["birth_death"])
+        del old["birth_death"]
+    return {"grouped": False, "in_memoriam": False, "on_this_day": False, **old}
+
+
 def apply_snapshot(con, post_id, old, editor):
     """Put a snapshot's fields back onto an entry, with its tags and its
     translations.
@@ -450,14 +476,27 @@ def apply_snapshot(con, post_id, old, editor):
     key = old["sort_key"]
     if key is not None and not math.isfinite(key):
         key = None
+    # ...and the dated flags are the second. A year rides only on one of them
+    # and every flagged write requires it, but a snapshot taken before that was
+    # so carries the flag with no year -- a pair the write routes refuse. Put it
+    # back as it stands and every later public edit of that entry answers 422
+    # for a field the editor never sent, which is an entry nobody can fix. The
+    # flag goes rather than the restore: a history has to be restorable, and a
+    # flag with no year behind it is the half the snapshot cannot support
+    # (ADR-0029).
+    year = old.get("year")
+    in_memoriam = int(old.get("in_memoriam") or 0)
+    on_this_day = int(old.get("on_this_day") or 0)
+    if year is None:
+        in_memoriam = on_this_day = 0
     con.execute(
         """UPDATE posts SET value=?, format=?, sort_key=?, title=?, body=?,
-                            image=?, lang=?, grouped=?, birth_death=?, year=?,
+                            image=?, lang=?, grouped=?, in_memoriam=?, on_this_day=?, year=?,
                             edited_by=?, updated_at=?
            WHERE id=?""",
         (old["value"], old["format"], key, old["title"], old["body"],
          old["image"], old.get("lang"), int(old.get("grouped") or 0),
-         int(old.get("birth_death") or 0), old.get("year"), editor, now(),
+         in_memoriam, on_this_day, year, editor, now(),
          post_id),
     )
     write_tags(con, post_id, old.get("tags", []))
