@@ -405,6 +405,15 @@ class PostPatch(PostRules):
     on_this_day: Optional[bool] = None
     year: Optional[int] = Field(default=None, ge=1)
 
+    @field_validator("on_this_day")
+    @classmethod
+    def on_this_day_not_null(cls, v):
+        # Omitted fields keep their defaults without running this validator.
+        # An explicit null cannot be stored in this non-nullable flag.
+        if v is None:
+            raise ValueError("on_this_day cannot be null")
+        return v
+
 
 class TranslationIn(Text):
     lang: str = Field(min_length=1, max_length=40)

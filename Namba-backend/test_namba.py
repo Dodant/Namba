@@ -2541,6 +2541,25 @@ def test_api_round_trip():
                                       "title": "Both", "on_this_day": True,
                                       "birth_death": True, "year": 800})
     assert both.status_code == 422 and "mutually exclusive" in both.text
+    path = f"/api/posts/{historical['id']}"
+    entry_before = c.get(path).json()
+    revisions_before = c.get(f"{path}/revisions").json()
+    invalid = c.patch(path, json={"on_this_day": None, "title": "Changed"})
+    assert invalid.status_code == 422, invalid.text
+    assert any(e["loc"] == ["body", "on_this_day"]
+               for e in invalid.json()["detail"]), invalid.text
+    assert c.get(path).json() == entry_before, "a rejected null changed the entry"
+    assert c.get(f"{path}/revisions").json() == revisions_before
+    omitted = c.patch(path, json={"title": "Updated historical event"})
+    assert omitted.status_code == 200, omitted.text
+    assert omitted.json()["on_this_day"] is True and omitted.json()["year"] == 800
+    cleared_event = c.patch(path, json={"on_this_day": False})
+    assert cleared_event.status_code == 200, cleared_event.text
+    assert cleared_event.json()["on_this_day"] is False
+    assert cleared_event.json()["year"] is None
+    enabled_event = c.patch(path, json={"on_this_day": True, "year": 800})
+    assert enabled_event.status_code == 200, enabled_event.text
+    assert enabled_event.json()["on_this_day"] is True
     admin.set_status(historical["id"], "HIDDEN")
     # In Memoriam is a dated memorial, not a loose classification: the year of
     # death is required on both public write routes.
