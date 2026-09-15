@@ -125,7 +125,7 @@ export type Post = {
       a CALENDAR date with the same key and band; this only changes which of a
       month's two lists draws it. */
   birth_death: boolean
-  /** which year that death was in, and null wherever nobody said.
+  /** which year that death was in, required for In Memoriam and null otherwise.
       An annotation and never part of the address: /c/12-25 is the day of the
       year and `value` carries no year, so this is drawn beside the entry and
       nothing sorts or bands on it. */

@@ -151,8 +151,8 @@ export default function PostForm() {
   const [lang, setLang] = useState(LANGS[0])
   const [grouped, setGrouped] = useState(false)
   const [inMemoriam, setInMemoriam] = useState(false)
-  /* A string rather than a number, because the box can be empty and that is a
-     year nobody said rather than a zero. It goes to the API as null. */
+  /* A string rather than a number because the box begins empty. Once In
+     Memoriam is ticked the control is required; until then empty is not zero. */
   const [year, setYear] = useState('')
   /* Which section this form is filling in right now. Auto-detect has decided
      nothing, so it is the number one -- which is what most of this wiki is.
@@ -355,7 +355,7 @@ export default function PostForm() {
                 {editing ? m.form.fixedValue(noun) : examples(format, locale)}
               </span>
             </label>
-            {format === 'CALENDAR' && !editing ? (
+            {format === 'CALENDAR' ? (
               /* Picked, not typed. A date is two numbers with a fixed range
                  each and one stored spelling -- zero-padded MM-DD -- so a
                  text box is a way to type 13-40 and read a 422 about it.
@@ -363,8 +363,9 @@ export default function PostForm() {
                  a phone's own wheel and the screen reader all come free, and
                  every one of them has to be rebuilt by hand in a div-and-<ul>
                  listbox built to be styled in more browsers. */
-              <div className="two-up">
-                <div className="select">
+              <div className="two-up date-controls">
+                {!editing ? <>
+                  <div className="select">
                   <select
                     id={fid('value')}
                     aria-label={m.form.month}
@@ -375,8 +376,8 @@ export default function PostForm() {
                       <option key={b} value={b}>{monthName(Number(b), locale)}</option>
                     ))}
                   </select>
-                </div>
-                <div className="select">
+                  </div>
+                  <div className="select">
                   <select
                     aria-label={m.form.day}
                     /* as many days as the month has, so February stops at 29
@@ -391,7 +392,33 @@ export default function PostForm() {
                       <option key={d} value={String(d).padStart(2, '0')}>{d}</option>
                     ))}
                   </select>
-                </div>
+                  </div>
+                </> : (
+                  <input
+                    id={fid('value')}
+                    className="mono date-value"
+                    required
+                    readOnly
+                    maxLength={32}
+                    value={showValue(value, grouped, locale, format)}
+                  />
+                )}
+                {inMemoriam && (
+                  <input
+                    id={fid('year')}
+                    className="mono year-input"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={maxYear}
+                    value={year}
+                    onChange={(e) => setYear(e.target.value)}
+                    placeholder={m.form.year}
+                    aria-label={m.form.year}
+                    title={m.form.yearHint}
+                    required
+                  />
+                )}
               </div>
             ) : (
             <input
@@ -501,36 +528,6 @@ export default function PostForm() {
                   <span className="hint">{m.form.inMemoriamHint}</span>
                 </span>
               </label>
-            )}
-            {/* Which year it was in. Under the box rather than beside the date
-                selects: a third control that comes and goes with a choice
-                re-measures the two above it underneath that choice, which is
-                the reason the separator box is down here too.
-
-                type="number" for the stepper, the numeric keyboard and a
-                min/max the browser enforces before the API has to. `max` is
-                the API's own rule drawn client-side -- this year if the date
-                has already come round, last year if it has not -- because a
-                death has happened, and this year's Christmas has
-                not. The 422 is still what settles it: a browser is not a
-                trust boundary. */}
-            {format === 'CALENDAR' && inMemoriam && (
-              <div className="field year-field">
-                <label htmlFor={fid('year')}>
-                  {m.form.year}{' '}
-                  <span className="hint">{m.form.yearHint}</span>
-                </label>
-                <input
-                  id={fid('year')}
-                  className="mono"
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={maxYear}
-                  value={year}
-                  onChange={(e) => setYear(e.target.value)}
-                />
-              </div>
             )}
           </div>
           <div className="field fmt-field">

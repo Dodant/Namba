@@ -91,7 +91,7 @@ export const KO: Messages = {
     inMemoriamHint: '고인이 된 인물의 사망일',
     year: '연도',
     yearHint:
-      '선택 — 그 일이 있었던 해, 아직 오지 않은 해는 쓸 수 없습니다',
+      '필수 — 사망 연도, 아직 오지 않은 해는 쓸 수 없습니다',
     autoDetect: '자동 감지', title: '제목', titleHint: '무엇을 가리키는지 작성',
     titlePlaceholder: (section: Section) => ({
       number: '은하수를 여행하는 히치하이커를 위한 안내서',

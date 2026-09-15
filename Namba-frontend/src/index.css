@@ -1464,14 +1464,11 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 }
 .coin .btn { padding: 6px 13px; font-size: 11px; }
 
-/* four digits and a stepper, not a column of the form's width. The number
-   input keeps its own spinner: it is the one control here whose range the
-   browser can enforce, which is the point of asking for one. No bottom margin
-   for the same reason the box above it has none: it sits inside the Number
-   field, which already carries one, and a second stacked under it stretched
-   the Format field beside them to match. */
-.year-field input { max-width: 10ch; }
-.num-field .year-field { margin-bottom: 0; }
+/* The required death year is the third part of Date, not another field below
+   it. It keeps its spinner and a compact four-digit measure; on a narrow row
+   flex-wrap moves it as a whole rather than squeezing any date part illegible. */
+.date-controls .year-input { flex: 0 1 10ch; min-width: 8ch; }
+.date-controls .date-value { flex: 1 1 220px; min-width: 0; }
 
 /* wears .field too -- .field alone would stack it into a column and stretch
    it. It lives inside the Format field rather than beside it in the .row, so
@@ -1521,7 +1518,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 
 /* the one field with a hard border, because it is the entry's identity:
    every other field describes the number, this one is the number */
-.num-field > input {
+.num-field > input, .num-field .date-value {
   border-color: var(--ink); color: var(--accent);
   font-size: 24px; font-weight: 600; letter-spacing: -0.03em;
 }
@@ -1535,7 +1532,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    selects are named as well: with Calendar picked they are what stands where
    the number's box stands, so they answer to the same height or the top row
    goes crooked the other way round. */
-.num-field > input, .num-field .two-up select, .fmt-field select { height: 53px; }
+.num-field > input, .num-field .two-up :is(select, input), .fmt-field select { height: 53px; }
 /* editing an entry cannot move it to another number, so there the field is
    the number rather than a box to type one in -- the hard border above is
    what says "type here", and this is the only field that ever drops it */

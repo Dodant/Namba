@@ -104,7 +104,7 @@ export const DE: Messages = {
     inMemoriamHint: 'der Todestag einer verstorbenen Person',
     year: 'Jahr',
     yearHint:
-      'optional — das Jahr, in dem es geschah, niemals ein künftiges',
+      'erforderlich — das Todesjahr, niemals ein künftiges',
     format: 'Format', autoDetect: 'Automatisch erkennen', title: 'Titel', titleHint: 'worum es geht',
     titlePlaceholder: (section: Section) => ({
       number: 'Per Anhalter durch die Galaxis',

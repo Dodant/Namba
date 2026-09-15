@@ -107,7 +107,7 @@ export const FR: Messages = {
     inMemoriamHint: 'la date de décès d’une personne défunte',
     year: 'Année',
     yearHint:
-      'facultatif — l’année où cela s’est produit, jamais une année à venir',
+      'obligatoire — l’année du décès, jamais une année à venir',
     format: 'Format', autoDetect: 'Détection automatique', title: 'Titre',
     titleHint: 'ce à quoi l’entrée fait référence', titlePlaceholder: (section: Section) => ({
       number: 'Le Guide du voyageur galactique',

@@ -93,7 +93,7 @@ export const JA: Messages = {
     inMemoriamHint: '故人の命日',
     year: '年',
     yearHint:
-      '任意 — それが起きた年。まだ来ていない年は書けません',
+      '必須 — 没年。まだ来ていない年は書けません',
     autoDetect: '自動判定', title: 'タイトル', titleHint: '何を指す数字か',
     titlePlaceholder: (section: Section) => ({
       number: '銀河ヒッチハイク・ガイド',

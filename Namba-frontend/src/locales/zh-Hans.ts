@@ -93,7 +93,7 @@ export const ZH_HANS: Messages = {
     inMemoriamHint: '已故人物的逝世日期',
     year: '年份',
     yearHint:
-      '可选 — 事情发生的年份，尚未到来的年份不可填写',
+      '必填 — 逝世年份，尚未到来的年份不可填写',
     autoDetect: '自动检测', title: '标题', titleHint: '它指的是什么',
     titlePlaceholder: (section: Section) => ({
       number: '银河系漫游指南',

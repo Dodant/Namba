@@ -103,7 +103,7 @@ export const ES: Messages = {
     inMemoriamHint: 'la fecha de fallecimiento de una persona difunta',
     year: 'Año',
     yearHint:
-      'opcional — el año en que ocurrió, nunca un año por venir',
+      'obligatorio — el año de fallecimiento, nunca un año por venir',
     format: 'Formato', autoDetect: 'Detectar automáticamente', title: 'Título', titleHint: 'a qué se refiere',
     titlePlaceholder: (section: Section) => ({
       number: 'Guía del autoestopista galáctico',
