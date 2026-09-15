@@ -839,9 +839,11 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
         # three statements below landing together, not for a read -- see
         # db.writing() and ADR-0007 for the eleven writes where it is the read.
         value, fmt, key = resolve_format(value, p.format)
-        # A year rides only on an In Memoriam death. The form never sends the
-        # pair, so an API client that does gets the form's own answer -- a
-        # year of nothing dropped -- rather than a 422 on a flag it did send.
+        # A year rides only on an In Memoriam death, and every memorial needs
+        # one. Keep both halves of that rule here: the browser is not a trust
+        # boundary and an API client can send either field on its own.
+        if p.birth_death and p.year is None:
+            raise HTTPException(422, "In Memoriam requires a year of death")
         year = p.year if p.birth_death else None
         refuse_a_future_year(value, fmt, year)
         cur = con.execute(
@@ -901,15 +903,17 @@ def edit_post(post_id: int, p: PostPatch, who=Depends(guard), con=Depends(get_db
         # take the flag off again -- the form sends every field on every save.
         birth_death = (p.birth_death if "birth_death" in sent
                        else bool(current["birth_death"]))
-        # `in sent`, like the flag above and for the same reason: this one is
-        # nullable, and clearing a year somebody guessed wrong has to be a
-        # write rather than a no-op.
+        # `in sent`, like the flag above and for the same reason: this column is
+        # nullable for ordinary entries, so an explicit null must be distinct
+        # from an omitted field before the required-memorial rule below runs.
         year = p.year if "year" in sent else current["year"]
         # ...and only ever beside the flag, the way create_post keeps it: an
         # edit that unticks the box takes the year with it, whether or not the
         # sender knew there was one.
         if not birth_death:
             year = None
+        elif year is None:
+            raise HTTPException(422, "In Memoriam requires a year of death")
         value = current["value"]
         if p.value is not None:
             value, grouped = ungroup(p.value, grouped, p.number_locale)

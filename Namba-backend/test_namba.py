@@ -2523,6 +2523,12 @@ def test_api_round_trip():
     # deaths on one day are two entries at one address (ADR-0026).
     assert memorial["year"] == 1642 and memorial["value"] == "12-25", memorial
     assert next(e for e in dec["entries"] if e["birth_death"])["year"] == 1642
+    # In Memoriam is a dated memorial, not a loose classification: the year of
+    # death is required on both public write routes.
+    missing_year = c.post("/api/posts", json={"value": "10-05", "format": "CALENDAR",
+                                              "title": "No year",
+                                              "birth_death": True})
+    assert missing_year.status_code == 422 and "requires a year" in missing_year.text
     # ...and a death that has not happened is refused. The whole date and not
     # the year alone: in September this year's Christmas is still to come, and
     # a year-only test waves it through until it arrives. Off the clock rather
@@ -2608,12 +2614,12 @@ def test_api_round_trip():
     assert late.status_code == 422 and "has not" in late.text, late.text
     assert c.get(f"/api/posts/{memorial['id']}").json()["year"] == 1642, \
         "a refused year was written anyway"
-    # an explicit null clears it -- `in sent` again, since a year somebody
-    # guessed wrong has to be removable
+    # An explicit null cannot clear a required memorial year. Unticking the
+    # flag below is the one operation that removes the pair.
     none = c.patch(f"/api/posts/{memorial['id']}",
-                   json={"year": None, "author": "editor"}).json()
-    assert none["year"] is None, none
-    c.patch(f"/api/posts/{memorial['id']}", json={"year": 1642, "author": "editor"})
+                   json={"year": None, "author": "editor"})
+    assert none.status_code == 422 and "requires a year" in none.text, none.text
+    assert c.get(f"/api/posts/{memorial['id']}").json()["year"] == 1642
     # an edit that says nothing about the flag leaves it alone
     quiet = c.patch(f"/api/posts/{memorial['id']}",
                     json={"title": "A person died here", "author": "editor"}).json()

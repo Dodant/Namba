@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS posts (
   -- The Calendar index's In Memoriam fold is the one thing that reads it
   -- (ADR-0029). The column name is retained for migration compatibility.
   birth_death INTEGER NOT NULL DEFAULT 0,
-  -- which year that death was in, and NULL wherever nobody said.
+  -- which year that death was in, required for In Memoriam and NULL otherwise.
   -- An annotation and not part of the address: /c/12-25 is the day of the
   -- year, `value` never carries a year, and two deaths on one day are two
   -- entries at one address the way two meanings of 42 are (ADR-0026,
