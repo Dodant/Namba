@@ -452,14 +452,15 @@ function Index({ lang }: { lang: string }) {
               {band.sub && band.sub.length > 0 && (
                 <details className="band-sub" onToggle={measure}>
                   <summary className="ix-fold">
-                    <span>{m.home.inMemoriam}</span>
                     {/* `common.entries` and not `home.foldedEntries`: that one
                         is a row's own fold, which only opens past FOLD_OVER and
                         so never has to say "1 entries". This one can hold a
                         single memorial entry. */}
-                    <span>{m.common.entries(
-                      band.sub.reduce((n, row) => n + row.entries.length, 0),
-                    )}</span>
+                    <span>
+                      {m.home.inMemoriam} · {m.common.entries(
+                        band.sub.reduce((n, row) => n + row.entries.length, 0),
+                      )}
+                    </span>
                   </summary>
                   <ol className="index">
                     {band.sub.map((row) => (

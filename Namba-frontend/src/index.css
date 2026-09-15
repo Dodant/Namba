@@ -659,6 +659,7 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
    than splitting the day into the numeral gutter and the year into the title.
    It still begins where ordinary titles begin, beneath the fold summary. */
 .ix.memorial { padding-left: calc(104px + 22px); }
+.ix.memorial .yr { margin-right: 12px; font-size: 15.5px; }
 
 /* The year of the death, leading the line the way a date page
    leads with one. Mono and tabular because it is a figure, and --muted rather
