@@ -1793,7 +1793,7 @@ def test_admin_content_and_dashboard():
     assert mine["status"] == "HIDDEN" and mine["author"] == "armstrong"
     assert mine["edited_by"] == "vandal"
     assert mine["birth_death"] == 1 and mine["year"] == 1969, \
-        "the content table cannot say an entry is a birth, or which year"
+        "the content table cannot say an entry is In Memoriam, or which year"
     assert mine["open_reports"] == 0 and mine["pending_requests"] == 0
     # the operator's search escapes LIKE's wildcards too -- same helper, and
     # this is the box an operator hunts a specific entry in
@@ -1943,26 +1943,26 @@ def test_admin_content_and_dashboard():
     # do -- or what it leaves behind is an entry every later public edit is
     # refused for (ADR-0029). The clock is held at midsummer 2000, when that
     # year's Christmas was still to come.
-    born = c.post("/api/posts", json={"value": "01-01", "format": "CALENDAR",
-                                      "title": "born", "birth_death": True,
-                                      "year": 2000}).json()
+    deceased = c.post("/api/posts", json={"value": "01-01", "format": "CALENDAR",
+                                          "title": "a person died", "birth_death": True,
+                                          "year": 2000}).json()
     real = store.now
     try:
         store.now = lambda: "2000-06-01T00:00:00+00:00"
-        moved = ops.post(f"/api/admin/posts/{born['id']}/value",
+        moved = ops.post(f"/api/admin/posts/{deceased['id']}/value",
                          json={"value": "12-25", "format": "CALENDAR"})
         assert moved.status_code == 422 and "has not" in moved.text, moved.text
     finally:
         store.now = real
-    assert c.get(f"/api/posts/{born['id']}").json()["value"] == "01-01", \
+    assert c.get(f"/api/posts/{deceased['id']}").json()["value"] == "01-01", \
         "a refused renumber moved the entry anyway"
     # and once that Christmas has passed, the same move is a move
-    moved = ops.post(f"/api/admin/posts/{born['id']}/value",
+    moved = ops.post(f"/api/admin/posts/{deceased['id']}/value",
                      json={"value": "12-25", "format": "CALENDAR"}).json()
     assert (moved["value"], moved["year"]) == ("12-25", 2000), moved
-    assert c.patch(f"/api/posts/{born['id']}",
-                   json={"title": "born, still", "author": "x"}).status_code == 200
-    ops.post(f"/api/admin/posts/{born['id']}/status", json={"status": "HIDDEN"})
+    assert c.patch(f"/api/posts/{deceased['id']}",
+                   json={"title": "a person's death, edited", "author": "x"}).status_code == 200
+    ops.post(f"/api/admin/posts/{deceased['id']}/status", json={"status": "HIDDEN"})
     assert ops.post(f"/api/admin/posts/{pid}/value",
                     json={"value": "1971"}).status_code == 409
     assert ops.post(f"/api/admin/posts/{pid}/value",
@@ -2501,29 +2501,29 @@ def test_api_round_trip():
     assert [r["value"] for r in rows] == ["02-29", "04-01", "12-25"], rows
     assert [r["bucket"] for r in rows] == ["02", "04", "12"], rows
     assert all(len(r["entries"]) == 1 for r in rows), "a Mixed row reached the tab"
-    # A birth or a death is a flag on the entry, not a seventh format and not
+    # In Memoriam is a flag on the entry, not a seventh format and not
     # a section: this is still a CALENDAR date at /c/12-25 with the same key
     # and the same band. What it changes is where the Calendar tab draws it,
     # and the tab reads it off the *entry* rather than off the row -- 12-25
     # carries Christmas in December's list and this in its fold (ADR-0029).
-    newton = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
-                                        "title": "Isaac Newton born",
-                                        "birth_death": True, "year": 1642})
-    assert newton.status_code == 201, newton.text
-    newton = newton.json()
-    assert newton["birth_death"] is True, newton
-    assert (newton["format"], newton["sort_key"], newton["bucket"]) \
+    memorial = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
+                                          "title": "A person died",
+                                          "birth_death": True, "year": 1642})
+    assert memorial.status_code == 201, memorial.text
+    memorial = memorial.json()
+    assert memorial["birth_death"] is True, memorial
+    assert (memorial["format"], memorial["sort_key"], memorial["bucket"]) \
         == ("CALENDAR", 1225.0, "12"), "the flag moved the entry"
     dec = next(r for r in c.get("/api/numbers", params={"format": "CALENDAR"}).json()
                if r["value"] == "12-25")
     assert {e["title"]: e["birth_death"] for e in dec["entries"]} \
-        == {"Christmas Day": False, "Isaac Newton born": True}, dec
+        == {"Christmas Day": False, "A person died": True}, dec
     # The year rides along as an annotation, never as part of the address:
     # /c/12-25 is the day of the year and `value` carries no year, so two
-    # births on one day are two entries at one address (ADR-0026).
-    assert newton["year"] == 1642 and newton["value"] == "12-25", newton
+    # deaths on one day are two entries at one address (ADR-0026).
+    assert memorial["year"] == 1642 and memorial["value"] == "12-25", memorial
     assert next(e for e in dec["entries"] if e["birth_death"])["year"] == 1642
-    # ...and a birth that has not happened is refused. The whole date and not
+    # ...and a death that has not happened is refused. The whole date and not
     # the year alone: in September this year's Christmas is still to come, and
     # a year-only test waves it through until it arrives. Off the clock rather
     # than hard-wired to Christmas, though: 12-25 in this year is a date to
@@ -2538,7 +2538,7 @@ def test_api_round_trip():
                                       "format": "CALENDAR", "title": "not yet",
                                       "birth_death": True, "year": tomorrow.year})
     assert soon.status_code == 422 and "has not" in soon.text, soon.text
-    # the boundary is `>`: a birth today has happened
+    # the boundary is `>`: a death today has happened
     here = c.post("/api/posts", json={"value": f"{today:%m-%d}",
                                       "format": "CALENDAR", "title": "today",
                                       "birth_death": True, "year": today.year})
@@ -2578,7 +2578,7 @@ def test_api_round_trip():
                                        "title": "not yet", "birth_death": True,
                                        "year": 9999})
     assert ahead.status_code == 422 and "has not" in ahead.text, ahead.text
-    # a year with no birth beside it is dropped rather than refused: the form
+    # a year with no death beside it is dropped rather than refused: the form
     # never sends the pair, and an API client that only unticks the box must
     # not be held for the year it left behind
     alone = c.post("/api/posts", json={"value": "12-25", "format": "CALENDAR",
@@ -2604,35 +2604,35 @@ def test_api_round_trip():
                                       "year": today.year + 1}).status_code == 422
     # the same rule on an edit, and read off the *settled* value -- the year
     # field alone arrives with no value at all
-    late = c.patch(f"/api/posts/{newton['id']}", json={"year": 9999})
+    late = c.patch(f"/api/posts/{memorial['id']}", json={"year": 9999})
     assert late.status_code == 422 and "has not" in late.text, late.text
-    assert c.get(f"/api/posts/{newton['id']}").json()["year"] == 1642, \
+    assert c.get(f"/api/posts/{memorial['id']}").json()["year"] == 1642, \
         "a refused year was written anyway"
     # an explicit null clears it -- `in sent` again, since a year somebody
     # guessed wrong has to be removable
-    none = c.patch(f"/api/posts/{newton['id']}",
+    none = c.patch(f"/api/posts/{memorial['id']}",
                    json={"year": None, "author": "editor"}).json()
     assert none["year"] is None, none
-    c.patch(f"/api/posts/{newton['id']}", json={"year": 1642, "author": "editor"})
+    c.patch(f"/api/posts/{memorial['id']}", json={"year": 1642, "author": "editor"})
     # an edit that says nothing about the flag leaves it alone
-    quiet = c.patch(f"/api/posts/{newton['id']}",
-                    json={"title": "Isaac Newton is born", "author": "editor"}).json()
+    quiet = c.patch(f"/api/posts/{memorial['id']}",
+                    json={"title": "A person died here", "author": "editor"}).json()
     assert quiet["birth_death"] is True, quiet
     # and an explicit false takes it off: `in sent` and not `is not None`, or
     # the default would read as "unchanged" and the box could never be cleared
-    cleared = c.patch(f"/api/posts/{newton['id']}",
+    cleared = c.patch(f"/api/posts/{memorial['id']}",
                       json={"birth_death": False, "author": "editor"}).json()
     assert cleared["birth_death"] is False, cleared
     assert cleared["year"] is None, "unticking the box left its year behind"
     # it is content, so a revision keeps it and a restore brings it back --
     # which is what holds SNAPSHOT_FIELDS and apply_snapshot together
-    prior = c.get(f"/api/posts/{newton['id']}/revisions").json()[0]
-    restored = c.post(f"/api/posts/{newton['id']}/revisions/{prior['id']}/restore",
+    prior = c.get(f"/api/posts/{memorial['id']}/revisions").json()[0]
+    restored = c.post(f"/api/posts/{memorial['id']}/revisions/{prior['id']}/restore",
                       json={"author": "editor"})
     assert restored.status_code == 200, restored.text
     assert restored.json()["birth_death"] is True, \
         "a restore dropped the flag; a version that cannot say an entry was a " \
-        "birth is a worse record"
+        "death is a worse record"
     assert restored.json()["year"] == 1642, "a restore dropped the year"
     # a history line reads the value through the format the way the hero does,
     # so the label carries it: 12-25 under an entry whose hero says 25 December
@@ -2720,7 +2720,7 @@ def test_api_round_trip():
     assert healed.status_code == 200 and healed.json()["sort_key"] is None, healed.text
     assert c.get("/api/numbers").status_code == 200, "an Inf key reached a response"
     assert c.get("/api/posts").status_code == 200, "an Inf key reached a response"
-    for pid in (xmas["id"], fools["id"], wrote["id"], leap["id"], newton["id"]):
+    for pid in (xmas["id"], fools["id"], wrote["id"], leap["id"], memorial["id"]):
         admin.set_status(pid, "HIDDEN")
 
     clock = c.post("/api/posts", json={"value": "09:41", "title": "iPhone keynote",

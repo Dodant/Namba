@@ -161,7 +161,7 @@ def resolve_format(value, given):
 
 
 def refuse_a_future_year(value, fmt, year):
-    """A birth or a death has already happened.
+    """A death filed under In Memoriam has already happened.
 
     `ge=1` on the field is the other end and the only other bound there is: a
     year is capped by today rather than by a number in a model, so this is
@@ -171,7 +171,7 @@ def refuse_a_future_year(value, fmt, year):
     rather than in `main.py` because the operator's renumber asks it too, and
     `admin_api` cannot import `main`.
 
-    The whole date, not just the year. In September, somebody filing a birth
+    The whole date, not just the year. In September, somebody filing a death
     at 12-25 in this year is filing something that has not happened, which is
     the thing being refused; a year on its own would wave it through until
     Christmas. A value with no month and day in it has no such date to build,
@@ -207,7 +207,7 @@ def refuse_a_future_year(value, fmt, year):
                  "date only in a leap year.")
     if (year, month, day) > today:
         raise HTTPException(
-            422, f"a birth or a death has happened, and {year}-{month:02d}-"
+            422, f"a death has happened, and {year}-{month:02d}-"
                  f"{day:02d} has not. A year cannot be later than today.")
 
 

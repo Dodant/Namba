@@ -27,15 +27,15 @@ CREATE TABLE IF NOT EXISTS posts (
   edited_by  TEXT,                                 -- whoever touched it last, if anyone
   lang       TEXT,                                 -- what title/body are written in; free-form, like translations.lang
   grouped    INTEGER NOT NULL DEFAULT 0,           -- show the value with thousands separators; display only, never in `value`
-  -- this entry is somebody's birth or somebody's death. Display only, like
-  -- `grouped`: a birth is still a CALENDAR date at /c/12-25, and the format
+  -- this entry is the date a deceased person died. Display only, like
+  -- `grouped`: a death is still a CALENDAR date, and the format
   -- is what decides how a value is read, sorted and addressed (ADR-0026).
-  -- One flag for both, and the Calendar index's month fold is the one thing
-  -- that reads it (ADR-0029).
+  -- The Calendar index's In Memoriam fold is the one thing that reads it
+  -- (ADR-0029). The column name is retained for migration compatibility.
   birth_death INTEGER NOT NULL DEFAULT 0,
-  -- which year that birth or death was in, and NULL wherever nobody said.
+  -- which year that death was in, and NULL wherever nobody said.
   -- An annotation and not part of the address: /c/12-25 is the day of the
-  -- year, `value` never carries a year, and two births on one day are two
+  -- year, `value` never carries a year, and two deaths on one day are two
   -- entries at one address the way two meanings of 42 are (ADR-0026,
   -- ADR-0029). Nothing sorts or bands on it.
   year       INTEGER,
@@ -538,7 +538,7 @@ def _text_is_one_normal_form(con):
 
 
 def _birth_death_column(con):
-    """`posts.birth_death`, for the Calendar index's month fold.
+    """`posts.birth_death`, the legacy name for the In Memoriam flag.
 
     Its own step rather than a line in the one above, because that one is
     numbered 1: a database already at 3 has passed it and would never run it
@@ -552,7 +552,7 @@ def _birth_death_column(con):
 
 
 def _birth_year_column(con):
-    """`posts.year`, the year a birth or a death was in.
+    """`posts.year`, the year the death occurred.
 
     Step 5 and not a line in step 4: that one has already run wherever the
     fold shipped, and a database that has passed it never runs it again.

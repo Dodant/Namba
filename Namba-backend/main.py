@@ -602,8 +602,8 @@ def list_numbers(
             "body": body[:BLURB] + "\u2026" if len(body) > BLURB else body,
             "image": bool(r["image"]),
             "likes": r["likes"],   # a translation has no likes of its own
-            # off the entry and not the row: one date carries Christmas in the
-            # month's list and a birth in its fold, so the split the Calendar
+            # off the entry and not the row: one date carries an ordinary meaning
+            # in the month's list and a death in its fold, so the split the Calendar
             # tab draws is per entry (ADR-0029)
             "birth_death": bool(r["birth_death"]),
             "year": r["year"],
@@ -839,7 +839,7 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
         # three statements below landing together, not for a read -- see
         # db.writing() and ADR-0007 for the eleven writes where it is the read.
         value, fmt, key = resolve_format(value, p.format)
-        # A year rides only on a birth or a death. The form never sends the
+        # A year rides only on an In Memoriam death. The form never sends the
         # pair, so an API client that does gets the form's own answer -- a
         # year of nothing dropped -- rather than a 422 on a flag it did send.
         year = p.year if p.birth_death else None
