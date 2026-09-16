@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { draftIsStale, openDraft, parseDraft, type DraftFields } from './drafts.ts'
+import { draftIsStale, leaveDraft, openDraft, parseDraft, type DraftFields } from './drafts.ts'
 
 const fields: DraftFields = {
   value: '1.000,5', format: 'DECIMAL', title: 'An unfinished entry', body: 'First\n\nSecond',
@@ -54,6 +54,34 @@ test('a stale tab cannot overwrite or remove a newer draft', () => {
   assert.equal(second.write({ ...fields, body: 'Other tab' }), 'conflict')
   assert.equal(second.write(null), 'conflict')
   assert.deepEqual(openDraft('42', () => storage).initial?.fields, fields)
+})
+
+test('navigation reads the final input, even before the autosave delay elapses', () => {
+  const storage = memory()
+  const previous = openDraft(undefined, () => storage)
+  previous.write(fields)
+  const latest = { ...fields, title: 'Last keystroke before Add' }
+  let next: ReturnType<typeof openDraft> | undefined
+  assert.equal(leaveDraft(previous, latest, () => {
+    next = openDraft(undefined, () => storage)
+  }), 'saved')
+  assert.deepEqual(next?.initial?.fields, latest)
+  previous.write(latest) // old form cleanup must not invalidate the new reader
+  assert.equal(next!.write({ ...latest, body: 'Continue in the new form' }), 'saved')
+})
+
+test('navigation stays on the live form when storage is full or another tab wrote', () => {
+  const storage = memory()
+  const current = openDraft(undefined, () => storage)
+  const other = openDraft(undefined, () => storage)
+  const unexpectedMove = () => assert.fail('unfinished input would be lost')
+  const setItem = storage.setItem
+  storage.setItem = () => { throw new Error('quota exceeded') }
+  assert.equal(leaveDraft(current, fields, unexpectedMove), 'unavailable')
+  storage.setItem = setItem
+  other.write({ ...fields, title: 'Other tab' })
+  assert.equal(leaveDraft(current, fields, unexpectedMove), 'conflict')
+  assert.equal(openDraft(undefined, () => storage).initial?.fields.title, 'Other tab')
 })
 
 test('storage refusal is a status, not a crash or a claim that a draft was saved', () => {

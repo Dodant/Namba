@@ -105,7 +105,8 @@ can be hidden by whoever runs the wiki and is never removed by a visitor.
 The main entry form saves unfinished work in this browser: one draft for a new
 entry and one per entry being edited. Reopening the form offers Restore draft
 or Discard draft; a successful publish or save removes that draft. Cancel keeps
-it. Drafts do not sync between devices and are lost if browser data is cleared.
+it. In-app navigation waits for the draft to save; a storage failure leaves the
+form open with its input and an error message. Drafts do not sync between devices and are lost if browser data is cleared.
 They preserve the original edit timestamp and main content, so recovering a
 stale draft requires confirmation even if two edits share a timestamp. Images keep their upload references, not
 copies of the files; an unpublished upload may be collected after a day and

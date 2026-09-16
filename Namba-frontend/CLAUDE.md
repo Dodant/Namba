@@ -1441,7 +1441,11 @@ the entry form, an inner submit bubbles out and publishes the entry.
 
 **The main form autosaves locally (ADR-0031).** `drafts.ts` stores a new-entry
 slot and a slot per edited id under `namba.draft.v1:`. `PostForm` waits 350 ms
-between writes and flushes on unmount, pagehide, backgrounding and beforeunload.
+between writes. The wiki's `createBrowserRouter` supplies `useBlocker`: internal
+navigation flushes before the next page renders, and a failed write resets the
+blocker while preserving the form and showing the storage error. This covers
+Cancel, links, search and browser Back/Forward. Unmount, pagehide, backgrounding
+and beforeunload flush as fallbacks; beforeunload also guards document exits.
 The recovery choice disables the main fields until Restore or Discard; the
 initial server fetch cannot overwrite recovered fields. An unchanged form has
 no draft, Cancel keeps unfinished work, and successful publication, explicit

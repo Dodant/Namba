@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useId, useRef, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useBlocker, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   api, ApiError, errorText, FORMATS, LANG_CODE, langLabel, MONTH_BUCKETS,
   nickname, sectionOf, TAG_MAX, tagLabel, TAGS_PER_POST, validNickname, type Format,
@@ -10,7 +10,7 @@ import {
   monthDays, monthDayValue, monthName, showValue, todayMonthDay,
 } from '../format'
 import { UI_LOCALES } from '../locales'
-import { draftIsStale, openDraft, type DraftFields, type DraftStatus } from '../drafts'
+import { draftIsStale, leaveDraft, openDraft, type DraftFields, type DraftStatus } from '../drafts'
 import ExistingEntries from '../components/ExistingEntries'
 import { NicknameField } from '../components/NicknameField'
 import { useAsync } from '../useAsync'
@@ -270,6 +270,16 @@ function Editor() {
     }, 350)
     return () => window.clearTimeout(timer)
   }, [serialized, ready, draftStore])
+
+  // Block before a new Editor renders: its lazy storage read must see this
+  // form's final write. Cleanup alone runs too late and cannot cancel a move.
+  const blocker = useBlocker(() => !completed.current && latestDraft.current !== null)
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return
+    const status = leaveDraft(draftStore, latestDraft.current, blocker.proceed)
+    setDraftStatus(status)
+    if (status !== 'saved') blocker.reset()
+  }, [blocker, draftStore])
 
   useEffect(() => {
     const flush = () => {

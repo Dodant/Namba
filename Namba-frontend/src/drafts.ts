@@ -21,6 +21,18 @@ export type DraftFields = {
 export type Draft = { savedAt: number; fields: DraftFields }
 export type DraftStatus = 'saved' | 'unavailable' | 'conflict'
 
+/** A route may construct its next form only after this form's final write.
+    Failed writes leave both the route and its live input untouched. */
+export function leaveDraft(
+  store: { write(fields: DraftFields | null): DraftStatus },
+  fields: DraftFields | null,
+  proceed: () => void,
+): DraftStatus {
+  const status = fields ? store.write(fields) : 'saved'
+  if (status === 'saved') proceed()
+  return status
+}
+
 export function draftIsStale(
   base: Pick<DraftFields, 'baseUpdatedAt' | 'baseContent'>,
   updatedAt: string, content: string,
