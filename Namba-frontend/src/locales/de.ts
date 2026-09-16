@@ -94,6 +94,17 @@ export const DE: Messages = {
     noComments: 'Noch keine Kommentare.', deleted: 'gelöscht', editedBy: (name: string) => `bearbeitet von ${name}`,
   },
   form: {
+    draftStale: "Jemand hat diesen Eintrag nach Beginn dieses Entwurfs gespeichert. Ihr Text bleibt erhalten. Drücken Sie erneut auf Änderungen speichern, um die andere Fassung zu überschreiben, oder",
+    draftFound: "Ein unfertiger Entwurf ist vorhanden:",
+    draftRestore: "Entwurf wiederherstellen",
+    draftDiscard: "Entwurf verwerfen",
+    draftHint: "Änderungen werden automatisch in diesem Browser gespeichert.",
+    draftSaving: "Entwurf wird gespeichert…",
+    draftSaved: "Entwurf in diesem Browser gespeichert.",
+    draftUnavailable: "Der Entwurf konnte nicht gespeichert werden. Lassen Sie diese Seite geöffnet und veröffentlichen oder kopieren Sie den Text, bevor Sie sie verlassen.",
+    draftConflict: "Ein anderer Tab hat diesen Entwurf geändert. Lassen Sie diese Seite geöffnet und veröffentlichen oder kopieren Sie den Text, bevor Sie sie verlassen.",
+    draftImageMissing: "Dieses Bild konnte nicht geladen werden. Entfernen Sie es und laden Sie es vor dem Speichern erneut hoch.",
+
     editTitle: 'Eintrag bearbeiten', addTitle: 'Eintrag hinzufügen',
     editIntro: (owner: string) => `Dieser Eintrag kann von allen bearbeitet werden${owner ? `, auch wenn er von ${owner} verfasst wurde` : ''}. Die ersetzte Version bleibt in der Versionsgeschichte und ${owner || 'der ursprüngliche Autor'} wird weiterhin genannt.`,
     addIntro: 'Ein Eintrag pro Bedeutung. Wenn 42 bereits vorhanden ist, wird dieser Eintrag als weitere Bedeutung hinzugefügt, statt den vorhandenen zu ersetzen.',

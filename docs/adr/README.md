@@ -43,3 +43,4 @@ the rule it introduces.
 | [0028](0028-the-plugin-is-the-one-read-that-is-counted.md) | The editor plugin's read is counted, and it is not an event | accepted | 2026-09-11 |
 | [0029](0029-a-birth-or-a-death-is-a-flag.md) | In Memoriam is a flag, not a format | accepted | 2026-09-14, revised 2026-09-15 |
 | [0030](0030-on-this-day-is-a-calendar-role.md) | On this day is a mutually exclusive Calendar role | accepted | 2026-09-15 |
+| [0031](0031-unfinished-forms-stay-in-the-browser.md) | Unfinished main entry forms are browser-local drafts | accepted | 2026-09-16 |

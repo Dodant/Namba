@@ -102,6 +102,15 @@ carry is the three things written *beside* an entry rather than to it: a like, a
 comment, and the "Flag a problem" fold. Nothing there deletes either: an entry
 can be hidden by whoever runs the wiki and is never removed by a visitor.
 
+The main entry form saves unfinished work in this browser: one draft for a new
+entry and one per entry being edited. Reopening the form offers Restore draft
+or Discard draft; a successful publish or save removes that draft. Cancel keeps
+it. Drafts do not sync between devices and are lost if browser data is cleared.
+They preserve the original edit timestamp and main content, so recovering a
+stale draft requires confirmation even if two edits share a timestamp. Images keep their upload references, not
+copies of the files; an unpublished upload may be collected after a day and
+need uploading again. Translation and link panels still save separately.
+
 ### Numbers
 
 A number is a column on a post, not a table — `/n/42` is a query. Each carries a

@@ -93,6 +93,17 @@ export const ES: Messages = {
     noComments: 'Aún no hay comentarios.', deleted: 'eliminado', editedBy: (name: string) => `editado por ${name}`,
   },
   form: {
+    draftStale: "Alguien guardó esta entrada después de iniciar este borrador. Tu texto sigue intacto: pulsa Guardar cambios otra vez para sobrescribir su versión, o",
+    draftFound: "Hay un borrador sin terminar:",
+    draftRestore: "Recuperar borrador",
+    draftDiscard: "Descartar borrador",
+    draftHint: "Los cambios se guardan automáticamente en este navegador.",
+    draftSaving: "Guardando borrador…",
+    draftSaved: "Borrador guardado en este navegador.",
+    draftUnavailable: "No se pudo guardar el borrador. Mantén esta página abierta y publica o copia el texto antes de salir.",
+    draftConflict: "Otra pestaña cambió este borrador. Mantén esta página abierta y publica o copia el texto antes de salir.",
+    draftImageMissing: "No se pudo cargar la imagen. Elimínala y vuelve a subirla antes de guardar.",
+
     editTitle: 'Editar entrada', addTitle: 'Añadir una entrada',
     editIntro: (owner: string) => `Cualquiera puede editar esta entrada${owner ? `, aunque la haya escrito ${owner}` : ''}. La versión reemplazada permanece en el historial y ${owner || 'el autor original'} conserva la autoría.`,
     addIntro: 'Una entrada por significado. Si 42 ya existe, esta entrada se añade como otro significado en lugar de reemplazarlo.',

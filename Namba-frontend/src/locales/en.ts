@@ -119,6 +119,17 @@ export const EN = {
     noComments: 'No comments yet.', deleted: 'deleted', editedBy: (name: string) => `edited by ${name}`,
   },
   form: {
+    draftStale: "Somebody else saved this entry after this draft was started. Nothing you typed is lost — press Save changes again to write your version over theirs, or",
+    draftFound: "Unfinished draft:",
+    draftRestore: "Restore draft",
+    draftDiscard: "Discard draft",
+    draftHint: "Changes are saved automatically in this browser.",
+    draftSaving: "Saving draft…",
+    draftSaved: "Draft saved in this browser.",
+    draftUnavailable: "This browser could not save the draft. Keep this page open and publish or copy your text before leaving.",
+    draftConflict: "Another tab changed this draft. Keep this page open and publish or copy your text before leaving.",
+    draftImageMissing: "This image could not be loaded. Remove it and upload it again before saving.",
+
     editTitle: 'Edit entry', addTitle: 'Add an entry',
     editIntro: (owner: string) => `Anyone can edit this entry${owner ? `, including one written by ${owner}` : ''}. The version you replace stays in the history, and ${owner || 'the original author'} remains credited.`,
     addIntro: 'One entry per meaning. If 42 already exists, this joins it rather than replacing it.',
