@@ -1,5 +1,5 @@
-import { useEffect, useId, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useEffect, useEffectEvent, useId, useRef, useState } from 'react'
+import { Link, useBlocker, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   api, ApiError, errorText, FORMATS, LANG_CODE, langLabel, MONTH_BUCKETS,
   nickname, sectionOf, TAG_MAX, tagLabel, TAGS_PER_POST, validNickname, type Format,
@@ -9,6 +9,8 @@ import {
   canGroupValue, canonicalNumber, cleanNumberInput, fmtDate, monthDay,
   monthDays, monthDayValue, monthName, showValue, todayMonthDay,
 } from '../format'
+import { UI_LOCALES } from '../locales'
+import { draftIsStale, leaveDraft, openDraft, type DraftFields, type DraftStatus } from '../drafts'
 import ExistingEntries from '../components/ExistingEntries'
 import { NicknameField } from '../components/NicknameField'
 import { useAsync } from '../useAsync'
@@ -59,6 +61,14 @@ const examples = (format: string, locale: string) => EXAMPLES[format]
 // there is no thousand in 10:04PM, in 9¾, in UFO or in 12-25
 const groupable = (f: string) =>
   f !== 'MIXED' && f !== 'TIME' && f !== 'ABBR' && f !== 'CALENDAR'
+
+// The API timestamps edits to the second. Comparing the loaded main content
+// as well catches a recovered draft made before a different same-second save.
+// Keep only fields this form can overwrite, not the complete server response.
+const postContent = (p: Post) => JSON.stringify([
+  p.value, p.format, p.title, p.body, p.tags, p.image, p.lang, p.grouped,
+  p.on_this_day, p.in_memoriam, p.year,
+])
 
 /* Which fields somebody else moved while this form was open. Compared
    between the entry as the form was filled from it and the entry as it now
@@ -128,6 +138,13 @@ const langsWith = (cur: string) => (!cur || LANGS.includes(cur) ? LANGS : [cur, 
    useId rather than fixed strings because a form is not guaranteed to be the
    only one on the page -- the translation editor below is a second set. */
 export default function PostForm() {
+  const { id } = useParams()
+  const [params] = useSearchParams()
+  // A different entry must never inherit the previous form's fields or draft.
+  return <Editor key={id ? `edit:${id}` : `new:${params.toString()}`} />
+}
+
+function Editor() {
   const { locale, m } = useUi()
   const { id } = useParams()
   const uid = useId()
@@ -135,6 +152,24 @@ export default function PostForm() {
   const [params] = useSearchParams()
   const nav = useNavigate()
   const editing = Boolean(id)
+  const [draftStore] = useState(() => openDraft(id, () => localStorage))
+  const [pendingDraft, setPendingDraft] = useState(() => {
+    const draft = draftStore.initial
+    return draft && UI_LOCALES.some((l) => l.code === draft.fields.numberLocale)
+      && (!id || (!!draft.fields.baseUpdatedAt && !!draft.fields.baseContent)) && (draft.fields.format === ''
+      || (FORMATS as readonly string[]).includes(draft.fields.format)) ? draft : null
+  })
+  const [draftStatus, setDraftStatus] = useState<DraftStatus | 'idle' | 'saving'>(
+    draftStore.status === 'saved' ? 'idle' : draftStore.status,
+  )
+  const completed = useRef(false)
+  const latestDraft = useRef<DraftFields | null>(null)
+  const baseline = useRef<string | null>(null)
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState<string | null>(null)
+  const [baseContent, setBaseContent] = useState<string | null>(null)
+  const [recoveredLocale, setRecoveredLocale] = useState<typeof locale | null>(null)
+  const numberLocale = recoveredLocale ?? locale
+  const [imageFailed, setImageFailed] = useState(false)
 
   const [value, setValue] = useState(() => showValue(params.get('value') ?? '', false, locale))
   /* ?format= comes from the "+ Add another meaning" pill on /a/UFO and /n/42.
@@ -187,7 +222,7 @@ export default function PostForm() {
      error string: an error is what went wrong with the request, and this is a
      thing that happened to the entry -- the draft is fine, the base has moved,
      and pressing Save again is the answer. */
-  const [clash, setClash] = useState<string[] | null>(null)
+  const [clash, setClash] = useState<string[] | 'draft' | null>(null)
   const [busy, setBusy] = useState(false)
   /* a 5 MB upload over a slow line is several seconds in which the field
      looked exactly as it did before the file was picked */
@@ -198,13 +233,129 @@ export default function PostForm() {
   const [revBump, setRevBump] = useState(0)
   const [revs, setRevs] = useState<Revision[]>([])
   const owner = post?.author ?? ''
-  const canonical = canonicalNumber(value, locale)
+  const canonical = canonicalNumber(value, numberLocale)
   const groupedPreview = showValue(canonical.value, true, locale)
+
+  const fields: DraftFields = {
+    value: format === 'CALENDAR' && !editing ? dateValue : value,
+    format, title, body, tags, image, lang, grouped, onThisDay, inMemoriam,
+    year, author, coined, numberLocale, baseUpdatedAt, baseContent,
+  }
+  const serialized = JSON.stringify(fields)
+  if (baseline.current === null) baseline.current = serialized
+  const ready = !pendingDraft && (!editing || !!post)
+
+  // Debounce typing, but flush the latest committed fields on navigation,
+  // refresh, and backgrounding (mobile browsers may never send beforeunload).
+  useEffect(() => {
+    if (!ready || completed.current) { latestDraft.current = null; return }
+    const next = JSON.parse(serialized) as DraftFields
+    const initial = { ...JSON.parse(baseline.current ?? serialized), numberLocale: next.numberLocale }
+    if (serialized === JSON.stringify(initial)) {
+      // Changing only the interface language is not unfinished writing.
+      baseline.current = serialized
+      if (latestDraft.current) {
+        const status = draftStore.write(null)
+        setDraftStatus(status === 'saved' ? 'idle' : status)
+      }
+      latestDraft.current = null
+      return
+    }
+    latestDraft.current = next
+    setDraftStatus('saving')
+    const timer = window.setTimeout(() => {
+      if (!completed.current && latestDraft.current) {
+        setDraftStatus(draftStore.write(latestDraft.current))
+      }
+    }, 350)
+    return () => window.clearTimeout(timer)
+  }, [serialized, ready, draftStore])
+
+  // Block before a new Editor renders: its lazy storage read must see this
+  // form's final write. Cleanup alone runs too late and cannot cancel a move.
+  const blocker = useBlocker(() => !completed.current && latestDraft.current !== null)
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return
+    const status = leaveDraft(draftStore, latestDraft.current, blocker.proceed)
+    setDraftStatus(status)
+    if (status !== 'saved') blocker.reset()
+  }, [blocker, draftStore])
+
+  useEffect(() => {
+    const flush = () => {
+      if (!completed.current && latestDraft.current) {
+        return draftStore.write(latestDraft.current)
+      }
+    }
+    const hidden = () => {
+      if (document.visibilityState === 'hidden') {
+        const status = flush()
+        if (status) setDraftStatus(status)
+      }
+    }
+    const leaving = (event: BeforeUnloadEvent) => {
+      const status = flush()
+      if (status && status !== 'saved') {
+        event.preventDefault()
+        event.returnValue = ''
+      }
+    }
+    window.addEventListener('pagehide', flush)
+    window.addEventListener('beforeunload', leaving)
+    document.addEventListener('visibilitychange', hidden)
+    return () => {
+      flush()
+      window.removeEventListener('pagehide', flush)
+      window.removeEventListener('beforeunload', leaving)
+      document.removeEventListener('visibilitychange', hidden)
+    }
+  }, [draftStore])
+
+  function restoreDraft() {
+    if (!pendingDraft || (editing && !post)) return
+    const f = pendingDraft.fields
+    setValue(f.value)
+    setFormat(f.format as '' | Format)
+    setTitle(f.title)
+    setBody(f.body)
+    setTags(f.tags)
+    setImage(f.image)
+    setLang(f.lang)
+    setGrouped(f.grouped)
+    setOnThisDay(f.onThisDay)
+    setInMemoriam(f.inMemoriam)
+    setYear(f.year)
+    setAuthor(f.author)
+    setCoined(f.coined)
+    setRecoveredLocale(f.numberLocale as typeof locale)
+    setBaseUpdatedAt(f.baseUpdatedAt)
+    setBaseContent(f.baseContent)
+    setPendingDraft(null)
+    setDraftStatus('saved')
+  }
+
+  function discardDraft() {
+    const status = draftStore.write(null)
+    setDraftStatus(status === 'saved' ? 'idle' : status)
+    if (status === 'saved') setPendingDraft(null)
+  }
 
   /* the fields follow the entry only when the entry itself is replaced -- an
      initial load or a restore. Linking or translating must not walk over a
      title someone is halfway through typing. */
   function fill(p: Post) {
+    baseline.current = JSON.stringify({
+      value: p.value, format: p.format, title: p.title, body: p.body, tags: p.tags,
+      image: p.image, lang: p.lang ?? LANGS[0], grouped: p.grouped,
+      onThisDay: p.on_this_day, inMemoriam: p.in_memoriam,
+      year: p.year == null ? '' : String(p.year), author, coined: '', numberLocale: locale,
+      baseUpdatedAt: p.updated_at, baseContent: postContent(p),
+    } satisfies DraftFields)
+    setBaseUpdatedAt(p.updated_at)
+    setBaseContent(postContent(p))
+    setRecoveredLocale(null)
+    setCoined('')
+    setImageFailed(false)
     setPost(p)
     setValue(p.value)
     setFormat(p.format)
@@ -219,9 +370,12 @@ export default function PostForm() {
     setYear(p.year == null ? '' : String(p.year))
   }
 
+  const onLoaded = useEffectEvent(fill)
   useEffect(() => {
     if (!id) return
-    api.post(id).then(fill, (e) => setErr(errorText(e)))
+    let alive = true
+    api.post(id).then((p) => { if (alive) onLoaded(p) }, (e) => { if (alive) setErr(errorText(e)) })
+    return () => { alive = false }
   }, [id])
 
   useEffect(() => {
@@ -231,8 +385,15 @@ export default function PostForm() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    if (!ready || busy || uploading || imageFailed) return
     if (!validNickname(author)) {
       setErr(m.common.nicknameRequired)
+      return
+    }
+    if (post && draftIsStale({ baseUpdatedAt, baseContent }, post.updated_at, postContent(post))) {
+      setBaseUpdatedAt(post.updated_at)
+      setBaseContent(postContent(post))
+      setClash('draft')
       return
     }
     setBusy(true)
@@ -244,11 +405,12 @@ export default function PostForm() {
       /* Two people can have this form open, filled from the entry as it was
          when each of them opened it -- and it sends every field on every save,
          so without this the second to press Publish writes their copy of the
-         fields they never touched over the other's edit, silently. `post` is
-         the entry as loaded and every panel action below replaces it, so this
-         moves whenever the server says the entry did. */
-      ...(editing && post ? { base_updated_at: post.updated_at } : {}),
-      ...(!editing ? { number_locale: locale } : {}),
+         fields they never touched over the other's edit, silently. A recovered
+         draft carries the timestamp it was written against, even though `post`
+         has just loaded the current version. Panel writes only advance a base
+         that was already current. */
+      ...(editing && post ? { base_updated_at: baseUpdatedAt ?? post.updated_at } : {}),
+      ...(!editing ? { number_locale: numberLocale } : {}),
       format: format || null,
       title,
       body,
@@ -271,6 +433,9 @@ export default function PostForm() {
       const saved = editing
         ? await api.update(Number(id), payload)
         : await api.create(payload)
+      completed.current = true
+      latestDraft.current = null
+      draftStore.write(null)
       nav(`/p/${saved.id}`)
     } catch (e) {
       /* A 409 is the API refusing a save built on a copy of the entry that
@@ -282,7 +447,9 @@ export default function PostForm() {
         try {
           const fresh = await api.post(Number(id))
           setPost(fresh)
-          setClash(whatMoved(post, fresh, m))
+          setBaseUpdatedAt(fresh.updated_at)
+          setBaseContent(postContent(fresh))
+          setClash(baseUpdatedAt !== post.updated_at ? 'draft' : whatMoved(post, fresh, m))
         } catch {
           setErr(errorText(e))   // the entry is unreachable; say what it said
         }
@@ -300,11 +467,27 @@ export default function PostForm() {
     setUploading(true)
     try {
       setImage((await api.upload(file)).url)
+      setImageFailed(false)
     } catch (e) {
       setErr(errorText(e))
     } finally {
       setUploading(false)
     }
+  }
+
+  function acceptPanelWrite(next: Post) {
+    // A panel write advances a current base, but never a restored stale one.
+    if (post && !draftIsStale({ baseUpdatedAt, baseContent }, post.updated_at, postContent(post))) {
+      setBaseUpdatedAt(next.updated_at)
+      setBaseContent(postContent(next))
+      if (baseline.current) {
+        const initial = JSON.parse(baseline.current) as DraftFields
+        initial.baseUpdatedAt = next.updated_at
+        initial.baseContent = postContent(next)
+        baseline.current = JSON.stringify(initial)
+      }
+    }
+    setPost(next)
   }
 
   /* every panel action returns the entry as it now stands, so they all land
@@ -313,8 +496,15 @@ export default function PostForm() {
     setErr('')
     try {
       const next = await fn()
-      if (replaces) fill(next)
-      else setPost(next)
+      if (replaces) {
+        fill(next)
+        latestDraft.current = null
+        setPendingDraft(null)
+        const status = draftStore.write(null)
+        setDraftStatus(status === 'saved' ? 'idle' : status)
+      } else {
+        acceptPanelWrite(next)
+      }
     } catch (e) {
       setErr(errorText(e))
     }
@@ -339,6 +529,30 @@ export default function PostForm() {
           <Link to="/guide">{m.form.guidelines}</Link>.
         </p>
 
+        <div className="draft-notice">
+          {pendingDraft ? (
+            <>
+              <p>{m.form.draftFound}{' '}<strong>{pendingDraft.fields.title || pendingDraft.fields.value}</strong></p>
+              <div className="actions">
+                <button type="button" className="btn" onClick={restoreDraft} disabled={editing && !post}>
+                  {m.form.draftRestore}
+                </button>
+                <button type="button" className="btn" onClick={discardDraft}>{m.form.draftDiscard}</button>
+              </div>
+            </>
+          ) : (
+            <p className="fine" role="status">
+              {draftStatus === 'saved' ? m.form.draftSaved
+                : draftStatus === 'saving' ? m.form.draftSaving : m.form.draftHint}
+            </p>
+          )}
+          {(draftStatus === 'unavailable' || draftStatus === 'conflict') && (
+            <p className="err" role="alert">
+              {draftStatus === 'conflict' ? m.form.draftConflict : m.form.draftUnavailable}
+            </p>
+          )}
+        </div>
+        <fieldset className="form-fields" disabled={!ready || busy}>
         <div className="row">
           {/* An entry is a meaning of one number, and /n/42 is a query on
               this column -- so retyping it here would not correct an entry,
@@ -444,7 +658,7 @@ export default function PostForm() {
               inputMode={format === 'INTEGER' ? 'numeric' : format === 'DECIMAL' ? 'decimal' : undefined}
               onChange={(e) => {
                 const kept = format === 'INTEGER' || format === 'DECIMAL'
-                  ? cleanNumberInput(e.target.value, locale, format === 'DECIMAL')
+                  ? cleanNumberInput(e.target.value, numberLocale, format === 'DECIMAL')
                   : KEEP[format]
                     ? e.target.value.replace(KEEP[format], '')
                     : e.target.value
@@ -453,9 +667,10 @@ export default function PostForm() {
                    the /a/ reads compare case-insensitively -- so the spelling
                    is what this writer meant, not a claim on the address */
                 setValue(kept)
+                if (!kept) setRecoveredLocale(null)
                 /* Typing the locale's grouping marks is itself a request to
                    keep displaying them, just as typing 1,000 always was. */
-                if (format !== 'ABBR' && canonicalNumber(kept, locale).grouped) {
+                if (format !== 'ABBR' && canonicalNumber(kept, numberLocale).grouped) {
                   setGrouped(true)
                 }
               }}
@@ -467,7 +682,7 @@ export default function PostForm() {
                    on screen even when the reader accepts the one it opened on */
                 value={format === 'CALENDAR' ? dateValue : value}
                 format={format}
-                locale={locale}
+                locale={numberLocale}
               />
             )}
             {/* under the number it rewrites, not a third column in the row:
@@ -636,12 +851,12 @@ export default function PostForm() {
 
         {post && (
           <>
-            <Languages post={post} lang={lang} onSaved={setPost} onError={setErr} bumpRevs={() => setRevBump((n) => n + 1)} />
+            <Languages post={post} lang={lang} onSaved={acceptPanelWrite} onError={setErr} bumpRevs={() => setRevBump((n) => n + 1)} />
 
             <LinkPanel
               post={post}
               author={author}
-              onLinked={setPost}
+              onLinked={acceptPanelWrite}
               onError={setErr}
             />
           </>
@@ -727,8 +942,8 @@ export default function PostForm() {
           </label>
           {image ? (
             <div className="file-row">
-              <img className="thumb" src={image} alt="" decoding="async" />
-              <button type="button" className="pill" onClick={() => setImage(null)}>
+              <img className="thumb" src={image} alt="" decoding="async" onError={() => setImageFailed(true)} />
+              <button type="button" className="pill" onClick={() => { setImage(null); setImageFailed(false) }}>
                 {m.form.remove}
               </button>
             </div>
@@ -751,6 +966,8 @@ export default function PostForm() {
           )}
         </div>
 
+        {imageFailed && <p className="err" role="alert">{m.form.draftImageMissing}</p>}
+
         <NicknameField
           id={fid('author')}
           label={m.form.nickname}
@@ -772,7 +989,7 @@ export default function PostForm() {
             page already has one voice for "this needs you". */}
         {clash && (
           <p className="err" role="alert">
-            {m.form.conflict(clash)}{' '}
+            {clash === 'draft' ? m.form.draftStale : m.form.conflict(clash)}{' '}
             <a href={`/p/${id}`} target="_blank" rel="noreferrer">
               {m.form.conflictCompare}
             </a>
@@ -782,7 +999,7 @@ export default function PostForm() {
         <div className="actions">
           {/* the button went grey and kept its old label, which on a slow save
               is a form that looks broken rather than busy */}
-          <button className="btn primary" disabled={busy}>
+          <button className="btn primary" disabled={busy || uploading || imageFailed}>
             {busy
               ? editing
                 ? m.form.saving
@@ -802,6 +1019,7 @@ export default function PostForm() {
         <p className="fine">
           {m.form.cc0(editing)}
         </p>
+        </fieldset>
       </form>
 
       {post && (
@@ -834,6 +1052,7 @@ export default function PostForm() {
                   <button
                     type="button"
                     className="pill"
+                    disabled={!ready || busy}
                     onClick={() =>
                       run(
                         () => api.restore(post.id, r.id, nickname.get()),

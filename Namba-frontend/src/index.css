@@ -1270,8 +1270,8 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 @media (max-width: 560px) {
   .spacer { flex: 1 0 100%; }
 }
-.form > .actions { margin: 26px 0 0; }
-.form > .actions .btn { padding: 10px 18px; }
+.form-fields > .actions { margin: 26px 0 0; }
+.form-fields > .actions .btn { padding: 10px 18px; }
 
 /* what the entry is filed under and its response at one end, and what you can
    do about it -- the credits toggle and Edit -- at the other */
@@ -1978,3 +1978,8 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
               border-color 0.12s ease, color 0.12s ease;
 }
 .to-top.shown { opacity: 1; visibility: visible; }
+
+/* The recovery choice precedes the disabled form it will fill. */
+.form-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.draft-notice { margin-bottom: 24px; }
+.draft-notice p { overflow-wrap: anywhere; }

@@ -5,10 +5,10 @@ React 19 + Vite + TypeScript. **Two documents**: the wiki (`index.html` →
 `src/api.ts` plus five pages and two components; the back office is its own
 shell, its own stylesheet and a page per thing an operator does.
 
-Three files at the root of `src/` are not components, and they split three ways
-worth knowing. **`api.ts` is the wire**: the vocabularies the backend mirrors,
+The core modules at the root of `src/` split by responsibility. **`api.ts` is the wire**: the vocabularies the backend mirrors,
 the shapes it answers with, the client that talks to it, and the browser-local
-state that stands in for accounts. **`format.ts` is the other direction**: how
+state that stands in for accounts. **`drafts.ts`** holds the versioned unfinished
+entry form and its storage checks. **`format.ts` is the other direction**: how
 a stored string reads on screen and how a typed one comes back — a number's
 punctuation, a numeral's size class, a date's distance from now, a markdown
 body read as prose. It imports nothing, which is what makes the seam real.
@@ -216,9 +216,9 @@ npx tsc -b --noEmit && npx oxlint src && npm test && npm run build  # all four m
 ```
 
 **`npm test` is `node --test` and nothing else** — no vitest, no jsdom, no
-config. It covers `format.ts`, which is every pure function in the front end:
-a value's punctuation, its size class, a date's distance, a body read back as
-prose, and the regex that lights a number up inside a title. Those take a
+config. It covers the formatting functions in `format.ts` and the draft storage
+contract in `drafts.ts`. The formatting checks cover a value's punctuation, its
+size class, a date's distance, a body read back as prose, and the regex that lights a number up inside a title. Those take a
 string and return one, so there is nothing to render and nothing to mock, and
 Node has run TypeScript directly since type stripping stopped being a flag.
 `erasableSyntaxOnly` in the tsconfigs is what keeps that true.
@@ -1439,16 +1439,47 @@ entry, so those `setPost()` and leave a half-typed title alone. `LinkPanel` and
 `TranslationEditor` are deliberately **not** `<form>` elements — nested inside
 the entry form, an inner submit bubbles out and publishes the entry.
 
+**The main form autosaves locally (ADR-0031).** `drafts.ts` stores a new-entry
+slot and a slot per edited id under `namba.draft.v1:`. `PostForm` waits 350 ms
+between writes. The wiki's `createBrowserRouter` supplies `useBlocker`: internal
+navigation flushes before the next page renders, and a failed write resets the
+blocker while preserving the form and showing the storage error. This covers
+Cancel, links, search and browser Back/Forward. Unmount, pagehide, backgrounding
+and beforeunload flush as fallbacks; beforeunload also guards document exits.
+The recovery choice disables the main fields until Restore or Discard; the
+initial server fetch cannot overwrite recovered fields. An unchanged form has
+no draft, Cancel keeps unfinished work, and successful publication, explicit
+discard or a server revision restore clears the slot. A storage failure is
+visible; comparing the last observed value before a write or removal detects
+another tab's intervening save. This is a best-effort check, not a transaction
+across tabs. The draft tests exercise corruption, storage refusal, separate
+entry slots, stale-tab writes and preservation of the original timestamp.
+
+A draft includes the main fields, unfinished category text, nickname, numeric
+input locale, `baseUpdatedAt` and the original main content; translation and link editors remain separate
+server writes. The numeric input locale follows the recovered text so changing
+the interface language while away cannot reinterpret `1.000,5`. Calendar
+values keep the actual selected date rather than re-evaluating today's date on
+recovery. Images are upload references: the server cannot see local drafts,
+so unpublished uploads still expire under its normal collector. A failed image
+preview offers removal and re-upload before publishing.
+
 **A 409 keeps the draft.** The API refuses a save built on a copy of the entry
 somebody has since replaced (`base_updated_at`), and the refusal is the one
 answer this form does not simply print. It fetches the entry as it now stands,
-`setPost()`s it — which moves `base_updated_at` on, so the next press lands —
+moves `baseUpdatedAt` on and `setPost()`s it, so the next press lands,
 and names the fields that moved, comparing the entry the form was *filled*
 from against the entry as it is now. Not against what is typed here: the useful
 sentence is "they changed the title", not "your title differs from theirs".
 Nothing in the form is touched, so pressing Save again writes the draft over
 theirs, and the notice links to the entry for a reader who would rather read
 first.
+
+`baseUpdatedAt` is separate from `post`: recovering a draft must not adopt the
+freshly fetched entry's timestamp. The stored main content is compared as well,
+because different server edits can share a second-resolution timestamp. A stale
+recovered draft gets the compare-and-save-again notice before submitting. A
+translation or link write advances only an already-current base and leaves the fields alone.
 
 It does not merge. Sending only the fields this form actually changed would
 let two people editing different fields both land, and that is a decision

@@ -97,6 +97,17 @@ export const FR: Messages = {
     deleted: 'supprimé', editedBy: (name: string) => `modifié par ${name}`,
   },
   form: {
+    draftStale: "Quelqu’un a enregistré cette entrée après le début de ce brouillon. Votre texte est conservé : appuyez à nouveau sur Enregistrer les modifications pour remplacer sa version, ou",
+    draftFound: "Un brouillon est en attente :",
+    draftRestore: "Restaurer le brouillon",
+    draftDiscard: "Supprimer le brouillon",
+    draftHint: "Les modifications sont enregistrées automatiquement dans ce navigateur.",
+    draftSaving: "Enregistrement du brouillon…",
+    draftSaved: "Brouillon enregistré dans ce navigateur.",
+    draftUnavailable: "Impossible d’enregistrer le brouillon. Gardez cette page ouverte et publiez ou copiez le texte avant de partir.",
+    draftConflict: "Un autre onglet a modifié ce brouillon. Gardez cette page ouverte et publiez ou copiez le texte avant de partir.",
+    draftImageMissing: "Impossible de charger cette image. Supprimez-la et téléversez-la à nouveau avant d’enregistrer.",
+
     editTitle: 'Modifier l’entrée', addTitle: 'Ajouter une entrée',
     editIntro: (owner: string) => `Tout le monde peut modifier cette entrée${owner ? `, même si elle a été écrite par ${owner}` : ''}. La version remplacée reste dans l’historique et ${owner || 'l’auteur d’origine'} conserve son crédit.`,
     addIntro: 'Une entrée par signification. Si 42 existe déjà, cette entrée ajoute une autre signification au lieu de la remplacer.',

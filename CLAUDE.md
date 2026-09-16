@@ -574,6 +574,13 @@ opposite, and only its regex says `[0-9]`.
   and every parameter a read filters on is folded to NFC by `db.nfc()`, so
   composed and decomposed Korean are one tag, one language and one search hit
   (ADR-0020).
+- **Unfinished entry forms stay in the browser.** `drafts.ts` stores only the
+  main form's fields, numeric input locale, original main content and edit
+  timestamp in a versioned localStorage key. Recovery is explicit, publication clears the
+  draft, and a stale recovered edit still meets the API's 409 guard. There is
+  no draft endpoint or reader identity. Uploaded files retain the existing
+  collection policy (ADR-0031).
+
 ## Working here
 
 Prefer editing what exists over adding files — this is deliberately a small

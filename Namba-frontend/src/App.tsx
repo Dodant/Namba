@@ -3,8 +3,8 @@ import {
   type ReactNode,
 } from 'react'
 import {
-  BrowserRouter, Link, Route, Routes, useLocation, useNavigate, useNavigationType,
-  useParams, useSearchParams,
+  createBrowserRouter, RouterProvider, Link, Route, Routes, useLocation,
+  useNavigate, useNavigationType, useParams, useSearchParams,
 } from 'react-router-dom'
 import { api, contentLanguage } from './api'
 import { canonicalNumber, monthDay, showValue } from './format'
@@ -589,40 +589,38 @@ function Wiki() {
   }
 
   return (
-    <BrowserRouter>
-      <div className="wrap">
-        <ScrollTop />
-        <SiteTitle />
-        <Header lang={lang} />
-        <main>
-          <Guarded>
-            <Routes>
-              <Route path="/" element={<Home lang={lang} />} />
-              <Route path="/n/:value" element={<Browse mode="number" lang={lang} />} />
-              <Route path="/a/:value" element={<Browse mode="abbr" lang={lang} />} />
-              <Route path="/c/:value" element={<CalendarPage lang={lang} />} />
-              <Route path="/t/:tag" element={<Browse mode="tag" lang={lang} />} />
-              <Route path="/search" element={<Browse mode="search" lang={lang} />} />
-              <Route path="/random" element={<Random />} />
-              <Route path="/p/:id" element={<PostPage contentLang={lang} />} />
-              <Route path="/p/:id/edit" element={<PostForm />} />
-              <Route path="/new" element={<PostForm />} />
-              <Route path="/guide" element={<Guide />} />
-              <Route
-                path="*"
-                element={
-                  <p className="empty">
-                    <NotFound />
-                  </p>
-                }
-              />
-            </Routes>
-          </Guarded>
-        </main>
-        <Footer lang={lang} onLang={pickLang} />
-        <ToTop />
-      </div>
-    </BrowserRouter>
+    <div className="wrap">
+      <ScrollTop />
+      <SiteTitle />
+      <Header lang={lang} />
+      <main>
+        <Guarded>
+          <Routes>
+            <Route path="/" element={<Home lang={lang} />} />
+            <Route path="/n/:value" element={<Browse mode="number" lang={lang} />} />
+            <Route path="/a/:value" element={<Browse mode="abbr" lang={lang} />} />
+            <Route path="/c/:value" element={<CalendarPage lang={lang} />} />
+            <Route path="/t/:tag" element={<Browse mode="tag" lang={lang} />} />
+            <Route path="/search" element={<Browse mode="search" lang={lang} />} />
+            <Route path="/random" element={<Random />} />
+            <Route path="/p/:id" element={<PostPage contentLang={lang} />} />
+            <Route path="/p/:id/edit" element={<PostForm />} />
+            <Route path="/new" element={<PostForm />} />
+            <Route path="/guide" element={<Guide />} />
+            <Route
+              path="*"
+              element={
+                <p className="empty">
+                  <NotFound />
+                </p>
+              }
+            />
+          </Routes>
+        </Guarded>
+      </main>
+      <Footer lang={lang} onLang={pickLang} />
+      <ToTop />
+    </div>
   )
 }
 
@@ -694,10 +692,14 @@ function Guarded({ children }: { children: ReactNode }) {
   return <Latch key={pathname}>{children}</Latch>
 }
 
+// The data router supplies navigation blockers for the unfinished entry form.
+// Keep the existing page routes and language state inside the wiki shell.
+const router = createBrowserRouter([{ path: '*', element: <Wiki /> }])
+
 export default function App() {
   return (
     <UiProvider>
-      <Wiki />
+      <RouterProvider router={router} />
     </UiProvider>
   )
 }

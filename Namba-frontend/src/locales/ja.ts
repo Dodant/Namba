@@ -83,6 +83,17 @@ export const JA: Messages = {
     noComments: 'コメントはまだありません。', deleted: '削除済み', editedBy: (name: string) => `${name}が編集`,
   },
   form: {
+    draftStale: "この下書きの作成後に他の人が保存しました。入力内容は残っています。「変更を保存」をもう一度押すと上書きできます。または",
+    draftFound: "書きかけの下書きがあります：",
+    draftRestore: "下書きを復元",
+    draftDiscard: "下書きを削除",
+    draftHint: "入力内容はこのブラウザーに自動保存されます。",
+    draftSaving: "下書きを保存中…",
+    draftSaved: "このブラウザーに下書きを保存しました。",
+    draftUnavailable: "下書きを保存できませんでした。このページを開いたまま、離れる前に公開するか内容をコピーしてください。",
+    draftConflict: "別のタブでこの下書きが変更されました。離れる前に公開するか内容をコピーしてください。",
+    draftImageMissing: "画像を読み込めませんでした。保存する前に画像を削除し、再度アップロードしてください。",
+
     editTitle: '項目を編集', addTitle: '項目を追加',
     editIntro: (owner: string) => `誰でもこの項目を編集できます${owner ? `。最初の作成者は${owner}です` : ''}。置き換えられた版は履歴に残り、${owner || '最初の作成者'}のクレジットも維持されます。`,
     addIntro: '1項目につき1つの意味を記載します。42がすでに存在していても、置き換えずに新しい意味として追加されます。',

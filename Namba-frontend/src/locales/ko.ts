@@ -81,6 +81,17 @@ export const KO: Messages = {
     noComments: '아직 댓글이 없습니다.', deleted: '삭제됨', editedBy: (name: string) => `${name} 수정`,
   },
   form: {
+    draftStale: "이 초안을 작성한 뒤 다른 사람이 저장했습니다. 작성하신 내용은 그대로 있습니다 — 변경 내용 저장을 다시 누르면 그 위에 저장되고,",
+    draftFound: "작성 중이던 초안이 있습니다:",
+    draftRestore: "초안 복구",
+    draftDiscard: "초안 삭제",
+    draftHint: "작성 내용은 이 브라우저에 자동으로 임시 저장됩니다.",
+    draftSaving: "임시 저장 중…",
+    draftSaved: "이 브라우저에 임시 저장했습니다.",
+    draftUnavailable: "초안을 저장하지 못했습니다. 이 페이지를 열어 두고, 나가기 전에 게시하거나 내용을 복사해 주세요.",
+    draftConflict: "다른 탭에서 이 초안을 변경했습니다. 이 페이지를 열어 두고, 나가기 전에 게시하거나 내용을 복사해 주세요.",
+    draftImageMissing: "이미지를 불러오지 못했습니다. 저장하기 전에 이미지를 제거하고 다시 업로드해 주세요.",
+
     editTitle: '엔트리 수정', addTitle: '엔트리 추가',
     editIntro: (owner: string) => `누구나 이 엔트리를 수정할 수 있습니다${owner ? `. 최초 작성자는 ${owner}입니다` : ''}. 교체되는 버전은 기록에 남고 ${owner || '최초 작성자'} 표시는 유지됩니다.`,
     addIntro: '하나의 엔트리에는 하나의 의미를 작성합니다. 42가 이미 있어도 기존 내용을 교체하지 않고 새 의미로 추가됩니다.',

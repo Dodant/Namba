@@ -83,6 +83,17 @@ export const ZH_HANS: Messages = {
     noComments: '还没有评论。', deleted: '已删除', editedBy: (name: string) => `${name}编辑`,
   },
   form: {
+    draftStale: "此草稿开始后，其他人保存了此条目。你的输入仍然保留。再次点击“保存更改”将覆盖对方的版本，或",
+    draftFound: "有未完成的草稿：",
+    draftRestore: "恢复草稿",
+    draftDiscard: "删除草稿",
+    draftHint: "输入内容会自动保存在此浏览器中。",
+    draftSaving: "正在保存草稿…",
+    draftSaved: "草稿已保存在此浏览器中。",
+    draftUnavailable: "无法保存草稿。请保持此页面打开，离开前发布或复制内容。",
+    draftConflict: "另一个标签页修改了此草稿。请保持此页面打开，离开前发布或复制内容。",
+    draftImageMissing: "无法加载图片。保存前请移除图片并重新上传。",
+
     editTitle: '编辑条目', addTitle: '添加条目',
     editIntro: (owner: string) => `任何人都可以编辑此条目${owner ? `。最初的创建者是${owner}` : ''}。被替换的版本会保留在历史记录中，${owner || '最初创建者'}的署名也会保留。`,
     addIntro: '每个条目只记录一个含义。即使42已经存在，新内容也会作为另一种含义加入，而不会替换原条目。',

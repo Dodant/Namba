@@ -12,10 +12,10 @@ test would, and every route the panel calls is covered on the API side.
 ## Decision
 
 `npm test` is `node --test` over `src/**/*.test.ts` and nothing else. It covers
-`format.ts`, which is every pure function in the front end: functions that
-take a string and return one, so there is nothing to render and nothing to
-mock. `erasableSyntaxOnly` keeps the sources runnable by Node directly. The
-typecheck is `tsc -b --noEmit`; a bare `tsc --noEmit` checks nothing, because
+the pure formatting functions in `format.ts` and the draft storage
+contract in `drafts.ts`. Draft storage takes a small storage interface, so the
+checks can model refusal and competing writes without a DOM.
+`erasableSyntaxOnly` keeps the sources runnable by Node directly. The typecheck is `tsc -b --noEmit`; a bare `tsc --noEmit` checks nothing, because
 `tsconfig.json` is a solution file.
 
 Typed message maps stand in for tests elsewhere: `Messages` is `typeof EN`,
@@ -31,3 +31,5 @@ so a locale missing a key does not compile, and `GUIDES` is
 
 - 2026-08-18: no test runner.
 - 2026-09-09 (`1d8059e`): `node --test` for the pure functions.
+
+- 2026-09-16: draft storage checks use the same Node runner (ADR-0031).
