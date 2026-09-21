@@ -534,7 +534,7 @@ function IndexEntry(
           : entry.year != null && <span className="yr">{entry.year}</span>}
         <span className="ix-t">{mark(entry.title)}</span>
         {entry.image && <Photo label={m.home.hasImage} />}
-        {entry.body && <span className="ix-b"> — {mark(plain(entry.body))}</span>}
+        {entry.body && <span className="ix-b"> — {mark(plain(entry.body.split(/\r\n|\r|\n/, 1)[0]))}</span>}
       </Link>
       {/* The way through when the line was cut, and it opens the line rather
           than going anywhere -- the title next to it is already the link to
