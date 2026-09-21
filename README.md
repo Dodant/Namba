@@ -38,7 +38,8 @@ cd Namba-backend
 ```
 
 An operator cannot sign in with a password alone. `totp-enroll` needs an
-interactive terminal, prints a manual setup key, and commits the enrollment only
+interactive terminal for both stdin and stdout (no output redirection or pipes),
+prints a manual setup key, and commits the enrollment only
 after a current six-digit code proves the authenticator received it. Running the
 same command again replaces a lost phone's key and revokes every live session.
 There is deliberately no browser recovery route.

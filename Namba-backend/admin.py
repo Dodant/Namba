@@ -352,10 +352,11 @@ if __name__ == "__main__":
             set_password(rest[0], _ask_password())
             print(f"changed, and every live session for {rest[0]} is gone")
         elif cmd == "totp-enroll" and rest:
-            if not sys.stdin.isatty():
+            # Interactive input alone does not prevent stdout redirection.
+            if not (sys.stdin.isatty() and sys.stdout.isatty()):
                 raise SystemExit(
-                    "totp-enroll needs an interactive terminal so its setup key "
-                    "does not land in deployment logs.\n"
+                    "totp-enroll requires interactive stdin and stdout; "
+                    "do not redirect or pipe its output.\n"
                     "Run: docker compose exec namba python admin.py totp-enroll "
                     f"{rest[0]}"
                 )

@@ -1499,6 +1499,33 @@ def test_password_hashing():
     assert auth.hotp(secret, 59 // 30, digits=8) == "94287082"
 
 
+def test_totp_enrollment_requires_terminal_output():
+    """Reject redirected streams before accessing an account or deriving a key."""
+    import io
+    import runpy
+    import sys
+    from unittest.mock import patch
+
+    for input_tty, output_tty in ((True, False), (False, True), (False, False)):
+        stdin, stdout = io.StringIO(), io.StringIO()
+        with patch.object(stdin, "isatty", return_value=input_tty), \
+             patch.object(stdout, "isatty", return_value=output_tty), \
+             patch.object(sys, "stdin", stdin), \
+             patch.object(sys, "stdout", stdout), \
+             patch.object(sys, "argv", [admin.__file__, "totp-enroll", "cli@namba.test"]), \
+             patch.object(db, "connect") as connect, \
+             patch.object(auth, "totp_setup_key") as setup_key:
+            try:
+                runpy.run_path(admin.__file__, run_name="__main__")
+            except SystemExit as exc:
+                assert "requires interactive stdin and stdout" in str(exc)
+            else:
+                raise AssertionError("enrollment accepted a redirected stream")
+            connect.assert_not_called()
+            setup_key.assert_not_called()
+            assert stdout.getvalue() == ""
+
+
 def test_admin_accounts():
     """The only login in the wiki. Readers still have none: there is no signup
     route to find, and the account this uses can only have come from a shell."""
