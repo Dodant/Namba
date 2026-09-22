@@ -18,6 +18,15 @@
   /* the old terracotta. It now has exactly two jobs: the number match inside
      an index title, and the controls that destroy something */
   --hit: #b4472b;
+  /* and the ground those controls stand on: a fill behind a message, a border
+     on a button, the pair --accent-soft and --line are for everything that is
+     not destroying something. They were spelled out until the two rules that
+     use them had grown a trailing dark-mode query each, which is a colour
+     asking to be a token in the only way a colour can. admin.css carries the
+     same two names at its own values on purpose -- see its note in CLAUDE.md
+     -- so these are not a pair to go and sync. */
+  --hit-soft: #f6e9e4;    /* the fill behind a hit message */
+  --hit-line: #e3d3cd;    /* the border on a control that destroys */
   /* the one cool colour in a warm palette, and it has one job: the day it is
      on the Calendar index. Nothing else on the page is coloured by when it is
      being read, so a colour nothing else uses is what says so */
@@ -90,6 +99,8 @@
     /* #f7f4ec on this lighter green is 2.6:1; the dark ink is 6.8:1 */
     --on-accent: #14140f;
     --hit: #e07a56;
+    --hit-soft: #33241d;
+    --hit-line: #4a352c;
     --today: #7db3e0;
     /* faint and fainter invert rather than carry over: on a dark ground
        "quieter" means darker, and the light pair is pinned against a light
@@ -1880,15 +1891,17 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 
 /* terracotta, and it fills on hover: the two controls that destroy something
    are the only ones that look like this */
-.btn.danger { border-color: #e3d3cd; background: transparent; color: var(--hit); padding: 10px 18px; }
-.btn.danger:hover { background: var(--hit); border-color: var(--hit); color: var(--bg); }
-@media (prefers-color-scheme: dark) { .btn.danger { border-color: #4a352c; } }
+.btn.danger { border-color: var(--hit-line); background: transparent; color: var(--hit); padding: 10px 18px; }
+/* --on-accent rather than --bg, which is what this said while the two were
+   equal in both themes here: the token means the ink that sits on a filled
+   control, and a filled control is what this becomes on hover. --bg means the
+   page, and the page is what this button is no longer showing. */
+.btn.danger:hover { background: var(--hit); border-color: var(--hit); color: var(--on-accent); }
 
 .err {
-  color: var(--hit); background: #f6e9e4; padding: 9px 12px;
+  color: var(--hit); background: var(--hit-soft); padding: 9px 12px;
   border-radius: var(--radius); margin: 14px 0; font-size: var(--fs-fine);
 }
-@media (prefers-color-scheme: dark) { .err { background: #33241d; } }
 /* The link in one of these is the only thing on the page to do next --
    "Add the first one.", "Give it a meaning.", "Back to the index." -- and it
    inherited --muted off the paragraph with no underline, so it looked like
