@@ -155,7 +155,11 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
         <p className="empty">
           {about ? (
             <>
-              {m.browse.emptyValue(value)}{' '}
+              {/* the same spelling the heading above it uses, or the page
+                  says "January 2" and then "Nothing filed under 01-02 yet".
+                  Only /c/ moves: an empty page has no rows to read grouping
+                  off, so a number is ungrouped here either way. */}
+              {m.browse.emptyValue(shownValue)}{' '}
               <Link to={addHref}>{m.browse.giveMeaning}</Link>
             </>
           ) : mode === 'tag' ? (
