@@ -59,10 +59,14 @@ export default function Browse({ mode, lang }: { mode: Mode; lang: string }) {
     value,
     !!posts.data?.length && posts.data.every((p) => p.grouped),
     locale,
-    /* off the rows rather than off the mode: an empty /c/12-25 has no entry to
-       read a format from and the raw value is the honest thing to show, and a
-       date typed at /n/ is a Mixed entry that must not read as one */
-    posts.data?.[0]?.format,
+    /* the section's own format first, the rows' second. /a/ and /c/ are the
+       two sections that exist because of their format, so the mode settles it
+       and an empty /c/01-02 still reads "January 2" rather than falling back
+       to the stored spelling the way it did while this was asked of the rows
+       alone -- the same reason ABOUT_VALUE takes the Add pill off the mode.
+       /n/ holds four formats and so names none here, and keeps asking the
+       rows: a date typed at /n/ is a Mixed entry that must not read as one. */
+    about?.add ?? posts.data?.[0]?.format,
   )
   /* what /new needs to put the reader back in the section they came from --
      without it, "UFO" typed into a form with Auto-detect is right by luck */
