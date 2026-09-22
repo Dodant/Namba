@@ -333,6 +333,23 @@ sanitiser config to get wrong.
   They will look too dark next to a mockup that never had to be
   read at 10px; that is the trade, and lightening one is a regression, not a
   polish. Four legible greys under `--ink-soft` is a narrow band on purpose.
+- **A colour that has to turn over with the theme is a token, and there is one
+  `prefers-color-scheme` block.** A second one is the symptom rather than the
+  fix: it is a literal somewhere else being patched for the dark half, and the
+  patch sits nowhere near the rule it is for. That is how `--hit-soft` and
+  `--hit-line` — the fill behind a hit message and the border on a control
+  that destroys — were found, each with a trailing query of its own, and how
+  `--shadow` was. So the block swaps the palette and nothing else, and a new
+  one means a colour wants a name.
+  `--shadow` is the whole treatment of a box that floats over the page —
+  the search suggestions, a "See more" popover, the select's picker — minus
+  the three parts that carry over by themselves. `--panel`, `--line` and
+  `--radius` each turn over on their own and a shadow does not: written as a
+  mix of `--ink` it comes out a pale halo once `--ink` is cream, and written
+  as ink itself it stays black and does nothing on a dark page. Its dark value
+  is black rather than a tint of the palette, because a shadow reads on that
+  ground only by being darker than it. **A fourth floating layer takes the
+  token, not a fourth recipe.**
 - Every control the reader types in or presses is a capsule —
   `border-radius: 999px` — buttons, chips, selects and inputs alike. The
   textarea is the one exception: at 104px tall a 999px radius is a half-circle
