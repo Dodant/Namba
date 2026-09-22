@@ -1854,7 +1854,12 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 @media (pointer: coarse) {
   .acts { --ctl-font: 16px; }
   .search input { width: 172px; }
-  .field select, .field .coin input, .panel-find input { font-size: 16px; }
+  /* every select, not the ones a list happened to name: iOS zooms on a select
+     the same way it zooms on a text field, and the two the footer draws are on
+     every page in the wiki. An enumeration here had covered .field select
+     alone, so the interface picker -- the first control a reader who does not
+     read English touches -- was the one left zooming the page in. */
+  select, .field .coin input, .panel-find input { font-size: 16px; }
   .field.check input[type="checkbox"],
   .field.check input[type="radio"] { width: 20px; height: 20px; }
   /* the rule box sits at the top of its sentence and was nudged 2px down to
