@@ -46,6 +46,25 @@ a distinct overlay or compact state rather than acting as general controls.
 They define the same custom property names with different values on purpose, and
 one document loading both would be neither.
 
+**The panel's `max-width: 900px` layout is a tablet, and a tablet is a thumb as
+well as a width.** The rail lies down across the top there because a table needs
+the width more than the navigation does — which is a device being planned for,
+so `admin.css` ends with a `@media (pointer: coarse)` block that answers for the
+other half of it. Its first rule is the one that matters: every control that
+takes text goes to 16px, because iOS zooms the page in on anything smaller and
+does not zoom back out, and the whole panel is 13px since density is the
+register. **Every such control, not the ones a list happens to name** — the
+wiki's own version of this rule enumerated three selectors and the two it missed
+were on every page.
+
+Density otherwise stays. What is already over the floor is left alone, and only
+`.btn.small`, the nav strip, the gap between two buttons in a cell and the
+bulk-select box move — into the same 33–40px band the wiki settled on, which
+declines the 44 everyone quotes for the reason this file gives at the top: forty
+rows at once is the feature and cannot pay it. The block is at the end of the
+file rather than up with the tablet rules because it overrides selectors
+declared further down, which is the placement `.keys` already argues for.
+
 `req`, `qs`, `json` and `errorText` are shared from `src/api.ts`, so one place
 knows how FastAPI reports an error and one place decides what a thrown thing
 reads as. The panel also imports moderation vocabularies,
