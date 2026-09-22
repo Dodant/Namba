@@ -30,6 +30,44 @@
   --radius: 8px;
   --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
+  /* Two voices, and the sizes are named per voice rather than as one ramp:
+     mono is the app talking -- labels, counts, the words on a button -- and
+     serif is the wiki's words. A size that appears in both is a coincidence
+     and gets no name here, which is why 17px has none: it is a mono numeral
+     on a card and a serif title in the related rail, and one token over the
+     two would tie a numeral's size to a heading's.
+
+     Named because they were being re-derived. Every one of these carries a
+     job several rules need to agree on, and while each rule spelled the
+     number out the agreement was a thing you checked by eye -- which is how
+     a description under a title came to be set one way on a card and half a
+     pixel smaller in the rail. -soft is the quieter half of a pair, the way
+     it is on --ink and --rule.
+
+     A size that is a threshold or a step in a ramp stays spelled out, because
+     the number is the point and a name would hide it: 16px in the (pointer:
+     coarse) block is iOS's zoom floor and not this body size that happens to
+     match it, and the numeral ramp from .ix-num up to the hero is a curve,
+     not a scale to pick from.
+
+     There is deliberately no spacing ramp beside this. The padding and gap
+     values here are derived rather than chosen -- the search box's 9px is
+     .btn's so the two stand level, the scroll-padding is the sticky bar
+     measured at its own breakpoint, the coarse block's paddings are whatever
+     buys 33-40px back -- and almost every one is argued for where it is set.
+     Naming them would name the coincidences too: 9px is a control's height
+     in one place and a thumb's target in another, and one token over the two
+     would couple a button to a phone. A number that is only equal to another
+     number stays spelled out. */
+  --fs-label: 10.5px;      /* mono: kickers, field labels, meta rows */
+  --fs-meta: 11px;         /* mono: values, table heads, counts */
+  --fs-ctl-soft: 11.5px;   /* mono control, inside a panel or overlay */
+  --fs-ctl: 12.5px;        /* mono control, out in the page chrome */
+  --fs-fine: 14.5px;       /* serif: a line under a line */
+  --fs-body-soft: 15.5px;  /* serif: a line about the words */
+  --fs-body: 16px;         /* serif: the words, and the fields you type them in */
+  --fs-lede: 16.5px;       /* serif: an opening line */
+
   color-scheme: light dark;
   /* Newsreader first and Gowun Batang behind it: a font only answers for the
      characters it has, so Latin comes out of the first and Hangul out of the
@@ -328,8 +366,11 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 .acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto; }
 /* the search input's font size, held here so the icon pills under 900 can
    read it too: their circle is the search box's height, and that height is
-   this size times the line-height plus the padding both share */
-.acts { --ctl-font: 12.5px; }
+   this size times the line-height plus the padding both share. It starts at
+   the control size the buttons beside it are set in -- the pill sits level
+   with them and the two move together -- and is a variable of its own
+   because at (pointer: coarse) this one grows and .btn does not. */
+.acts { --ctl-font: var(--fs-ctl); }
 /* the three that act. On a wide row this is a flex row inside a flex row at
    the same gap and changes nothing; on a phone it is what keeps them one
    group when the row above them wraps */
@@ -377,12 +418,12 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
   color: inherit; font-weight: 700;
 }
 .search-suggestion-value {
-  font-family: var(--mono); font-size: 11px; font-variant-numeric: tabular-nums;
+  font-family: var(--mono); font-size: var(--fs-meta); font-variant-numeric: tabular-nums;
   color: var(--accent); white-space: nowrap;
 }
 .search-all {
   display: block; border-top: 1px solid var(--rule); border-radius: 0;
-  font-family: var(--mono); font-size: 10.5px; color: var(--muted);
+  font-family: var(--mono); font-size: var(--fs-label); color: var(--muted);
 }
 
 /* The header is four controls and a wordmark, and it stops fitting one line at
@@ -442,7 +483,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
   display: inline-flex; align-items: center; gap: 6px;
   padding: 9px 16px; border: 1px solid var(--line); border-radius: 999px;
   background: var(--panel); cursor: pointer; text-decoration: none;
-  font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.02em;
+  font-family: var(--mono); font-size: var(--fs-ctl); letter-spacing: 0.02em;
   color: var(--ink-soft);
   /* a pill is a label, not a paragraph. Squeezed a hair under its content
      width -- which is one icon's worth of room at 320 -- "+ Add" broke at its
@@ -463,7 +504,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 }
 .btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 .btn:disabled { opacity: 0.5; cursor: default; }
-.btn.small { padding: 3px 10px; font-size: 10.5px; }
+.btn.small { padding: 3px 10px; font-size: var(--fs-label); }
 /* transparent fill on an ink border, inverting on hover -- the one control
    on a read page that wants weight without spending the accent on it */
 .btn.outline { border-color: var(--ink); background: transparent; color: var(--ink); padding: 9px 15px; }
@@ -474,7 +515,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 .chip {
   padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
   background: var(--panel); cursor: pointer;
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.02em;
+  font-family: var(--mono); font-size: var(--fs-meta); letter-spacing: 0.02em;
   color: var(--ink-soft);
 }
 .chip:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
@@ -493,7 +534,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 /* the language tabs on a post reuse this; only the element differs */
 .tabs a, .tabs button {
   padding: 9px 15px; color: var(--muted);
-  font-family: var(--mono); font-size: 12.5px;
+  font-family: var(--mono); font-size: var(--fs-ctl);
   background: none; border: 0; cursor: pointer;
   border-bottom: 2px solid transparent; margin-bottom: -1px;
 }
@@ -504,7 +545,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 
 .chips-fold { margin: 0 0 26px; }
 .chips-fold .active {
-  font-family: var(--mono); font-size: 10.5px; color: var(--accent);
+  font-family: var(--mono); font-size: var(--fs-label); color: var(--accent);
   letter-spacing: 0.02em;
 }
 .chips-fold .chips { margin: 12px 0 0; }
@@ -532,12 +573,12 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 /* nowrap at any width: a count is one figure and then another, and broken
    over two lines it stops being either */
 .band-head .n {
-  font-family: var(--mono); font-size: 10.5px; color: var(--fainter);
+  font-family: var(--mono); font-size: var(--fs-label); color: var(--fainter);
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .band h2 {
   margin: 0;
-  font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+  font-family: var(--mono); font-size: var(--fs-label); font-weight: 600;
   letter-spacing: 0.16em; text-transform: uppercase;
   color: var(--muted); font-variant-numeric: tabular-nums;
 }
@@ -632,7 +673,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 .ix-fold {
   display: flex; align-items: baseline; gap: 7px;
   width: fit-content; cursor: pointer; list-style: none;
-  font-family: var(--mono); font-size: 10.5px; color: var(--fainter);
+  font-family: var(--mono); font-size: var(--fs-label); color: var(--fainter);
   font-variant-numeric: tabular-nums;
   /* 10.5px mono draws a 16px line box, and unlike .band-head this control is
      only as wide as its words, so it cannot make the 24px floor up on the
@@ -683,7 +724,7 @@ details:not([open]) > .ix-fold::before { transform: rotate(-90deg); }
 .ix.dated { padding-left: calc(104px + 22px); }
 .ix.dated .yr {
   display: inline-block; width: 20ch;
-  margin-right: 12px; font-size: 15.5px; white-space: nowrap;
+  margin-right: 12px; font-size: var(--fs-body-soft); white-space: nowrap;
 }
 /* A fixed date column makes every title start on the same vertical line. Its
    measure follows each locale's longest ordinary date phrase so a longer month
@@ -721,7 +762,7 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
    -- one long entry loosens the whole band around it. What does not fit is cut
    and the word after it is the way through. */
 .ix-link {
-  min-width: 0; font-size: 16.5px; line-height: 1.35;
+  min-width: 0; font-size: var(--fs-lede); line-height: 1.35;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 /* the whole entry is one link, but only the title underlines -- the blurb
@@ -745,7 +786,7 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
    so nothing on screen moves and the target stops being 22x19 -- which is
    under the 24px floor, on the one control in the row anyone taps */
 .ix-like .btn {
-  padding: 6px 8px; margin: -6px -8px; font-size: 11px; color: var(--fainter);
+  padding: 6px 8px; margin: -6px -8px; font-size: var(--fs-meta); color: var(--fainter);
   font-variant-numeric: tabular-nums;
 }
 /* the response takes terracotta once it is yours, and hovering previews that */
@@ -770,7 +811,7 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
   display: none; flex: none;
   padding: 6px 8px; margin: -6px -8px;
   border: 0; background: none; cursor: pointer;
-  font-family: var(--mono); font-size: 10.5px; color: var(--fainter);
+  font-family: var(--mono); font-size: var(--fs-label); color: var(--fainter);
 }
 .ix-link.cut + .ix-more { display: block; }
 .ix-more:hover { color: var(--ink); }
@@ -812,7 +853,7 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
   font-size: 17px; font-weight: 600; letter-spacing: -0.02em;
   line-height: 1.25; color: var(--accent);
 }
-.ix-pop-title { margin: 0; font-size: 16.5px; font-weight: 500; line-height: 1.35; }
+.ix-pop-title { margin: 0; font-size: var(--fs-lede); font-weight: 500; line-height: 1.35; }
 /* The blurb is a paragraph at last -- on the row it was the tail of a sentence
    the title started, because a row is one line -- and what an entry *is* and
    what it *means* are the two halves worth drawing a line between. --line, the
@@ -824,7 +865,7 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
 .ix-pop-body {
   margin: 6px 0 0; padding-top: 10px; border-top: 1px solid var(--line);
   color: var(--muted); font-weight: 300;
-  font-size: 15.5px; line-height: 1.5; text-wrap: pretty;
+  font-size: var(--fs-body-soft); line-height: 1.5; text-wrap: pretty;
   /* `plainLines()` leaves the author's deliberate newlines in place. This
      popover has the room the index row lacks, so they are structure rather
      than whitespace to flatten. */
@@ -900,7 +941,7 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
 
 /* --- feed --------------------------------------------------------- */
 .feed-intro {
-  font-size: 16px; line-height: 1.5; color: var(--muted);
+  font-size: var(--fs-body); line-height: 1.5; color: var(--muted);
   max-width: 56ch; margin: 20px 0 6px; text-wrap: pretty;
 }
 .feed-more { display: flex; justify-content: center; margin: 24px 0 8px; }
@@ -927,7 +968,7 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
 .fx h2 a:hover { color: var(--accent); text-decoration: none; }
 .fx-body { grid-column: 2 / 3; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
 .fx-body p {
-  margin: 0; font-size: 16px; line-height: 1.5; color: var(--muted);
+  margin: 0; font-size: var(--fs-body); line-height: 1.5; color: var(--muted);
   text-wrap: pretty;
 }
 .meta .likes { color: var(--fainter); font-variant-numeric: tabular-nums; }
@@ -936,7 +977,7 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
 .card .meta .btn {
   /* same trade as .ix-like: hit area out, layout unchanged */
   padding: 6px 8px; margin: -6px -8px; border-color: transparent; background: none;
-  font-size: 10.5px; color: var(--fainter); font-variant-numeric: tabular-nums;
+  font-size: var(--fs-label); color: var(--fainter); font-variant-numeric: tabular-nums;
 }
 .card .meta .btn:hover, .card .meta .btn.on { border-color: transparent; color: var(--hit); }
 
@@ -968,12 +1009,12 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
 .card h2 { margin: 0; font-size: clamp(19px, 2.4vw, 21px); font-weight: 500; line-height: 1.25; }
 .card h2 a:hover { color: var(--accent); text-decoration: none; }
 .card p {
-  margin: 0; color: var(--muted); font-size: 15.5px; line-height: 1.5;
+  margin: 0; color: var(--muted); font-size: var(--fs-body-soft); line-height: 1.5;
   text-wrap: pretty;
 }
 .meta {
   display: flex; gap: 9px; flex-wrap: wrap; align-items: center;
-  font-family: var(--mono); font-size: 10.5px; line-height: 1.45; color: var(--muted);
+  font-family: var(--mono); font-size: var(--fs-label); line-height: 1.45; color: var(--muted);
 }
 .card img.thumb {
   width: 76px; height: 76px; flex: none; object-fit: cover;
@@ -982,7 +1023,7 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
 
 .tag {
   /* no tracking fight: these read as words now, not shouted enum members */
-  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.05em;
+  font-family: var(--mono); font-size: var(--fs-label); letter-spacing: 0.05em;
   padding: 2px 7px; border-radius: 3px; background: var(--accent-soft); color: var(--accent);
 }
 
@@ -1100,8 +1141,8 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
    The button still wants flex-start; the two text children do not, so they are
    capped and break-word can do its job inside the cap. */
 .rev b, .rev span { max-width: 100%; }
-.rev b { font-size: 14.5px; font-weight: 400; line-height: 1.35; }
-.rev span { font-family: var(--mono); font-size: 10.5px; line-height: 1.4; color: var(--faint); }
+.rev b { font-size: var(--fs-fine); font-weight: 400; line-height: 1.35; }
+.rev span { font-family: var(--mono); font-size: var(--fs-label); line-height: 1.4; color: var(--faint); }
 .rev.now b { color: var(--accent); font-weight: 600; }
 
 /* Said beside the entry, under the history of the entry. A rule and padding
@@ -1114,7 +1155,7 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
    renderer here to turn them into anything else. */
 .cmt { padding: 11px 0; border-bottom: 1px solid var(--rule); }
 .cmt p { margin: 0 0 4px; font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; }
-.cmt span { font-family: var(--mono); font-size: 10.5px; line-height: 1.4; color: var(--faint); }
+.cmt span { font-family: var(--mono); font-size: var(--fs-label); line-height: 1.4; color: var(--faint); }
 /* The entry form's rhythm is for eleven fields in a 680px column. Here it is
    two and a button in 200px, at the top of a scroll port everything under it
    has to stay reachable past -- so every measure around the type comes in:
@@ -1135,7 +1176,7 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
 .cmt-compose { margin-top: 13px; }
 .cmt-compose > .ix-fold {
   display: inline-flex; color: var(--accent); font-family: var(--mono);
-  font-size: 11.5px; font-weight: 600; letter-spacing: 0.02em;
+  font-size: var(--fs-ctl-soft); font-weight: 600; letter-spacing: 0.02em;
 }
 .cmt-compose > .ix-fold:hover { color: var(--accent-dark); }
 .cmt-compose > .cmt-form { margin: 10px 0 12px; }
@@ -1157,7 +1198,7 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
    of them wrapped into each other. Its own line there. */
 .side .cmt-form .field label .hint { display: block; margin-top: 1px; }
 
-.quiet { font-family: var(--mono); font-size: 10.5px; line-height: 1.5; color: var(--muted); }
+.quiet { font-family: var(--mono); font-size: var(--fs-label); line-height: 1.5; color: var(--muted); }
 a.quiet { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 
 .hero {
@@ -1236,7 +1277,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    step down and never outsizes it */
 .body h1, .body h2 { font-size: 22px; font-weight: 500; margin: 1.4em 0 0.4em; line-height: 1.25; }
 .body h3, .body h4, .body h5, .body h6 {
-  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  font-family: var(--mono); font-size: var(--fs-meta); font-weight: 600;
   letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
   margin: 1.6em 0 0.5em;
 }
@@ -1272,9 +1313,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   overflow-x: auto; overscroll-behavior-x: contain;
   margin: 1em 0; max-width: 100%;
 }
-.body table { border-collapse: collapse; font-size: 15.5px; }
+.body table { border-collapse: collapse; font-size: var(--fs-body-soft); }
 .body :is(th, td) { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
-.body th { font-family: var(--mono); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; }
+.body th { font-family: var(--mono); font-size: var(--fs-meta); font-weight: 600; letter-spacing: 0.06em; }
 .actions { display: flex; gap: 9px; flex-wrap: wrap; margin: 20px 0; }
 /* The spacer is what holds the destructive button away from Save on a wide
    row -- Remove this language, and Delete this entry while there was one. On a
@@ -1302,7 +1343,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    the row does not move when .btn.on would have drawn one. */
 .post-like .btn {
   padding: 3px 9px; border-color: transparent; background: none;
-  color: var(--faint); font-size: 10.5px; font-variant-numeric: tabular-nums;
+  color: var(--faint); font-size: var(--fs-label); font-variant-numeric: tabular-nums;
 }
 .post-like .btn:hover, .post-like .btn.on {
   border-color: transparent; background: none; color: var(--hit);
@@ -1323,7 +1364,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    shrinks the target a fingertip is already only just getting, and it keeps
    these the height of the like beside them. */
 .meta-btn {
-  font-family: var(--mono); font-size: 10.5px; padding: 3px 9px;
+  font-family: var(--mono); font-size: var(--fs-label); padding: 3px 9px;
   border: 1px solid transparent; border-radius: 999px;
   background: none; color: var(--faint); cursor: pointer;
   white-space: nowrap;
@@ -1335,7 +1376,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .meta-sep { color: var(--fainter); margin: 0 -4px; }
 .credits {
   display: flex; flex-direction: column; gap: 3px;
-  font-family: var(--mono); font-size: 11px; line-height: 1.5;
+  font-family: var(--mono); font-size: var(--fs-meta); line-height: 1.5;
   color: var(--muted); padding-top: 12px;
 }
 .credits .last { color: var(--faint); padding-top: 4px; }
@@ -1361,10 +1402,10 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .rel-main { flex: 1; min-width: 0; }
 .rel-t { font-size: 17px; font-weight: 500; }
 .rel-t:hover { color: var(--accent); }
-.rel-b { font-size: 14.5px; color: var(--muted); line-height: 1.45; }
+.rel-b { font-size: var(--fs-fine); color: var(--muted); line-height: 1.45; }
 
 .section {
-  font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+  font-family: var(--mono); font-size: var(--fs-label); font-weight: 600;
   letter-spacing: 0.16em; text-transform: uppercase;
   color: var(--muted); margin: clamp(22px, 4vw, 30px) 0 4px;
 }
@@ -1412,7 +1453,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 /* The rules page opens on a standfirst: .form-intro's size and colour, and
    nothing else of it. A class and not :first-of-type, which it was until the
    version row above it became the first <p> on the page. */
-.guide .lede { font-size: 16.5px; color: var(--ink-soft); }  /* two classes: .body p would win a tie */
+.guide .lede { font-size: var(--fs-lede); color: var(--ink-soft); }  /* two classes: .body p would win a tie */
 /* The version and the language it is being read in, on the line above the h1
    and pushed to the far edge -- the title anchors the left, the metadata about
    it answers on the right, and the picker's edge lands on the text column's.
@@ -1437,7 +1478,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    exactly between the two. It arrived 0 above and 26 below, which is this the
    wrong way round: the capsule sat on the header's rule. */
 .guide .guide-meta + h1 { margin-top: 0; }
-.guide .guide-meta select { font-size: 11px; padding: 5px 30px 5px 12px; }
+.guide .guide-meta select { font-size: var(--fs-meta); padding: 5px 30px 5px 12px; }
 /* react-markdown renders a cell's text as a paragraph, and .body p carries a
    bottom margin meant for prose. Two rows of it pushed every table open. */
 .body :is(th, td) > p { margin: 0; }
@@ -1457,11 +1498,11 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    The weight is the separation, not the colour -- these greys are pinned. */
 .field label, .field .field-label {
   display: flex; align-items: baseline; gap: 8px;
-  font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+  font-family: var(--mono); font-size: var(--fs-label); font-weight: 600;
   letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
 }
 .field .hint {
-  font-family: var(--mono); font-size: 10.5px; font-weight: 400;
+  font-family: var(--mono); font-size: var(--fs-label); font-weight: 400;
   color: var(--fainter); text-transform: none; letter-spacing: 0;
 }
 /* the same capsule the buttons and the chips wear: a page whose controls are
@@ -1469,9 +1510,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    left and right than the old box, or the first letter sits in the curve. */
 .field input, .field select, .field textarea {
   width: 100%; padding: 11px 18px; border: 1px solid var(--line);
-  border-radius: 999px; background: var(--panel); font-size: 16px;
+  border-radius: 999px; background: var(--panel); font-size: var(--fs-body);
 }
-.field select { font-size: 15.5px; }
+.field select { font-size: var(--fs-body-soft); }
 /* naming a tag is a smaller act than filling a field, so the control is
    smaller than one -- it sits under the chips it adds to */
 .coin { display: flex; gap: 7px; align-items: center; }
@@ -1486,14 +1527,14 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .category-more {
   align-self: flex-start; padding: 4px 0; margin: -4px 0;
   border: 0; background: none; cursor: pointer;
-  font-family: var(--mono); font-size: 10.5px; color: var(--accent);
+  font-family: var(--mono); font-size: var(--fs-label); color: var(--accent);
 }
 .category-more:hover { color: var(--accent-dark); text-decoration: underline; }
 .field .coin input {
   width: auto; max-width: 220px; padding: 6px 11px;
-  border-radius: 999px; font-family: var(--mono); font-size: 11px;
+  border-radius: 999px; font-family: var(--mono); font-size: var(--fs-meta);
 }
-.coin .btn { padding: 6px 13px; font-size: 11px; }
+.coin .btn { padding: 6px 13px; font-size: var(--fs-meta); }
 
 /* The required death year is the third part of Date, not another field below
    it. It keeps its spinner and a compact four-digit measure; on a narrow row
@@ -1507,12 +1548,12 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .field.check {
   flex: none; flex-direction: row; align-items: center; gap: 7px;
   align-self: center; margin-bottom: 20px;
-  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  font-family: var(--mono); font-size: var(--fs-meta); color: var(--muted);
   cursor: pointer; text-transform: none; letter-spacing: 0;
 }
 .field.check input[type="checkbox"],
 .field.check input[type="radio"] {
-  width: auto; margin: 0; padding: 0; border: 0; font-size: 11px;
+  width: auto; margin: 0; padding: 0; border: 0; font-size: var(--fs-meta);
   accent-color: var(--accent); cursor: pointer;
 }
 /* the preview is what you will get, so it is coloured like the numeral it
@@ -1548,7 +1589,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    sibling; the weight is the separation, as the block up there says. */
 .calendar-role legend {
   width: 100%; margin-bottom: 8px;
-  font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+  font-family: var(--mono); font-size: var(--fs-label); font-weight: 600;
   letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
 }
 .calendar-role .field.check { margin: 0; }
@@ -1678,7 +1719,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .lang-pick select {
   width: auto; border: 1px solid var(--line); border-radius: 999px;
   background: var(--panel); color: var(--ink-soft); cursor: pointer;
-  font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.02em;
+  font-family: var(--mono); font-size: var(--fs-ctl); letter-spacing: 0.02em;
   padding: 9px 32px 9px 14px;
 }
 .lang-pick select:hover { border-color: var(--accent); color: var(--accent); }
@@ -1686,10 +1727,10 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 /* the real input, styled -- a fake one cannot open a file picker */
 .field input.file {
   border: 0; background: none; padding: 0;
-  font-size: 14.5px; color: var(--faint);
+  font-size: var(--fs-fine); color: var(--faint);
 }
 .field input.file::file-selector-button {
-  font-family: var(--mono); font-size: 11.5px; padding: 8px 14px; margin-right: 12px;
+  font-family: var(--mono); font-size: var(--fs-ctl-soft); padding: 8px 14px; margin-right: 12px;
   border: 1px solid var(--line); border-radius: 999px;
   background: var(--panel); color: var(--ink); cursor: pointer;
 }
@@ -1699,7 +1740,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    half-circle at each end, and the first and last lines run into it. Same
    family, one size down -- and the resize grip needs a corner to live in. */
 .field textarea {
-  min-height: 104px; resize: vertical; font-size: 16px; line-height: 1.55;
+  min-height: 104px; resize: vertical; font-size: var(--fs-body); line-height: 1.55;
   border-radius: 20px; padding: 12px 17px;
 }
 .row { display: flex; gap: 14px; flex-wrap: wrap; }
@@ -1719,7 +1760,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    languages -- Korean sets them longer still. pretty only picks better breaks
    and leaves the measure alone. A heading is where balance belongs. */
 .form-intro {
-  font-size: 16.5px; line-height: 1.5; color: var(--ink-soft);
+  font-size: var(--fs-lede); line-height: 1.5; color: var(--ink-soft);
   margin: 0 0 24px; text-wrap: pretty;
 }
 .fine {
@@ -1750,11 +1791,11 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .panel-row:last-child { border-bottom: 0; }
 .panel-row.now { background: var(--row-tint); }
 .panel-lang {
-  font-family: var(--mono); font-size: 11.5px; font-weight: 600;
+  font-family: var(--mono); font-size: var(--fs-ctl-soft); font-weight: 600;
   letter-spacing: 0.06em; min-width: 74px; flex: none;
 }
 .panel-title {
-  flex: 1; min-width: 0; font-size: 15.5px; color: var(--muted);
+  flex: 1; min-width: 0; font-size: var(--fs-body-soft); color: var(--muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .panel-title.ink { color: var(--ink); }
@@ -1763,7 +1804,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    width -- .panel overflow: hidden meant the button on the end was simply cut
    off rather than the page scrolling, which is the same bug wearing a hat. */
 .panel-by {
-  font-family: var(--mono); font-size: 10.5px; color: var(--faint);
+  font-family: var(--mono); font-size: var(--fs-label); color: var(--faint);
   flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1774,11 +1815,11 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 }
 .panel-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .panel-t {
-  font-size: 14.5px; line-height: 1.35;
+  font-size: var(--fs-fine); line-height: 1.35;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .panel-t.now { font-weight: 600; color: var(--accent); }
-.panel-m { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.panel-m { font-family: var(--mono); font-size: var(--fs-label); color: var(--faint); }
 /* Given the width, the version and who wrote it are the two ends of one row
    rather than two stacked lines: a title that stops short left the right half
    of every row empty. Under it they stack, which is the 340px rail and a
@@ -1797,20 +1838,20 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   }
 }
 .panel-add {
-  font-family: var(--mono); font-size: 11.5px; color: var(--accent);
+  font-family: var(--mono); font-size: var(--fs-ctl-soft); color: var(--accent);
   background: none; border: 0; padding: 0; cursor: pointer;
 }
-.panel-empty { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.panel-empty { font-family: var(--mono); font-size: var(--fs-label); color: var(--faint); }
 /* stretch rather than a matching padding: the box is Newsreader at 14.5 and
    the button is mono at 11.5, so their content heights differ and no pair of
    paddings holds. This way the button is whatever tall the box is. */
 .panel-find { gap: 8px; align-items: stretch; }
 .panel-find input {
   flex: 1; min-width: 0; padding: 8px 15px; border: 1px solid var(--line);
-  border-radius: 999px; background: var(--bg); font-size: 14.5px;
+  border-radius: 999px; background: var(--bg); font-size: var(--fs-fine);
 }
 .panel-find input::placeholder { color: var(--faint); }
-.panel-find .btn { font-size: 11.5px; padding: 9px 15px; }
+.panel-find .btn { font-size: var(--fs-ctl-soft); padding: 9px 15px; }
 /* rewriting a language opens it in the panel's own box, so the row you
    clicked is the box you are typing in */
 .panel-edit { padding: 14px; display: flex; flex-direction: column; gap: 14px; }
@@ -1831,7 +1872,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 
 /* quiet enough to sit inside a row, not beside it */
 .pill {
-  font-family: var(--mono); font-size: 10.5px; padding: 3px 10px;
+  font-family: var(--mono); font-size: var(--fs-label); padding: 3px 10px;
   border: 1px solid var(--line); border-radius: 999px;
   background: var(--panel); color: var(--ink); cursor: pointer; flex: none;
 }
@@ -1845,7 +1886,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 
 .err {
   color: var(--hit); background: #f6e9e4; padding: 9px 12px;
-  border-radius: var(--radius); margin: 14px 0; font-size: 14.5px;
+  border-radius: var(--radius); margin: 14px 0; font-size: var(--fs-fine);
 }
 @media (prefers-color-scheme: dark) { .err { background: #33241d; } }
 /* The link in one of these is the only thing on the page to do next --
@@ -1971,7 +2012,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 }
 .locale-pick { display: flex; align-items: center; gap: 8px; }
 .locale-pick > span:first-child {
-  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em;
+  font-family: var(--mono); font-size: var(--fs-label); letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--fainter);
 }
 /* inherit, not --accent: four links in three short lines, and coloured they
