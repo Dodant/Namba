@@ -658,3 +658,45 @@ code {
   display: block; height: 7px; min-width: 2px; border-radius: 2px;
   background: var(--accent);
 }
+
+/* --- a coarse pointer -------------------------------------------------- */
+/* The tablet layout above is a width, and a tablet is also a thumb. The rail
+   lies down at 900 and every control on the page stayed the size a mouse
+   needs, which is the half of that device this file had answered for.
+
+   At the end of the file rather than up with the tablet rules, for the reason
+   the .keys rule gives: these override selectors declared further down, and
+   between two rules of equal weight the later one has to be this one.
+
+   Density stays. An operator is here to see forty rows at once, so this grows
+   what is under the floor and leaves what is already over it: .btn is 33px at
+   rest and .field is 40 once its type does what the first rule says, which is
+   the 33-40 band the wiki settled on and for the same reason -- 44 is the
+   number everyone quotes and a table of forty rows cannot pay it. */
+@media (pointer: coarse) {
+  /* iOS zooms the page in on a control it can't read at arm's length and does
+     not zoom back out, and the whole panel is 13px because that is the density
+     the register is built on. Every control, not the ones a list happens to
+     name: the wiki had enumerated three selectors here and the two it missed
+     were on every page. .btn is untouched and wants to be -- a button holds no
+     text to enter, so nothing zooms for it. */
+  input, select, textarea { font-size: 16px; }
+  /* 25px at rest, and it is most of the buttons in a table row. The type stays
+     small: this is a target, not a shout, and growing the words instead would
+     be a second .btn. */
+  .btn.small { padding: 7px 10px; }
+  /* far enough apart to mean two things. Five is a mouse's gap. */
+  td.acts .btn + .btn { margin-left: 8px; }
+  /* the nav is the strip across the top at this width, and it is how an
+     operator reaches every page */
+  .nav a { padding: 9px 11px; }
+  /* The bulk select, which is the one control here where a mis-tap picks the
+     wrong entry to act on twenty of. The native box is drawn at the font size
+     and so was the smallest target on the page.
+     The box itself, not padding around it: padding on a checkbox with its
+     native appearance is honoured unevenly across engines, so the size that
+     can be relied on is the one the box is drawn at. What this does not buy
+     is the row -- a target that covers the whole cell wants a <label> around
+     it, which is markup rather than a rule here. */
+  td input[type="checkbox"], th input[type="checkbox"] { width: 20px; height: 20px; }
+}
