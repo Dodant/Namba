@@ -194,6 +194,16 @@ button, input, select, textarea { font: inherit; color: inherit; }
 input, textarea { -webkit-user-select: none; user-select: none; }
 input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 
+/* ...and what is left selectable highlights in the palette rather than in the
+   browser's blue, which was the last surface here still drawing itself. The
+   same token .btn.on stands on, so it turns over with the theme and needs no
+   dark half of its own. No colour on the text: the wiki's words are an ink
+   title, a green numeral and a terracotta hit all at once, and repainting
+   them one colour to say they are selected loses the highlight that is the
+   reason half of them are that colour. Each of the three clears AA on this
+   ground as it stands -- the terracotta, the tightest, at 4.5. */
+::selection { background: var(--accent-soft); }
+
 /* 1160 is the measure and stays the measure on a 1920 screen: an index of
    numbers is a book index, and a title row 1800px wide is unreadable in the
    way a wide column always is. The horizontal room a large screen has goes
