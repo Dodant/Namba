@@ -164,15 +164,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
    user-drag with it, so a pill does not lift a link ghost off the header on
    a slow press. It is a WebKit property and Firefox will still do that; the
    selection, which is the thing that spoils a copy, is standard. */
-:is(.logo-block, .search .slash, .btn, .chip, .pill, .tag, .kicker,
-    .band-head, .ix-fold, .tabs a, .tabs button, .panel-add, .meta-btn,
+:is(.logo-block, .search .slash, .search-all, .btn, .chip, .pill, .tag, .kicker,
+    .band-head, .ix-fold, .ix-more, .tabs a, .tabs button, .panel-add, .meta-btn,
     .quiet, .section, .field label, .field .field-label, .field.check,
+    .calendar-role legend, .category-more, .draft-notice p,
     .form h1, .form-intro, .fine, .feed-intro, .hero-said p, .empty, .panel-empty,
     .body-none, .foot) {
   -webkit-user-select: none;
   user-select: none;
   -webkit-user-drag: none;
 }
+/* the one word in a draft notice that is not the app talking: the title you
+   typed and are about to get back. The sentence around it is chrome and the
+   list above covers it either way the notice draws -- as .fine while a draft
+   saves, as a bare <p> when one is found. */
+.draft-notice p strong { -webkit-user-select: text; user-select: text; }
 
 /* A field joins the page's selection only while you are inside it. Dragging
    across the form used to paint a highlight over every placeholder and over
