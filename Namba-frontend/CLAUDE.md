@@ -309,6 +309,23 @@ sanitiser config to get wrong.
 - Styling is `src/index.css` alone: CSS custom properties on `:root`, dark mode
   via `prefers-color-scheme`. Numerals use `--mono` with `tabular-nums` — that
   alignment is the whole visual identity, keep it.
+- **Two type voices, and the `--fs-*` tokens are named per voice.** Mono is
+  the app talking — labels, counts, the words on a button — and serif is the
+  wiki's words, and each voice's sizes are a short named ramp on `:root`
+  (`--fs-label` up to `--fs-ctl`, `--fs-fine` up to `--fs-lede`). Reach for a
+  name rather than a number: while every rule spelled its size out, two rules
+  meaning the same thing could miss by half a pixel and nothing said so.
+  A size the two voices share gets no token, because it is a coincidence and
+  one name over the pair would tie a heading to a numeral. A size that is a
+  threshold or a step in a curve stays spelled out — the 16px in
+  `(pointer: coarse)` is iOS's zoom floor, not this body size that equals it.
+  **There is no spacing ramp and adding one is not a tidy-up.** Those numbers
+  are derived from each other rather than picked — a control's padding is
+  another control's so the two stand level, the scroll padding is the sticky
+  bar measured at its breakpoint — and one value serves two unrelated jobs,
+  so naming them would couple what only happens to be equal. No test notices
+  either half: the exemptions are a list, and a hand-kept list is the thing
+  this would be written to prevent.
 - `--muted`, `--faint` and `--fainter` are set by their contrast against
   `--bg` — 5.6, 5.1 and 4.6 to 1 — not by eye, in both themes. They carry the
   field hints, placeholders and byline rows, which is most of the instruction
