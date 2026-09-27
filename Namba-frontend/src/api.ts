@@ -318,7 +318,8 @@ export const json = (method: string, body: unknown): RequestInit => ({
 })
 
 export const api = {
-  tags: () => req<{ tag: Tag; count: number }[]>('/api/tags'),
+  tags: (p: { format?: string } = {}) =>
+    req<{ tag: Tag; count: number }[]>(`/api/tags${qs(p)}`),
 
   languages: () => req<{ lang: string; count: number }[]>('/api/languages'),
 

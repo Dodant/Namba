@@ -2970,6 +2970,10 @@ def test_api_round_trip():
     assert vocab["drum machine"] == 1, vocab
     assert "unit" not in vocab, "an unused tag is not part of the vocabulary"
     assert list(vocab) == sorted(vocab, key=lambda t: (-vocab[t], t)), "not by count"
+    assert c.get("/api/tags", params={"format": "integer"}).json()[0]["count"] >= 1
+    assert "drum machine" not in {t["tag"] for t in
+                                  c.get("/api/tags", params={"format": "ABBR"}).json()}, \
+        "an index tab counted tags from another tab's entries"
     assert [p["id"] for p in c.get("/api/posts", params={"tag": "DRUM Machine"}).json()] \
         == [coined["id"]], "the filter is case-insensitive on the way in"
     admin.set_status(coined["id"], "HIDDEN")

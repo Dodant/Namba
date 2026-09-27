@@ -284,7 +284,7 @@ function Index({ lang }: { lang: string }) {
       ?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
   }, [format])
 
-  const tags = useAsync(() => api.tags(), [])
+  const tags = useAsync(() => api.tags({ format }), [format])
   const numbers = useAsync(() => api.numbers({ format, tag, lang }), [format, tag, lang], true)
 
   /* Which rows had to be cut -- see `measure` above. A window resize and the

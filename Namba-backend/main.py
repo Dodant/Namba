@@ -529,20 +529,28 @@ def list_languages(con=Depends(get_db)):
 
 
 @app.get("/api/tags")
-def list_tags(con=Depends(get_db)):
+def list_tags(format: Optional[str] = None, con=Depends(get_db)):
     """The wiki's working vocabulary: the tags in use, most-used first.
 
     Read off the posts rather than a list in this file. Anyone can coin a tag,
     so a fixed list would be a claim about what people are allowed to mean --
     and it was the only thing forcing two apps to agree on a literal.
+
+    `format` narrows it the way it narrows /api/numbers, so the index's tag
+    counts are the counts of the tab they sit under rather than of the wiki.
     """
+    args = [LIVE]
+    only = ""
+    if format:
+        only = "AND p.format = ?"
+        args.append(format.upper())
     return [
         {"tag": r["tag"], "count": r["count"]}
         for r in con.execute(
-            """SELECT t.tag, COUNT(*) AS count FROM post_tags t
-               JOIN posts p ON p.id = t.post_id AND p.status = ?
+            f"""SELECT t.tag, COUNT(*) AS count FROM post_tags t
+               JOIN posts p ON p.id = t.post_id AND p.status = ? {only}
                GROUP BY t.tag ORDER BY count DESC, t.tag""",
-            (LIVE,),
+            args,
         )
     ]
 
