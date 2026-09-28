@@ -50,7 +50,7 @@ export const KO: Messages = {
     moreRecent: '최근 엔트리 더 보기',
     empty: '아직 작성된 엔트리가 없습니다.', entryKinds: '엔트리 형식', categories: '카테고리', all: '전체', untagged: '미분류',
     onThisDay: 'On this day', inMemoriam: 'In Memoriam',
-    foldedEntries: (n: number) => `엔트리 ${fmtCount(n, 'ko')}개`,
+    moreEntries: (n: number) => `엔트리 ${fmtCount(n, 'ko')}개 더 보기`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${subject} ${fmtCount(subjects, 'ko')}개 · 엔트리 ${fmtCount(entries, 'ko')}개`,
   },

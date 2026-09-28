@@ -52,7 +52,7 @@ export const ZH_HANS: Messages = {
     moreRecent: '显示更多最近条目',
     empty: '还没有任何条目。', entryKinds: '条目格式', categories: '分类', all: '全部', untagged: '未分类',
     onThisDay: 'On this day', inMemoriam: 'In Memoriam',
-    foldedEntries: (n: number) => `${fmtCount(n, 'zh-Hans')}个条目`,
+    moreEntries: (n: number) => `另外${fmtCount(n, 'zh-Hans')}个条目`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${fmtCount(subjects, 'zh-Hans')}个${subject} · ${fmtCount(entries, 'zh-Hans')}个条目`,
   },

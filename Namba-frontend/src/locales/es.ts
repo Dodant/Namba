@@ -58,7 +58,7 @@ export const ES: Messages = {
     moreRecent: 'Ver más entradas recientes',
     empty: 'Aún no hay entradas.', entryKinds: 'Formato de la entrada', categories: 'Categorías', all: 'Todas', untagged: 'Sin categoría',
     onThisDay: 'On this day', inMemoriam: 'In Memoriam',
-    foldedEntries: (n: number) => `${fmtCount(n, 'es')} ${n === 1 ? 'entrada' : 'entradas'}`,
+    moreEntries: (n: number) => `${fmtCount(n, 'es')} ${n === 1 ? 'entrada más' : 'entradas más'}`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${fmtCount(subjects, 'es')} ${subject} · ${fmtCount(entries, 'es')} ${entries === 1 ? 'entrada' : 'entradas'}`,
   },

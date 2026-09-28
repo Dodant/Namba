@@ -160,9 +160,10 @@ function Feed({ lang }: { lang: string }) {
 const FEED_PAGE_SIZE = 20
 
 /* Past this many entries one number is a wall in the middle of an index you
-   are reading down, so it gets a fold of its own. Ten because that is about a
-   screen of rows on a phone: a number with nine meanings is a row you scroll
-   past, not one you have to get around. */
+   are reading down, so the first ten are drawn and the rest wait behind a
+   "more" under them. Ten because that is about a screen of rows on a phone:
+   a number with nine meanings is a row you scroll past, not one you have to
+   get around. */
 const FOLD_OVER = 10
 
 /* Which rows had to be cut. An index is read down the numerals, so a row is
@@ -488,10 +489,9 @@ function Index({ lang }: { lang: string }) {
               {band.subs?.map((sub) => sub.items.length > 0 && (
                 <details className="band-sub" onToggle={measure} key={sub.label}>
                   <summary className="ix-fold">
-                    {/* `common.entries` and not `home.foldedEntries`: that one
-                        is a row's own fold, which only opens past FOLD_OVER and
-                        so never has to say "1 entries". This one can hold a
-                        single dated entry. */}
+                    {/* `common.entries` and not `home.moreEntries`: that one
+                        counts what a row's own fold holds back, not what a
+                        list holds. */}
                     <span>
                       {sub.label} · {m.common.entries(
                         sub.items.reduce((n, row) => n + row.entries.length, 0),
@@ -630,28 +630,25 @@ function IndexRow({ row, dated = false }: { row: NumberEntry; dated?: boolean })
       >
         {shownNum}
       </Link>}
-      {/* <details> and not a piece of state, the same as the band above it:
-          the browser owns the collapse and gets the keyboard and the screen
-          reader right for free.
-
-          Open, so a fold never hides an entry from a reader who did not ask --
-          it is there to be closed by someone who wants past this number, and
-          the summary says what closing it costs. On ordinary rows the numeral
-          stays outside it: it is a link to /n/:value, and a link inside a
-          summary is one click that has to be two things. */}
-      {row.entries.length > FOLD_OVER ? (
-        <details className="ix-titles" open>
-          <summary className="ix-fold">{m.home.foldedEntries(row.entries.length)}</summary>
-          {/* the rows need a box of their own in here. A <details> puts
-              everything after the summary into one anonymous content box, so
-              the column's gap falls between the summary and that box rather
-              than between the rows inside it, and a folded number drew its
-              entries 4px tighter than every other row on the page. */}
-          <div className="ix-list">{entries}</div>
-        </details>
-      ) : (
-        <div className="ix-titles">{entries}</div>
-      )}
+      <div className="ix-titles">
+        {entries.slice(0, FOLD_OVER)}
+        {/* <details> and not a piece of state, the same as the band above it:
+            the browser owns the collapse and gets the keyboard and the screen
+            reader right for free. Closed, and under the first ten, so the
+            rest is one click past the rows already read. The rows need a box
+            of their own in here: a <details> puts everything after the
+            summary into one anonymous content box, and the column's gap
+            would fall around that box rather than between the rows in it.
+            Measured on open, like the In Memoriam fold -- see `measure`. */}
+        {entries.length > FOLD_OVER && (
+          <details onToggle={measure}>
+            <summary className="ix-fold">
+              {m.home.moreEntries(entries.length - FOLD_OVER)}
+            </summary>
+            <div className="ix-list">{entries.slice(FOLD_OVER)}</div>
+          </details>
+        )}
+      </div>
     </li>
   )
 }

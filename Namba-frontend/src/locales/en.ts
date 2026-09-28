@@ -83,7 +83,7 @@ export const EN = {
     empty: 'Nothing written yet.',
     entryKinds: 'Entry format', categories: 'Categories', all: 'All', untagged: 'Untagged',
     onThisDay: 'On this day', inMemoriam: 'In Memoriam',
-    foldedEntries: (n: number) => `${fmtCount(n, 'en')} entries`,
+    moreEntries: (n: number) => `${fmtCount(n, 'en')} more ${n === 1 ? 'entry' : 'entries'}`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${fmtCount(subjects, 'en')} ${subject} · ${fmtCount(entries, 'en')} ${entries === 1 ? 'entry' : 'entries'}`,
   },

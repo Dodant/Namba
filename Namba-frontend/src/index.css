@@ -690,6 +690,8 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
   gap: 4px; min-width: 0;
 }
 .ix-titles { flex: 1; }
+/* the column's own gap, between a number's "more" and the rows it opens */
+.ix-titles > details > .ix-list { margin-top: 4px; }
 /* The fold on a number that has collected more entries than a screen. Same
    disclosure the bands use, one level in and one step quieter: the count is
    the band's own .n, and the caret is the band's own caret, because this is
