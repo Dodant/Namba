@@ -81,7 +81,7 @@ export const EN = {
     feedIntro: 'Recent entries and edits, newest first.',
     moreRecent: 'Show more recent entries',
     empty: 'Nothing written yet.',
-    entryKinds: 'Entry format', categories: 'Categories', all: 'All',
+    entryKinds: 'Entry format', categories: 'Categories', all: 'All', untagged: 'Untagged',
     onThisDay: 'On this day', inMemoriam: 'In Memoriam',
     foldedEntries: (n: number) => `${fmtCount(n, 'en')} entries`,
     bandCount: (subjects: number, subject: string, entries: number) =>

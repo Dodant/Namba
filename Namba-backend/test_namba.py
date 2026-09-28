@@ -2974,6 +2974,9 @@ def test_api_round_trip():
     assert "drum machine" not in {t["tag"] for t in
                                   c.get("/api/tags", params={"format": "ABBR"}).json()}, \
         "an index tab counted tags from another tab's entries"
+    bare = {e["id"] for n in c.get("/api/numbers", params={"untagged": 1}).json()
+            for e in n["entries"]}
+    assert coined["id"] not in bare and bare, "untagged let a tagged entry in"
     assert [p["id"] for p in c.get("/api/posts", params={"tag": "DRUM Machine"}).json()] \
         == [coined["id"]], "the filter is case-insensitive on the way in"
     admin.set_status(coined["id"], "HIDDEN")

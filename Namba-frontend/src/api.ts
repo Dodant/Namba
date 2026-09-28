@@ -323,7 +323,7 @@ export const api = {
 
   languages: () => req<{ lang: string; count: number }[]>('/api/languages'),
 
-  numbers: (p: { format?: string; tag?: string; lang?: string } = {}) =>
+  numbers: (p: { format?: string; tag?: string; lang?: string; untagged?: string } = {}) =>
     req<NumberEntry[]>(`/api/numbers${qs(p)}`),
 
   posts: (p: Params = {}) => req<Post[]>(`/api/posts${qs(p)}`),

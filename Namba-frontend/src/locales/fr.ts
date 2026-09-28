@@ -58,7 +58,7 @@ export const FR: Messages = {
     hasImage: 'avec une image',
     feedIntro: 'Entrées et modifications récentes, des plus nouvelles aux plus anciennes.',
     moreRecent: 'Afficher plus d’entrées récentes',
-    empty: 'Aucune entrée pour le moment.', entryKinds: 'Format de l’entrée', categories: 'Catégories', all: 'Toutes',
+    empty: 'Aucune entrée pour le moment.', entryKinds: 'Format de l’entrée', categories: 'Catégories', all: 'Toutes', untagged: 'Sans catégorie',
     onThisDay: 'On this day', inMemoriam: 'In Memoriam',
     foldedEntries: (n: number) => `${fmtCount(n, 'fr')} ${n === 1 ? 'entrée' : 'entrées'}`,
     bandCount: (subjects: number, subject: string, entries: number) =>

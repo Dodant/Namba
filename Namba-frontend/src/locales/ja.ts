@@ -50,7 +50,7 @@ export const JA: Messages = {
     seeMore: 'もっと見る',
     hasImage: '画像あり', feedIntro: '最近作成・編集された項目から表示します。',
     moreRecent: 'さらに最近の項目を表示',
-    empty: 'まだ項目がありません。', entryKinds: '項目の形式', categories: 'カテゴリ', all: 'すべて',
+    empty: 'まだ項目がありません。', entryKinds: '項目の形式', categories: 'カテゴリ', all: 'すべて', untagged: '未分類',
     onThisDay: 'On this day', inMemoriam: 'In Memoriam',
     foldedEntries: (n: number) => `${fmtCount(n, 'ja')}件の項目`,
     bandCount: (subjects: number, subject: string, entries: number) =>

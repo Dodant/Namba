@@ -560,6 +560,7 @@ def list_numbers(
     format: Optional[str] = None,
     tag: Optional[str] = None,
     lang: Optional[str] = None,
+    untagged: bool = False,
     con=Depends(get_db),
 ):
     """The home index: one row per number, carrying the entries filed under it.
@@ -585,6 +586,10 @@ def list_numbers(
     if format:
         where.append("p.format = ?")
         args.append(format.upper())
+    # a flag rather than a reserved tag name: tags are free-form, so any word
+    # picked to mean "none" is one somebody can coin
+    if untagged:
+        where.append("NOT EXISTS (SELECT 1 FROM post_tags u WHERE u.post_id = p.id)")
     sql.append("WHERE " + " AND ".join(where))
     sql.append("ORDER BY p.sort_key IS NULL, p.sort_key, p.value, p.id")
 

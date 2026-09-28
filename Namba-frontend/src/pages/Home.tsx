@@ -265,6 +265,9 @@ function Index({ lang }: { lang: string }) {
   const [params, setParams] = useSearchParams()
   const format = (params.get('format') ?? 'INTEGER') as Format
   const tag = params.get('tag') ?? ''
+  /* its own param rather than a reserved tag: tags are free-form, so any word
+     meaning "none" is a word somebody can coin. One filter at a time. */
+  const untagged = !tag && params.has('untagged')
 
   /* The strip keeps whole words and scrolls, so the tab you are on can start
      off the end of it -- and a strip showing four tabs with no underline on
@@ -285,7 +288,10 @@ function Index({ lang }: { lang: string }) {
   }, [format])
 
   const tags = useAsync(() => api.tags({ format }), [format])
-  const numbers = useAsync(() => api.numbers({ format, tag, lang }), [format, tag, lang], true)
+  const numbers = useAsync(() => api.numbers({ format, tag, lang, untagged: untagged ? '1' : undefined }),
+    [format, tag, lang, untagged],
+    true,
+  )
 
   /* Which rows had to be cut -- see `measure` above. A window resize and the
      fonts arriving are the two passes it needs; the In Memoriam fold adds
@@ -297,10 +303,12 @@ function Index({ lang }: { lang: string }) {
     return () => window.removeEventListener('resize', measure)
   }, [numbers.data])
 
-  function setParam(key: string, value: string) {
+  function setFilter(value: string, bare = false) {
     const next = new URLSearchParams(params)
-    if (value) next.set(key, value)
-    else next.delete(key)
+    next.delete('tag')
+    next.delete('untagged')
+    if (value) next.set('tag', value)
+    if (bare) next.set('untagged', '1')
     setParams(next)
   }
 
@@ -369,7 +377,10 @@ function Index({ lang }: { lang: string }) {
             className={`${i > 0 && sectionOf(f) !== sectionOf(FORMATS[i - 1])
               ? 'apart ' : ''}${f === format ? 'on' : ''}`}
             aria-current={f === format ? 'page' : undefined}
-            to={`/?${new URLSearchParams({ format: f, ...(tag ? { tag } : {}) })}`}
+            to={`/?${new URLSearchParams({
+              format: f,
+              ...(tag ? { tag } : untagged ? { untagged: '1' } : {}),
+            })}`}
           >
             {/* Whole words at every width. Six of them want past 400px and a
                 320px screen has 288, so the strip scrolls -- see .tabs.fmts
@@ -392,6 +403,7 @@ function Index({ lang }: { lang: string }) {
           {/* outside the h2: heading type is uppercase here, and a tag that
               reads BOOK beside a chip reading book is the same word twice */}
           {tag && <span className="active">{tagLabel(tag)}</span>}
+          {untagged && <span className="active">{m.home.untagged}</span>}
           <span className="rule" />
           <span className="n">
             {m.common.tags(tags.data?.length ?? 0)}
@@ -399,18 +411,26 @@ function Index({ lang }: { lang: string }) {
         </summary>
         <div className="chips">
           <button
-            className={`chip ${tag ? '' : 'on'}`}
-            aria-pressed={!tag}
-            onClick={() => setParam('tag', '')}
+            className={`chip ${tag || untagged ? '' : 'on'}`}
+            aria-pressed={!tag && !untagged}
+            onClick={() => setFilter('')}
           >
             {m.home.all}
+          </button>
+          {/* no count: /api/tags counts tags, and this is the absence of one */}
+          <button
+            className={`chip ${untagged ? 'on' : ''}`}
+            aria-pressed={untagged}
+            onClick={() => setFilter('', !untagged)}
+          >
+            {m.home.untagged}
           </button>
           {(tags.data ?? []).map((t) => (
             <button
               key={t.tag}
               className={`chip ${t.tag === tag ? 'on' : ''}`}
               aria-pressed={t.tag === tag}
-              onClick={() => setParam('tag', t.tag === tag ? '' : t.tag)}
+              onClick={() => setFilter(t.tag === tag ? '' : t.tag)}
             >
               {tagLabel(t.tag)}
               <span className="n">{fmtCount(t.count, locale)}</span>
