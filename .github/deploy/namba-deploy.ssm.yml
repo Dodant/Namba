@@ -13,7 +13,7 @@
 # been edited by hand on the box. Rolling back is the second command with the
 # previous number -- versions are kept, so nothing is lost by registering.
 #
-# Registered as v5 on 2026-09-10.
+# Registered as v6 on 2026-09-30.
 schemaVersion: '2.2'
 description: >
   Namba deploy -- a fixed procedure rather than a shell. The CI role may run this
