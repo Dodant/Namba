@@ -151,7 +151,10 @@ jobs:
 
       - name: Deploy via the namba-deploy document
         env:
-          INSTANCE: i-03752dda7499977e7
+          # The Lightsail box is an SSM hybrid node (mi-*), so the role's
+          # SendCommand resource is a managed-instance ARN, not an ec2 one.
+          # Moved off EC2 i-03752dda7499977e7 on 2026-09-30.
+          INSTANCE: mi-0b89e9c706d874315
           IMAGE: ghcr.io/dodant/namba:${{ github.sha }}
         run: |
           set -euo pipefail
