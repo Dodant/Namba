@@ -1,11 +1,11 @@
-# Namba runs on the EC2 that already runs chiral, so this workflow cannot use
-# the deploy role that repo uses: that role may run AWS-RunShellScript, which is
-# arbitrary shell on a box holding somebody else's production. This one may run
-# exactly one SSM document, `namba-deploy`, whose script is in
-# .github/deploy/namba-deploy.ssm.yml. That file, not this one, is the ceiling
-# on what a compromised workflow here can do to that machine -- and it is the
-# *registered* version that runs, not the file, so an edit there is not live
-# until somebody registers it. The command is in that file's own header.
+# Namba runs on the Lightsail box that already runs chiral, so this workflow
+# cannot use the deploy role that repo uses: that role may run
+# AWS-RunShellScript, which is arbitrary shell on a box holding somebody else's
+# production. This one may run exactly one SSM document, `namba-deploy`, whose
+# script is in .github/deploy/namba-deploy.ssm.yml. That file, not this one, is
+# the ceiling on what a compromised workflow here can do to that machine -- and
+# it is the *registered* version that runs, not the file, so an edit there is
+# not live until somebody registers it. The command is in that file's own header.
 name: Deploy
 
 on:
@@ -153,7 +153,6 @@ jobs:
         env:
           # The Lightsail box is an SSM hybrid node (mi-*), so the role's
           # SendCommand resource is a managed-instance ARN, not an ec2 one.
-          # Moved off EC2 i-03752dda7499977e7 on 2026-09-30.
           INSTANCE: mi-0b89e9c706d874315
           IMAGE: ghcr.io/dodant/namba:${{ github.sha }}
         run: |

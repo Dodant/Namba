@@ -18,8 +18,9 @@ schemaVersion: '2.2'
 description: >
   Namba deploy -- a fixed procedure rather than a shell. The CI role may run this
   document and nothing else on the box, so what a compromised Namba workflow can
-  do to the chiral stack it shares an EC2 with is bounded by what is written
-  here. That is the whole reason this file exists instead of AWS-RunShellScript.
+  do to the chiral stack it shares a Lightsail box with is bounded by what is
+  written here. That is the whole reason this file exists instead of
+  AWS-RunShellScript.
 
   Image is pattern-locked. The parameter is substituted into the script as text,
   so the pattern is the only thing standing between a tag and a shell injection.
