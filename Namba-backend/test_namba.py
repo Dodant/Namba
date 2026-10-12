@@ -3287,13 +3287,24 @@ def test_contributors_count_live_entries_and_edits():
     c = TestClient(main.app)
     a = c.post("/api/posts", json={"value": "8128", "title": "perfect",
                                    "author": "tally"}).json()
-    c.post("/api/posts", json={"value": "8129", "title": "one past", "author": "tally"})
+    b = c.post("/api/posts", json={"value": "8129", "title": "one past",
+                                   "author": "tally"}).json()
     c.patch(f"/api/posts/{a['id']}", json={"title": "a perfect number", "author": "tally"})
 
-    def line():
-        return next((x["entries"], x["edits"]) for x in c.get("/api/contributors").json()
-                    if x["nickname"] == "tally")
+    def line(name="tally"):
+        return next(((x["entries"], x["edits"]) for x in c.get("/api/contributors").json()
+                     if x["nickname"] == name), (0, 0))
 
+    assert line() == (2, 1), line()
+    # An operator's snapshot is filed under "operator {email}", which a reader
+    # could type as a nickname too -- so it is left out by its event row, and
+    # renumbering puts nothing on the label's line.
+    label = "operator mod@namba.test"
+    before = line(label)
+    ops = _operator(TestClient(main.app))
+    assert ops.post(f"/api/admin/posts/{b['id']}/value",
+                    json={"value": "8130", "note": "test"}).status_code == 200
+    assert line(label) == before, line(label)
     assert line() == (2, 1), line()
     admin.set_status(a["id"], "HIDDEN")
     assert line() == (1, 0), line()
