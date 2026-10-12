@@ -42,6 +42,7 @@ export const ES: Messages = {
     failed: (error: string) => `No se pudo elegir una entrada — ${error}.`,
     empty: 'Aún no hay entradas entre las que elegir.',
   },
+  contributors: { title: 'Colaboradores', nickname: 'Apodo', counts: 'entradas / ediciones' },
   footer: {
     cc0Before: 'Todo lo escrito aquí se publica bajo',
     cc0After: ' — es de dominio público. Puedes copiarlo, citarlo o reutilizarlo sin permiso ni atribución. La autoría se conserva para registrar quién lo escribió primero.',

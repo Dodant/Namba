@@ -51,6 +51,33 @@ function Random() {
   )
 }
 
+/* A tally per nickname and nothing more: no names as links, no list of what
+   each one wrote. A nickname is a typed string, not an account, and a page
+   per name would be "my posts" on a wiki that has none (ADR-0032). */
+function Contributors() {
+  const { m } = useUi()
+  const got = useAsync(() => api.contributors(), [])
+  if (got.err) return <p className="empty" role="alert">{got.err}</p>
+  if (!got.data) return <p className="empty" role="status">{m.common.loading}</p>
+  return (
+    <article className="body guide">
+      <h1>{m.contributors.title}</h1>
+      <div className="tbl">
+        <table>
+          <thead>
+            <tr><th>{m.contributors.nickname}</th><th>{m.contributors.counts}</th></tr>
+          </thead>
+          <tbody>
+            {got.data.map((c) => (
+              <tr key={c.nickname}><td>{c.nickname}</td><td>{c.entries}/{c.edits}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  )
+}
+
 /* one path rather than 🎲, which arrives in colour and in whichever font the
    OS keeps its emoji in -- neither of which is this page. Inherits
    currentColor, so it greens on hover with the label beside it. */
@@ -526,6 +553,7 @@ function Footer({ lang, onLang }: { lang: string; onLang: (v: string) => void })
             not an <a> -- unlike its two neighbours it is a route in this
             bundle, and a full document load here would throw the app away. */}
         <Link to="/guide">{m.footer.guidelines}</Link>{' · '}
+        <Link to="/contributors">{m.contributors.title}</Link>{' · '}
         <a href="/docs">API</a> — {m.footer.apiOpen}{' · '}
         <a href="https://github.com/Dodant/Namba">{m.footer.source}</a>
       </p>
@@ -607,6 +635,7 @@ function Wiki() {
             <Route path="/p/:id/edit" element={<PostForm />} />
             <Route path="/new" element={<PostForm />} />
             <Route path="/guide" element={<Guide />} />
+            <Route path="/contributors" element={<Contributors />} />
             <Route
               path="*"
               element={

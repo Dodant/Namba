@@ -323,6 +323,9 @@ export const api = {
 
   languages: () => req<{ lang: string; count: number }[]>('/api/languages'),
 
+  contributors: () =>
+    req<{ nickname: string; entries: number; edits: number }[]>('/api/contributors'),
+
   numbers: (p: { format?: string; tag?: string; lang?: string; untagged?: string } = {}) =>
     req<NumberEntry[]>(`/api/numbers${qs(p)}`),
 

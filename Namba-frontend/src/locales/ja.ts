@@ -37,6 +37,7 @@ export const JA: Messages = {
     failed: (error: string) => `項目を選べませんでした — ${error}。`,
     empty: '選べる項目がまだありません。',
   },
+  contributors: { title: '貢献者', nickname: 'ニックネーム', counts: 'エントリー / 編集' },
   footer: {
     cc0Before: 'ここに書かれたすべての内容は',
     cc0After: 'のもとでパブリックドメインとして公開されます。許可やクレジット表記なしで引用・再利用できます。作成者名は最初に書いた人の記録として残ります。',

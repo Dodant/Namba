@@ -61,6 +61,7 @@ export const EN = {
     failed: (error: string) => `Couldn’t pick one — ${error}.`,
     empty: 'Nothing to pick from yet.',
   },
+  contributors: { title: 'Contributors', nickname: 'Nickname', counts: 'entries / edits' },
   footer: {
     cc0Before: 'Everything written here is',
     /* The leading space is load-bearing and belongs to the sentence, not to

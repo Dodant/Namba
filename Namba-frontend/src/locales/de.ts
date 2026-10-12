@@ -42,6 +42,7 @@ export const DE: Messages = {
     failed: (error: string) => `Es konnte kein Eintrag ausgewählt werden — ${error}.`,
     empty: 'Es gibt noch keine Einträge zur Auswahl.',
   },
+  contributors: { title: 'Mitwirkende', nickname: 'Spitzname', counts: 'Einträge / Bearbeitungen' },
   footer: {
     cc0Before: 'Alles, was hier geschrieben wird, steht unter',
     cc0After: ' — und ist gemeinfrei. Es darf ohne Erlaubnis oder Namensnennung kopiert, zitiert und weiterverwendet werden. Der Autorenname bleibt erhalten, um die ursprüngliche Urheberschaft zu dokumentieren.',

@@ -35,6 +35,7 @@ export const KO: Messages = {
     failed: (error: string) => `무작위 엔트리를 고르지 못했습니다 — ${error}.`,
     empty: '아직 고를 수 있는 엔트리가 없습니다.',
   },
+  contributors: { title: '기여자', nickname: '닉네임', counts: '엔트리 / 편집' },
   footer: {
     cc0Before: '이곳에 작성된 모든 내용은',
     cc0After: '에 따라 퍼블릭 도메인으로 공개됩니다. 허락이나 출처 표시 없이 인용하거나 재사용할 수 있습니다. 작성자 표시는 최초 작성 기록으로 남습니다.',
