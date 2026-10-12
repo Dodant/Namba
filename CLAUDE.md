@@ -128,7 +128,11 @@ opposite, and only its regex says `[0-9]`.
 - **No *reader* accounts, ever.** No signup, no ownership, no per-post
   permissions, no "my posts". Anyone reads, posts and edits with no login and no
   identity beyond a nickname they type, and every guard in the public API assumes
-  it — do not "fix" the open half by adding auth to it.
+  it — do not "fix" the open half by adding auth to it. `/contributors` is a
+  tally of entries and edits per nickname, not a profile: a nickname is a
+  string somebody typed, so the names are not links and nothing lists what
+  one of them wrote. The moment it gains a list or a link, it is "my posts"
+  (ADR-0032).
 
   There is exactly one exception and it is scoped on purpose: `admins`, the
   operators, because an operator's decision has to carry a name and be undoable,
@@ -147,7 +151,7 @@ opposite, and only its regex says `[0-9]`.
   the second factor. Password success creates only a five-minute challenge;
   the session cookie is issued after one unused authenticator counter succeeds.
 - **Nothing removes an entry.** `posts.status` is `ACTIVE` / `HIDDEN` /
-  `DELETED`, and a hidden entry drops out of all fourteen public reads and comes
+  `DELETED`, and a hidden entry drops out of all fifteen public reads and comes
   back whole. There is no `DELETE /api/posts/{id}` — the path answers 405 — and
   no delete button anywhere in the front end. An open wiki where one click can
   take a page away has no defence at all, and the fix is not confirming harder:

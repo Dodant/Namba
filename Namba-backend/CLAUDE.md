@@ -773,9 +773,9 @@ No auth on the public half means the input validation *is* the security model
 there. The operator's half has a login, and the notes above are the whole of it.
 
 - Nothing the API offers removes a row. `posts.status` is the whole of
-  moderation and `LIVE` is the condition fourteen public reads carry; the list
+  moderation and `LIVE` is the condition fifteen public reads carry; the list
   of them is in `store.py` above the constant, and `test_hidden_is_invisible`
-  walks all fourteen: eight API reads, five server-written `<head>`s and the
+  walks all fifteen: nine API reads, five server-written `<head>`s and the
   sitemap. The latter six are places a hidden row can reach somebody who never called the API. A new public read
   that touches `posts` joins that list, or it leaks the body of something an
   operator took down. `head_abbr` arrived with `/a/` and `head_calendar` with
