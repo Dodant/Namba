@@ -3281,14 +3281,33 @@ def test_api_round_trip():
     assert both["tags"] == [nfc], both["tags"]
 
 
+def test_contributors_count_live_entries_and_edits():
+    """A nickname's line is entries it wrote first / revisions it filed, and
+    hiding an entry takes both its entry and its edits out of the count."""
+    c = TestClient(main.app)
+    a = c.post("/api/posts", json={"value": "8128", "title": "perfect",
+                                   "author": "tally"}).json()
+    c.post("/api/posts", json={"value": "8129", "title": "one past", "author": "tally"})
+    c.patch(f"/api/posts/{a['id']}", json={"title": "a perfect number", "author": "tally"})
+
+    def line():
+        return next((x["entries"], x["edits"]) for x in c.get("/api/contributors").json()
+                    if x["nickname"] == "tally")
+
+    assert line() == (2, 1), line()
+    admin.set_status(a["id"], "HIDDEN")
+    assert line() == (1, 0), line()
+    admin.set_status(a["id"], "ACTIVE")
+
+
 def test_hidden_is_invisible():
     """Hiding an entry takes it off the wiki, not out of one view of it.
 
-    Fourteen public reads carry the status condition and missing one leaks the
-    body of something an operator took down, so this walks all fourteen: the
+    Fifteen public reads carry the status condition and missing one leaks the
+    body of something an operator took down, so this walks all fifteen: the
     index, the list endpoint the feed and the search share, the entry itself,
     the two vocabularies, its row among another entry's related entries, its
-    history, the talk beside it, the <head> written server-side for /p/{id},
+    history, the talk beside it, the contributors' tally, the <head> written server-side for /p/{id},
     the four written for the list pages it appears on, and the sitemap handed
     to crawlers.
 
@@ -3344,6 +3363,8 @@ def test_hidden_is_invisible():
                            c.get(f"/api/posts/{other['id']}").json()["related"]),
             "history": c.get(f"/api/posts/{pid}/revisions").status_code == 200,
             "talk": c.get(f"/api/posts/{pid}/comments").status_code == 200,
+            "contributors": any(x["nickname"] == "kaprekar"
+                                for x in c.get("/api/contributors").json()),
             "head": "Kaprekar" in c.get(f"/p/{pid}").text,
             # the list pages name their entries in the description and in the
             # JSON-LD ItemList, which is a copy of the title outside the app
@@ -3356,7 +3377,7 @@ def test_hidden_is_invisible():
             "sitemap": f"/p/{pid}</loc>" in c.get("/sitemap.xml").text,
         }
 
-    assert len(seen()) == 14 + 1, "fourteen reads, and search is the second on /api/posts"
+    assert len(seen()) == 15 + 1, "fifteen reads, and search is the second on /api/posts"
     assert all(seen().values()), seen()
 
     move("HIDDEN")

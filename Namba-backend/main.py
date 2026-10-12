@@ -555,6 +555,36 @@ def list_tags(format: Optional[str] = None, con=Depends(get_db)):
     ]
 
 
+@app.get("/api/contributors")
+def list_contributors(con=Depends(get_db)):
+    """Entries and edits per nickname, as a count and nothing else (ADR-0032).
+
+    A nickname is a string somebody typed, not an identity, so this is a tally
+    and not a profile: no list of what each one wrote and no page per name --
+    the moment there is one, it is "my posts" on a wiki with no accounts.
+
+    Entries are `posts.author`, the first writer. Edits are the revisions a
+    public write filed under its nickname -- every edit, restore and
+    translation takes one. An operator's snapshot carries their email, not a
+    nickname, and is told apart by its event row rather than by the label, which
+    a reader could type. Both halves carry LIVE: a hidden entry is in nobody's
+    count. Stored strings as they are, so `Ed` and `ed` are two rows.
+    """
+    return [dict(r) for r in con.execute(
+        """SELECT nickname, SUM(e) AS entries, SUM(d) AS edits FROM (
+               SELECT author AS nickname, 1 AS e, 0 AS d FROM posts WHERE status = ?
+               UNION ALL
+               SELECT r.author, 0, 1 FROM revisions r
+               JOIN posts p ON p.id = r.post_id AND p.status = ?
+               WHERE r.id NOT IN (SELECT revision_id FROM events
+                                  WHERE admin_id IS NOT NULL AND revision_id IS NOT NULL)
+           )
+           WHERE nickname IS NOT NULL AND nickname NOT IN ('', 'anonymous')
+           GROUP BY nickname ORDER BY entries DESC, edits DESC, nickname LIMIT 100""",
+        (LIVE, LIVE),
+    )]
+
+
 @app.get("/api/numbers")
 def list_numbers(
     format: Optional[str] = None,
@@ -1489,7 +1519,7 @@ def robots(request: Request):
 def sitemap(request: Request, con=Depends(get_db)):
     """Every page on this wiki worth indexing, in one file.
 
-    The fourteenth public read, and it carries LIVE like the other thirteen: an
+    One of the fifteen public reads, and it carries LIVE like the others: an
     entry an operator hid keeps its row, and handing that row to a crawler in a
     list leaks exactly what hiding it was for.
 

@@ -36,16 +36,16 @@ class Text(BaseModel):
     def one_normal_form(cls, v):
         return nfc(v)
 
-# The only status a visitor ever sees. Fourteen reads in main.py carry it -- the
+# The only status a visitor ever sees. Fifteen reads in main.py carry it -- the
 # index, the list endpoint the feed and the search share, one entry, the two
-# vocabularies, an entry's related row, its history and its comments, the five
-# <head>s written for /p/{id}, /n/{value}, /a/{value}, /c/{value} and /t/{tag},
-# and the sitemap -- and missing one leaks the body of something an operator
-# took down. test_hidden_is_invisible walks all fourteen: eight API reads, five
-# heads and the sitemap. A head that names an entry and a sitemap that links
-# to it are both places a row can leak to somebody who never called the API at
-# all. The writes need no equivalent: they reach for fetch_one() below first and
-# get the 404 from there.
+# vocabularies, an entry's related row, its history and its comments, the
+# contributors' tally, the five <head>s written for /p/{id}, /n/{value},
+# /a/{value}, /c/{value} and /t/{tag}, and the sitemap -- and missing one leaks
+# the body of something an operator took down. test_hidden_is_invisible walks
+# all fifteen: nine API reads, five heads and the sitemap. A head that names
+# an entry and a sitemap that links to it are both places a row can leak to
+# somebody who never called the API at all. The writes need no equivalent:
+# they reach for fetch_one() below first and get the 404 from there.
 LIVE = "ACTIVE"
 
 
