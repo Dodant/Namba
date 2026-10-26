@@ -4590,6 +4590,24 @@ def test_the_plugin_is_counted_and_is_never_a_write():
         con.close()
 
 
+def test_the_plugin_still_names_itself():
+    """Every `curl` in the plugin's SKILL.md sends a User-Agent `is_plugin` counts.
+
+    Change one side alone and `plugin_days` goes quietly to zero -- no error,
+    just a page that looks like nobody using the plugin (ADR-0028). Missing
+    file is a failure for the same reason as in the test above.
+    """
+    path = os.path.join(db.DIR, os.pardir, "Namba-plugin", "plugins", "namba",
+                        "skills", "random-entry", "SKILL.md")
+    assert os.path.isfile(path), f"the plugin is not at {path}"
+    src = open(path, encoding="utf-8").read()
+    agents = re.findall(r"-A '([^']*)'", src)
+    assert agents and src.count("curl -") == len(agents), \
+        "a curl in SKILL.md sends no -A, and curl's default is not counted"
+    for ua in agents:
+        assert ua.startswith(events.PLUGIN_UA), (ua, events.PLUGIN_UA)
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_"):
