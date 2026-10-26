@@ -57,7 +57,7 @@ by comma or by space, in any case:
 ```
 /namba:random-entry time
 /namba:random-entry integer, abbr
-/namba:random-entry decimal mixed calendar
+/namba:random-entry decimal mixed
 ```
 
 | | |
@@ -66,7 +66,6 @@ by comma or by space, in any case:
 | `decimal` | `3.14`, `1.618` |
 | `mixed` | `K2`, `C-3PO` — numerals and letters together |
 | `time` | `11:11`, `4:20` |
-| `calendar` | `12-25`, `04-01` — a date with no year |
 | `abbr` | `POV`, `UFO` — the wiki's abbreviations |
 
 Anything else is not a kind, and the skill says so in one line rather than
@@ -92,16 +91,13 @@ kinds go along with it:
 
 ## Example
 
-```
-42 — The Hitchhiker's Guide to the Galaxy
-```
+[42](https://namba.chiral.kr/p/72) — The Hitchhiker's Guide to the Galaxy
 
-```
-POV — Point of View
-```
+[POV](https://namba.chiral.kr/p/279) — Point Of View
 
-That one line is the entire output. No description, no URL, no commentary, and
-nothing about your current work changes.
+That one line is the entire output. Only the value links to its entry page;
+there is no description or commentary, and nothing about your current work
+changes.
 
 ## What it does
 
@@ -110,8 +106,9 @@ One read of one public endpoint, `GET /api/posts?sort=random&limit=5` on
 readable. Nothing is written, no file is touched, no credential is read, and no
 other host is contacted. What comes back is a wiki anyone can write to without
 an account, so the skill treats it as data rather than instructions and reads
-only the two fields it prints. The wiki's entries are never bundled into the
-plugin, so it shows what is on Namba today without the plugin being updated.
+only the value, title and id used to make the link. The wiki's entries are
+never bundled into the plugin, so it shows what is on Namba today without the
+plugin being updated.
 
 The request names itself — `User-Agent: namba-plugin` — so that Namba can
 count how many installs are still being used, which is the one thing an open
