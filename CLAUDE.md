@@ -1,10 +1,11 @@
 # Namba
 
-An open, no-login wiki of what numbers mean. Two apps in one git repo, no
-monorepo tooling — `Namba-backend` (FastAPI + SQLite) and `Namba-frontend`
-(React + Vite). One repo on purpose: the two lists below are hand-copied across
-both apps, so keeping them in step has to be a single commit. Full walkthrough
-in `README.md`.
+An open, no-login wiki of what numbers mean. Two apps and an editor plugin in
+one git repo, no monorepo tooling — `Namba-backend` (FastAPI + SQLite),
+`Namba-frontend` (React + Vite) and `Namba-plugin` (a Claude Code / Codex
+skill, served from the marketplace in `.claude-plugin/` at the root). One repo
+on purpose: the lists below are hand-copied across the apps, so keeping them in
+step has to be a single commit. Full walkthrough in `README.md`.
 
 ## Running
 
@@ -489,7 +490,7 @@ opposite, and only its regex says `[0-9]`.
   calling a handler, answers with what input.
 
 - **Reading records nothing, and the one exception volunteered.** The editor
-  plugin — its own repository, `Dodant/Namba-plugin` — names itself in a
+  plugin — `Namba-plugin/` — names itself in a
   `User-Agent`, and `/api/posts` counts that read in `plugin_days`: one row
   per client per day, a counter that UPDATEs. **It is one row per client per
   day and at most one *write* per client per minute**, the calls in between
@@ -506,10 +507,10 @@ opposite, and only its regex says `[0-9]`.
   hour looks exactly like somebody hammering the wiki. **No figure on that
   page is an install count** — an install is a git clone, nothing calls home,
   and a client is an address hash rather than a person, so an office is one
-  and a laptop on two networks is two. The half of this that lives in the
-  other repository, `-A namba-plugin` in its `SKILL.md`, is hand-copied
-  against `PLUGIN_UA` here and no test in this suite can reach it: change one
-  and the figures go quietly to zero, with no error anywhere (ADR-0028).
+  and a laptop on two networks is two. The plugin's half, `-A namba-plugin` in its
+  `SKILL.md`, is hand-copied against `PLUGIN_UA` in `events.py`: change one
+  alone and the figures go quietly to zero, with no error anywhere, which is
+  what `test_the_plugin_still_names_itself` notices (ADR-0028).
 
 - **A write that decides holds the lock while it decides.** `db.writing(con)`
   is the transaction every one of the twelve public write routes opens, and it

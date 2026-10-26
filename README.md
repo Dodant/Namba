@@ -363,7 +363,7 @@ Namba has a plugin anyone can install in Claude Code or Codex, which prints one
 random entry of this wiki as a single line while they work:
 
 ```
-/plugin marketplace add Dodant/Namba-plugin
+/plugin marketplace add Dodant/Namba
 /plugin install namba@namba
 /namba:random-entry
 ```
@@ -374,10 +374,11 @@ random entry of this wiki as a single line while they work:
 
 It reads `GET /api/posts?sort=random&limit=5` over the public API and carries
 no copy of the entries, so it stays current without being updated. It lives in
-its own repository,
-[`Dodant/Namba-plugin`](https://github.com/Dodant/Namba-plugin), because a
-plugin is installed by repository: pointing a stranger's `/plugin` at this one
-hands them the whole wiki to get one skill.
+[`Namba-plugin/`](Namba-plugin), and the marketplace that installs it is
+`.claude-plugin/marketplace.json` at this repository's root. The price is that
+a plugin is installed by repository, so `/plugin marketplace add` clones the
+whole wiki to get one skill; the gain is that the plugin's `User-Agent` and
+the `PLUGIN_UA` that counts it move in one commit and one test suite.
 
 That read is the only one this wiki counts, and it is counted because it says
 who it is: the plugin's `curl` sends a `User-Agent` naming itself, and the back
@@ -389,7 +390,7 @@ salted hash of an address like every other client here, so an office is one of
 them and a laptop on two networks is two.
 
 Codex installs the same repository — `codex plugin marketplace add
-Dodant/Namba-plugin`, then `codex plugin add namba@namba` — because it reads
+Dodant/Namba`, then `codex plugin add namba@namba` — because it reads
 the same manifest. One plugin, not one per editor.
 
 ## Deploying

@@ -87,13 +87,12 @@ never a user.
 
 ## Consequences
 
-- **Half of this lives in the other repository, and the pair is hand-copied.**
-  The header is in `Dodant/Namba-plugin`'s `SKILL.md`; the prefix it has to
-  start with is `PLUGIN_UA` in `events.py`. Change one and the figures go
-  quietly to zero -- no error, no empty-state, just a page of nothing that
-  looks like nobody using the plugin. No test here can catch it, because the
-  other side is not in this repository, which is why it is written down
-  instead, the way the one-process rule is (ADR-0008).
+- **The pair is hand-copied.** The header is in `Namba-plugin`'s `SKILL.md`;
+  the prefix it has to start with is `PLUGIN_UA` in `events.py`. Change one
+  and the figures go quietly to zero -- no error, no empty-state, just a page
+  of nothing that looks like nobody using the plugin.
+  `test_the_plugin_still_names_itself` reads every `curl` in the `SKILL.md`
+  and fails when one sends no `-A` or one `is_plugin` would not count.
 - Forgeable, and that is accepted rather than mitigated. Anybody can send the
   header and anybody can withhold it. It is a usage figure on an open wiki,
   not an audited one, and there is nothing to audit it with that would not be
@@ -173,3 +172,9 @@ carried calls; never writing the first call of a window; and lifting the
   the plugin asks for five entries a call; the endpoint's three reads were
   three snapshots and could answer an empty window beside a client count of
   one.
+- 2026-10-26: the plugin moves into this repository as `Namba-plugin/`, with
+  its history, and the marketplace manifest moves to the root so
+  `marketplace add Dodant/Namba` finds it. It had been kept apart so that an
+  install would not clone the whole wiki; that cost is now accepted, because
+  apart, the header and `PLUGIN_UA` were a pair no test could reach, and here
+  `test_the_plugin_still_names_itself` holds them.
