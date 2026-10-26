@@ -9,7 +9,7 @@ of what numbers mean.
 ### Claude Code
 
 ```
-/plugin marketplace add Dodant/Namba-plugin
+/plugin marketplace add Dodant/Namba
 /plugin install namba@namba
 ```
 
@@ -21,7 +21,7 @@ checkout of that repo.
 From a shell instead:
 
 ```sh
-claude plugin marketplace add Dodant/Namba-plugin
+claude plugin marketplace add Dodant/Namba
 claude plugin install namba@namba
 ```
 
@@ -33,7 +33,7 @@ The same marketplace, read by `codex` itself — there is no second manifest and
 no second copy of the skill:
 
 ```sh
-codex plugin marketplace add Dodant/Namba-plugin
+codex plugin marketplace add Dodant/Namba
 codex plugin add namba@namba
 ```
 

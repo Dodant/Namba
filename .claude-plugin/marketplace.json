@@ -10,9 +10,9 @@
     {
       "name": "namba",
       "description": "Surfaces one random entry from the Namba wiki while you work. Read-only, one line, no interruption.",
-      "source": "./plugins/namba",
+      "source": "./Namba-plugin/plugins/namba",
       "category": "productivity",
-      "homepage": "https://github.com/Dodant/Namba-plugin"
+      "homepage": "https://github.com/Dodant/Namba/tree/main/Namba-plugin"
     }
   ]
 }
