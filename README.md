@@ -70,7 +70,7 @@ go stale the way a table here would.
 
 ## How it fits together
 
-`Namba-backend` — FastAPI over stdlib `sqlite3`, no ORM. Fifteen Python files,
+`Namba-backend` — FastAPI over stdlib `sqlite3`, no ORM. Sixteen Python files,
 including the test suite:
 
 | file | what it holds |
@@ -81,6 +81,7 @@ including the test suite:
 | `store.py` | reading and writing one entry — the pieces both APIs need |
 | `numfmt.py` | `parse_number()` — a display string to a format and a sort key |
 | `seo_locale.py` | localized metadata prose and Open Graph locale codes |
+| `og_image.py` | the share card each entry and each value page draws, with its fonts in `fonts/` |
 | `test_namba.py` | the backend and cross-app checks |
 | `seed.py` + `seed_tags.py` | the markdown importer and its hand-written tags |
 | `admin_api.py` | the back office's routes, under `/api/admin` |
@@ -309,7 +310,7 @@ A wiki anyone can edit is also a wiki anyone could empty, and the fix is not a
 confirmation dialog — it is that the button does not exist. There is no
 `DELETE /api/posts/{id}` (the path answers 405) and no delete control anywhere in
 the front end. `posts.status` is `ACTIVE`, `HIDDEN` or `DELETED`, and a hidden
-entry drops out of all fifteen public reads and comes back whole: its history, its
+entry drops out of all seventeen public reads and comes back whole: its history, its
 comments, its translations, at the same address.
 
 So a reader who thinks an entry should go asks, in the "Flag a problem" fold

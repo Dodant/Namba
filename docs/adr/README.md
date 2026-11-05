@@ -45,3 +45,4 @@ the rule it introduces.
 | [0030](0030-on-this-day-is-a-calendar-role.md) | On this day is a mutually exclusive Calendar role | accepted | 2026-09-15 |
 | [0031](0031-unfinished-forms-stay-in-the-browser.md) | Unfinished main entry forms are browser-local drafts | accepted | 2026-09-16 |
 | [0032](0032-contributors-is-a-tally-not-a-profile.md) | The contributors page is a tally, not a profile | accepted | 2026-10-12 |
+| [0033](0033-every-number-draws-its-own-card.md) | Entries and value pages draw their own share card | accepted | 2026-11-05 |

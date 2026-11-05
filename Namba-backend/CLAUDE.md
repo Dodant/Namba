@@ -1,6 +1,6 @@
 # Namba-backend
 
-FastAPI over stdlib `sqlite3`. Fifteen Python files, including the test suite:
+FastAPI over stdlib `sqlite3`. Sixteen Python files, including the test suite:
 
 | | |
 |---|---|
@@ -13,6 +13,7 @@ FastAPI over stdlib `sqlite3`. Fifteen Python files, including the test suite:
 | `auth.py` | operator passwords, sessions and the `require_admin` dependency |
 | `numfmt.py` | value parsing |
 | `seo_locale.py` | localized metadata prose and Open Graph locale codes |
+| `og_image.py` | the share card each entry and each value page draws |
 | `test_namba.py` | the backend and cross-app checks |
 | `seed.py` + `seed_tags.py` | the markdown importer |
 | `gc_uploads.py` | the uploads collector |
@@ -526,33 +527,63 @@ the sitemap.
   French site metadata containing Korean contributed content, not a French
   translation of that content. Canonicals carry neither choice, and `Vary:
   Accept-Language, Cookie` keeps cached variants apart.
-- **Every page falls back to one share card, and it is a file, not a route.**
-  `OG_CARD` is `og.png` in the front end's `public/`, so Vite copies it into
-  `dist/` and the catch-all serves it like any other build output — there is no
-  image code in this app and no dependency that draws one. `og_tags()` reaches
-  for it whenever a page has no picture of its own, which is **every page**:
-  not one entry in this wiki has an image, so the fallback is the normal case
-  and an entry's own picture is the exception. That is also why `twitter:card`
-  is now always `summary_large_image` rather than a ternary — before the
-  fallback existed, every pasted Namba link came out a bare grey box.
+- **An entry and a value page draw their own share card; everything else
+  falls back to one file.** `og_image.py` draws a 1200×630 sRGB PNG with
+  Pillow — the numeral in Newsreader, the chrome in IBM Plex Mono, Hangul in
+  Gowun Batang, and the Greek and operators Newsreader lacks (`π`) in Noto
+  Serif, all subset WOFF2 files in `fonts/` with their OFL beside them.
+  `GET /og/p/{id}.png` and `GET /og/{n|a|c}.png?v=` serve it, above the
+  catch-all. The value is a query parameter for the reason `path_seg()` reads
+  the raw path: `11/22/63` (ADR-0033).
 
-  An empty `/n/` or `/t/` gets the card too, `noindex` notwithstanding: the two
-  do not consult each other, one is about a search result and the other about
-  what a chat window draws. The `noindex` **default** branch is the one place
-  with no card — `/search`, `/new` and a mistyped path keep the head
-  `index.html` shipped, which still unfurls as the site's title and blurb
-  without an image. Left that way on purpose: giving it a card means giving it
-  a `og:url`, and the branch stays dumb by design.
+  **Nothing is stored and nothing is random.** A card is a pure function of a
+  `Card` tuple built from the live row on every request, so an edit is a new
+  card and a hidden entry has none — both routes carry `LIVE` and are two of
+  the reads `test_hidden_is_invisible` walks. The composition is seeded from
+  the section and the value, never the id or the clock, so `42` is the same
+  picture on its entry and its page and on every deploy; `render()` is
+  `lru_cache`d on the tuple. The URL `og_tags()` writes carries a digest of the
+  tuple, so a scraper gets a new address the moment the entry changes; the
+  response caches for a day rather than a year because hiding is not an edit
+  and does not change the address. The room a card is drawn in (`ROOMS`) is a
+  reading of the free-form tags, not a vocabulary anything has to agree with
+  (ADR-0010), so it is not a row in the root table.
 
-  `og:image:alt` rides only with the fallback, because this file knows what
-  that card reads. An uploaded picture has no alt text stored anywhere and a
-  title is a caption for the entry, not a description of the image — writing
-  one from it would be inventing it.
+  **What it draws is what the page says, never shortened.** It draws the
+  value, grouped for the `l` locale the way the title is; the titles; up to
+  three tags; the address; and the host from `site_base()`. A long value wraps
+  at its own separators and is never rounded — a card that says `3×10⁸` is a
+  card about a different number. A year appears only on the archive stamp and
+  only when `posts.year` holds one: nothing on a card is invented.
 
-  `test_the_share_card_is_a_real_png` reads the IHDR chunk by hand and holds
-  the file at 1200×630. It is the shape Facebook, Slack and Twitter all crop
-  from, and a resized card would be cut somewhere nobody chose with nothing
-  else in the repo to notice.
+  `OG_CARD` is `og.png` in the front end's `public/`, served by the catch-all
+  like any other build output. It is what `/`, `/guide`, `/t/` and an empty
+  value page carry, and what `/og/` answers with when there is nothing to draw
+  or the drawing raises — a broken image in an unfurl is worse than the
+  generic card, and a scraper does not retry. An empty `/n/` draws nothing on
+  purpose: `/n/` is an open set, and a render per address somebody types would
+  be an open set of CPU. An entry's own uploaded picture still wins over its
+  card.
+
+  An empty `/n/` or `/t/` gets the static card, `noindex` notwithstanding: the
+  two do not consult each other, one is about a search result and the other
+  about what a chat window draws. The `noindex` **default** branch is the one
+  place with no card — `/search`, `/new` and a mistyped path keep the head
+  `index.html` shipped. Left that way on purpose: giving it a card means
+  giving it a `og:url`, and the branch stays dumb by design.
+
+  `og:image:alt`, `og:image:width` and `og:image:height` ride with the drawn
+  card and the fallback, because this code knows what both read and how big
+  they are. An uploaded picture has no alt text stored anywhere, and a title
+  is a caption for the entry rather than a description of the image, so
+  writing one from it would be inventing it. `twitter:title`,
+  `twitter:description` and `twitter:image` repeat the `og:` values for the
+  unfurlers that read only those names.
+
+  `test_every_entry_draws_its_own_card` holds the size, the sRGB tag, the
+  600 KB ceiling WhatsApp draws under, determinism across a cleared cache, the
+  digest moving on an edit, and the hostile inputs.
+  `test_the_share_card_is_a_real_png` holds the static file at 1200×630.
 - **`path_seg()` reads the raw path, and `enc()` has to match
   `encodeURIComponent`.** A value may hold a slash — `11/22/63` — so by
   the time ASGI has decoded the path, `n/11%2F22%2F63` and a three-segment path
@@ -773,10 +804,10 @@ No auth on the public half means the input validation *is* the security model
 there. The operator's half has a login, and the notes above are the whole of it.
 
 - Nothing the API offers removes a row. `posts.status` is the whole of
-  moderation and `LIVE` is the condition fifteen public reads carry; the list
+  moderation and `LIVE` is the condition seventeen public reads carry; the list
   of them is in `store.py` above the constant, and `test_hidden_is_invisible`
-  walks all fifteen: nine API reads, five server-written `<head>`s and the
-  sitemap. The latter six are places a hidden row can reach somebody who never called the API. A new public read
+  walks all seventeen: nine API reads, five server-written `<head>`s, the
+  sitemap and the two share cards. The latter eight are places a hidden row can reach somebody who never called the API. A new public read
   that touches `posts` joins that list, or it leaks the body of something an
   operator took down. `head_abbr` arrived with `/a/` and `head_calendar` with
   `/c/`.

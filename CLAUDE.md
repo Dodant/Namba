@@ -152,7 +152,7 @@ opposite, and only its regex says `[0-9]`.
   the second factor. Password success creates only a five-minute challenge;
   the session cookie is issued after one unused authenticator counter succeeds.
 - **Nothing removes an entry.** `posts.status` is `ACTIVE` / `HIDDEN` /
-  `DELETED`, and a hidden entry drops out of all fifteen public reads and comes
+  `DELETED`, and a hidden entry drops out of all seventeen public reads and comes
   back whole. There is no `DELETE /api/posts/{id}` — the path answers 405 — and
   no delete button anywhere in the front end. An open wiki where one click can
   take a page away has no defence at all, and the fix is not confirming harder:

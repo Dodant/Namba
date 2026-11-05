@@ -16,8 +16,9 @@ per request: `/`, `/guide`, `/n/{value}`, `/a/{value}`, `/t/{tag}` and
 `/p/{id}` get titles, descriptions, canonicals, Open Graph tags and JSON-LD;
 everything else is `noindex`. Being indexable is what has to be spelled out.
 `/robots.txt` and `/sitemap.xml` come from the same process and name the
-address the request arrived at. Every page falls back to one share card,
-`public/og.png`, held at 1200×630 by a test.
+address the request arrived at. An entry and a non-empty value page carry a
+card drawn for them (ADR-0033); every other page falls back to one share
+card, `public/og.png`, held at 1200×630 by a test.
 
 Server-written metadata follows the interface locale, chosen from the
 `namba_ui_locale` cookie and then `Accept-Language`. Entry content is never
@@ -40,3 +41,5 @@ translated by that choice.
   not a grey box.
 - 2026-09-02 (`40597fc`): metadata localised by interface locale.
 - 2026-09-09 (`aa96874`): the head moved out of `main.py` into `seo.py`.
+- 2026-11-05: entries and value pages draw their own card (ADR-0033); the
+  file stays as the fallback.
