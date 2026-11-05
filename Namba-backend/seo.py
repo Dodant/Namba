@@ -419,7 +419,7 @@ def head_number(con, page, value, base, locale="en"):
     )
     return head_list(page, base, kind="number", subject=shown,
                      url=f"{base}n/{enc(value)}", rows=rows, locale=locale,
-                     card=og_image.value_card(con, "number", value, base, locale))
+                     card=og_image.value_card(con, "number", value, locale))
 
 
 def head_calendar(con, page, value, base, locale="en"):
@@ -441,7 +441,7 @@ def head_calendar(con, page, value, base, locale="en"):
         f"AND {section_where('calendar')} ORDER BY id", (value, LIVE))]
     return head_list(page, base, kind="calendar", subject=value,
                      url=f"{base}c/{enc(value)}", rows=rows, locale=locale,
-                     card=og_image.value_card(con, "calendar", value, base, locale))
+                     card=og_image.value_card(con, "calendar", value, locale))
 
 
 def head_abbr(con, page, value, base, locale="en"):
@@ -459,7 +459,7 @@ def head_abbr(con, page, value, base, locale="en"):
         value = rows[0]["value"]
     return head_list(page, base, kind="abbreviation", subject=value,
                      url=f"{base}a/{enc(value)}", rows=rows, locale=locale,
-                     card=og_image.value_card(con, "abbr", value, base, locale))
+                     card=og_image.value_card(con, "abbr", value, locale))
 
 
 def head_tag(con, page, tag, base, locale="en"):
@@ -520,7 +520,7 @@ def og_head(page: str, post: dict, base: str, tags=(), locale="en") -> str:
         page, title=title, desc=desc, canonical=url, locale=locale,
         og=og_tags(title, desc, url, "article", base=base, image=img,
                    locale=locale,
-                   card=og_image.entry_card(post, tags, base, locale),
+                   card=og_image.entry_card(post, tags, locale),
                    post_id=post["id"])
            + [("article:published_time", post["created_at"]),
               ("article:modified_time", post["updated_at"])],

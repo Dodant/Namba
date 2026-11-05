@@ -1608,26 +1608,26 @@ def og_locale(l):
 # 64. A scraper walking every id x 8 locales is minutes of CPU, not an outage.
 # A disk cache keyed on the digest is the step after, if that ever shows up.
 @app.get("/og/p/{post_id:int}.png")
-def og_entry(post_id: int, request: Request, l: str = "", con=Depends(get_db)):
+def og_entry(post_id: int, l: str = "", con=Depends(get_db)):
     row = con.execute("SELECT * FROM posts WHERE id = ? AND status = ?",
                       (post_id, LIVE)).fetchone()
     card = None
     if row:
         tags = [r["tag"] for r in con.execute(
             "SELECT tag FROM post_tags WHERE post_id = ? ORDER BY tag", (post_id,))]
-        card = og_image.entry_card(dict(row), tags, site_base(request), og_locale(l))
+        card = og_image.entry_card(dict(row), tags, og_locale(l))
     return og_answer(card)
 
 
 @app.get("/og/{seg}.png")
-def og_value(seg: str, request: Request, v: str = Query("", max_length=32),
+def og_value(seg: str, v: str = Query("", max_length=32),
              l: str = "", con=Depends(get_db)):
     """/n/, /a/ and /c/'s card. The value is a query parameter rather than a
     path segment for the reason path_seg() reads the raw path: 11/22/63."""
     section = {"n": "number", "a": "abbr", "c": "calendar"}.get(seg)
     if section is None:
         raise HTTPException(404, "no such section")
-    card = og_image.value_card(con, section, v, site_base(request), og_locale(l)) \
+    card = og_image.value_card(con, section, v, og_locale(l)) \
         if v else None
     return og_answer(card)
 

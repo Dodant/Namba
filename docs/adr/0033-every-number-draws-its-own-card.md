@@ -58,3 +58,10 @@ dependency that drew one.
   does not reach the `ERROR` row in `events` (ADR-0004). The trade is
   deliberate: a scraper never retries, and a broken image is worse than the
   generic card.
+
+## History
+
+- 2026-11-05: the card's host changed from `site_base(request)` to a fixed
+  `HOST`, after a security review found two problems. A forged `Host` header
+  was printed on a card served with public caching. Each new header was also
+  a new cache key, so a client could force a fresh render every time.

@@ -551,7 +551,10 @@ the sitemap.
 
   **What it draws is what the page says, never shortened.** It draws the
   value, grouped for the `l` locale the way the title is; the titles; up to
-  three tags; the address; and the host from `site_base()`. A long value wraps
+  three tags; the address; and `og_image.HOST`, which is `NAMBA_BASE_URL`'s
+  host or the production name and **never the request's** -- a `Host` header
+  is the client's to choose, so drawing it would publish a cached card saying
+  whatever a stranger sent and hand them a fresh render per name tried. A long value wraps
   at its own separators and is never rounded — a card that says `3×10⁸` is a
   card about a different number. A year appears only on the archive stamp and
   only when `posts.year` holds one: nothing on a card is invented.

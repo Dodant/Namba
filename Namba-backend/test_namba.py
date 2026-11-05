@@ -4485,6 +4485,12 @@ def test_every_entry_draws_its_own_card():
     og_image.render.cache_clear()
     assert c.get(first).content == r.content, "same entry, same picture"
 
+    # the Host header is the client's, so it draws nothing: a forged one gets
+    # the same card at the same digest, and no render the cache has not seen
+    forged = c.get(f"/p/{p['id']}", headers={"host": "evil.test"}).text
+    assert first.split("h=")[1] in forged, "the digest moved with the Host header"
+    assert c.get(first, headers={"host": "evil.test"}).content == r.content
+
     # an edit is a new address, so a scraper's cached copy is not reused
     c.patch(f"/api/posts/{p['id']}", json={"title": "Speed of light"})
     assert url() != first

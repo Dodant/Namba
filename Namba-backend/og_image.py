@@ -47,6 +47,11 @@ DISPLAY = (SERIF, GREEK, MONO, HANGUL)
 LABEL = (MONO, GREEK, HANGUL)
 SRGB = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
 SECTION_PATH = {"number": "n", "abbr": "a", "calendar": "c"}
+# The name printed in the corner. Configured, never read off the request: a
+# Host header is the client's to choose, and a card drawn from it would be a
+# publicly cached picture saying whatever a stranger sent -- and a fresh
+# render, past the cache, for every name they tried.
+HOST = urlsplit(os.environ.get("NAMBA_BASE_URL", "")).netloc or "namba.chiral.kr"
 
 # index.css, light theme: the paper, the ink and the three inks the site
 # already marks things with.
@@ -82,7 +87,6 @@ class Card(NamedTuple):
     tags: tuple
     room: str
     seed: int
-    host: str
     year: Optional[int]
 
 
@@ -104,23 +108,19 @@ def seed_of(section, value) -> int:
     return int.from_bytes(hashlib.sha256(key.encode()).digest()[:8], "big")
 
 
-def host_of(base) -> str:
-    return urlsplit(base).netloc or "namba"
-
-
-def entry_card(post, tags, base, locale="en") -> Card:
+def entry_card(post, tags, locale="en") -> Card:
     section = section_of(post["format"])
     return Card(
         value=grouped_value(post["value"], post["grouped"], locale),
         address=f"/{SECTION_PATH[section]}/{post['value']}",
         titles=(post["title"],), more=0, tags=tuple(tags)[:3],
         room=room_of(tags, {post["format"]}),
-        seed=seed_of(section, post["value"]), host=host_of(base),
+        seed=seed_of(section, post["value"]),
         year=post.get("year"),
     )
 
 
-def value_card(con, section, value, base, locale="en") -> Optional[Card]:
+def value_card(con, section, value, locale="en") -> Optional[Card]:
     """The card for /n/42, /a/UFO or /c/12-25: the value and what it means.
     None for a value nobody has written about, which keeps the static card
     -- and keeps an open set of addresses from being an open set of renders.
@@ -143,7 +143,7 @@ def value_card(con, section, value, base, locale="en") -> Optional[Card]:
         address=f"/{SECTION_PATH[section]}/{value}",
         titles=tuple(r["title"] for r in rows[:3]), more=max(0, len(rows) - 3),
         tags=common, room=room_of(tags, {r["format"] for r in rows}),
-        seed=seed_of(section, value), host=host_of(base), year=None,
+        seed=seed_of(section, value), year=None,
     )
 
 
@@ -476,7 +476,7 @@ def labels(d, img, card, t):
     else:
         d.line(((M, RULE), (W * S - M, RULE)), fill=rgba(t["fg"], 120), width=S)
 
-    right = glyphs(card.host, LABEL, 14 * S, track=0.04)
+    right = glyphs(HOST, LABEL, 14 * S, track=0.04)
     title = " · ".join(card.titles) + (f"  +{card.more}" if card.more else "")
     room = W * S - 2 * M - right[1] - 48 * S
     title = clip_to(title, DISPLAY, 32 * S, room, 500)
