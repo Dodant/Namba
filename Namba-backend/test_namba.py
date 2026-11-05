@@ -1,4 +1,5 @@
 """Self-check: python test_namba.py   (no pytest, no fixtures)"""
+import io
 import json
 import math
 import os
@@ -36,6 +37,7 @@ import db  # noqa: E402
 import events  # noqa: E402
 import main  # noqa: E402
 import numfmt  # noqa: E402
+import og_image  # noqa: E402
 import seo  # noqa: E402
 import seo_locale  # noqa: E402
 import sqlite3  # noqa: E402
@@ -460,11 +462,12 @@ def test_share_card():
     assert 'property="og:description" content="Ramanujan The dullest number, until he spoke."' in page
     assert page.count('name="description"') == 1
     assert 'property="og:url" content="http://testserver/p/%d"' % p["id"] in page
-    # no picture of its own, so it falls back to the site's card -- which is
-    # every entry here, none of them has one
+    # no picture of its own, so it gets the card og_image draws for it, and
+    # the alt says what that card reads
     assert 'name="twitter:card" content="summary_large_image"' in page
-    assert 'property="og:image" content="http://testserver/og.png"' in page
-    assert 'property="og:image:alt"' in page, "the fallback card says what it reads"
+    assert 'property="og:image" content="http://testserver/og/p/%d.png?l=en&amp;h=' % p["id"] in page
+    assert 'property="og:image:alt" content="1729 — Taxicab number"' in page
+    assert 'name="twitter:title" content="1729 — Taxicab number · Namba"' in page
     # the entry's own address, said once, so /p/12?anything is not a second page
     assert 'rel="canonical" href="http://testserver/p/%d"' % p["id"] in page
     assert 'property="article:published_time"' in page
@@ -493,7 +496,7 @@ def test_share_card():
     with_img = c.patch(f"/api/posts/{p['id']}", json={"image": "/uploads/x.png"}).json()
     page = c.get(f"/p/{with_img['id']}").text
     assert 'property="og:image" content="http://testserver/uploads/x.png"' in page
-    assert "og.png" not in page, "its own picture, not the fallback"
+    assert "og.png" not in page and "/og/" not in page, "its own picture, not a card"
     assert "og:image:alt" not in page
 
     # a title with a quote in it must not break out of the attribute
@@ -922,10 +925,17 @@ def test_head_per_route():
     # -- and every one of them carries the site's card. An entry, a number, a
     # tag and the front page: four routes, no picture between them, and before
     # the fallback existed all four pasted into Slack as a bare grey box.
-    for path in ("/", "/n/808", "/t/breakbeat", f"/p/{a['id']}"):
+    # Two of them have a picture to draw now -- the number and the entry --
+    # and the other two still fall back to the file.
+    for path, card in (("/", "http://testserver/og.png"),
+                       ("/n/808", "http://testserver/og/n.png?v=808&amp;l=en&amp;h="),
+                       ("/t/breakbeat", "http://testserver/og.png"),
+                       (f"/p/{a['id']}", f"http://testserver/og/p/{a['id']}.png?l=en&amp;h=")):
         page = c.get(path).text
-        assert 'property="og:image" content="http://testserver/og.png"' in page, path
+        assert f'property="og:image" content="{card}' in page, path
+        assert f'name="twitter:image" content="{card}' in page, path
         assert 'name="twitter:card" content="summary_large_image"' in page, path
+        assert 'property="og:image:width" content="1200"' in page, path
 
     # -- /guide is the second page here that is not a query, and the only
     # route besides the front page that seo.index_html() indexes on purpose. It
@@ -3311,16 +3321,24 @@ def test_contributors_count_live_entries_and_edits():
     admin.set_status(a["id"], "ACTIVE")
 
 
+def drawn(r):
+    """A card og_image drew, as against the static fallback /og/ answers with
+    when there is nothing to draw -- which is also a PNG, so the header is
+    what tells them apart."""
+    return (r.status_code == 200
+            and r.headers.get("cache-control") == main.OG_CACHE["Cache-Control"])
+
+
 def test_hidden_is_invisible():
     """Hiding an entry takes it off the wiki, not out of one view of it.
 
-    Fifteen public reads carry the status condition and missing one leaks the
-    body of something an operator took down, so this walks all fifteen: the
+    Seventeen public reads carry the status condition and missing one leaks the
+    body of something an operator took down, so this walks all seventeen: the
     index, the list endpoint the feed and the search share, the entry itself,
     the two vocabularies, its row among another entry's related entries, its
     history, the talk beside it, the contributors' tally, the <head> written server-side for /p/{id},
-    the four written for the list pages it appears on, and the sitemap handed
-    to crawlers.
+    the four written for the list pages it appears on, the sitemap handed
+    to crawlers, and the two share cards that draw its title into a picture.
 
     It moves the column through admin.py because that is the only thing that
     can -- the operator's endpoints arrive with the admin router, and this is
@@ -3386,9 +3404,19 @@ def test_hidden_is_invisible():
             # and the sitemap is a list of every address a crawler should ask
             # for -- a hidden entry's is not one of them
             "sitemap": f"/p/{pid}</loc>" in c.get("/sitemap.xml").text,
+            # and the share cards, which draw the title into a picture: a
+            # hidden entry's card is the site's static one, not a copy of the
+            # words in pixels. One read for the entry, one for the three value
+            # sections, walked in all three for the reason the heads are.
+            "p-card": drawn(c.get(f"/og/p/{pid}.png")),
+            "n-card": drawn(c.get("/og/n.png", params={"v": "6174"})),
+            "a-card": drawn(c.get("/og/a.png", params={"v": "kap"})),
+            "c-card": drawn(c.get("/og/c.png", params={"v": "09-17"})),
         }
 
-    assert len(seen()) == 15 + 1, "fifteen reads, and search is the second on /api/posts"
+    assert len(seen()) == 17 + 1 + 2, (
+        "seventeen reads; search is the second on /api/posts, and the value card"
+        " is one read walked in three sections")
     assert all(seen().values()), seen()
 
     move("HIDDEN")
@@ -4431,6 +4459,56 @@ def test_the_share_card_is_a_real_png():
     assert head[:8] == b"\x89PNG\r\n\x1a\n", "not a PNG, and a scraper will not guess"
     width, height = struct.unpack(">II", head[16:24])
     assert (width, height) == (1200, 630), (width, height)
+
+
+def test_every_entry_draws_its_own_card():
+    """/og/ draws a 1200x630 sRGB PNG from the live row, the same picture
+    every time for the same entry, and a new address the moment it changes.
+
+    The determinism is the point of seeding from the value: a card that
+    differed per request would be a different image in every cache that ever
+    fetched it, and two scrapes of one page would disagree.
+    """
+    from PIL import Image
+    c = TestClient(main.app)
+    p = c.post("/api/posts", json={"value": "299792458", "title": "빛의 속도",
+                                   "tags": ["science"]}).json()
+    url = lambda: re.search(r'property="og:image" content="http://testserver(/og/[^"]+)"',
+                            c.get(f"/p/{p['id']}").text).group(1).replace("&amp;", "&")
+    first = url()
+    r = c.get(first)
+    assert drawn(r) and r.headers["content-type"] == "image/png", r.headers
+    img = Image.open(io.BytesIO(r.content))
+    assert img.size == (1200, 630) and img.mode == "RGB", (img.size, img.mode)
+    assert img.info.get("icc_profile"), "tagged sRGB, so no viewer guesses"
+    assert len(r.content) < 600 * 1024, len(r.content)
+    og_image.render.cache_clear()
+    assert c.get(first).content == r.content, "same entry, same picture"
+
+    # an edit is a new address, so a scraper's cached copy is not reused
+    c.patch(f"/api/posts/{p['id']}", json={"title": "Speed of light"})
+    assert url() != first
+
+    # the value page draws too, and an empty one keeps the static card
+    page = c.get("/n/299792458").text
+    assert 'content="http://testserver/og/n.png?v=299792458&amp;' in page
+    assert "/og/n.png" not in c.get("/n/31415926535").text
+
+    # the longest a value may be still fits: wrapped, never cut
+    long = c.post("/api/posts", json={"value": "1" * 32, "title": "x"}).json()
+    assert drawn(c.get(f"/og/p/{long['id']}.png"))
+    lines = og_image.hero("1" * 32)
+    assert "".join(ch for run, _, _ in lines for _, ch, _ in run) == "1" * 32
+    assert all(x + run[-1][0] < og_image.W * og_image.S for run, x, _ in lines)
+
+    # what a stranger can put in the URL: a locale nobody offers reads as
+    # English, an overlong value is refused before a query, an unknown section
+    # is not a section, and markup in a value is a value nobody filed
+    assert c.get(first.replace("l=en", "l=<script>")).status_code == 200
+    assert c.get("/og/n.png", params={"v": "9" * 33}).status_code == 422
+    assert c.get("/og/x.png", params={"v": "42"}).status_code == 404
+    assert not drawn(c.get("/og/n.png", params={"v": "<img src=x>"}))
+    assert not drawn(c.get("/og/p/99999999.png"))
 
 
 def test_the_plugin_is_counted_and_is_never_a_write():

@@ -24,6 +24,7 @@ from urllib.parse import quote, unquote
 
 from fastapi.responses import HTMLResponse
 
+import og_image
 import seo_locale
 from db import nfc
 from numfmt import date_key, grouped_value
@@ -99,13 +100,13 @@ HEADLINE = 110
 # head as well now, because a machine reading this wiki should not have to
 # infer whether it may quote it.
 CC0 = "https://creativecommons.org/publicdomain/zero/1.0/"
-# The card a page falls back to when it has no picture of its own -- which is
-# every page: not one entry in this wiki has an image, so this is not the
-# exception, it is what a pasted Namba link looks like in Slack, on Twitter and
-# in iMessage. There is no route for it here. It is a file in the front end's
-# public/, so Vite copies it to dist/ and the catch-all at the bottom serves it
-# like any other build output; test_the_share_card_is_a_real_png keeps it
-# 1200x630, which is the size the scrapers crop from.
+# The card a page falls back to when it has nothing of its own to draw: the
+# front page, /guide, a tag, an empty value page -- and every card that fails
+# to render, since /og/ answers with this file then. It is a file in the front
+# end's public/, so Vite copies it to dist/ and the catch-all at the bottom
+# serves it like any other build output; test_the_share_card_is_a_real_png
+# keeps it 1200x630, which is the size the scrapers crop from, and the size
+# og_image draws at.
 OG_CARD = "og.png"
 
 
@@ -248,36 +249,47 @@ def write_head(page: str, *, title=None, desc=None, canonical=None,
     return page.replace("</head>", "  " + "\n    ".join(out) + "\n  </head>", 1)
 
 
-def og_tags(title, desc, url, kind, base, image=None, locale="en"):
+def og_tags(title, desc, url, kind, base, image=None, locale="en", card=None,
+            post_id=None):
     """The share card.
 
-    twitter:card alone beside the og: tags: Twitter reads og:title,
-    og:description and og:image when its own are missing, so a second copy of
-    each would be three more lines saying the same thing.
-
     Always the large card, because there is always an image: an entry's own
-    picture when it has one, and OG_CARD when it does not. The small "summary"
-    card would describe every page on the site, and a pasted link comes out of
-    it a bare grey rectangle with the title beside it.
+    upload when it has one, the card og_image draws for an entry or a value
+    page when it has a `card`, and OG_CARD otherwise. The small "summary" card
+    comes out of a pasted link a bare grey rectangle with the title beside it.
 
-    og:image:alt only for the fallback. It says what that card actually reads,
-    which is a thing this file knows. An entry's uploaded picture has no alt
-    text stored anywhere, and the title is a caption for the entry rather than
-    a description of the image, so writing one from it would be inventing it.
+    The twitter: copies of title, description and image are redundant for
+    Twitter itself, which falls back to og:, and are written anyway: several
+    other unfurlers read only the twitter: names, and three lines is cheaper
+    than finding out which.
+
+    og:image:alt and the size only for a picture this file knows: the drawn
+    card reads the value and the titles, and the fallback reads what
+    seo_locale says it does, both at 1200x630. An uploaded picture has no alt
+    text stored anywhere and no size anyone measured, and a title is a caption
+    for the entry rather than a description of the image, so writing either
+    from it would be inventing it.
     """
     alt = None
-    if not image:
+    if card is not None and not image:
+        image, alt = (og_image.card_url(base, card, locale, post_id=post_id),
+                      og_image.card_alt(card))
+    elif not image:
         image, alt = f"{base}{OG_CARD}", seo_locale.words(locale)["image_alt"]
     tags = [("og:type", kind), ("og:site_name", "Namba"),
             ("og:locale", seo_locale.OG_LOCALES[locale]),
             ("og:title", title), ("og:description", desc), ("og:url", url),
-            ("twitter:card", "summary_large_image"), ("og:image", image)]
+            ("twitter:card", "summary_large_image"), ("twitter:title", title),
+            ("twitter:description", desc), ("og:image", image),
+            ("twitter:image", image)]
     tags.extend(
         ("og:locale:alternate", code)
         for name, code in seo_locale.OG_LOCALES.items() if name != locale
     )
     if alt:
-        tags.append(("og:image:alt", alt))
+        tags += [("og:image:width", str(og_image.W)),
+                 ("og:image:height", str(og_image.H)),
+                 ("og:image:alt", alt), ("twitter:image:alt", alt)]
     return tags
 
 
@@ -348,7 +360,7 @@ def head_guide(page, base, locale="en"):
     )
 
 
-def head_list(page, base, *, kind, subject, url, rows, locale="en"):
+def head_list(page, base, *, kind, subject, url, rows, locale="en", card=None):
     """A page that is a list of entries: /n/{value}, /a/{value} or /t/{tag}.
 
     One shape for both, because they are one component in the front end for the
@@ -392,7 +404,7 @@ def head_list(page, base, *, kind, subject, url, rows, locale="en"):
     }
     return write_head(page, title=title, desc=desc, canonical=url, locale=locale,
                       og=og_tags(title, desc, url, "website", base=base,
-                                 locale=locale),
+                                 locale=locale, card=card),
                       ld=[page_ld, crumbs(base, [(subject, url)])])
 
 
@@ -406,7 +418,8 @@ def head_number(con, page, value, base, locale="en"):
         value, bool(rows) and all(r["grouped"] for r in rows), locale,
     )
     return head_list(page, base, kind="number", subject=shown,
-                     url=f"{base}n/{enc(value)}", rows=rows, locale=locale)
+                     url=f"{base}n/{enc(value)}", rows=rows, locale=locale,
+                     card=og_image.value_card(con, "number", value, base, locale))
 
 
 def head_calendar(con, page, value, base, locale="en"):
@@ -427,7 +440,8 @@ def head_calendar(con, page, value, base, locale="en"):
         "SELECT id, title FROM posts WHERE value = ? AND status = ? "
         f"AND {section_where('calendar')} ORDER BY id", (value, LIVE))]
     return head_list(page, base, kind="calendar", subject=value,
-                     url=f"{base}c/{enc(value)}", rows=rows, locale=locale)
+                     url=f"{base}c/{enc(value)}", rows=rows, locale=locale,
+                     card=og_image.value_card(con, "calendar", value, base, locale))
 
 
 def head_abbr(con, page, value, base, locale="en"):
@@ -444,7 +458,8 @@ def head_abbr(con, page, value, base, locale="en"):
     if rows:
         value = rows[0]["value"]
     return head_list(page, base, kind="abbreviation", subject=value,
-                     url=f"{base}a/{enc(value)}", rows=rows, locale=locale)
+                     url=f"{base}a/{enc(value)}", rows=rows, locale=locale,
+                     card=og_image.value_card(con, "abbr", value, base, locale))
 
 
 def head_tag(con, page, tag, base, locale="en"):
@@ -504,7 +519,9 @@ def og_head(page: str, post: dict, base: str, tags=(), locale="en") -> str:
     return write_head(
         page, title=title, desc=desc, canonical=url, locale=locale,
         og=og_tags(title, desc, url, "article", base=base, image=img,
-                   locale=locale)
+                   locale=locale,
+                   card=og_image.entry_card(post, tags, base, locale),
+                   post_id=post["id"])
            + [("article:published_time", post["created_at"]),
               ("article:modified_time", post["updated_at"])],
         ld=[article, crumbs(base, [(value, base + value_path(section,

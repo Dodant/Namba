@@ -9,7 +9,7 @@
 #     'fastapi==X' 'uvicorn[standard]==X' 'python-multipart==X' 'httpx==X' \
 #     && VIRTUAL_ENV=/tmp/pin uv pip freeze | sort
 
-# The four that are actually asked for. Nothing imports httpx: it is what
+# The five that are actually asked for. Nothing imports httpx: it is what
 # starlette's TestClient runs on, so it is here for the suite and rides into the
 # image unused. Starlette 1.6 wants httpx2 there now -- a move to make on
 # purpose rather than by drift, which is what the pin is for.
@@ -17,6 +17,9 @@ fastapi==0.141.1
 uvicorn[standard]==0.52.3
 python-multipart==0.0.32
 httpx==0.28.1
+# Draws the share cards (og_image.py). Its wheels bundle FreeType with Brotli,
+# which is what reads the WOFF2 faces in fonts/.
+pillow==13.0.0
 
 # Everything the four pull in.
 annotated-doc==0.0.5

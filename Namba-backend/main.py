@@ -19,6 +19,7 @@ from pydantic import Field, field_validator
 import admin_api
 import db
 import events
+import og_image
 import seo
 from db import UPLOAD_DIR, get_db, nfc, now, writing
 from store import (
@@ -1573,6 +1574,62 @@ def sitemap(request: Request, con=Depends(get_db)):
         f"{body}\n</urlset>\n",
         media_type="application/xml",
     )
+
+
+# A day, not a year: the URL seo.py writes carries a digest of what the card
+# draws, so an edit is a new address already -- but hiding an entry is not an
+# edit, and a year-old copy of a card for something an operator took down is
+# exactly what a day of cache keeps short.
+OG_CACHE = {"Cache-Control": "public, max-age=86400"}
+
+
+def og_answer(card):
+    """The drawn card, or the site's static one when there is nothing to draw
+    (a hidden entry, an empty value) or the drawing fails. A broken image in
+    an unfurl is worse than the generic card, and a scraper does not retry."""
+    if card is not None:
+        try:
+            return Response(og_image.render(card), media_type="image/png",
+                            headers=OG_CACHE)
+        except Exception:  # noqa: BLE001 -- logged, and the fallback answers
+            traceback.print_exc()
+    fallback = os.path.join(DIST, seo.OG_CARD)
+    if not os.path.isfile(fallback):
+        raise HTTPException(404, "no card")
+    return FileResponse(fallback, headers={"Cache-Control": "public, max-age=3600"})
+
+
+def og_locale(l):
+    return l if l in seo.UI_LOCALES else "en"
+
+
+# ponytail: a render is ~100 ms of CPU and only live entries and filed values
+# draw one, so the set of cards is bounded by the wiki; render() keeps the last
+# 64. A scraper walking every id x 8 locales is minutes of CPU, not an outage.
+# A disk cache keyed on the digest is the step after, if that ever shows up.
+@app.get("/og/p/{post_id:int}.png")
+def og_entry(post_id: int, request: Request, l: str = "", con=Depends(get_db)):
+    row = con.execute("SELECT * FROM posts WHERE id = ? AND status = ?",
+                      (post_id, LIVE)).fetchone()
+    card = None
+    if row:
+        tags = [r["tag"] for r in con.execute(
+            "SELECT tag FROM post_tags WHERE post_id = ? ORDER BY tag", (post_id,))]
+        card = og_image.entry_card(dict(row), tags, site_base(request), og_locale(l))
+    return og_answer(card)
+
+
+@app.get("/og/{seg}.png")
+def og_value(seg: str, request: Request, v: str = Query("", max_length=32),
+             l: str = "", con=Depends(get_db)):
+    """/n/, /a/ and /c/'s card. The value is a query parameter rather than a
+    path segment for the reason path_seg() reads the raw path: 11/22/63."""
+    section = {"n": "number", "a": "abbr", "c": "calendar"}.get(seg)
+    if section is None:
+        raise HTTPException(404, "no such section")
+    card = og_image.value_card(con, section, v, site_base(request), og_locale(l)) \
+        if v else None
+    return og_answer(card)
 
 
 @app.get("/{path:path}")
