@@ -216,11 +216,11 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
         )}
 
         {/* not lazy: this one is the entry's own picture, near the top of the
-            page it is on, and is very often what the largest paint is. Only
-            decoding=async, which takes it off the main thread without delaying
-            the request. */}
+            page it is on, and is very often what the largest paint is. So
+            fetchpriority=high, and decoding=async, which takes it off the main
+            thread without delaying the request. */}
         {post.image && (
-          <img className="full" src={post.image} alt={post.title} decoding="async" />
+          <img className="full" src={post.image} alt={post.title} decoding="async" fetchPriority="high" />
         )}
 
         {/* No rehype-raw, deliberately: react-markdown renders to React
