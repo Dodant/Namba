@@ -914,8 +914,10 @@ function Editor() {
                  the tag that will actually be made */
               onChange={(e) => setCoined(e.target.value.toLowerCase())}
               onKeyDown={(e) => {
-                // Enter adds the tag rather than publishing the entry
-                if (e.key !== 'Enter') return
+                // Enter adds the tag rather than publishing the entry. Not the
+                // Enter that commits a Hangul syllable: isComposing, and 229
+                // for Safari, which reports the composition over by then.
+                if (e.key !== 'Enter' || e.nativeEvent.isComposing || e.keyCode === 229) return
                 e.preventDefault()
                 setTags(toggleTag(tags, coined, true))
                 setCoined('')
@@ -1370,7 +1372,8 @@ function LinkPanel({
             aria-label={m.form.linkSearchAria}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              // the same IME guard as the tag field above
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229) {
                 e.preventDefault()
                 search()
               }

@@ -279,7 +279,9 @@ function Header({ lang }: { lang: string }) {
   }
 
   function onSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (!hasSuggestions) return
+    // the Enter that commits a Hangul syllable is not a pick: isComposing,
+    // and 229 for Safari, which reports the composition over by then
+    if (!hasSuggestions || e.nativeEvent.isComposing || e.keyCode === 229) return
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
       const step = e.key === 'ArrowDown' ? 1 : -1
