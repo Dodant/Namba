@@ -1406,6 +1406,15 @@ is the tag that is news, on the entries that have two.
 A link inside `.empty` is the only thing to do next on that page, so it is
 drawn as a link. Do not let one inherit `--muted` off the paragraph.
 
+`/heatmap` (`Heatmap` in `App.tsx`, linked from the footer beside
+Contributors) counts Integer entries in a table: a row per power of ten, a
+column per leading digit, the shade the cell's share of the fullest one. It
+reads `api.numbers({ format: 'INTEGER' })` and nothing else, so it needs no
+route of its own on the API. Rows 1 to 1,000 always draw, and higher ones only
+when something is filed there. A cell links to its band on the index,
+`/#band-100`, because that is the finest address the index has. Like every
+route but `/guide`, it is `noindex`.
+
 `/random` is a route, not a header `onClick`, so it is linkable and has
 somewhere to render its wait and its failure. It replaces rather than pushes —
 pushing puts `/random` in the history, and Back from the entry rolls again.
