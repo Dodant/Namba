@@ -4692,6 +4692,23 @@ def test_the_plugin_still_names_itself():
         assert ua.startswith(events.PLUGIN_UA), (ua, events.PLUGIN_UA)
 
 
+
+def test_the_api_reference_draws_under_the_sites_policy():
+    """/docs is the only list of endpoints the README points at, and the
+    site's CSP is script-src 'self': every script it loads is this origin's
+    and none is inline, or the footer's API link is a blank page again."""
+    import re
+    c = TestClient(main.app)
+    page = c.get("/docs")
+    assert page.status_code == 200 and "text/html" in page.headers["content-type"]
+    srcs = re.findall(r'<script src="([^"]+)"', page.text)
+    assert srcs and all(s.startswith("/docs/") for s in srcs), srcs
+    assert "<script>" not in page.text and "https://" not in page.text
+    for s in srcs + re.findall(r'<link rel="stylesheet" href="([^"]+)"', page.text):
+        assert c.get(s).status_code == 200, s
+    assert "/docs" not in c.get("/openapi.json").json()["paths"]
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_"):
