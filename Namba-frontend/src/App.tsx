@@ -7,7 +7,7 @@ import {
   useNavigate, useNavigationType, useParams, useSearchParams,
 } from 'react-router-dom'
 import { api, contentLanguage } from './api'
-import { canonicalNumber, monthDay, showValue } from './format'
+import { canonicalNumber, fmtCount, monthDay, showValue } from './format'
 import Home from './pages/Home'
 import Browse from './pages/Browse'
 import PostPage from './pages/PostPage'
@@ -71,6 +71,72 @@ function Contributors() {
             {got.data.map((c) => (
               <tr key={c.nickname}><td>{c.nickname}</td><td>{c.entries}/{c.edits}</td></tr>
             ))}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  )
+}
+
+/* Integer entries counted by magnitude and first digit: a row per power of
+   ten, a column per leading digit, so 300 to 399 is one cell. Integers only,
+   because they are the one format with a magnitude -- the same reason
+   bucket_of bands only them. A cell links to its band on the index, the
+   finest address the index has. */
+function Heatmap() {
+  const { m, locale } = useUi()
+  const got = useAsync(() => api.numbers({ format: 'INTEGER' }), [])
+  if (got.err) return <p className="empty" role="alert">{got.err}</p>
+  if (!got.data) return <p className="empty" role="status">{m.common.loading}</p>
+
+  const grid: number[][] = [[], [], [], []].map(() => Array(9).fill(0))
+  for (const n of got.data) {
+    const v = Math.abs(n.sort_key ?? 0)
+    if (v < 1) continue // 0 has no first digit
+    // toExponential and not log10, which reads 1000 as 2.9999999999999996
+    const [mant, exp] = v.toExponential().split('e')
+    const row = (grid[+exp] ??= Array(9).fill(0))
+    row[+mant[0] - 1] += n.entries.length
+  }
+  const max = Math.max(1, ...grid.flatMap((r) => r ?? []))
+  /* 1 to 1,000 always, so the four rows read as one table; past that only a
+     power of ten something is filed under -- a googol is not 96 empty rows */
+  const rows = [...grid.keys()].filter((e) => e < 4 || grid[e]?.some(Boolean))
+
+  return (
+    <article className="body guide">
+      <h1>{m.heatmap.title}</h1>
+      <p>{m.heatmap.intro}</p>
+      <div className="tbl">
+        <table className="heat">
+          <thead>
+            <tr>
+              <td />
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => <th key={d} scope="col">{d}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((e) => {
+              const p = 10 ** e
+              const band = e < 4 ? String(p) : '10000+'
+              return (
+                <tr key={e}>
+                  <th scope="row">{fmtCount(p, locale)}</th>
+                  {(grid[e] ?? Array(9).fill(0)).map((n: number, i: number) => {
+                    const from = fmtCount((i + 1) * p, locale)
+                    const to = fmtCount((i + 2) * p - 1, locale)
+                    const label = m.heatmap.cell(from, to, n)
+                    return (
+                      <td key={i} style={{ '--heat': `${(n / max) * 100}%` } as React.CSSProperties}
+                          className={n / max > 0.5 ? 'hot' : undefined}>
+                        {n ? <Link to={`/#band-${band}`} title={label} aria-label={label}>{n}</Link>
+                           : <span title={label} aria-label={label}>·</span>}
+                      </td>
+                    )
+                  })}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -561,6 +627,7 @@ function Footer({ lang, onLang }: { lang: string; onLang: (v: string) => void })
             bundle, and a full document load here would throw the app away. */}
         <Link to="/guide">{m.footer.guidelines}</Link>{' · '}
         <Link to="/contributors">{m.contributors.title}</Link>{' · '}
+        <Link to="/heatmap">{m.heatmap.title}</Link>{' · '}
         <a href="/docs">API</a> — {m.footer.apiOpen}{' · '}
         <a href="https://github.com/Dodant/Namba">{m.footer.source}</a>
       </p>
@@ -643,6 +710,7 @@ function Wiki() {
             <Route path="/new" element={<PostForm />} />
             <Route path="/guide" element={<Guide />} />
             <Route path="/contributors" element={<Contributors />} />
+            <Route path="/heatmap" element={<Heatmap />} />
             <Route
               path="*"
               element={

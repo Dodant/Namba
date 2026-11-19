@@ -38,6 +38,11 @@ export const ZH_HANS: Messages = {
     empty: '暂时没有可供选择的条目。',
   },
   contributors: { title: '贡献者', nickname: '昵称', counts: '条目 / 编辑' },
+  heatmap: {
+    title: '热力图',
+    intro: '按数量级和首位数字统计整数条目：每行是一个10的幂，每列是数字的首位。颜色越深，条目越多。',
+    cell: (from: string, to: string, n: number) => `${from}–${to}：${n} 个条目`,
+  },
   footer: {
     cc0Before: '本站所有内容均依据',
     cc0After: '作为公共领域内容发布，无需许可或署名即可引用和再利用。作者署名仍会保留，用于记录最初的创作者。',

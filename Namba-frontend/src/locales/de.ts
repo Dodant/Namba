@@ -43,6 +43,11 @@ export const DE: Messages = {
     empty: 'Es gibt noch keine Einträge zur Auswahl.',
   },
   contributors: { title: 'Mitwirkende', nickname: 'Spitzname', counts: 'Einträge / Bearbeitungen' },
+  heatmap: {
+    title: 'Heatmap',
+    intro: 'Ganzzahlige Einträge nach Größe und erster Ziffer: Jede Zeile ist eine Zehnerpotenz, jede Spalte die Ziffer, mit der eine Zahl beginnt. Je dunkler das Feld, desto mehr Einträge.',
+    cell: (from: string, to: string, n: number) => `${from}–${to}: ${n} ${n === 1 ? 'Eintrag' : 'Einträge'}`,
+  },
   footer: {
     cc0Before: 'Alles, was hier geschrieben wird, steht unter',
     cc0After: ' — und ist gemeinfrei. Es darf ohne Erlaubnis oder Namensnennung kopiert, zitiert und weiterverwendet werden. Der Autorenname bleibt erhalten, um die ursprüngliche Urheberschaft zu dokumentieren.',

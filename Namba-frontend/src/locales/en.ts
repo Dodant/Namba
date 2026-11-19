@@ -62,6 +62,11 @@ export const EN = {
     empty: 'Nothing to pick from yet.',
   },
   contributors: { title: 'Contributors', nickname: 'Nickname', counts: 'entries / edits' },
+  heatmap: {
+    title: 'Heatmap',
+    intro: 'Integer entries by size and first digit: each row is a power of ten, each column the digit a number starts with. The darker the cell, the more entries.',
+    cell: (from: string, to: string, n: number) => `${from}–${to}: ${n} ${n === 1 ? 'entry' : 'entries'}`,
+  },
   footer: {
     cc0Before: 'Everything written here is',
     /* The leading space is load-bearing and belongs to the sentence, not to

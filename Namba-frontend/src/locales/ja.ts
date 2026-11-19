@@ -38,6 +38,11 @@ export const JA: Messages = {
     empty: '選べる項目がまだありません。',
   },
   contributors: { title: '貢献者', nickname: 'ニックネーム', counts: 'エントリー / 編集' },
+  heatmap: {
+    title: 'ヒートマップ',
+    intro: '整数のエントリーを桁数と先頭の数字で数えます。行は10の累乗、列は先頭の数字です。色が濃いほどエントリーが多くなります。',
+    cell: (from: string, to: string, n: number) => `${from}–${to}: エントリー ${n}件`,
+  },
   footer: {
     cc0Before: 'ここに書かれたすべての内容は',
     cc0After: 'のもとでパブリックドメインとして公開されます。許可やクレジット表記なしで引用・再利用できます。作成者名は最初に書いた人の記録として残ります。',

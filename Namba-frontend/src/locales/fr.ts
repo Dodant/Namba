@@ -44,6 +44,11 @@ export const FR: Messages = {
     empty: 'Il n’y a encore aucune entrée à choisir.',
   },
   contributors: { title: 'Contributeurs', nickname: 'Pseudonyme', counts: 'entrées / modifications' },
+  heatmap: {
+    title: 'Carte de chaleur',
+    intro: 'Les entrées entières par taille et premier chiffre : chaque ligne est une puissance de dix, chaque colonne le chiffre par lequel commence un nombre. Plus la case est foncée, plus il y a d’entrées.',
+    cell: (from: string, to: string, n: number) => `${from}–${to} : ${n} ${n > 1 ? 'entrées' : 'entrée'}`,
+  },
   footer: {
     cc0Before: 'Tout ce qui est écrit ici est publié sous',
     cc0After: ' — et appartient au domaine public. Vous pouvez le copier, le citer ou le réutiliser sans autorisation ni attribution. Le nom de l’auteur reste affiché pour indiquer qui l’a écrit en premier.',
