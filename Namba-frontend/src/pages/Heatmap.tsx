@@ -15,7 +15,7 @@ type Kind = (typeof KINDS)[number]
 /* null is a cell that cannot hold anything -- February 30 */
 /* tag is drawn in the cell, for a table with no column heads to say it */
 type Cell = { n: number; what: string; to: string; tag?: string } | null
-type Grid = { heads: string[]; rows: { label: string; cells: Cell[] }[] }
+type Grid = { heads: string[]; rows: { label: string; cells: Cell[] }[]; cls?: string }
 
 /* Integer entries by magnitude and first digit: a row per power of ten, a
    column per leading digit, so 300 to 399 is one cell. Four rows, 1 to 9,999:
@@ -90,14 +90,18 @@ function calendarGrid(data: NumberEntry[], locale: string): Grid {
 }
 
 /* A cell per first character: each letter and each digit, the character
-   bucket_of reads a band off, so .NET is N. Drawn as a block of thirteen
-   columns -- A to M, N to Z, then the digits -- with each cell naming its own
-   character, since three rows of different characters share no column head.
+   bucket_of reads a band off, so .NET is N. Two tables on one scale: the
+   letters in four rows of seven, and the digits under them in two rows of
+   five at the same cell size. Each cell names its own character, since rows
+   of different characters share no column head.
    A cell holding one word goes to its page; one holding several has no page
    of its own, so it goes to its band on the index. */
-const ROWS = ['ABCDEFGHIJKLM', 'NOPQRSTUVWXYZ', '0123456789']
+const BLOCKS = [
+  { rows: ['ABCDEFG', 'HIJKLMN', 'OPQRSTU', 'VWXYZ'], cols: 7, cls: '' },
+  { rows: ['01234', '56789'], cols: 5, cls: 'digits' },
+]
 
-function abbrGrid(data: NumberEntry[]): Grid {
+function abbrGrids(data: NumberEntry[]): Grid[] {
   const cells = new Map<string, { n: number; words: Map<string, string> }>()
   for (const n of data) {
     const k = n.value.toUpperCase().match(/[A-Z0-9]/)?.[0]
@@ -108,11 +112,12 @@ function abbrGrid(data: NumberEntry[]): Grid {
     if (!got.words.has(n.value.toUpperCase())) got.words.set(n.value.toUpperCase(), n.value)
     cells.set(k, got)
   }
-  return {
+  return BLOCKS.map(({ rows, cols, cls }) => ({
     heads: [],
-    rows: ROWS.map((row) => ({
+    cls,
+    rows: rows.map((row) => ({
       label: '',
-      cells: Array.from({ length: 13 }, (_, i) => {
+      cells: Array.from({ length: cols }, (_, i) => {
         const k = row[i]
         if (!k) return null
         const got = cells.get(k)
@@ -126,7 +131,7 @@ function abbrGrid(data: NumberEntry[]): Grid {
         }
       }),
     })),
-  }
+  }))
 }
 
 export default function Heatmap() {
@@ -191,17 +196,19 @@ export default function Heatmap() {
     )
   }
 
-  const grid = kind === 'CALENDAR' ? calendarGrid(got.data, locale)
-    : kind === 'ABBR' ? abbrGrid(got.data)
-    : integerGrid(got.data, detail ? from : 0, detail ? span : 0, locale)
-  const max = Math.max(1, ...grid.rows.flatMap((r) => r.cells.map((c) => c?.n ?? 0)))
+  const grids = kind === 'CALENDAR' ? [calendarGrid(got.data, locale)]
+    : kind === 'ABBR' ? abbrGrids(got.data)
+    : [integerGrid(got.data, detail ? from : 0, detail ? span : 0, locale)]
+  // one scale across every table on the page
+  const max = Math.max(1, ...grids.flatMap((g) => g.rows.flatMap((r) => r.cells.map((c) => c?.n ?? 0))))
 
   return (
     <article className="body guide">
       {head}
       {tabs}
-      <div className="tbl">
-        <table className={`heat ${kind.toLowerCase()}`}>
+      {grids.map((grid, g) => (
+      <div className="tbl" key={g}>
+        <table className={`heat ${kind.toLowerCase()} ${grid.cls ?? ''}`}>
           {grid.heads.length > 0 && (
             <thead>
               <tr>
@@ -230,6 +237,7 @@ export default function Heatmap() {
           </tbody>
         </table>
       </div>
+      ))}
     </article>
   )
 }
