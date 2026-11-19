@@ -474,8 +474,12 @@ sanitiser config to get wrong.
 
   **The three banded tabs carry a rail, `.ix-toc`.** Integer, Calendar and
   Abbreviation list every band of the tab on the right, sticky at the same
-  104px `scroll-padding-top` lands a band at; below 560 it lies down as a
-  sideways strip above the list. Each line is a plain `<a href="#band-…">`
+  104px `scroll-padding-top` lands a band at. Below 560 the same `<nav>` is a
+  `[popover]` opened by `.ix-jump`, a corner button beside `ToTop` that names
+  the band you are in; above 560 `index.css` undoes the UA's popover box and
+  hiding, so one element is both and the top layer is why neither needs a
+  z-index. A jump inside it calls `hidePopover()`, since a press inside is not
+  a light dismiss. Each line is a plain `<a href="#band-…">`
   over the bucket key, so the fragment is locale-neutral, and the work is
   the router's and `ScrollTop`'s — whose hash effect also opens a closed
   `<details>`, since `:target` cannot. An empty band is a `<span>`, kept so
