@@ -1415,14 +1415,13 @@ own on the API. Like every route but `/guide`, it is `noindex`.
 
 - **Integer.** A row per power of ten from 10⁰ to 10³ and a column per leading
   digit. The 10000+ band is left off because there are too few entries in it
-  to shade. A range cell opens `?from=300&span=100`, which is the same table
-  one level down in cells of ten numbers: one row of them for a hundred, and
-  10×10 for a thousand. Ten is as far down as it goes. A ten-number cell opens
-  onto a list of the numbers in it with their entries' titles, because a row
-  of ten single numbers would be the same list drawn worse. A 10⁰ cell is one
+  to shade. A range cell, whether it covers ten, a hundred or a thousand,
+  opens `?from=300&span=100`: a list of every number filed in that range with
+  its entries' titles. There is no table one level down, because it would be
+  the same list drawn as squares, most of them empty. A 10⁰ cell is one
   number and goes straight to its `/n/` page, under its plain spelling when
-  `-5` or `05` shares the cell.
-  A range page links one level up, and the Integer tab stays marked on it.
+  `-5` or `05` shares the cell. A range page links back to the table, and the
+  Integer tab stays marked on it.
 - **Calendar.** A row per month and a column per day. A day the month does
   not have is a blank cell, not a zero. A day with entries goes to its `/c/`
   page, and an empty one opens the form with that date filled in
