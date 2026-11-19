@@ -1618,6 +1618,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 /* Abbreviation's cells name their own character, over the count */
 .heat td small { font-size: var(--fs-label); font-weight: 600; }
 .heat.abbr td > * { align-content: center; gap: 2px; }
+/* thirteen across a phone is a 26px cell: the count goes the calendar's size
+   down so 63 sits inside it rather than on its edges */
+@media (max-width: 560px) { .heat.abbr td { font-size: var(--fs-meta); } }
 /* ten columns at the letters' thirteen-column cell size */
 .guide .tbl table.heat.digits { width: calc(100% * 10 / 13); }
 /* The rules page opens on a standfirst: .form-intro's size and colour, and
