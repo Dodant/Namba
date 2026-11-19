@@ -3,8 +3,9 @@
 # own. This is what brings the fixes: one pull request a week that moves the
 # SHAs and the version comments beside them together.
 #
-# Grouped, because a merge to main that touches .github/ is a deploy: ungrouped
-# this is a pull request and a deploy per action.
+# Grouped, because a merge to main that touches deploy.yml is a deploy:
+# ungrouped this is a pull request and a deploy per action. Minor and patch
+# only, so a major arrives as a pull request of its own and is read as one.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -14,3 +15,4 @@ updates:
     groups:
       actions:
         patterns: ['*']
+        update-types: [minor, patch]

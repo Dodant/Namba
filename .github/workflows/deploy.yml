@@ -16,6 +16,11 @@ on:
       - '**/*.md'
       - 'docs/**'
       - '*.png'
+      # Neither do these: none of them is in the image or in this job, and the
+      # weekly action bump would otherwise restart the container for a change
+      # to the review bot.
+      - '.github/workflows/claude*.yml'
+      - '.github/dependabot.yml'
   # Unfiltered, unlike the push above: a run skipped by paths-ignore reports no
   # check, so a docs-only pull request waits on one that never arrives.
   pull_request:
