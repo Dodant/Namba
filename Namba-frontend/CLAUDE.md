@@ -472,6 +472,37 @@ sanitiser config to get wrong.
   the count: it is there to be closed by a reader who wants past a number the
   wiki has taken to, and it never hides an entry from one who did not ask.
 
+  **The three banded tabs carry a rail, `.ix-toc`.** Integer, Calendar and
+  Abbreviation list every band of the tab on the right, sticky at the same
+  104px `scroll-padding-top` lands a band at. Below 560 the same `<nav>` is a
+  `[popover]` opened by `.ix-jump`, a corner button beside `ToTop` that names
+  the band you are in; above 560 `index.css` undoes the UA's popover box and
+  hiding, so one element is both and the top layer is why neither needs a
+  z-index. A jump inside it calls `hidePopover()`, since a press inside is not
+  a light dismiss. Each line is a plain `<a href="#band-…">`
+  over the bucket key, so the fragment is locale-neutral, and the work is
+  the router's and `ScrollTop`'s — whose hash effect also opens a closed
+  `<details>`, since `:target` cannot. Two cases the hash effect never sees
+  are `Index`'s: a band link opened cold, which arrives before the first
+  answer has drawn the band, so that answer opens and scrolls to it once; and
+  a press on the band already in the hash, closed by hand since, which the
+  rail's `onClick` opens. An empty band is a `<span>` in `--fainter` with no
+  rule beside it, kept so the rail has one shape per tab. `.ix-bands` is a
+  grid only as `.rail`: an empty `auto` track keeps its gutter, which would
+  take 20–40px off the single-band tabs. The rail's lines join the
+  `(pointer: coarse)` block like every small control. Each line carries the band head's two
+  figures as `4 - 6` — numbers, then entries, folds included — beside the label in the rail. The
+  popover draws neither; the link's accessible name still says both. Integer's lines are `10²`-style (`INT_SHORT`)
+  with the band label as the accessible name. Where the reader is comes from
+  one `IntersectionObserver` and is said with `aria-current="location"`, and
+  shown by one accent bar, `.ix-toc::before`, that slides down the grey track
+  to the current line: `Index` measures that line into `--at` and `--h` and
+  marks the nav `data-placed` (an attribute, since React owns `className`).
+  It is the one thing in the index that moves rather than recolours, because
+  the track is the page in miniature; the global reduced-motion rule makes it
+  jump. The phone popover shades the current cell instead. No
+  z-index: it has a column of its own and nothing passes under it.
+
   **The Calendar tab breaks one of those defaults, and is the only tab that
   does.** It draws a month with nothing in it, where every other band is
   skipped when empty, because twelve months are a calendar and a year missing

@@ -229,7 +229,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
    a slow press. It is a WebKit property and Firefox will still do that; the
    selection, which is the thing that spoils a copy, is standard. */
 :is(.logo-block, .search .slash, .search-all, .btn, .chip, .pill, .tag, .kicker,
-    .band-head, .ix-fold, .ix-more, .tabs a, .tabs button, .panel-add, .meta-btn,
+    .band-head, .ix-toc, .ix-jump, .ix-fold, .ix-more, .tabs a, .tabs button, .panel-add, .meta-btn,
     .quiet, .section, .field label, .field .field-label, .field.check,
     .calendar-role legend, .category-more, .draft-notice p,
     .form h1, .form-intro, .fine, .feed-intro, .hero-said p, .empty, .panel-empty,
@@ -619,6 +619,100 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
   .band-head h2 { white-space: nowrap; }
 }
 
+/* The rail beside a banded index: Integer, Calendar and Abbreviation. One
+   nav, first in the source, put in a right-hand column here and turned into a
+   popover on a phone. Sticky, and no z-index: it sits in its own
+   column and nothing passes under it. Taller than the window -- Abbreviation's
+   25 letters on a short laptop -- it scrolls inside itself. 24px a line,
+   the floor for anything pressed. */
+/* .rail only when there is one: an empty `auto` track keeps its gutter, and the
+   single-band tabs would lose 20-40px off the right edge to nobody */
+.ix-bands.rail { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: clamp(20px, 4vw, 40px); align-items: start; }
+.ix-bands > div { grid-column: 1; grid-row: 1; min-width: 0; }
+.ix-toc {
+  grid-column: 2; grid-row: 1;
+  position: sticky; top: 16px; max-height: calc(100dvh - 32px); overflow-y: auto;
+  scrollbar-width: none; overscroll-behavior: contain;
+  display: flex; flex-direction: column;
+  /* one width across the three tabs, so the list beside it does not shift
+     when the tab changes; a long month or a five-digit count still grows it */
+  min-width: 136px;
+  font-family: var(--mono); font-size: var(--fs-ctl-soft); line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.ix-toc::-webkit-scrollbar { display: none; }
+.ix-toc > a, .ix-toc > span {
+  padding: 4px 0 4px 10px; border-left: 2px solid var(--rule);
+  color: var(--muted); white-space: nowrap;
+}
+.ix-toc > a { display: flex; justify-content: space-between; gap: 14px; }
+.ix-toc .n { color: var(--fainter); }
+.ix-toc > a:hover { color: var(--ink); text-decoration: none; }
+.ix-toc > a[aria-current] { color: var(--ink); }
+/* Where you are is one bar that slides down the track, not a colour that
+   jumps from line to line: the track is the page in miniature, and a bar
+   moving along it is the reader moving down it. Home.tsx measures the current
+   line into --at and --h; the rail is sticky, so it is the bar's containing
+   block and the bar scrolls with the lines when the rail scrolls inside
+   itself. Positioned, it paints over the lines' own grey. The global
+   reduced-motion rule turns the slide into a jump. */
+.ix-toc::before {
+  content: ''; position: absolute; left: 0; width: 2px; pointer-events: none;
+  top: var(--at, 0); height: var(--h, 24px); background: var(--accent);
+  opacity: 0; transition: top 180ms ease-out, height 180ms ease-out, opacity 120ms;
+}
+.ix-toc[data-placed]::before { opacity: 1; }
+/* nothing to go to: --fainter like every legible grey, and no rule beside it,
+   which is what tells it from a line you can press */
+.ix-toc > span { color: var(--fainter); border-left-color: transparent; }
+@media (min-width: 901px) {
+  /* under the sticky header: the scroll-padding-top that lands a band is the
+     same 104 the rail stands at */
+  .ix-toc { top: 104px; max-height: calc(100dvh - 120px); }
+}
+/* The rail is a [popover], for the phone below. Above 560 it is drawn in
+   place: these undo the UA's popover box and its hiding, at (0,1,0) against
+   the UA's own origin, which loses whatever its specificity. Not `inset`:
+   that shorthand sits after the sticky `top` above and would reset it to
+   auto, which leaves a sticky box that scrolls away with the page. */
+.ix-toc { right: auto; bottom: auto; left: auto; margin: 0; border: 0; padding: 0; width: auto; height: auto; background: none; color: inherit; }
+.ix-jump { display: none; }
+
+/* A phone has no column to give, so the rail is a corner button beside
+   ToTop and a popover over it. The top layer is why neither needs a z-index;
+   the button is fixed, after the bands in the source, so the rows it floats
+   over paint under it. */
+@media (max-width: 560px) {
+  .ix-bands.rail { display: block; }
+  .ix-toc:not(:popover-open) { display: none; }
+  .ix-toc:popover-open {
+    position: fixed; top: auto; max-height: min(70dvh, 420px);
+    right: max(clamp(16px, 4vw, 34px), env(safe-area-inset-right));
+    bottom: calc(max(clamp(16px, 4vw, 34px), env(safe-area-inset-bottom)) + 48px);
+    width: min(288px, calc(100vw - 32px));
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px;
+    padding: 10px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--panel); box-shadow: var(--shadow);
+  }
+  .ix-toc.words:popover-open { grid-template-columns: repeat(3, 1fr); }
+  .ix-toc > a, .ix-toc > span { border-left: 0; padding: 4px 6px; border-radius: 6px; text-align: center; }
+  .ix-toc.words > a, .ix-toc.words > span { text-align: left; }
+  /* The popover is for going somewhere, and at 55px a cell `10³ 27` reads
+     as one figure. The count stays in the link's accessible name. */
+  .ix-toc > a { justify-content: center; }
+  .ix-toc.words > a { justify-content: flex-start; }
+  .ix-toc .n { display: none; }
+  .ix-toc > a[aria-current] { background: var(--accent-soft); }
+  .ix-toc::before { display: none; }
+  .ix-jump {
+    display: inline-flex; gap: 6px; position: fixed;
+    right: calc(max(clamp(16px, 4vw, 34px), env(safe-area-inset-right)) + 48px);
+    bottom: max(clamp(16px, 4vw, 34px), env(safe-area-inset-bottom));
+    height: 40px; background: var(--panel);
+  }
+  .ix-jump b { color: var(--ink); font-weight: 600; }
+}
+
 /* The five format tabs keep whole words and move sideways when they stop
    fitting. Together they are 400px and the narrowest screen anyone brings is
    288, and the labels were sliced down to "Int" and "Abbr." to close that --
@@ -682,7 +776,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 /* Today, and the month it falls in. Colour is all it is on screen, so the day
    carries aria-current as well -- a reader who cannot see the blue is told the
    same thing, and a reader who can is not told it twice. */
-.band-head h2.now, .ix-num.now { color: var(--today); }
+.band-head h2.now, .ix-num.now, .ix-toc a.now { color: var(--today); }
 /* .ix-list is the same column one level in, for the rows of a number that
    folds -- see the note in Home.tsx. Both here so the two can never drift. */
 .ix-titles, .ix-list {
@@ -1983,6 +2077,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   .band-head { padding: 8px 0; }
   /* this one is only as wide as its words, so it pays on both axes */
   .ix-fold { padding: 8px 10px; margin: -8px -10px; }
+  /* the rail's lines, rail and popover alike; the empty ones too, so the rail
+     keeps one row height per tab */
+  .ix-toc > a, .ix-toc > span { padding-block: 9px; }
   /* inline, so the padding grows the hit box and leaves the line box alone */
   a.quiet { padding: 8px 3px; }
   /* The links that *are* the row. A title set at 16.5-20px draws a 19-22px
