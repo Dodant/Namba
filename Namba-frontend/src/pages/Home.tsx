@@ -211,11 +211,24 @@ function measure() {
    closed, this line is all it says about itself. The first noun follows the
    section: the Abbreviation band counts abbreviations and the Calendar band
    counts dates, not numbers. */
+/* The Integer bands in the rail, where "1,000 – 9,999" does not fit: the
+   lower bound of each, as a power of ten. Digits and superscripts read the
+   same in every locale, and the link carries the band's own label as its
+   accessible name. */
+const INT_SHORT: Record<(typeof BUCKETS)[number], string> =
+  { '1': '1', '10': '10', '100': '10²', '1000': '10³', '10000+': '10⁴+' }
+
 /* One band of the index. `keep`, `now` and `sub` are the Calendar tab's alone:
    every other band is drawn only when it has rows, no other index has a band
    the date makes current, and no other index splits one. */
 type Band = {
+  /* the bucket key, which is the band's fragment: `#band-K`, `#band-1000`,
+     `#band-11`. Locale-neutral, so a link someone sends survives a reader in
+     another language. */
+  id: string
   label: string
+  /* what the index's rail calls it where the label is too wide for it */
+  short?: string
   items: NumberEntry[]
   subs?: { label: string; items: NumberEntry[] }[]
   keep?: boolean
@@ -304,6 +317,22 @@ function Index({ lang }: { lang: string }) {
     return () => window.removeEventListener('resize', measure)
   }, [numbers.data])
 
+  /* Where the reader is, for the rail: the first band still crossing the
+     window below the sticky header. One observer over every band, and the
+     answer is an id rather than an index so it means the same thing after the
+     rows reload under it. */
+  const [here, setHere] = useState('')
+  useEffect(() => {
+    const els = [...document.querySelectorAll<HTMLElement>('.ix-bands .band')]
+    const seen = new Map<string, boolean>()
+    const io = new IntersectionObserver((list) => {
+      list.forEach((e) => seen.set(e.target.id, e.isIntersecting))
+      setHere(els.find((el) => seen.get(el.id))?.id ?? '')
+    }, { rootMargin: '-110px 0px -60% 0px' })
+    els.forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [numbers.data])
+
   function setFilter(value: string, bare = false) {
     const next = new URLSearchParams(params)
     next.delete('tag')
@@ -321,11 +350,14 @@ function Index({ lang }: { lang: string }) {
   const bands: Band[] =
     shownFormat === 'INTEGER'
       ? BUCKETS.map((b) => ({
+          id: b,
           label: m.buckets[b],
+          short: INT_SHORT[b],
           items: rows.filter((n) => n.bucket === b),
         }))
       : shownFormat === 'ABBR'
         ? ABBR_BUCKETS.map((b) => ({
+            id: b,
             /* a letter is its own label in every locale; the two ranges
                space their dash the way the integer bands do */
             label: b.replace('-', ' – '),
@@ -333,6 +365,7 @@ function Index({ lang }: { lang: string }) {
           }))
         : shownFormat === 'CALENDAR'
           ? MONTH_BUCKETS.map((b) => ({
+              id: b,
               /* Intl knows the month names in all seven locales, so there is
                  no thirteenth row to keep in `m.buckets` -- and no 84 of them
                  once every locale answers */
@@ -361,7 +394,11 @@ function Index({ lang }: { lang: string }) {
                  Local time, because the reader's calendar is the reader's. */
               now: b === todayMonthDay().slice(0, 2),
             }))
-          : [{ label: m.format[shownFormat], items: rows }]
+          : [{ id: shownFormat, label: m.format[shownFormat], items: rows }]
+  const drawn = (band: Band) => band.items.length > 0 || !!band.keep
+  /* Integer, Abbreviation and Calendar band their list; the other three are
+     one band, and a table of contents with one line in it is a heading. */
+  const toc = bands.length > 1 && bands.some(drawn)
 
   return (
     <>
@@ -453,61 +490,88 @@ function Index({ lang }: { lang: string }) {
         </p>
       )}
 
-      {bands.map(
-        (band) =>
-          (band.items.length > 0 || band.keep) && (
-            /* <details>, not a button and a piece of state: the browser
-               already knows how to open and close a disclosure, and it
-               gets the keyboard and the screen reader right for free.
-               Open, every one of them, the Calendar's twelve months
-               included -- the index is the page, and closed headings are a
-               table of contents, not a wiki. */
-            <details className="band" key={band.label} open>
-              <summary className="band-head">
-                <h2 className={band.now ? 'now' : undefined}>{band.label}</h2>
-                <span className="rule" />
-                <span className="n">
-                  {bandCount(band.items, band.subs, shownFormat, m)}
-                </span>
-              </summary>
-              <ol className="index">
-                {band.items.map((row) => (
-                  <IndexRow key={`${row.format}-${row.value}`} row={row} />
-                ))}
-              </ol>
-              {/* Dates connected to people who have died, at the foot of the month and
-                  closed. The same disclosure a number past FOLD_OVER gets --
-                  `.ix-fold`, one level in and one step quieter than the band
-                  head above it -- because it is the same gesture at the same
-                  scale. Closed is the point: a month is read for what its days
-                  mean, and this is the list you go looking for.
-
-                  onToggle is not decoration: these are the only rows in the
-                  index that are hidden when they are first drawn, and whether
-                  a hidden row can be measured is the browser's call. See
-                  `measure` above. */}
-              {band.subs?.map((sub) => sub.items.length > 0 && (
-                <details className="band-sub" onToggle={measure} key={sub.label}>
-                  <summary className="ix-fold">
-                    {/* `common.entries` and not `home.moreEntries`: that one
-                        counts what a row's own fold holds back, not what a
-                        list holds. */}
-                    <span>
-                      {sub.label} · {m.common.entries(
-                        sub.items.reduce((n, row) => n + row.entries.length, 0),
-                      )}
+      {/* The rail is first in the source, so it is the first thing a keyboard
+          or a screen reader meets, and index.css moves it to the right. Every
+          band is listed, the empty ones as a span nobody can press: the rail
+          keeps one shape per tab, so a reader's eye learns where K is. A
+          press is a plain fragment link; ScrollTop's hash effect opens a
+          closed band and scroll-padding-top keeps it clear of the header. */}
+      <div className="ix-bands">
+        {toc && (
+          <nav className="ix-toc" aria-label={m.home.jumpTo}>
+            {bands.map((band) => drawn(band)
+              ? (
+                <a
+                  key={band.id}
+                  href={`#band-${band.id}`}
+                  className={band.now ? 'now' : undefined}
+                  aria-current={here === `band-${band.id}` ? 'location' : undefined}
+                  aria-label={band.short && band.label}
+                >
+                  {band.short ?? band.label}
+                </a>
+              )
+              : <span key={band.id} aria-hidden="true">{band.short ?? band.label}</span>)}
+          </nav>
+        )}
+        <div>
+          {bands.map(
+            (band) =>
+              drawn(band) && (
+                /* <details>, not a button and a piece of state: the browser
+                   already knows how to open and close a disclosure, and it
+                   gets the keyboard and the screen reader right for free.
+                   Open, every one of them, the Calendar's twelve months
+                   included -- the index is the page, and closed headings are a
+                   table of contents, not a wiki. */
+                <details className="band" id={`band-${band.id}`} key={band.id} open>
+                  <summary className="band-head">
+                    <h2 className={band.now ? 'now' : undefined}>{band.label}</h2>
+                    <span className="rule" />
+                    <span className="n">
+                      {bandCount(band.items, band.subs, shownFormat, m)}
                     </span>
                   </summary>
                   <ol className="index">
-                    {sub.items.map((row) => (
-                      <IndexRow key={`${row.format}-${row.value}`} row={row} dated />
+                    {band.items.map((row) => (
+                      <IndexRow key={`${row.format}-${row.value}`} row={row} />
                     ))}
                   </ol>
+                  {/* Dates connected to people who have died, at the foot of the month and
+                      closed. The same disclosure a number past FOLD_OVER gets --
+                      `.ix-fold`, one level in and one step quieter than the band
+                      head above it -- because it is the same gesture at the same
+                      scale. Closed is the point: a month is read for what its days
+                      mean, and this is the list you go looking for.
+
+                      onToggle is not decoration: these are the only rows in the
+                      index that are hidden when they are first drawn, and whether
+                      a hidden row can be measured is the browser's call. See
+                      `measure` above. */}
+                  {band.subs?.map((sub) => sub.items.length > 0 && (
+                    <details className="band-sub" onToggle={measure} key={sub.label}>
+                      <summary className="ix-fold">
+                        {/* `common.entries` and not `home.moreEntries`: that one
+                            counts what a row's own fold holds back, not what a
+                            list holds. */}
+                        <span>
+                          {sub.label} · {m.common.entries(
+                            sub.items.reduce((n, row) => n + row.entries.length, 0),
+                          )}
+                        </span>
+                      </summary>
+                      <ol className="index">
+                        {sub.items.map((row) => (
+                          <IndexRow key={`${row.format}-${row.value}`} row={row} dated />
+                        ))}
+                      </ol>
+                    </details>
+                  ))}
                 </details>
-              ))}
-            </details>
-          ),
-      )}
+              ),
+          )}
+        </div>
+      </div>
 
       {!numbers.loading && !numbers.data?.length && (
         <p className="empty">

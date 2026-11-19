@@ -60,7 +60,7 @@ export const FR: Messages = {
     feedIntro: 'Entrées et modifications récentes, des plus nouvelles aux plus anciennes.',
     moreRecent: 'Afficher plus d’entrées récentes',
     empty: 'Aucune entrée pour le moment.', entryKinds: 'Format de l’entrée', categories: 'Catégories', all: 'Toutes', untagged: 'Sans catégorie',
-    onThisDay: 'On this day', inMemoriam: 'In Memoriam',
+    onThisDay: 'On this day', inMemoriam: 'In Memoriam', jumpTo: 'Aller à',
     moreEntries: (n: number) => `${fmtCount(n, 'fr')} ${n === 1 ? 'autre entrée' : 'autres entrées'}`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${fmtCount(subjects, 'fr')} ${subject} · ${fmtCount(entries, 'fr')} ${entries === 1 ? 'entrée' : 'entrées'}`,

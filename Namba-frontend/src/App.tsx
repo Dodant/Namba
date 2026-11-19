@@ -161,7 +161,12 @@ function ScrollTop() {
   useLayoutEffect(() => {
     if (!hash) return
     const target = () => document.getElementById(hash.slice(1))
-    target()?.scrollIntoView()
+    /* An index band is a <details> and the fragment can name a closed one.
+       :target cannot open it -- that is CSS asking about state it cannot set
+       -- so the place a fragment is honoured is where it opens, too. */
+    const el = target()
+    if (el instanceof HTMLDetailsElement) el.open = true
+    el?.scrollIntoView()
     /* ...and once more when the fonts land. Newsreader and IBM Plex arrive
        from Google with display=swap, so a cold visit paints in a fallback
        face, scrolls to the right place, and is then pushed off it as every

@@ -52,7 +52,7 @@ export const JA: Messages = {
     hasImage: '画像あり', feedIntro: '最近作成・編集された項目から表示します。',
     moreRecent: 'さらに最近の項目を表示',
     empty: 'まだ項目がありません。', entryKinds: '項目の形式', categories: 'カテゴリ', all: 'すべて', untagged: '未分類',
-    onThisDay: 'On this day', inMemoriam: 'In Memoriam',
+    onThisDay: 'On this day', inMemoriam: 'In Memoriam', jumpTo: '移動',
     moreEntries: (n: number) => `さらに${fmtCount(n, 'ja')}件の項目`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${subject}${fmtCount(subjects, 'ja')}個 · 項目${fmtCount(entries, 'ja')}件`,

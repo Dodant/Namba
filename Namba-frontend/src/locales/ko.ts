@@ -50,7 +50,7 @@ export const KO: Messages = {
     hasImage: '이미지 있음', feedIntro: '최근 작성·수정된 엔트리부터 보여줍니다.',
     moreRecent: '최근 엔트리 더 보기',
     empty: '아직 작성된 엔트리가 없습니다.', entryKinds: '엔트리 형식', categories: '카테고리', all: '전체', untagged: '미분류',
-    onThisDay: 'On this day', inMemoriam: 'In Memoriam',
+    onThisDay: 'On this day', inMemoriam: 'In Memoriam', jumpTo: '바로 가기',
     moreEntries: (n: number) => `엔트리 ${fmtCount(n, 'ko')}개 더 보기`,
     bandCount: (subjects: number, subject: string, entries: number) =>
       `${subject} ${fmtCount(subjects, 'ko')}개 · 엔트리 ${fmtCount(entries, 'ko')}개`,
