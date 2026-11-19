@@ -498,7 +498,19 @@ function Index({ lang }: { lang: string }) {
           closed band and scroll-padding-top keeps it clear of the header. */}
       <div className="ix-bands">
         {toc && (
-          <nav className="ix-toc" aria-label={m.home.jumpTo}>
+          <nav
+            id="ix-toc"
+            className={`ix-toc${shownFormat === 'CALENDAR' ? ' words' : ''}`}
+            aria-label={m.home.jumpTo}
+            /* A rail on a wide screen and a popover on a narrow one: the same
+               element, with index.css overriding the UA's hiding above 560.
+               A press inside does not light-dismiss, so a jump closes it. */
+            popover="auto"
+            onClick={(e) => {
+              const nav = e.currentTarget
+              if ((e.target as Element).closest('a') && nav.matches(':popover-open')) nav.hidePopover()
+            }}
+          >
             {bands.map((band) => drawn(band)
               ? (
                 <a
@@ -513,6 +525,16 @@ function Index({ lang }: { lang: string }) {
               )
               : <span key={band.id} aria-hidden="true">{band.short ?? band.label}</span>)}
           </nav>
+        )}
+        {/* the way in on a phone, beside ToTop; it says where you are, so the
+            rail's aria-current is on screen without opening it */}
+        {toc && (
+          <button type="button" className="btn ix-jump" popoverTarget="ix-toc">
+            {m.home.jumpTo}
+            {here && ' '}
+            {here && <b>{bands.find((b) => `band-${b.id}` === here)?.short
+              ?? bands.find((b) => `band-${b.id}` === here)?.label}</b>}
+          </button>
         )}
         <div>
           {bands.map(
