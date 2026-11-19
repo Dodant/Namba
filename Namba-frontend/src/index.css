@@ -634,6 +634,9 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
   position: sticky; top: 16px; max-height: calc(100dvh - 32px); overflow-y: auto;
   scrollbar-width: none; overscroll-behavior: contain;
   display: flex; flex-direction: column;
+  /* one width across the three tabs, so the list beside it does not shift
+     when the tab changes; a long month or a five-digit count still grows it */
+  min-width: 136px;
   font-family: var(--mono); font-size: var(--fs-ctl-soft); line-height: 16px;
   font-variant-numeric: tabular-nums;
 }
