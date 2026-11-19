@@ -40,8 +40,12 @@ export const ZH_HANS: Messages = {
   contributors: { title: '贡献者', nickname: '昵称', counts: '条目 / 编辑' },
   heatmap: {
     title: '热力图',
-    intro: '按数量级和首位数字统计整数条目：每行是一个10的幂，每列是数字的首位。颜色越深，条目越多。',
-    cell: (from: string, to: string, n: number) => `${from}–${to}：${n} 个条目`,
+    intro: {
+      INTEGER: '按数量级和首位数字统计整数条目：每行是一个10的幂，每列是数字的首位。颜色越深，条目越多。',
+      CALENDAR: '按日期统计日历条目：每行是一个月，每列是一天。颜色越深，条目越多。',
+      ABBR: '按前两个字母统计缩写：每行是第一个字母，每列是第二个字母。颜色越深，条目越多。',
+    },
+    cell: (what: string, n: number) => `${what}：${n} 个条目`,
   },
   footer: {
     cc0Before: '本站所有内容均依据',

@@ -1587,6 +1587,11 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .heat td > span { color: var(--faint); }
 .heat td > a:hover { outline: 2px solid var(--ink); outline-offset: -2px; }
 .heat td.hot { color: var(--on-accent); }
+.body .tabs a { color: var(--muted); text-decoration: none; } /* .body a would make them links in prose */
+.body .tabs a:is(:hover, .on) { color: var(--ink); }
+.heat td.none { background: var(--bg); } /* February 30: a day that is not one */
+/* 31 and 27 columns: the counts go a size down so two digits fit a cell */
+.heat:is(.calendar, .abbr) td { font-size: var(--fs-meta); }
 /* The rules page opens on a standfirst: .form-intro's size and colour, and
    nothing else of it. A class and not :first-of-type, which it was until the
    version row above it became the first <p> on the page. */

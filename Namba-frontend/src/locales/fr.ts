@@ -46,8 +46,12 @@ export const FR: Messages = {
   contributors: { title: 'Contributeurs', nickname: 'Pseudonyme', counts: 'entrées / modifications' },
   heatmap: {
     title: 'Carte de chaleur',
-    intro: 'Les entrées entières par taille et premier chiffre : chaque ligne est une puissance de dix, chaque colonne le chiffre par lequel commence un nombre. Plus la case est foncée, plus il y a d’entrées.',
-    cell: (from: string, to: string, n: number) => `${from}–${to} : ${n} ${n > 1 ? 'entrées' : 'entrée'}`,
+    intro: {
+      INTEGER: 'Les entrées entières par taille et premier chiffre : chaque ligne est une puissance de dix, chaque colonne le chiffre par lequel commence un nombre. Plus la case est foncée, plus il y a d’entrées.',
+      CALENDAR: 'Les entrées du calendrier par jour de l’année : une ligne par mois, une colonne par jour. Plus la case est foncée, plus il y a d’entrées.',
+      ABBR: 'Les abréviations par leurs deux premières lettres : une ligne par première lettre, une colonne par deuxième. Plus la case est foncée, plus il y a d’entrées.',
+    },
+    cell: (what: string, n: number) => `${what} : ${n} ${n > 1 ? 'entrées' : 'entrée'}`,
   },
   footer: {
     cc0Before: 'Tout ce qui est écrit ici est publié sous',

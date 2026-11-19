@@ -40,8 +40,12 @@ export const JA: Messages = {
   contributors: { title: '貢献者', nickname: 'ニックネーム', counts: 'エントリー / 編集' },
   heatmap: {
     title: 'ヒートマップ',
-    intro: '整数のエントリーを桁数と先頭の数字で数えます。行は10の累乗、列は先頭の数字です。色が濃いほどエントリーが多くなります。',
-    cell: (from: string, to: string, n: number) => `${from}–${to}: エントリー ${n}件`,
+    intro: {
+      INTEGER: '整数のエントリーを桁数と先頭の数字で数えます。行は10の累乗、列は先頭の数字です。色が濃いほどエントリーが多くなります。',
+      CALENDAR: 'カレンダーのエントリーを日付ごとに数えます。行は月、列は日です。色が濃いほどエントリーが多くなります。',
+      ABBR: '略語を先頭の2文字で数えます。行は1文字目、列は2文字目です。色が濃いほどエントリーが多くなります。',
+    },
+    cell: (what: string, n: number) => `${what}: エントリー ${n}件`,
   },
   footer: {
     cc0Before: 'ここに書かれたすべての内容は',

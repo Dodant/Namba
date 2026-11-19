@@ -1406,18 +1406,27 @@ is the tag that is news, on the entries that have two.
 A link inside `.empty` is the only thing to do next on that page, so it is
 drawn as a link. Do not let one inherit `--muted` off the paragraph.
 
-`/heatmap` (`Heatmap` in `App.tsx`, linked from the footer beside
-Contributors) counts Integer entries in a table: a row per power of ten, a
-column per leading digit, the shade the cell's share of the fullest one. It
-reads `api.numbers({ format: 'INTEGER' })` and nothing else, so it needs no
-route of its own on the API. It has four rows, 1 to 9,999. Entries in the
-10000+ band are left off because there are too few of them to shade. A cell with entries opens it. A
-single number goes to its `/n/` page, under the first spelling filed. A range
-goes to `?from=300&span=100`, which is the same table one level down: 10×10
-cells, each a hundredth of the range, or one number per cell when the range is
-100 or less. So `3000–3999` has ten-number cells, and each of those opens
-once more onto its ten numbers. Like every
-route but `/guide`, it is `noindex`.
+`/heatmap` (`pages/Heatmap.tsx`, linked from the footer beside Contributors)
+draws three of the index's tabs as tables of counts. They are the three that
+band: Integer, Calendar and Abbreviation, picked with `?format=` the way the
+index picks a tab. The shade is a cell's share of the fullest cell. The page
+reads `api.numbers({ format })` and nothing else, so it needs no route of its
+own on the API. Like every route but `/guide`, it is `noindex`.
+
+- **Integer.** A row per power of ten from 10⁰ to 10³ and a column per leading
+  digit. The 10000+ band is left off because there are too few entries in it
+  to shade. A range cell opens `?from=300&span=100`, which is the same table
+  one level down: 10×10 cells, each a hundredth of the range, or one number
+  per cell when the range is 100 or less. A single number goes to its `/n/`
+  page, under the first spelling filed.
+- **Calendar.** A row per month and a column per day. A day the month does
+  not have is a blank cell, not a zero, and every other cell goes to its
+  `/c/` page.
+- **Abbreviation.** A row per first character and a column per second,
+  counting letters and digits only, the way `bucket_of` reads a band. The
+  digits share one row and one column. A cell that holds one word goes to its
+  `/a/` page. A cell with several words has no page of its own, so it goes to
+  its band on the index.
 
 `/random` is a route, not a header `onClick`, so it is linkable and has
 somewhere to render its wait and its failure. It replaces rather than pushes —

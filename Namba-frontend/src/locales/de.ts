@@ -45,8 +45,12 @@ export const DE: Messages = {
   contributors: { title: 'Mitwirkende', nickname: 'Spitzname', counts: 'Einträge / Bearbeitungen' },
   heatmap: {
     title: 'Heatmap',
-    intro: 'Ganzzahlige Einträge nach Größe und erster Ziffer: Jede Zeile ist eine Zehnerpotenz, jede Spalte die Ziffer, mit der eine Zahl beginnt. Je dunkler das Feld, desto mehr Einträge.',
-    cell: (from: string, to: string, n: number) => `${from}–${to}: ${n} ${n === 1 ? 'Eintrag' : 'Einträge'}`,
+    intro: {
+      INTEGER: 'Ganzzahlige Einträge nach Größe und erster Ziffer: Jede Zeile ist eine Zehnerpotenz, jede Spalte die Ziffer, mit der eine Zahl beginnt. Je dunkler das Feld, desto mehr Einträge.',
+      CALENDAR: 'Kalendereinträge nach Tag des Jahres: eine Zeile pro Monat, eine Spalte pro Tag. Je dunkler das Feld, desto mehr Einträge.',
+      ABBR: 'Abkürzungen nach ihren ersten beiden Buchstaben: eine Zeile pro erstem Buchstaben, eine Spalte pro zweitem. Je dunkler das Feld, desto mehr Einträge.',
+    },
+    cell: (what: string, n: number) => `${what}: ${n} ${n === 1 ? 'Eintrag' : 'Einträge'}`,
   },
   footer: {
     cc0Before: 'Alles, was hier geschrieben wird, steht unter',

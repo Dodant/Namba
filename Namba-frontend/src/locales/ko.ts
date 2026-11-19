@@ -38,8 +38,12 @@ export const KO: Messages = {
   contributors: { title: '기여자', nickname: '닉네임', counts: '엔트리 / 편집' },
   heatmap: {
     title: '히트맵',
-    intro: '정수 엔트리를 크기와 첫 자리로 나눠 셉니다. 행은 자릿수, 열은 숫자가 시작하는 자리의 숫자입니다. 칸이 진할수록 엔트리가 많습니다.',
-    cell: (from: string, to: string, n: number) => `${from}–${to}: 엔트리 ${n}개`,
+    intro: {
+      INTEGER: '정수 엔트리를 크기와 첫 자리로 나눠 셉니다. 행은 자릿수, 열은 숫자가 시작하는 자리의 숫자입니다. 칸이 진할수록 엔트리가 많습니다.',
+      CALENDAR: '캘린더 엔트리를 날짜별로 셉니다. 행은 월, 열은 일입니다. 칸이 진할수록 엔트리가 많습니다.',
+      ABBR: '줄임말을 앞 두 글자로 나눠 셉니다. 행은 첫 글자, 열은 둘째 글자입니다. 칸이 진할수록 엔트리가 많습니다.',
+    },
+    cell: (what: string, n: number) => `${what}: 엔트리 ${n}개`,
   },
   footer: {
     cc0Before: '이곳에 작성된 모든 내용은',

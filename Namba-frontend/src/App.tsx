@@ -6,13 +6,14 @@ import {
   createBrowserRouter, RouterProvider, Link, Route, Routes, useLocation,
   useNavigate, useNavigationType, useParams, useSearchParams,
 } from 'react-router-dom'
-import { api, contentLanguage, entryPath } from './api'
-import { canonicalNumber, fmtCount, monthDay, showValue } from './format'
+import { api, contentLanguage } from './api'
+import { canonicalNumber, monthDay, showValue } from './format'
 import Home from './pages/Home'
 import Browse from './pages/Browse'
 import PostPage from './pages/PostPage'
 import PostForm from './pages/PostForm'
 import Guide from './pages/Guide'
+import Heatmap from './pages/Heatmap'
 import { useAsync } from './useAsync'
 import { UI_LOCALES, type UiLocale } from './locales'
 import { UiProvider, useUi } from './uiLocale'
@@ -70,110 +71,6 @@ function Contributors() {
           <tbody>
             {got.data.map((c) => (
               <tr key={c.nickname}><td>{c.nickname}</td><td>{c.entries}/{c.edits}</td></tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </article>
-  )
-}
-
-/* Integer entries counted by magnitude and first digit: a row per power of
-   ten, a column per leading digit, so 300 to 399 is one cell. Integers only,
-   because they are the one format with a magnitude -- the same reason
-   bucket_of bands only them. Four rows, 1 to 9,999: past that the index's
-   own 10000+ band holds a handful, too few to shade.
-
-   A cell with entries opens it: a single number goes to its page, a range
-   to `?from=300&span=100`, the same table one level down -- 10×10 cells,
-   each a hundredth of the range, or one number when the range is 100 or
-   less. So 3000 to 3999 is ten-number cells and each of those opens once
-   more onto its ten numbers. */
-function Heatmap() {
-  const { m, locale } = useUi()
-  const [params] = useSearchParams()
-  const got = useAsync(() => api.numbers({ format: 'INTEGER' }), [])
-  if (got.err) return <p className="empty" role="alert">{got.err}</p>
-  if (!got.data) return <p className="empty" role="status">{m.common.loading}</p>
-
-  // entries per whole number, and the spelling a number's link uses (the
-  // first one filed, when 7 and 007 share a cell)
-  const count = new Map<number, number>()
-  const spelt = new Map<number, string>()
-  for (const n of got.data) {
-    const v = Math.floor(Math.abs(n.sort_key ?? 0))
-    if (v < 1 || v >= 10000) continue // 0 has no first digit
-    count.set(v, (count.get(v) ?? 0) + n.entries.length)
-    if (!spelt.has(v)) spelt.set(v, n.value)
-  }
-  const sum = (start: number, size: number) => {
-    let t = 0
-    for (let v = start; v < start + size; v++) t += count.get(v) ?? 0
-    return t
-  }
-
-  const span = Number(params.get('span'))
-  const from = Number(params.get('from'))
-  const detail = [10, 100, 1000].includes(span) && from >= span && from < 10000 && from % span === 0
-  const size = detail ? Math.max(1, span / 100) : 0
-  /* rows of [label, first cell] -- every cell in a row is `size` wide, and
-     the overview's rows are each their own power of ten */
-  const rows: { label: string; cells: [number, number][] }[] = detail
-    ? Array.from({ length: span / size / 10 }, (_, r) => ({
-        label: fmtCount(from + r * 10 * size, locale),
-        cells: Array.from({ length: 10 }, (_, c): [number, number] =>
-          [from + (r * 10 + c) * size, size]),
-      }))
-    : [0, 1, 2, 3].map((e) => ({
-        label: `10${'⁰¹²³'[e]}`,
-        cells: Array.from({ length: 9 }, (_, i): [number, number] =>
-          [(i + 1) * 10 ** e, 10 ** e]),
-      }))
-  const heads = detail ? Array.from({ length: 10 }, (_, c) => fmtCount(c * size, locale))
-                       : ['1', '2', '3', '4', '5', '6', '7', '8', '9']
-  const sums = rows.map((r) => r.cells.map(([a, n]) => sum(a, n)))
-  const max = Math.max(1, ...sums.flat())
-
-  return (
-    <article className="body guide">
-      {detail ? (
-        <>
-          <p><Link to="/heatmap">← {m.heatmap.title}</Link></p>
-          <h1>{fmtCount(from, locale)}–{fmtCount(from + span - 1, locale)}</h1>
-        </>
-      ) : (
-        <>
-          <h1>{m.heatmap.title}</h1>
-          <p>{m.heatmap.intro}</p>
-        </>
-      )}
-      <div className="tbl">
-        <table className="heat">
-          <thead>
-            <tr>
-              <td />
-              {heads.map((h) => <th key={h} scope="col">{h}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, r) => (
-              <tr key={row.label}>
-                <th scope="row">{row.label}</th>
-                {row.cells.map(([start, n], c) => {
-                  const k = sums[r][c]
-                  const label = m.heatmap.cell(
-                    fmtCount(start, locale), fmtCount(start + n - 1, locale), k)
-                  const to = n === 1 ? entryPath(spelt.get(start) ?? String(start), 'INTEGER')
-                                     : `/heatmap?from=${start}&span=${n}`
-                  return (
-                    <td key={start} style={{ '--heat': `${(k / max) * 100}%` } as React.CSSProperties}
-                        className={k / max > 0.5 ? 'hot' : undefined}>
-                      {k ? <Link to={to} title={label} aria-label={label}>{k}</Link>
-                         : <span title={label} aria-label={label}>·</span>}
-                    </td>
-                  )
-                })}
-              </tr>
             ))}
           </tbody>
         </table>

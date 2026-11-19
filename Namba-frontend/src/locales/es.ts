@@ -45,8 +45,12 @@ export const ES: Messages = {
   contributors: { title: 'Colaboradores', nickname: 'Apodo', counts: 'entradas / ediciones' },
   heatmap: {
     title: 'Mapa de calor',
-    intro: 'Entradas enteras por tamaño y primera cifra: cada fila es una potencia de diez y cada columna la cifra con la que empieza un número. Cuanto más oscura la celda, más entradas.',
-    cell: (from: string, to: string, n: number) => `${from}–${to}: ${n} ${n === 1 ? 'entrada' : 'entradas'}`,
+    intro: {
+      INTEGER: 'Entradas enteras por tamaño y primera cifra: cada fila es una potencia de diez y cada columna la cifra con la que empieza un número. Cuanto más oscura la celda, más entradas.',
+      CALENDAR: 'Entradas de calendario por día del año: una fila por mes y una columna por día. Cuanto más oscura la celda, más entradas.',
+      ABBR: 'Abreviaturas por sus dos primeras letras: una fila por la primera letra y una columna por la segunda. Cuanto más oscura la celda, más entradas.',
+    },
+    cell: (what: string, n: number) => `${what}: ${n} ${n === 1 ? 'entrada' : 'entradas'}`,
   },
   footer: {
     cc0Before: 'Todo lo escrito aquí se publica bajo',
