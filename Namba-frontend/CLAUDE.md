@@ -484,7 +484,8 @@ sanitiser config to get wrong.
   the router's and `ScrollTop`'s — whose hash effect also opens a closed
   `<details>`, since `:target` cannot. An empty band is a `<span>`, kept so
   the rail has one shape per tab. Each line carries its band's entries,
-  folds included, beside the label in the rail and under it in the popover. Integer's lines are `10²`-style (`INT_SHORT`)
+  folds included, beside the label in the rail; the popover drops it and keeps only the
+  accessible name's. Integer's lines are `10²`-style (`INT_SHORT`)
   with the band label as the accessible name. Where the reader is comes from
   one `IntersectionObserver` and is said with `aria-current="location"`. No
   z-index: it has a column of its own and nothing passes under it.
