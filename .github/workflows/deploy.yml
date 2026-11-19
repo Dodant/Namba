@@ -43,7 +43,7 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # 24, not 22: `node --test` runs the front end's .ts files directly, which
       # needs the version where type stripping stopped being a flag.
@@ -107,7 +107,7 @@ jobs:
     # OIDC subject does not match and the assume-role fails.
     environment: production
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # The front end the checks job built and the suite then read. No node
       # here: the Dockerfile copies dist/, it does not build it.
