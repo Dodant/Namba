@@ -652,8 +652,10 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 }
 /* The rail is a [popover], for the phone below. Above 560 it is drawn in
    place: these undo the UA's popover box and its hiding, at (0,1,0) against
-   the UA's own origin, which loses whatever its specificity. */
-.ix-toc { inset: auto; margin: 0; border: 0; padding: 0; width: auto; height: auto; background: none; color: inherit; }
+   the UA's own origin, which loses whatever its specificity. Not `inset`:
+   that shorthand sits after the sticky `top` above and would reset it to
+   auto, which leaves a sticky box that scrolls away with the page. */
+.ix-toc { right: auto; bottom: auto; left: auto; margin: 0; border: 0; padding: 0; width: auto; height: auto; background: none; color: inherit; }
 .ix-jump { display: none; }
 
 /* A phone has no column to give, so the rail is a corner button beside
