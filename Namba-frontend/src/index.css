@@ -1594,6 +1594,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .heat-list li { display: flex; gap: 16px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--rule); }
 .heat-list .num { flex: none; width: 6em; text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .heat td > :is(span, .add) { color: var(--faint); }
+/* an empty day says what pressing it does: its '·' turns into '+' */
+.heat td > a.add:is(:hover, :focus-visible) { font-size: 0; color: var(--ink); }
+.heat td > a.add:is(:hover, :focus-visible)::after { content: '+'; font-size: var(--fs-body); font-weight: 600; }
 .heat td > a:is(:hover, :focus-visible) { outline: 2px solid var(--ink); outline-offset: -2px; }
 .heat td.hot { color: var(--on-accent); }
 .body .tabs a { color: var(--muted); text-decoration: none; } /* .body a would make them links in prose */
