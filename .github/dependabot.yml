@@ -1,10 +1,16 @@
 # The workflows name their actions by commit SHA, which stops a moved tag from
 # changing what the deploy job runs and also stops a fix from arriving on its
 # own. This is what brings the fixes: one pull request a week that moves the
-# SHAs and the tag comments beside them together.
+# SHAs and the version comments beside them together.
+#
+# Grouped, because a merge to main that touches .github/ is a deploy: ungrouped
+# this is a pull request and a deploy per action.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
