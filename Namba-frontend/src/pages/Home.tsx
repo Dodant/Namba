@@ -259,21 +259,22 @@ function byCalendarDay(a: NumberEntry, b: NumberEntry) {
     - (monthDay(b.value)?.[1] ?? Number.MAX_SAFE_INTEGER)
 }
 
-/* What the rail counts beside a band: its entries, folds included -- the
-   second figure of the band head's own line, and the one that says how much
-   is down there. */
-const entriesIn = (band: Band) =>
-  [...band.items, ...(band.subs ?? []).flatMap((sub) => sub.items)]
-    .reduce((n, row) => n + row.entries.length, 0)
+/* A band's two figures, folds included: the numbers in it and the entries
+   under them. Dates are counted by `value` because a split one is in more
+   than one list and is still one date. The band head says both in words; the
+   rail says them as `4 - 6`. */
+function bandFigures(band: Band) {
+  const all = [...band.items, ...(band.subs ?? []).flatMap((sub) => sub.items)]
+  return {
+    subjects: band.subs ? new Set(all.map((row) => row.value)).size : all.length,
+    entries: all.reduce((n, row) => n + row.entries.length, 0),
+  }
+}
 
-function bandCount(items: NumberEntry[], subs: Band['subs'],
-                   format: Format, m: Messages) {
-  /* the whole month, folded entries included: closed, this line is all the
-     band says about itself, so it must not count only half of it. Dates by
-     `value` because a split one is in more than one list and is still one date. */
-  const all = subs ? [...items, ...subs.flatMap((sub) => sub.items)] : items
-  const subjects = subs ? new Set(all.map((row) => row.value)).size : all.length
-  const entries = all.reduce((n, item) => n + item.entries.length, 0)
+/* the whole month, folded entries included: closed, this line is all the
+   band says about itself, so it must not count only half of it. */
+function bandCount(band: Band, format: Format, m: Messages) {
+  const { subjects, entries } = bandFigures(band)
   return m.home.bandCount(
     subjects,
     m.common.subject(sectionOf(format), subjects),
@@ -527,10 +528,12 @@ function Index({ lang }: { lang: string }) {
                   aria-current={here === `band-${band.id}` ? 'location' : undefined}
                   /* the band's own label, not `10³`, and the count said in
                      words rather than as a bare figure after it */
-                  aria-label={`${band.label} · ${m.common.entries(entriesIn(band))}`}
+                  aria-label={`${band.label} · ${bandCount(band, shownFormat, m)}`}
                 >
                   {band.short ?? band.label}
-                  <span className="n">{fmtCount(entriesIn(band), locale)}</span>
+                  <span className="n">
+                    {fmtCount(bandFigures(band).subjects, locale)} - {fmtCount(bandFigures(band).entries, locale)}
+                  </span>
                 </a>
               )
               : <span key={band.id} aria-hidden="true">{band.short ?? band.label}</span>)}
@@ -561,7 +564,7 @@ function Index({ lang }: { lang: string }) {
                     <h2 className={band.now ? 'now' : undefined}>{band.label}</h2>
                     <span className="rule" />
                     <span className="n">
-                      {bandCount(band.items, band.subs, shownFormat, m)}
+                      {bandCount(band, shownFormat, m)}
                     </span>
                   </summary>
                   <ol className="index">
