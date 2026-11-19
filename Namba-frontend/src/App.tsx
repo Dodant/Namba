@@ -117,7 +117,7 @@ function Heatmap() {
               const p = 10 ** e
               return (
                 <tr key={e}>
-                  <th scope="row">{fmtCount(p, locale)}</th>
+                  <th scope="row">10{'⁰¹²³'[e]}</th>
                   {row.map((n, i) => {
                     const from = fmtCount((i + 1) * p, locale)
                     const to = fmtCount((i + 2) * p - 1, locale)
