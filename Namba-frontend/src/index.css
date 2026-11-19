@@ -648,7 +648,20 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 .ix-toc > a { display: flex; justify-content: space-between; gap: 14px; }
 .ix-toc .n { color: var(--fainter); }
 .ix-toc > a:hover { color: var(--ink); text-decoration: none; }
-.ix-toc > a[aria-current] { color: var(--ink); border-left-color: var(--accent); }
+.ix-toc > a[aria-current] { color: var(--ink); }
+/* Where you are is one bar that slides down the track, not a colour that
+   jumps from line to line: the track is the page in miniature, and a bar
+   moving along it is the reader moving down it. Home.tsx measures the current
+   line into --at and --h; the rail is sticky, so it is the bar's containing
+   block and the bar scrolls with the lines when the rail scrolls inside
+   itself. Positioned, it paints over the lines' own grey. The global
+   reduced-motion rule turns the slide into a jump. */
+.ix-toc::before {
+  content: ''; position: absolute; left: 0; width: 2px; pointer-events: none;
+  top: var(--at, 0); height: var(--h, 24px); background: var(--accent);
+  opacity: 0; transition: top 180ms ease-out, height 180ms ease-out, opacity 120ms;
+}
+.ix-toc[data-placed]::before { opacity: 1; }
 /* nothing to go to: --fainter like every legible grey, and no rule beside it,
    which is what tells it from a line you can press */
 .ix-toc > span { color: var(--fainter); border-left-color: transparent; }
@@ -690,6 +703,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
   .ix-toc.words > a { justify-content: flex-start; }
   .ix-toc .n { display: none; }
   .ix-toc > a[aria-current] { background: var(--accent-soft); }
+  .ix-toc::before { display: none; }
   .ix-jump {
     display: inline-flex; gap: 6px; position: fixed;
     right: calc(max(clamp(16px, 4vw, 34px), env(safe-area-inset-right)) + 48px);

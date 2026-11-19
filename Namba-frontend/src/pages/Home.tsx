@@ -341,6 +341,19 @@ function Index({ lang }: { lang: string }) {
     return () => io.disconnect()
   }, [numbers.data])
 
+  /* The rail's bar sits on the current line; index.css slides it there. */
+  useLayoutEffect(() => {
+    const nav = document.getElementById('ix-toc')
+    if (!nav) return
+    const a = nav.querySelector<HTMLElement>('a[aria-current]')
+    if (a) {
+      nav.style.setProperty('--at', `${a.offsetTop}px`)
+      nav.style.setProperty('--h', `${a.offsetHeight}px`)
+    }
+    // an attribute, not a class: React owns className and rewrites it
+    nav.toggleAttribute('data-placed', !!a)
+  }, [here, numbers.data])
+
   /* A band link opened cold -- sent, bookmarked, a new tab -- reaches
      ScrollTop's hash effect before the first answer has drawn the band, and
      the hash does not change again to send it back. So the first answer goes
