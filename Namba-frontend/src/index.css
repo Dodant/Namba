@@ -636,13 +636,15 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
   font-variant-numeric: tabular-nums;
 }
 .ix-toc::-webkit-scrollbar { display: none; }
-.ix-toc a, .ix-toc span {
+.ix-toc > a, .ix-toc > span {
   padding: 4px 0 4px 10px; border-left: 2px solid var(--rule);
   color: var(--muted); white-space: nowrap;
 }
-.ix-toc a:hover { color: var(--ink); text-decoration: none; }
-.ix-toc a[aria-current] { color: var(--ink); border-left-color: var(--accent); }
-.ix-toc span { color: var(--line); }
+.ix-toc > a { display: flex; justify-content: space-between; gap: 14px; }
+.ix-toc .n { color: var(--fainter); }
+.ix-toc > a:hover { color: var(--ink); text-decoration: none; }
+.ix-toc > a[aria-current] { color: var(--ink); border-left-color: var(--accent); }
+.ix-toc > span { color: var(--line); }
 @media (min-width: 901px) {
   /* under the sticky header: the scroll-padding-top that lands a band is the
      same 104 the rail stands at */
@@ -671,9 +673,14 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
     background: var(--panel); box-shadow: var(--shadow);
   }
   .ix-toc.words:popover-open { grid-template-columns: repeat(3, 1fr); }
-  .ix-toc a, .ix-toc span { border-left: 0; padding: 4px 6px; border-radius: 6px; text-align: center; }
-  .ix-toc.words a, .ix-toc.words span { text-align: left; }
-  .ix-toc a[aria-current] { background: var(--accent-soft); }
+  .ix-toc > a, .ix-toc > span { border-left: 0; padding: 4px 6px; border-radius: 6px; text-align: center; }
+  .ix-toc.words > a, .ix-toc.words > span { text-align: left; }
+  /* five to a row is 55px a cell, and `10³ 27` side by side in that reads
+     as one figure. The count goes under its label instead. */
+  .ix-toc > a { flex-direction: column; align-items: center; gap: 0; }
+  .ix-toc.words > a { align-items: flex-start; }
+  .ix-toc .n { font-size: var(--fs-label); }
+  .ix-toc > a[aria-current] { background: var(--accent-soft); }
   .ix-jump {
     display: inline-flex; gap: 6px; position: fixed;
     right: calc(max(clamp(16px, 4vw, 34px), env(safe-area-inset-right)) + 48px);

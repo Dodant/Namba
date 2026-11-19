@@ -259,6 +259,13 @@ function byCalendarDay(a: NumberEntry, b: NumberEntry) {
     - (monthDay(b.value)?.[1] ?? Number.MAX_SAFE_INTEGER)
 }
 
+/* What the rail counts beside a band: its entries, folds included -- the
+   second figure of the band head's own line, and the one that says how much
+   is down there. */
+const entriesIn = (band: Band) =>
+  [...band.items, ...(band.subs ?? []).flatMap((sub) => sub.items)]
+    .reduce((n, row) => n + row.entries.length, 0)
+
 function bandCount(items: NumberEntry[], subs: Band['subs'],
                    format: Format, m: Messages) {
   /* the whole month, folded entries included: closed, this line is all the
@@ -518,9 +525,12 @@ function Index({ lang }: { lang: string }) {
                   href={`#band-${band.id}`}
                   className={band.now ? 'now' : undefined}
                   aria-current={here === `band-${band.id}` ? 'location' : undefined}
-                  aria-label={band.short && band.label}
+                  /* the band's own label, not `10³`, and the count said in
+                     words rather than as a bare figure after it */
+                  aria-label={`${band.label} · ${m.common.entries(entriesIn(band))}`}
                 >
                   {band.short ?? band.label}
+                  <span className="n">{fmtCount(entriesIn(band), locale)}</span>
                 </a>
               )
               : <span key={band.id} aria-hidden="true">{band.short ?? band.label}</span>)}
