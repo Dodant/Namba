@@ -482,8 +482,15 @@ sanitiser config to get wrong.
   a light dismiss. Each line is a plain `<a href="#band-…">`
   over the bucket key, so the fragment is locale-neutral, and the work is
   the router's and `ScrollTop`'s — whose hash effect also opens a closed
-  `<details>`, since `:target` cannot. An empty band is a `<span>`, kept so
-  the rail has one shape per tab. Each line carries the band head's two
+  `<details>`, since `:target` cannot. Two cases the hash effect never sees
+  are `Index`'s: a band link opened cold, which arrives before the first
+  answer has drawn the band, so that answer opens and scrolls to it once; and
+  a press on the band already in the hash, closed by hand since, which the
+  rail's `onClick` opens. An empty band is a `<span>` in `--fainter` with no
+  rule beside it, kept so the rail has one shape per tab. `.ix-bands` is a
+  grid only as `.rail`: an empty `auto` track keeps its gutter, which would
+  take 20–40px off the single-band tabs. The rail's lines join the
+  `(pointer: coarse)` block like every small control. Each line carries the band head's two
   figures as `4 - 6` — numbers, then entries, folds included — beside the label in the rail. The
   popover draws neither; the link's accessible name still says both. Integer's lines are `10²`-style (`INT_SHORT`)
   with the band label as the accessible name. Where the reader is comes from
