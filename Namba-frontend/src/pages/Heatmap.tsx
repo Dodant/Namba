@@ -113,7 +113,7 @@ export default function Heatmap({ lang }: { lang: string }) {
                   const inner = <>{c.tag && <small>{c.tag}</small>}{c.n || '·'}</>
                   return (
                     <td key={i} style={{ '--heat': `${(c.n / max) * 100}%` } as CSSProperties}
-                        className={c.n / max > 0.5 ? 'hot' : undefined}>
+                        className={c.n / max > 0.7 ? 'hot' : undefined}>
                       {c.n ? <Link to={c.to} title={label} aria-label={label}>{inner}</Link>
                         : c.add ? <Link className="add" to={c.add} title={label} aria-label={label}>{inner}</Link>
                         : <span role="img" title={label} aria-label={label}>{inner}</span>}

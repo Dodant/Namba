@@ -1577,8 +1577,10 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    an entry is a stranger's, and that one is still sized by what is in it. */
 .guide .tbl table { width: 100%; table-layout: fixed; }
 /* The heatmap's cells: --heat is the cell's share of the fullest one, mixed
-   into --panel so it turns over with the theme; past half the text goes to
-   --on-accent, the colour already meant for writing on --accent. */
+   into --panel so it turns over with the theme; past 70% the text goes to
+   --on-accent, the colour already meant for writing on --accent. 70 and not
+   half because that is where --ink and --on-accent cross over on the mix,
+   in both themes: at half, --on-accent on the mid green is 2.4 to 1. */
 .heat :is(th, td) { text-align: center; font-family: var(--mono); padding: 0; }
 .heat tbody th { text-align: right; padding: 6px 8px; white-space: nowrap; }
 .heat thead td { border: 0; width: 7.5em; } /* table-layout: fixed sizes off the first row */
