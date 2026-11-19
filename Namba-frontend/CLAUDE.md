@@ -472,6 +472,18 @@ sanitiser config to get wrong.
   the count: it is there to be closed by a reader who wants past a number the
   wiki has taken to, and it never hides an entry from one who did not ask.
 
+  **The three banded tabs carry a rail, `.ix-toc`.** Integer, Calendar and
+  Abbreviation list every band of the tab on the right, sticky at the same
+  104px `scroll-padding-top` lands a band at; below 560 it lies down as a
+  sideways strip above the list. Each line is a plain `<a href="#band-…">`
+  over the bucket key, so the fragment is locale-neutral, and the work is
+  the router's and `ScrollTop`'s — whose hash effect also opens a closed
+  `<details>`, since `:target` cannot. An empty band is a `<span>`, kept so
+  the rail has one shape per tab. Integer's lines are `10²`-style (`INT_SHORT`)
+  with the band label as the accessible name. Where the reader is comes from
+  one `IntersectionObserver` and is said with `aria-current="location"`. No
+  z-index: it has a column of its own and nothing passes under it.
+
   **The Calendar tab breaks one of those defaults, and is the only tab that
   does.** It draws a month with nothing in it, where every other band is
   skipped when empty, because twelve months are a calendar and a year missing
