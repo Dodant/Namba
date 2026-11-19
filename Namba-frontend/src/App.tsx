@@ -81,7 +81,8 @@ function Contributors() {
 /* Integer entries counted by magnitude and first digit: a row per power of
    ten, a column per leading digit, so 300 to 399 is one cell. Integers only,
    because they are the one format with a magnitude -- the same reason
-   bucket_of bands only them. A cell links to its band on the index, the
+   bucket_of bands only them. Four rows, 1 to 9,999: past that the index's
+   own 10000+ band holds a handful, too few to shade. A cell links to its band on the index, the
    finest address the index has. */
 function Heatmap() {
   const { m, locale } = useUi()
@@ -92,16 +93,12 @@ function Heatmap() {
   const grid: number[][] = [[], [], [], []].map(() => Array(9).fill(0))
   for (const n of got.data) {
     const v = Math.abs(n.sort_key ?? 0)
-    if (v < 1) continue // 0 has no first digit
+    if (v < 1 || v >= 10000) continue // 0 has no first digit
     // toExponential and not log10, which reads 1000 as 2.9999999999999996
     const [mant, exp] = v.toExponential().split('e')
-    const row = (grid[+exp] ??= Array(9).fill(0))
-    row[+mant[0] - 1] += n.entries.length
+    grid[+exp][+mant[0] - 1] += n.entries.length
   }
-  const max = Math.max(1, ...grid.flatMap((r) => r ?? []))
-  /* 1 to 1,000 always, so the four rows read as one table; past that only a
-     power of ten something is filed under -- a googol is not 96 empty rows */
-  const rows = [...grid.keys()].filter((e) => e < 4 || grid[e]?.some(Boolean))
+  const max = Math.max(1, ...grid.flat())
 
   return (
     <article className="body guide">
@@ -116,20 +113,19 @@ function Heatmap() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((e) => {
+            {grid.map((row, e) => {
               const p = 10 ** e
-              const band = e < 4 ? String(p) : '10000+'
               return (
                 <tr key={e}>
                   <th scope="row">{fmtCount(p, locale)}</th>
-                  {(grid[e] ?? Array(9).fill(0)).map((n: number, i: number) => {
+                  {row.map((n, i) => {
                     const from = fmtCount((i + 1) * p, locale)
                     const to = fmtCount((i + 2) * p - 1, locale)
                     const label = m.heatmap.cell(from, to, n)
                     return (
                       <td key={i} style={{ '--heat': `${(n / max) * 100}%` } as React.CSSProperties}
                           className={n / max > 0.5 ? 'hot' : undefined}>
-                        {n ? <Link to={`/#band-${band}`} title={label} aria-label={label}>{n}</Link>
+                        {n ? <Link to={`/#band-${p}`} title={label} aria-label={label}>{n}</Link>
                            : <span title={label} aria-label={label}>·</span>}
                       </td>
                     )
