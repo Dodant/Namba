@@ -4,7 +4,7 @@ import re
 import time
 import traceback
 from collections import defaultdict
-from typing import ClassVar, List, Optional
+from typing import Annotated, ClassVar, List, Literal, Optional
 from uuid import uuid4
 from xml.sax.saxutils import escape as xml_escape
 
@@ -14,7 +14,7 @@ from fastapi.responses import (
     FileResponse, JSONResponse, PlainTextResponse, Response,
 )
 from fastapi.staticfiles import StaticFiles
-from pydantic import Field, field_validator
+from pydantic import BeforeValidator, Field, field_validator
 
 import admin_api
 import db
@@ -82,7 +82,7 @@ ASSET_CACHE = {"Cache-Control": "public, max-age=31536000, immutable"}
 
 db.init()
 
-app = FastAPI(title="Namba")
+app = FastAPI(title="Namba", docs_url=None)  # /docs is drawn below
 # Readable from any origin, writable from this one. A JSON write from another
 # site preflights, and this answers a preflight for anything but a read with a
 # 400 -- the first of the two layers `guard` describes. Credentials stay off:
@@ -165,6 +165,51 @@ def _unhandled(request: Request, exc: Exception):
 # ahead of @app.get("/{path:path}"). Included here rather than at the foot of
 # the file so that the ordering rule is stated once, where the app is built.
 app.include_router(admin_api.router)
+
+# /docs from this origin alone. FastAPI's own page pulls Swagger UI off a CDN
+# and starts it with an inline <script>, and the site's Content-Security-Policy
+# (script-src 'self') refuses both, which left the footer's API link a blank
+# page. So the two files are vendored in docs_ui/ from swagger-ui-dist 5.34.1
+# (pinned: upgrading is replacing them) and the start-up is a file of its own.
+# Everything stays under /docs/, which the dev server already proxies.
+DOCS_UI = os.path.join(os.path.dirname(__file__), "docs_ui")
+DOCS_HTML = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Namba API</title>
+<link rel="stylesheet" href="/docs/swagger-ui.css">
+</head><body><div id="swagger-ui"></div>
+<script src="/docs/swagger-ui-bundle.js"></script>
+<script src="/docs/start.js"></script>
+</body></html>"""
+DOCS_START = """window.ui = SwaggerUIBundle({
+  url: '/openapi.json', dom_id: '#swagger-ui', layout: 'BaseLayout', deepLinking: true,
+  presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+})"""
+
+
+@app.get("/docs", include_in_schema=False)
+def docs():
+    return Response(DOCS_HTML, media_type="text/html")
+
+
+@app.get("/docs/start.js", include_in_schema=False)
+def docs_start():
+    return Response(DOCS_START, media_type="text/javascript")
+
+
+app.mount("/docs", StaticFiles(directory=DOCS_UI), name="docs")
+
+
+# A read's ?format=, as a closed set: an unknown one is a 422 that names the
+# six, where it used to be a 200 with nothing in it -- a typo read as "no
+# entries", the one answer a client cannot tell from the truth. Case is not
+# the typo: `abbr` is still ABBR. A Literal rather than a check in each
+# route, so /docs lists the six as well.
+FormatQ = Annotated[
+    Optional[Literal[FORMATS]],
+    BeforeValidator(lambda v: v.upper() if isinstance(v, str) else v),
+]
 
 
 def site_base(request) -> str:
@@ -530,7 +575,7 @@ def list_languages(con=Depends(get_db)):
 
 
 @app.get("/api/tags")
-def list_tags(format: Optional[str] = None, con=Depends(get_db)):
+def list_tags(format: FormatQ = None, con=Depends(get_db)):
     """The wiki's working vocabulary: the tags in use, most-used first.
 
     Read off the posts rather than a list in this file. Anyone can coin a tag,
@@ -588,7 +633,7 @@ def list_contributors(con=Depends(get_db)):
 
 @app.get("/api/numbers")
 def list_numbers(
-    format: Optional[str] = None,
+    format: FormatQ = None,
     tag: Optional[str] = None,
     lang: Optional[str] = None,
     untagged: bool = False,
@@ -668,7 +713,7 @@ def list_posts(
     request: Request,
     value: Optional[str] = None,
     tag: Optional[str] = None,
-    format: Optional[str] = None,
+    format: FormatQ = None,
     section: Optional[str] = None,
     q: Optional[str] = None,
     lang: Optional[str] = None,

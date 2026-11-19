@@ -43,6 +43,15 @@ export const ES: Messages = {
     empty: 'Aún no hay entradas entre las que elegir.',
   },
   contributors: { title: 'Colaboradores', nickname: 'Apodo', counts: 'entradas / ediciones' },
+  heatmap: {
+    title: 'Mapa de calor',
+    intro: {
+      INTEGER: 'Entradas enteras por tamaño y primera cifra: cada fila es una potencia de diez y cada columna la cifra con la que empieza un número. Cuanto más oscura la celda, más entradas.',
+      CALENDAR: 'Entradas de calendario por día del año: una fila por mes y una columna por día. Cuanto más oscura la celda, más entradas.',
+      ABBR: 'Abreviaturas por su primer carácter: una celda por letra y por cifra. Cuanto más oscura la celda, más entradas.',
+    },
+    cell: (what: string, n: number) => `${what}: ${n} ${n === 1 ? 'entrada' : 'entradas'}`,
+  },
   footer: {
     cc0Before: 'Todo lo escrito aquí se publica bajo',
     cc0After: ' — es de dominio público. Puedes copiarlo, citarlo o reutilizarlo sin permiso ni atribución. La autoría se conserva para registrar quién lo escribió primero.',

@@ -784,6 +784,21 @@ the sitemap.
   `seo.py` turns that name into a path and is the twin of `entryPath()` in
   `api.ts`.
 
+- **`/docs` is drawn from this origin, not FastAPI's CDN page.** The site's
+  CSP is `script-src 'self'`, set by the reverse proxy rather than here, and it
+  refuses both the jsdelivr bundle and the inline start-up FastAPI's own page
+  uses. So `docs_url=None`, Swagger UI's two files sit in `docs_ui/` at a pinned
+  `swagger-ui-dist` version (its `LICENSE` beside them), and the start-up is
+  `/docs/start.js`. Upgrading it is replacing the two files from the npm
+  tarball, nothing else. `test_the_api_reference_draws_under_the_sites_policy`
+  fails on an inline script, an outside URL or a file that 404s.
+- **A read's `?format=` is one of the six or a 422.** `FormatQ` upper-cases
+  first, so `abbr` is ABBR, then holds it to `FORMATS`. Unknown used to answer
+  200 with nothing, which a client cannot tell from "no entries". It is the
+  opposite of `?section=`, which shows too much on a typo: a wrong section
+  still answers with real rows, a wrong format answered with none.
+  `test_an_unknown_format_is_refused_not_empty`.
+
 ## No ORM
 
 Do not add SQLAlchemy, SQLModel, Alembic or a migration tool. Schema lives in

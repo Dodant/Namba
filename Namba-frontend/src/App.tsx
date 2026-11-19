@@ -13,6 +13,7 @@ import Browse from './pages/Browse'
 import PostPage from './pages/PostPage'
 import PostForm from './pages/PostForm'
 import Guide from './pages/Guide'
+import Heatmap from './pages/Heatmap'
 import { useAsync } from './useAsync'
 import { UI_LOCALES, type UiLocale } from './locales'
 import { UiProvider, useUi } from './uiLocale'
@@ -561,6 +562,7 @@ function Footer({ lang, onLang }: { lang: string; onLang: (v: string) => void })
             bundle, and a full document load here would throw the app away. */}
         <Link to="/guide">{m.footer.guidelines}</Link>{' · '}
         <Link to="/contributors">{m.contributors.title}</Link>{' · '}
+        <Link to="/heatmap">{m.heatmap.title}</Link>{' · '}
         <a href="/docs">API</a> — {m.footer.apiOpen}{' · '}
         <a href="https://github.com/Dodant/Namba">{m.footer.source}</a>
       </p>
@@ -643,6 +645,7 @@ function Wiki() {
             <Route path="/new" element={<PostForm />} />
             <Route path="/guide" element={<Guide />} />
             <Route path="/contributors" element={<Contributors />} />
+            <Route path="/heatmap" element={<Heatmap lang={lang} />} />
             <Route
               path="*"
               element={

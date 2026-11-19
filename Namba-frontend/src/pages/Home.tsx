@@ -205,11 +205,12 @@ function measure() {
 }
 
 /* The Integer bands in the rail, where "1,000 – 9,999" does not fit: the
-   lower bound of each, as a power of ten. Digits and superscripts read the
+   lower bound of each, as a power of ten -- 10⁰ and 10¹ too, so the rail is
+   one scale with the heatmap's row labels. Digits and superscripts read the
    same in every locale, and the link carries the band's own label as its
    accessible name. */
 const INT_SHORT: Record<(typeof BUCKETS)[number], string> =
-  { '1': '1', '10': '10', '100': '10²', '1000': '10³', '10000+': '10⁴+' }
+  { '1': '10⁰', '10': '10¹', '100': '10²', '1000': '10³', '10000+': '10⁴+' }
 
 /* One band of the index. `keep`, `now` and `sub` are the Calendar tab's alone:
    every other band is drawn only when it has rows, no other index has a band
@@ -283,7 +284,8 @@ function bandCount(band: Band, format: Format, m: Messages) {
 function Index({ lang }: { lang: string }) {
   const { locale, m } = useUi()
   const [params, setParams] = useSearchParams()
-  const format = (params.get('format') ?? 'INTEGER') as Format
+  // an unknown ?format= is the first tab, not a request the API refuses
+  const format: Format = FORMATS.find((f) => f === params.get('format')) ?? 'INTEGER'
   const tag = params.get('tag') ?? ''
   /* its own param rather than a reserved tag: tags are free-form, so any word
      meaning "none" is a word somebody can coin. One filter at a time. */

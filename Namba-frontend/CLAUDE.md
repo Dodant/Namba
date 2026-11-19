@@ -1406,6 +1406,40 @@ is the tag that is news, on the entries that have two.
 A link inside `.empty` is the only thing to do next on that page, so it is
 drawn as a link. Do not let one inherit `--muted` off the paragraph.
 
+`/heatmap` (`pages/Heatmap.tsx`, linked from the footer beside Contributors)
+draws three of the index's tabs as tables of counts. They are the three that
+band: Integer, Calendar and Abbreviation, picked with `?format=` the way the
+index picks a tab. The shade is a cell's share of the fullest cell. The page
+reads `api.numbers({ format })` and nothing else, so it needs no route of its
+own on the API. Like every route but `/guide`, it is `noindex`.
+
+- **Integer.** A row per power of ten from 10⁰ to 10³ and a column per leading
+  digit. The 10000+ band is left off because there are too few entries in it
+  to shade. A range cell opens `?from=300&span=100`, which is the same table
+  one level down in cells of ten numbers: one row of them for a hundred, and
+  10×10 for a thousand. Ten is as far down as it goes. A ten-number cell opens
+  onto a list of the numbers in it with their entries' titles, because a row
+  of ten single numbers would be the same list drawn worse. A 10⁰ cell is one
+  number and goes straight to its `/n/` page, under its plain spelling when
+  `-5` or `05` shares the cell.
+  A range page links one level up, and the Integer tab stays marked on it.
+- **Calendar.** A row per month and a column per day. A day the month does
+  not have is a blank cell, not a zero. A day with entries goes to its `/c/`
+  page, and an empty one opens the form with that date filled in
+  (`/new?value=01-02&format=CALENDAR`), since every valid date is a page
+  somebody can be the first to write on. Below a 24px cell the table stops
+  shrinking and scrolls sideways.
+- **Abbreviation.** A cell per first character, one for each letter and each
+  digit, which is the character `bucket_of` reads a band off. The page draws
+  two tables on one shading scale. The letters sit in two rows of thirteen,
+  and the digits sit below them in one row of ten at the same cell size. Each
+  cell names its own character, because the rows share no column head.
+  A cell that holds one word goes to its `/a/` page. A cell with several
+  words has no page of its own, so it goes to its band on the index.
+
+The tables are built in `src/heatmap.ts`, which has no JSX so that
+`heatmap.test.ts` can load it; `Heatmap.tsx` only draws them.
+
 `/random` is a route, not a header `onClick`, so it is linkable and has
 somewhere to render its wait and its failure. It replaces rather than pushes —
 pushing puts `/random` in the history, and Back from the entry rolls again.

@@ -1576,6 +1576,53 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    widths and read as eight accidents. Scoped to .guide on purpose: a table in
    an entry is a stranger's, and that one is still sized by what is in it. */
 .guide .tbl table { width: 100%; table-layout: fixed; }
+/* The heatmap's cells: --heat is the cell's share of the fullest one, mixed
+   into --panel so it turns over with the theme; past 70% the text goes to
+   --on-accent, the colour already meant for writing on --accent. 70 and not
+   half because that is where --ink and --on-accent cross over on the mix,
+   in both themes: at half, --on-accent on the mid green is 2.4 to 1. */
+.heat :is(th, td) { text-align: center; font-family: var(--mono); padding: 0; }
+.heat tbody th { text-align: right; padding: 6px 8px; white-space: nowrap; }
+/* the row's name stays put while a phone scrolls the calendar sideways, or
+   the eleventh column is a number in a month nobody can see any more */
+.heat :is(tbody th, thead td) { position: sticky; left: 0; z-index: 1; background: var(--bg); }
+.heat thead td { border: 0; width: 7.5em; } /* table-layout: fixed sizes off the first row */
+/* Integer's rows are named 10³ or 1,900, not September: a column sized for a
+   month name took a quarter of a phone's width from the cells */
+.heat.integer thead td { width: 3.5rem; }
+.heat td { background: color-mix(in srgb, var(--accent) var(--heat), var(--panel)); }
+.heat td > * { display: block; color: inherit; text-decoration: none; }
+/* every cell square, the column heads too: aspect-ratio on the box inside,
+   since a table cell ignores it. Every table takes the page's full width,
+   like the guide's tables, so Integer's nine or ten columns are large squares. */
+.heat :is(td, thead th) > * { display: grid; place-items: center; aspect-ratio: 1; }
+/* a ten-number cell's contents: the number in the index's right-aligned mono
+   column, its entries' titles beside it */
+.body .heat-list { list-style: none; padding: 0; } /* .body ul indents prose lists */
+.heat-list li { display: flex; gap: 16px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--rule); }
+.heat-list .num { flex: none; width: 6em; text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.heat td > :is(span, .add) { color: var(--faint); }
+/* an empty day says what pressing it does: its '·' turns into '+' */
+.heat td > a.add:is(:hover, :focus-visible) { font-size: 0; color: var(--ink); }
+.heat td > a.add:is(:hover, :focus-visible)::after { content: '+'; font-size: var(--fs-body); font-weight: 600; }
+.heat td > a:is(:hover, :focus-visible) { outline: 2px solid var(--ink); outline-offset: -2px; }
+.heat td.hot { color: var(--on-accent); }
+.body .tabs a { color: var(--muted); text-decoration: none; } /* .body a would make them links in prose */
+.body .tabs a:is(:hover, .on) { color: var(--ink); }
+.heat td.none { background: var(--bg); } /* February 30: a day that is not one */
+/* Calendar's 31 columns: the counts go a size down so two digits fit a cell,
+   and the table stops shrinking at a cell a finger can press -- past that
+   .tbl scrolls it sideways rather than squeezing a phone's 31 to 8px each */
+.heat.calendar td { font-size: var(--fs-meta); }
+.guide .tbl table.heat.calendar { min-width: calc(7.5em + 31 * 24px); }
+/* Abbreviation's cells name their own character, over the count */
+.heat td small { font-size: var(--fs-label); font-weight: 600; }
+.heat.abbr td > * { align-content: center; gap: 2px; }
+/* thirteen across a phone is a 26px cell: the count goes the calendar's size
+   down so 63 sits inside it rather than on its edges */
+@media (max-width: 560px) { .heat.abbr td { font-size: var(--fs-meta); } }
+/* ten columns at the letters' thirteen-column cell size */
+.guide .tbl table.heat.digits { width: calc(100% * 10 / 13); }
 /* The rules page opens on a standfirst: .form-intro's size and colour, and
    nothing else of it. A class and not :first-of-type, which it was until the
    version row above it became the first <p> on the page. */
