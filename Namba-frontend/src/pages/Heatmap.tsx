@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, entryPath, type NumberEntry } from '../api'
-import { fmtCount, monthDays, monthName, showDate } from '../format'
+import { fmtCount, monthDays, monthName, showDate, showValue } from '../format'
 import { useAsync } from '../useAsync'
 import { useUi } from '../uiLocale'
 
@@ -21,10 +21,10 @@ type Grid = { heads: string[]; rows: { label: string; cells: Cell[] }[] }
    past that the index's own 10000+ band holds a handful, too few to shade.
 
    A cell with entries opens it: a single number goes to its page, a range to
-   `?from=300&span=100`, the same table one level down -- 10×10 cells, each a
-   hundredth of the range, or one number when the range is 100 or less. So
-   3000 to 3999 is ten-number cells and each of those opens once more onto its
-   ten numbers. */
+   `?from=300&span=100`, the same table one level down in cells of ten
+   numbers -- one row of them for a hundred, 10×10 for a thousand. Ten is the
+   floor: a ten-number cell opens onto the list of what is in it, since a row
+   of ten single numbers is that list drawn worse. */
 function integerGrid(data: NumberEntry[], from: number, span: number, locale: string): Grid {
   // entries per whole number, and the spelling a number's link uses (the
   // first one filed, when 7 and 007 share a cell)
@@ -49,7 +49,7 @@ function integerGrid(data: NumberEntry[], from: number, span: number, locale: st
     }
   }
   if (span) {
-    const size = Math.max(1, span / 100)
+    const size = Math.max(10, span / 100)
     return {
       heads: Array.from({ length: 10 }, (_, c) => fmtCount(c * size, locale)),
       rows: Array.from({ length: span / size / 10 }, (_, r) => ({
@@ -160,6 +160,34 @@ export default function Heatmap() {
 
   if (got.err) return <article className="body guide">{head}{tabs}<p className="empty" role="alert">{got.err}</p></article>
   if (!got.data) return <article className="body guide">{head}{tabs}<p className="empty" role="status">{m.common.loading}</p></article>
+
+  if (detail && span === 10) {
+    const rows = got.data.filter((n) => {
+      const v = Math.floor(Math.abs(n.sort_key ?? 0))
+      return v >= from && v < from + 10
+    })
+    return (
+      <article className="body guide">
+        {head}
+        {tabs}
+        <ul className="heat-list">
+          {rows.map((n) => (
+            <li key={n.value}>
+              <Link className="num" to={entryPath(n.value, 'INTEGER')}>
+                {showValue(n.value, n.grouped, locale)}
+              </Link>
+              <span>
+                {n.entries.flatMap((e, i) => [
+                  i ? ' · ' : null,
+                  <Link key={e.id} to={`/p/${e.id}`}>{e.title}</Link>,
+                ])}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </article>
+    )
+  }
 
   const grid = kind === 'CALENDAR' ? calendarGrid(got.data, locale)
     : kind === 'ABBR' ? abbrGrid(got.data)

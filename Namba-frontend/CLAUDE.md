@@ -1416,9 +1416,11 @@ own on the API. Like every route but `/guide`, it is `noindex`.
 - **Integer.** A row per power of ten from 10⁰ to 10³ and a column per leading
   digit. The 10000+ band is left off because there are too few entries in it
   to shade. A range cell opens `?from=300&span=100`, which is the same table
-  one level down: 10×10 cells, each a hundredth of the range, or one number
-  per cell when the range is 100 or less. A single number goes to its `/n/`
-  page, under the first spelling filed.
+  one level down in cells of ten numbers: one row of them for a hundred, and
+  10×10 for a thousand. Ten is as far down as it goes. A ten-number cell opens
+  onto a list of the numbers in it with their entries' titles, because a row
+  of ten single numbers would be the same list drawn worse. A 10⁰ cell is one
+  number and goes straight to its `/n/` page.
 - **Calendar.** A row per month and a column per day. A day the month does
   not have is a blank cell, not a zero, and every other cell goes to its
   `/c/` page.
