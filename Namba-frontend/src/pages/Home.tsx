@@ -204,13 +204,6 @@ function measure() {
   links.forEach((el, i) => el.classList.toggle('cut', over[i]))
 }
 
-/* "8 numbers · 21 entries". The row count on its own says how far the band
-   scrolls and nothing about how much is in it -- eight numbers is eight
-   entries on a thin band and forty on a busy one, and the second figure is
-   the one that moves as the wiki fills up. Both, because the band folds:
-   closed, this line is all it says about itself. The first noun follows the
-   section: the Abbreviation band counts abbreviations and the Calendar band
-   counts dates, not numbers. */
 /* The Integer bands in the rail, where "1,000 – 9,999" does not fit: the
    lower bound of each, as a power of ten. Digits and superscripts read the
    same in every locale, and the link carries the band's own label as its
@@ -271,8 +264,13 @@ function bandFigures(band: Band) {
   }
 }
 
-/* the whole month, folded entries included: closed, this line is all the
-   band says about itself, so it must not count only half of it. */
+/* "8 numbers · 21 entries". The row count on its own says how far the band
+   scrolls and nothing about how much is in it -- eight numbers is eight
+   entries on a thin band and forty on a busy one, and the second figure is
+   the one that moves as the wiki fills up. Both, because the band folds:
+   closed, this line is all it says about itself. The first noun follows the
+   section: the Abbreviation band counts abbreviations and the Calendar band
+   counts dates, not numbers. */
 function bandCount(band: Band, format: Format, m: Messages) {
   const { subjects, entries } = bandFigures(band)
   return m.home.bandCount(
@@ -336,10 +334,42 @@ function Index({ lang }: { lang: string }) {
     const io = new IntersectionObserver((list) => {
       list.forEach((e) => seen.set(e.target.id, e.isIntersecting))
       setHere(els.find((el) => seen.get(el.id))?.id ?? '')
-    }, { rootMargin: '-110px 0px -60% 0px' })
+    /* the line is under the sticky header above 900 and near the top of the
+       window below it, where nothing sticks */
+    }, { rootMargin: `${matchMedia('(min-width: 901px)').matches ? -110 : -20}px 0px -60% 0px` })
     els.forEach((el) => io.observe(el))
     return () => io.disconnect()
   }, [numbers.data])
+
+  /* A band link opened cold -- sent, bookmarked, a new tab -- reaches
+     ScrollTop's hash effect before the first answer has drawn the band, and
+     the hash does not change again to send it back. So the first answer goes
+     there itself, once: later answers are a filter or a language changing
+     under a reader who has moved on. */
+  const arrived = useRef(false)
+  useLayoutEffect(() => {
+    if (arrived.current || !numbers.data) return
+    arrived.current = true
+    const el = location.hash.startsWith('#band-') && document.getElementById(location.hash.slice(1))
+    if (!(el instanceof HTMLDetailsElement)) return
+    el.open = true
+    el.scrollIntoView()
+    // the fonts can land after it and push it off, as in ScrollTop
+    const y = scrollY
+    document.fonts.ready.then(() => { if (scrollY === y) el.scrollIntoView() })
+  }, [numbers.data])
+
+  /* A popover left open while the window widens past 560 stays in the top
+     layer with none of its phone geometry; the rail is back in its column. */
+  useEffect(() => {
+    const wide = matchMedia('(min-width: 561px)')
+    const close = () => {
+      const nav = document.getElementById('ix-toc')
+      if (wide.matches && nav?.matches(':popover-open')) nav.hidePopover()
+    }
+    wide.addEventListener('change', close)
+    return () => wide.removeEventListener('change', close)
+  }, [])
 
   function setFilter(value: string, bare = false) {
     const next = new URLSearchParams(params)
@@ -504,7 +534,7 @@ function Index({ lang }: { lang: string }) {
           keeps one shape per tab, so a reader's eye learns where K is. A
           press is a plain fragment link; ScrollTop's hash effect opens a
           closed band and scroll-padding-top keeps it clear of the header. */}
-      <div className="ix-bands">
+      <div className={toc ? 'ix-bands rail' : 'ix-bands'}>
         {toc && (
           <nav
             id="ix-toc"
@@ -516,7 +546,13 @@ function Index({ lang }: { lang: string }) {
             popover="auto"
             onClick={(e) => {
               const nav = e.currentTarget
-              if ((e.target as Element).closest('a') && nav.matches(':popover-open')) nav.hidePopover()
+              const a = (e.target as Element).closest('a')
+              if (!a) return
+              /* the band you are on was closed by hand: the hash does not
+                 change, so ScrollTop is not asked, and the link opens it */
+              const band = document.getElementById(a.hash.slice(1))
+              if (band instanceof HTMLDetailsElement) band.open = true
+              if (nav.matches(':popover-open')) nav.hidePopover()
             }}
           >
             {bands.map((band) => drawn(band)

@@ -621,11 +621,13 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 
 /* The rail beside a banded index: Integer, Calendar and Abbreviation. One
    nav, first in the source, put in a right-hand column here and turned into a
-   one-line strip on a phone. Sticky, and no z-index: it sits in its own
+   popover on a phone. Sticky, and no z-index: it sits in its own
    column and nothing passes under it. Taller than the window -- Abbreviation's
    25 letters on a short laptop -- it scrolls inside itself. 24px a line,
    the floor for anything pressed. */
-.ix-bands { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: clamp(20px, 4vw, 40px); align-items: start; }
+/* .rail only when there is one: an empty `auto` track keeps its gutter, and the
+   single-band tabs would lose 20-40px off the right edge to nobody */
+.ix-bands.rail { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: clamp(20px, 4vw, 40px); align-items: start; }
 .ix-bands > div { grid-column: 1; grid-row: 1; min-width: 0; }
 .ix-toc {
   grid-column: 2; grid-row: 1;
@@ -644,7 +646,9 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 .ix-toc .n { color: var(--fainter); }
 .ix-toc > a:hover { color: var(--ink); text-decoration: none; }
 .ix-toc > a[aria-current] { color: var(--ink); border-left-color: var(--accent); }
-.ix-toc > span { color: var(--line); }
+/* nothing to go to: --fainter like every legible grey, and no rule beside it,
+   which is what tells it from a line you can press */
+.ix-toc > span { color: var(--fainter); border-left-color: transparent; }
 @media (min-width: 901px) {
   /* under the sticky header: the scroll-padding-top that lands a band is the
      same 104 the rail stands at */
@@ -663,7 +667,7 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
    the button is fixed, after the bands in the source, so the rows it floats
    over paint under it. */
 @media (max-width: 560px) {
-  .ix-bands { display: block; }
+  .ix-bands.rail { display: block; }
   .ix-toc:not(:popover-open) { display: none; }
   .ix-toc:popover-open {
     position: fixed; top: auto; max-height: min(70dvh, 420px);
@@ -2056,6 +2060,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   .band-head { padding: 8px 0; }
   /* this one is only as wide as its words, so it pays on both axes */
   .ix-fold { padding: 8px 10px; margin: -8px -10px; }
+  /* the rail's lines, rail and popover alike; the empty ones too, so the rail
+     keeps one row height per tab */
+  .ix-toc > a, .ix-toc > span { padding-block: 9px; }
   /* inline, so the padding grows the hit box and leaves the line box alone */
   a.quiet { padding: 8px 3px; }
   /* The links that *are* the row. A title set at 16.5-20px draws a 19-22px
