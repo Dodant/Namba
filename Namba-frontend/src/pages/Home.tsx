@@ -205,11 +205,12 @@ function measure() {
 }
 
 /* The Integer bands in the rail, where "1,000 – 9,999" does not fit: the
-   lower bound of each, as a power of ten. Digits and superscripts read the
+   lower bound of each, as a power of ten -- 10⁰ and 10¹ too, so the rail is
+   one scale and matches the heatmap's rows. Digits and superscripts read the
    same in every locale, and the link carries the band's own label as its
    accessible name. */
 const INT_SHORT: Record<(typeof BUCKETS)[number], string> =
-  { '1': '1', '10': '10', '100': '10²', '1000': '10³', '10000+': '10⁴+' }
+  { '1': '10⁰', '10': '10¹', '100': '10²', '1000': '10³', '10000+': '10⁴+' }
 
 /* One band of the index. `keep`, `now` and `sub` are the Calendar tab's alone:
    every other band is drawn only when it has rows, no other index has a band
