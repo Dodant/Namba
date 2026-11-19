@@ -494,7 +494,13 @@ sanitiser config to get wrong.
   figures as `4 - 6` — numbers, then entries, folds included — beside the label in the rail. The
   popover draws neither; the link's accessible name still says both. Integer's lines are `10²`-style (`INT_SHORT`)
   with the band label as the accessible name. Where the reader is comes from
-  one `IntersectionObserver` and is said with `aria-current="location"`. No
+  one `IntersectionObserver` and is said with `aria-current="location"`, and
+  shown by one accent bar, `.ix-toc::before`, that slides down the grey track
+  to the current line: `Index` measures that line into `--at` and `--h` and
+  marks the nav `data-placed` (an attribute, since React owns `className`).
+  It is the one thing in the index that moves rather than recolours, because
+  the track is the page in miniature; the global reduced-motion rule makes it
+  jump. The phone popover shades the current cell instead. No
   z-index: it has a column of its own and nothing passes under it.
 
   **The Calendar tab breaks one of those defaults, and is the only tab that
