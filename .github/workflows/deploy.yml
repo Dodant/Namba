@@ -38,11 +38,11 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       # 24, not 22: `node --test` runs the front end's .ts files directly, which
       # needs the version where type stripping stopped being a flag.
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: '24'
           cache: npm
@@ -69,7 +69,7 @@ jobs:
         working-directory: Namba-frontend
         run: npm run build
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: '3.11'
 
@@ -81,7 +81,7 @@ jobs:
 
       # Handed to the deploy job, so the image cannot carry a front end no
       # suite has seen.
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: github.event_name != 'pull_request'
         with:
           name: dist
@@ -102,18 +102,18 @@ jobs:
     # OIDC subject does not match and the assume-role fails.
     environment: production
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       # The front end the checks job built and the suite then read. No node
       # here: the Dockerfile copies dist/, it does not build it.
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: dist
           path: Namba-frontend/dist
 
       # ── image ─────────────────────────────────────────────────────────────
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -121,10 +121,10 @@ jobs:
 
       # The runner's default builder uses the docker driver, which cannot export
       # a cache -- `cache-to: type=gha` below fails outright without this step.
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
 
       - name: Build and push
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
           context: .
           push: true
@@ -144,7 +144,7 @@ jobs:
       # sts:AssumeRoleWithWebIdentity`, which names neither claim; CloudTrail's
       # AssumeRoleWithWebIdentity event carries the subject actually sent.
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ap-northeast-2
