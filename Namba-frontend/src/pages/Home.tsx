@@ -284,7 +284,8 @@ function bandCount(band: Band, format: Format, m: Messages) {
 function Index({ lang }: { lang: string }) {
   const { locale, m } = useUi()
   const [params, setParams] = useSearchParams()
-  const format = (params.get('format') ?? 'INTEGER') as Format
+  // an unknown ?format= is the first tab, not a request the API refuses
+  const format: Format = FORMATS.find((f) => f === params.get('format')) ?? 'INTEGER'
   const tag = params.get('tag') ?? ''
   /* its own param rather than a reserved tag: tags are free-form, so any word
      meaning "none" is a word somebody can coin. One filter at a time. */

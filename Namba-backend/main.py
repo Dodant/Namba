@@ -4,7 +4,7 @@ import re
 import time
 import traceback
 from collections import defaultdict
-from typing import ClassVar, List, Optional
+from typing import Annotated, ClassVar, List, Literal, Optional
 from uuid import uuid4
 from xml.sax.saxutils import escape as xml_escape
 
@@ -14,7 +14,7 @@ from fastapi.responses import (
     FileResponse, JSONResponse, PlainTextResponse, Response,
 )
 from fastapi.staticfiles import StaticFiles
-from pydantic import Field, field_validator
+from pydantic import BeforeValidator, Field, field_validator
 
 import admin_api
 import db
@@ -199,6 +199,17 @@ def docs_start():
 
 
 app.mount("/docs", StaticFiles(directory=DOCS_UI), name="docs")
+
+
+# A read's ?format=, as a closed set: an unknown one is a 422 that names the
+# six, where it used to be a 200 with nothing in it -- a typo read as "no
+# entries", the one answer a client cannot tell from the truth. Case is not
+# the typo: `abbr` is still ABBR. A Literal rather than a check in each
+# route, so /docs lists the six as well.
+FormatQ = Annotated[
+    Optional[Literal[FORMATS]],
+    BeforeValidator(lambda v: v.upper() if isinstance(v, str) else v),
+]
 
 
 def site_base(request) -> str:
@@ -564,7 +575,7 @@ def list_languages(con=Depends(get_db)):
 
 
 @app.get("/api/tags")
-def list_tags(format: Optional[str] = None, con=Depends(get_db)):
+def list_tags(format: FormatQ = None, con=Depends(get_db)):
     """The wiki's working vocabulary: the tags in use, most-used first.
 
     Read off the posts rather than a list in this file. Anyone can coin a tag,
@@ -622,7 +633,7 @@ def list_contributors(con=Depends(get_db)):
 
 @app.get("/api/numbers")
 def list_numbers(
-    format: Optional[str] = None,
+    format: FormatQ = None,
     tag: Optional[str] = None,
     lang: Optional[str] = None,
     untagged: bool = False,
@@ -702,7 +713,7 @@ def list_posts(
     request: Request,
     value: Optional[str] = None,
     tag: Optional[str] = None,
-    format: Optional[str] = None,
+    format: FormatQ = None,
     section: Optional[str] = None,
     q: Optional[str] = None,
     lang: Optional[str] = None,

@@ -4709,6 +4709,18 @@ def test_the_api_reference_draws_under_the_sites_policy():
     assert "/docs" not in c.get("/openapi.json").json()["paths"]
 
 
+def test_an_unknown_format_is_refused_not_empty():
+    """A typo'd ?format= used to answer 200 with nothing, which reads as
+    "no entries"; the three reads that filter on it now name the six."""
+    c = TestClient(main.app)
+    for path in ("/api/numbers", "/api/posts", "/api/tags"):
+        bad = c.get(path, params={"format": "BOGUS"})
+        assert bad.status_code == 422, (path, bad.status_code)
+        assert "INTEGER" in bad.text, path
+        assert c.get(path, params={"format": "ABBR"}).status_code == 200, path
+        assert c.get(path, params={"format": "abbr"}).status_code == 200, path
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_"):
