@@ -288,7 +288,8 @@ export async function req<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     let detail = res.statusText
     try {
-      const body = await res.json()
+      // typed here, not left to lib: under the tests' node types json() is unknown
+      const body = await res.json() as { detail?: { msg: string }[] | string }
       // FastAPI validation errors arrive as a list of {loc, msg}
       detail = Array.isArray(body.detail)
         ? body.detail.map((d: { msg: string }) => d.msg).join(', ')
@@ -298,7 +299,7 @@ export async function req<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new ApiError(res.status, detail)
   }
-  return res.status === 204 ? (null as T) : res.json()
+  return res.status === 204 ? (null as T) : (res.json() as Promise<T>)
 }
 
 /** What went wrong, as a line to put in front of a reader.

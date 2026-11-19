@@ -206,7 +206,7 @@ function measure() {
 
 /* The Integer bands in the rail, where "1,000 – 9,999" does not fit: the
    lower bound of each, as a power of ten -- 10⁰ and 10¹ too, so the rail is
-   one scale and matches the heatmap's rows. Digits and superscripts read the
+   one scale with the heatmap's row labels. Digits and superscripts read the
    same in every locale, and the link carries the band's own label as its
    accessible name. */
 const INT_SHORT: Record<(typeof BUCKETS)[number], string> =

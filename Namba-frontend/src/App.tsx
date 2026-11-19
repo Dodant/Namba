@@ -645,7 +645,7 @@ function Wiki() {
             <Route path="/new" element={<PostForm />} />
             <Route path="/guide" element={<Guide />} />
             <Route path="/contributors" element={<Contributors />} />
-            <Route path="/heatmap" element={<Heatmap />} />
+            <Route path="/heatmap" element={<Heatmap lang={lang} />} />
             <Route
               path="*"
               element={

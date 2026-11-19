@@ -1593,14 +1593,17 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .body .heat-list { list-style: none; padding: 0; } /* .body ul indents prose lists */
 .heat-list li { display: flex; gap: 16px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--rule); }
 .heat-list .num { flex: none; width: 6em; text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
-.heat td > span { color: var(--faint); }
-.heat td > a:hover { outline: 2px solid var(--ink); outline-offset: -2px; }
+.heat td > :is(span, .add) { color: var(--faint); }
+.heat td > a:is(:hover, :focus-visible) { outline: 2px solid var(--ink); outline-offset: -2px; }
 .heat td.hot { color: var(--on-accent); }
 .body .tabs a { color: var(--muted); text-decoration: none; } /* .body a would make them links in prose */
 .body .tabs a:is(:hover, .on) { color: var(--ink); }
 .heat td.none { background: var(--bg); } /* February 30: a day that is not one */
-/* 31 and 27 columns: the counts go a size down so two digits fit a cell */
+/* Calendar's 31 columns: the counts go a size down so two digits fit a cell,
+   and the table stops shrinking at a cell a finger can press -- past that
+   .tbl scrolls it sideways rather than squeezing a phone's 31 to 8px each */
 .heat.calendar td { font-size: var(--fs-meta); }
+.guide .tbl table.heat.calendar { min-width: calc(7.5em + 31 * 24px); }
 /* Abbreviation's cells name their own character, over the count */
 .heat td small { font-size: var(--fs-label); font-weight: 600; }
 .heat.abbr td > * { align-content: center; gap: 2px; }
