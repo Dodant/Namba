@@ -1585,10 +1585,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .heat td { background: color-mix(in srgb, var(--accent) var(--heat), var(--panel)); }
 .heat td > * { display: block; color: inherit; text-decoration: none; }
 /* every cell square, the column heads too: aspect-ratio on the box inside,
-   since a table cell ignores it. Integer's nine or ten columns would make
-   squares a hand wide on a full page, so that table stops at 720px. */
+   since a table cell ignores it. Every table takes the page's full width,
+   like the guide's tables, so Integer's nine or ten columns are large squares. */
 .heat :is(td, thead th) > * { display: grid; place-items: center; aspect-ratio: 1; }
-.heat.integer { max-width: 720px; }
 /* a ten-number cell's contents: the number in the index's right-aligned mono
    column, its entries' titles beside it */
 .body .heat-list { list-style: none; padding: 0; } /* .body ul indents prose lists */
