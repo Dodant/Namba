@@ -1585,6 +1585,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .heat td { background: color-mix(in srgb, var(--accent) var(--heat), var(--panel)); }
 .heat td > * { display: block; padding: 8px 0; color: inherit; text-decoration: none; }
 .heat td > span { color: var(--faint); }
+.heat td > a:hover { outline: 2px solid var(--ink); outline-offset: -2px; }
 .heat td.hot { color: var(--on-accent); }
 /* The rules page opens on a standfirst: .form-intro's size and colour, and
    nothing else of it. A class and not :first-of-type, which it was until the

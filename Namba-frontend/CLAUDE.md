@@ -1411,8 +1411,12 @@ Contributors) counts Integer entries in a table: a row per power of ten, a
 column per leading digit, the shade the cell's share of the fullest one. It
 reads `api.numbers({ format: 'INTEGER' })` and nothing else, so it needs no
 route of its own on the API. It has four rows, 1 to 9,999. Entries in the
-10000+ band are left off because there are too few of them to shade. A cell links to its band on the index,
-`/#band-100`, because that is the finest address the index has. Like every
+10000+ band are left off because there are too few of them to shade. A cell with entries opens it. A
+single number goes to its `/n/` page, under the first spelling filed. A range
+goes to `?from=300&span=100`, which is the same table one level down: 10×10
+cells, each a hundredth of the range, or one number per cell when the range is
+100 or less. So `3000–3999` has ten-number cells, and each of those opens
+once more onto its ten numbers. Like every
 route but `/guide`, it is `noindex`.
 
 `/random` is a route, not a header `onClick`, so it is linkable and has
