@@ -1426,8 +1426,8 @@ own on the API. Like every route but `/guide`, it is `noindex`.
   `/c/` page.
 - **Abbreviation.** A cell per first character, one for each letter and each
   digit, which is the character `bucket_of` reads a band off. The page draws
-  two tables on one shading scale. The letters sit in four rows of seven, and
-  the digits sit below them in two rows of five at the same cell size. Each
+  two tables on one shading scale. The letters sit in two rows of thirteen,
+  and the digits sit below them in one row of ten at the same cell size. Each
   cell names its own character, because the rows share no column head.
   A cell that holds one word goes to its `/a/` page. A cell with several
   words has no page of its own, so it goes to its band on the index.

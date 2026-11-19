@@ -91,14 +91,14 @@ function calendarGrid(data: NumberEntry[], locale: string): Grid {
 
 /* A cell per first character: each letter and each digit, the character
    bucket_of reads a band off, so .NET is N. Two tables on one scale: the
-   letters in four rows of seven, and the digits under them in two rows of
-   five at the same cell size. Each cell names its own character, since rows
+   letters in two rows of thirteen, and the digits under them in one row of
+   ten at the same cell size. Each cell names its own character, since rows
    of different characters share no column head.
    A cell holding one word goes to its page; one holding several has no page
    of its own, so it goes to its band on the index. */
 const BLOCKS = [
-  { rows: ['ABCDEFG', 'HIJKLMN', 'OPQRSTU', 'VWXYZ'], cols: 7, cls: '' },
-  { rows: ['01234', '56789'], cols: 5, cls: 'digits' },
+  { rows: ['ABCDEFGHIJKLM', 'NOPQRSTUVWXYZ'], cols: 13, cls: '' },
+  { rows: ['0123456789'], cols: 10, cls: 'digits' },
 ]
 
 function abbrGrids(data: NumberEntry[]): Grid[] {

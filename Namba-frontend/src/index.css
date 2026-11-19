@@ -1604,8 +1604,8 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 /* Abbreviation's cells name their own character, over the count */
 .heat td small { font-size: var(--fs-label); font-weight: 600; }
 .heat.abbr td > * { align-content: center; gap: 2px; }
-/* five columns at the letters' seven-column cell size */
-.guide .tbl table.heat.digits { width: calc(100% * 5 / 7); }
+/* ten columns at the letters' thirteen-column cell size */
+.guide .tbl table.heat.digits { width: calc(100% * 10 / 13); }
 /* The rules page opens on a standfirst: .form-intro's size and colour, and
    nothing else of it. A class and not :first-of-type, which it was until the
    version row above it became the first <p> on the page. */
