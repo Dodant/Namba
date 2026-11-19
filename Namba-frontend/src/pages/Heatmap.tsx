@@ -13,7 +13,8 @@ const KINDS = ['INTEGER', 'CALENDAR', 'ABBR'] as const
 type Kind = (typeof KINDS)[number]
 
 /* null is a cell that cannot hold anything -- February 30 */
-type Cell = { n: number; what: string; to: string } | null
+/* tag is drawn in the cell, for a table with no column heads to say it */
+type Cell = { n: number; what: string; to: string; tag?: string } | null
 type Grid = { heads: string[]; rows: { label: string; cells: Cell[] }[] }
 
 /* Integer entries by magnitude and first digit: a row per power of ten, a
@@ -88,21 +89,19 @@ function calendarGrid(data: NumberEntry[], locale: string): Grid {
   }
 }
 
-/* A row per first letter, a column per second -- the first two letters or
-   digits, the characters bucket_of reads a band off, so .NET is N then E.
-   The ten digits are one row and one column, as they are one band. A cell
-   holding one word goes to its page; one holding several has no page of its
-   own, so it goes to its band on the index. A word with a single letter or
-   digit has no second one and is not drawn. */
-const ALNUM = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '0-9']
-const charKey = (c: string) => (/[0-9]/.test(c) ? '0-9' : c)
+/* A cell per first character: each letter and each digit, the character
+   bucket_of reads a band off, so .NET is N. Drawn as a block of thirteen
+   columns -- A to M, N to Z, then the digits -- with each cell naming its own
+   character, since three rows of different characters share no column head.
+   A cell holding one word goes to its page; one holding several has no page
+   of its own, so it goes to its band on the index. */
+const ROWS = ['ABCDEFGHIJKLM', 'NOPQRSTUVWXYZ', '0123456789']
 
 function abbrGrid(data: NumberEntry[]): Grid {
   const cells = new Map<string, { n: number; words: Map<string, string> }>()
   for (const n of data) {
-    const [a, b] = (n.value.toUpperCase().match(/[A-Z0-9]/g) ?? []).map(charKey)
-    if (!b) continue
-    const k = `${a}${b}`
+    const k = n.value.toUpperCase().match(/[A-Z0-9]/)?.[0]
+    if (!k) continue
     const got = cells.get(k) ?? { n: 0, words: new Map() }
     got.n += n.entries.length
     // case folded, as the /a/ reads fold it: UFO and ufo are one word
@@ -110,15 +109,18 @@ function abbrGrid(data: NumberEntry[]): Grid {
     cells.set(k, got)
   }
   return {
-    heads: ALNUM,
-    rows: ALNUM.map((a) => ({
-      label: a,
-      cells: ALNUM.map((b) => {
-        const got = cells.get(`${a}${b}`)
-        const band = 'XYZ'.includes(a) ? 'X-Z' : a
+    heads: [],
+    rows: ROWS.map((row) => ({
+      label: '',
+      cells: Array.from({ length: 13 }, (_, i) => {
+        const k = row[i]
+        if (!k) return null
+        const got = cells.get(k)
+        const band = /[0-9]/.test(k) ? '0-9' : 'XYZ'.includes(k) ? 'X-Z' : k
         return {
           n: got?.n ?? 0,
-          what: `${a}${b}…`,
+          what: k,
+          tag: k,
           to: got?.words.size === 1 ? entryPath([...got.words.values()][0], 'ABBR')
                                     : `/?format=ABBR#band-${band}`,
         }
@@ -200,24 +202,26 @@ export default function Heatmap() {
       {tabs}
       <div className="tbl">
         <table className={`heat ${kind.toLowerCase()}`}>
-          <thead>
-            <tr>
-              <td />
-              {grid.heads.map((h) => <th key={h} scope="col"><span>{h}</span></th>)}
-            </tr>
-          </thead>
+          {grid.heads.length > 0 && (
+            <thead>
+              <tr>
+                <td />
+                {grid.heads.map((h) => <th key={h} scope="col"><span>{h}</span></th>)}
+              </tr>
+            </thead>
+          )}
           <tbody>
-            {grid.rows.map((row) => (
-              <tr key={row.label}>
-                <th scope="row">{row.label}</th>
+            {grid.rows.map((row, r) => (
+              <tr key={row.label || r}>
+                {row.label && <th scope="row">{row.label}</th>}
                 {row.cells.map((c, i) => {
                   if (!c) return <td key={i} className="none" />
                   const label = m.heatmap.cell(c.what, c.n)
                   return (
                     <td key={i} style={{ '--heat': `${(c.n / max) * 100}%` } as CSSProperties}
                         className={c.n / max > 0.5 ? 'hot' : undefined}>
-                      {c.n ? <Link to={c.to} title={label} aria-label={label}>{c.n}</Link>
-                           : <span title={label} aria-label={label}>·</span>}
+                      {c.n ? <Link to={c.to} title={label} aria-label={label}>{c.tag && <small>{c.tag}</small>}{c.n}</Link>
+                           : <span title={label} aria-label={label}>{c.tag && <small>{c.tag}</small>}·</span>}
                     </td>
                   )
                 })}

@@ -48,7 +48,7 @@ export const DE: Messages = {
     intro: {
       INTEGER: 'Ganzzahlige Einträge nach Größe und erster Ziffer: Jede Zeile ist eine Zehnerpotenz, jede Spalte die Ziffer, mit der eine Zahl beginnt. Je dunkler das Feld, desto mehr Einträge.',
       CALENDAR: 'Kalendereinträge nach Tag des Jahres: eine Zeile pro Monat, eine Spalte pro Tag. Je dunkler das Feld, desto mehr Einträge.',
-      ABBR: 'Abkürzungen nach ihren ersten beiden Buchstaben: eine Zeile pro erstem Buchstaben, eine Spalte pro zweitem. Je dunkler das Feld, desto mehr Einträge.',
+      ABBR: 'Abkürzungen nach erstem Zeichen: ein Feld pro Buchstabe und pro Ziffer. Je dunkler das Feld, desto mehr Einträge.',
     },
     cell: (what: string, n: number) => `${what}: ${n} ${n === 1 ? 'Eintrag' : 'Einträge'}`,
   },

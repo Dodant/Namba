@@ -48,7 +48,7 @@ export const ES: Messages = {
     intro: {
       INTEGER: 'Entradas enteras por tamaño y primera cifra: cada fila es una potencia de diez y cada columna la cifra con la que empieza un número. Cuanto más oscura la celda, más entradas.',
       CALENDAR: 'Entradas de calendario por día del año: una fila por mes y una columna por día. Cuanto más oscura la celda, más entradas.',
-      ABBR: 'Abreviaturas por sus dos primeras letras: una fila por la primera letra y una columna por la segunda. Cuanto más oscura la celda, más entradas.',
+      ABBR: 'Abreviaturas por su primer carácter: una celda por letra y por cifra. Cuanto más oscura la celda, más entradas.',
     },
     cell: (what: string, n: number) => `${what}: ${n} ${n === 1 ? 'entrada' : 'entradas'}`,
   },

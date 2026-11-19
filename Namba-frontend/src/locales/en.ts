@@ -67,7 +67,7 @@ export const EN = {
     intro: {
       INTEGER: 'Integer entries by size and first digit: each row is a power of ten, each column the digit a number starts with. The darker the cell, the more entries.',
       CALENDAR: 'Calendar entries by day of the year: a row per month, a column per day. The darker the cell, the more entries.',
-      ABBR: 'Abbreviations by their first two letters: a row per first letter, a column per second. The darker the cell, the more entries.',
+      ABBR: 'Abbreviations by first character: a cell per letter and per digit. The darker the cell, the more entries.',
     },
     cell: (what: string, n: number) => `${what}: ${n} ${n === 1 ? 'entry' : 'entries'}`,
   },

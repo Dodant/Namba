@@ -1424,11 +1424,12 @@ own on the API. Like every route but `/guide`, it is `noindex`.
 - **Calendar.** A row per month and a column per day. A day the month does
   not have is a blank cell, not a zero, and every other cell goes to its
   `/c/` page.
-- **Abbreviation.** A row per first character and a column per second,
-  counting letters and digits only, the way `bucket_of` reads a band. The
-  digits share one row and one column. A cell that holds one word goes to its
-  `/a/` page. A cell with several words has no page of its own, so it goes to
-  its band on the index.
+- **Abbreviation.** A cell per first character, one for each letter and each
+  digit, which is the character `bucket_of` reads a band off. The cells sit
+  in a block of thirteen columns: A to M, then N to Z, then the digits. Each
+  cell names its own character, because the three rows share no column head.
+  A cell that holds one word goes to its `/a/` page. A cell with several
+  words has no page of its own, so it goes to its band on the index.
 
 `/random` is a route, not a header `onClick`, so it is linkable and has
 somewhere to render its wait and its failure. It replaces rather than pushes —
