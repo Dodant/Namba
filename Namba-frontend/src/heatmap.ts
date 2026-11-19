@@ -16,18 +16,19 @@ export type Kind = (typeof KINDS)[number]
 export type Cell = { n: number; what: string; to: string; tag?: string; add?: string } | null
 export type Grid = { heads: string[]; rows: { label: string; cells: Cell[] }[]; cls?: string }
 
-/* Which integer range ?from= and ?span= name, or null for the top table:
-   a hundred or a thousand drawn in cells of ten, or ten listed. */
+/* Which integer range ?from= and ?span= name, or null for the table: a ten,
+   a hundred or a thousand, as a cell of the table draws one. */
 export function integerRange(from: number, span: number) {
   return [10, 100, 1000].includes(span) && from >= span && from < 10000 && from % span === 0
     ? { from, span } : null
 }
 
-/* One level up from a range: the range ten times its size holding it, or the
-   top table when that range would start below its own size. */
-export function integerUp(from: number, span: number) {
-  const up = span * 10
-  return from < up ? null : { from: from - (from % up), span: up }
+/* What a range lists: every number filed in it, in the index's order. */
+export function integerRows(data: NumberEntry[], from: number, span: number) {
+  return data.filter((n) => {
+    const v = Math.floor(Math.abs(n.sort_key ?? 0))
+    return v >= from && v < from + span
+  })
 }
 
 /* Integer entries by magnitude and first digit: a row per power of ten, a
@@ -35,11 +36,9 @@ export function integerUp(from: number, span: number) {
    past that the index's own 10000+ band holds a handful, too few to shade.
 
    A cell with entries opens it: a single number goes to its page, a range to
-   `?from=300&span=100`, the same table one level down in cells of ten
-   numbers -- one row of them for a hundred, 10×10 for a thousand. Ten is the
-   floor: a ten-number cell opens onto the list of what is in it, since a row
-   of ten single numbers is that list drawn worse. */
-export function integerGrid(data: NumberEntry[], from: number, span: number, locale: string): Grid {
+   `?from=300&span=100`, the list of every number filed in it. A table one
+   level down would be the same list drawn as squares, most of them empty. */
+export function integerGrid(data: NumberEntry[], locale: string): Grid {
   // entries per whole number, and the spelling a number's link uses: its
   // plain spelling when one is filed, so -5 and 05 do not take 5's cell
   const count = new Map<number, number>()
@@ -60,16 +59,6 @@ export function integerGrid(data: NumberEntry[], from: number, span: number, loc
                        : `${fmtCount(start, locale)}–${fmtCount(last, locale)}`,
       to: size === 1 ? entryPath(spelt.get(start) ?? String(start), 'INTEGER')
                      : `/heatmap?from=${start}&span=${size}`,
-    }
-  }
-  if (span) {
-    const size = Math.max(10, span / 100)
-    return {
-      heads: Array.from({ length: 10 }, (_, c) => fmtCount(c * size, locale)),
-      rows: Array.from({ length: span / size / 10 }, (_, r) => ({
-        label: fmtCount(from + r * 10 * size, locale),
-        cells: Array.from({ length: 10 }, (_, c) => cell(from + (r * 10 + c) * size, size)),
-      })),
     }
   }
   return {

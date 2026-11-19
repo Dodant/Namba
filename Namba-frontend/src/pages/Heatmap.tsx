@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api, entryPath } from '../api'
 import { fmtCount, showValue } from '../format'
-import { KINDS, type Kind, abbrGrids, calendarGrid, integerGrid, integerRange, integerUp } from '../heatmap'
+import { KINDS, type Kind, abbrGrids, calendarGrid, integerGrid, integerRange, integerRows } from '../heatmap'
 import { useAsync } from '../useAsync'
 import { useUi } from '../uiLocale'
 
@@ -20,7 +20,7 @@ export default function Heatmap({ lang }: { lang: string }) {
   const tabs = (
     <nav className="tabs fmts" aria-label={m.heatmap.title}>
       {KINDS.map((k) => (
-        // a range is still the Integer tab, one link above where it opens
+        // a range is still the Integer tab, one link above the list
         <Link key={k} className={k === kind ? 'on' : undefined}
               aria-current={k === kind && !range ? 'page' : undefined}
               to={k === 'INTEGER' ? '/heatmap' : `/heatmap?format=${k}`}>
@@ -31,15 +31,10 @@ export default function Heatmap({ lang }: { lang: string }) {
   )
   let head
   if (range) {
-    const up = integerUp(range.from, range.span)
     head = (
       <>
         <h1>{span(range.from, range.span)}</h1>
-        <p>
-          <Link to={up ? `/heatmap?from=${up.from}&span=${up.span}` : '/heatmap'}>
-            ↑ {up ? span(up.from, up.span) : m.heatmap.title}
-          </Link>
-        </p>
+        <p><Link to="/heatmap">↑ {m.heatmap.title}</Link></p>
       </>
     )
   } else {
@@ -54,11 +49,8 @@ export default function Heatmap({ lang }: { lang: string }) {
   if (got.err) return <article className="body guide">{head}{tabs}<p className="empty" role="alert">{got.err}</p></article>
   if (!got.data) return <article className="body guide">{head}{tabs}<p className="empty" role="status">{m.common.loading}</p></article>
 
-  if (range?.span === 10) {
-    const rows = got.data.filter((n) => {
-      const v = Math.floor(Math.abs(n.sort_key ?? 0))
-      return v >= range.from && v < range.from + 10
-    })
+  if (range) {
+    const rows = integerRows(got.data, range.from, range.span)
     return (
       <article className="body guide">
         {head}
@@ -84,7 +76,7 @@ export default function Heatmap({ lang }: { lang: string }) {
 
   const grids = kind === 'CALENDAR' ? [calendarGrid(got.data, locale)]
     : kind === 'ABBR' ? abbrGrids(got.data)
-    : [integerGrid(got.data, range?.from ?? 0, range?.span ?? 0, locale)]
+    : [integerGrid(got.data, locale)]
   // one scale across every table on the page
   const max = Math.max(1, ...grids.flatMap((g) => g.rows.flatMap((r) => r.cells.map((c) => c?.n ?? 0))))
 
