@@ -175,7 +175,7 @@ export default function Heatmap() {
           <thead>
             <tr>
               <td />
-              {grid.heads.map((h) => <th key={h} scope="col">{h}</th>)}
+              {grid.heads.map((h) => <th key={h} scope="col"><span>{h}</span></th>)}
             </tr>
           </thead>
           <tbody>

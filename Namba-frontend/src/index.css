@@ -1583,7 +1583,12 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .heat tbody th { text-align: right; padding: 6px 8px; white-space: nowrap; }
 .heat thead td { border: 0; width: 7.5em; } /* table-layout: fixed sizes off the first row */
 .heat td { background: color-mix(in srgb, var(--accent) var(--heat), var(--panel)); }
-.heat td > * { display: block; padding: 8px 0; color: inherit; text-decoration: none; }
+.heat td > * { display: block; color: inherit; text-decoration: none; }
+/* every cell square, the column heads too: aspect-ratio on the box inside,
+   since a table cell ignores it. Integer's nine or ten columns would make
+   squares a hand wide on a full page, so that table stops at 720px. */
+.heat :is(td, thead th) > * { display: grid; place-items: center; aspect-ratio: 1; }
+.heat.integer { max-width: 720px; }
 .heat td > span { color: var(--faint); }
 .heat td > a:hover { outline: 2px solid var(--ink); outline-offset: -2px; }
 .heat td.hot { color: var(--on-accent); }
