@@ -571,9 +571,18 @@ the sitemap.
   An empty `/n/` or `/t/` gets the static card, `noindex` notwithstanding: the
   two do not consult each other, one is about a search result and the other
   about what a chat window draws. The `noindex` **default** branch is the one
-  place with no card — `/search`, `/new` and a mistyped path keep the head
-  `index.html` shipped. Left that way on purpose: giving it a card means
-  giving it a `og:url`, and the branch stays dumb by design.
+  place with no card — `/search`, `/new` and a mistyped path get the site's
+  title and blurb in the request's locale, so `<html lang>` and the words
+  under it agree, and nothing else. Left that way on purpose: giving it a
+  card means giving it a `og:url`, and the branch stays dumb by design. A
+  `/p/{id}` with no live row is the same head with a **404** status: the app
+  still gets its document, and `PostPage` draws the recovery view from the
+  API rather than from the status.
+
+  A drawn card is also the `image` of an entry's `Article` when it has no
+  upload, so the JSON-LD and `og:image` name the same picture; `/guide`
+  carries a `WebPage` beside its crumbs, as every other indexed page carries
+  a node of its own.
 
   `og:image:alt`, `og:image:width` and `og:image:height` ride with the drawn
   card and the fallback, because this code knows what both read and how big
