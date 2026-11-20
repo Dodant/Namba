@@ -12,7 +12,11 @@ import { adm, type Who } from '../api'
 
     Password success returns a five-minute opaque challenge, not a session. The
     session is issued only after the authenticator code, and then lives in an
-    httpOnly cookie this app cannot read. */
+    httpOnly cookie this app cannot read.
+
+    The ids are `login-*`, never `ad-*`: ad-blocker cosmetic filters hide
+    `#ad-code` outright, which took the code field off the page and left a
+    submit button that silently failed its own `required` check. */
 export default function Login({ onIn }: { onIn: (who: Who) => void }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -61,9 +65,9 @@ export default function Login({ onIn }: { onIn: (who: Who) => void }) {
         )}
         {challenge ? (
           <div className="field">
-            <label htmlFor="ad-code">Authentication code</label>
+            <label htmlFor="login-code">Authentication code</label>
             <input
-              id="ad-code"
+              id="login-code"
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
@@ -78,9 +82,9 @@ export default function Login({ onIn }: { onIn: (who: Who) => void }) {
         ) : (
           <>
             <div className="field">
-              <label htmlFor="ad-email">Email</label>
+              <label htmlFor="login-email">Email</label>
               <input
-                id="ad-email"
+                id="login-email"
                 type="email"
                 autoComplete="username"
                 value={email}
@@ -89,9 +93,9 @@ export default function Login({ onIn }: { onIn: (who: Who) => void }) {
               />
             </div>
             <div className="field">
-              <label htmlFor="ad-pw">Password</label>
+              <label htmlFor="login-pw">Password</label>
               <input
-                id="ad-pw"
+                id="login-pw"
                 type="password"
                 autoComplete="current-password"
                 value={password}
