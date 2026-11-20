@@ -46,7 +46,7 @@ function Random() {
       </p>
     )
   return (
-    <p className="empty" role="status">
+    <p className="empty wait" role="status">
       {m.common.loading}
     </p>
   )
@@ -459,7 +459,21 @@ function Header({ lang }: { lang: string }) {
             {CLOCK}
             <span className="lbl">{m.header.recent}</span>
           </Link>
-          <Link className="btn" to="/random">
+          <Link
+            className="btn"
+            to="/random"
+            onClick={(e) => {
+              /* A plain click rolls from here, so the page stays put until the
+                 entry is known instead of blanking twice on the way through
+                 /random. A modified click or a new tab still gets the route. */
+              if (e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+              e.preventDefault()
+              api.posts({ sort: 'random', limit: 1 }).then(
+                ([hit]) => nav(hit ? `/p/${hit.id}` : '/random'),
+                () => nav('/random'),
+              )
+            }}
+          >
             {DIE}
             <span className="lbl">{m.header.random}</span>
           </Link>

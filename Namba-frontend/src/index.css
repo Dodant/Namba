@@ -2072,6 +2072,10 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    the rest of the sentence until a pointer happened to cross it. Same
    treatment .body a and a.quiet already get. */
 .empty { color: var(--muted); padding: 36px 0; text-align: center; }
+/* A wait shorter than this is not drawn: "Loading…" for a tenth of a second
+   between two entries is a flash, not news. */
+.empty.wait { animation: wait-in 0s 300ms backwards; }
+@keyframes wait-in { from { opacity: 0; } }
 .empty a, .form-intro a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 

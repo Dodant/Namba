@@ -1439,9 +1439,14 @@ own on the API. Like every route but `/guide`, it is `noindex`.
 The tables are built in `src/heatmap.ts`, which has no JSX so that
 `heatmap.test.ts` can load it; `Heatmap.tsx` only draws them.
 
-`/random` is a route, not a header `onClick`, so it is linkable and has
-somewhere to render its wait and its failure. It replaces rather than pushes —
-pushing puts `/random` in the history, and Back from the entry rolls again.
+`/random` is a route, so it is linkable and has somewhere to render its wait
+and its failure. It replaces rather than pushes — pushing puts `/random` in the
+history, and Back from the entry rolls again. The header's Random link still
+points at it, but a plain click rolls in place and navigates straight to
+`/p/:id`, so the page on screen stays until the entry is known rather than
+blanking once for `/random` and again for the entry; a modified click, a new
+tab or a failed roll falls through to the route. A `.wait` loading line is
+drawn only after 300ms, so a fast load shows no "Loading…" at all.
 It rides on `sort=random` in `list_posts`, which is guarded by a test: an
 unknown `sort` falls back to `p.id` instead of 422ing, so a typo either side of
 the wire is a Random button that works and always lands on the same entry.

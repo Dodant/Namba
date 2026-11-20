@@ -98,7 +98,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
     )
   if (!post)
     return (
-      <p className="empty" role="status">
+      <p className="empty wait" role="status">
         {m.common.loading}
       </p>
     )
