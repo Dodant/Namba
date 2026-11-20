@@ -356,7 +356,11 @@ def head_guide(page, base, locale="en"):
     return write_head(
         page, title=title, desc=desc, canonical=url, locale=locale,
         og=og_tags(title, desc, url, "article", base=base, locale=locale),
-        ld=[crumbs(base, [(text["guide_name"], url)])],
+        ld=[{"@context": "https://schema.org", "@type": "WebPage",
+             "name": title, "url": url, "description": desc,
+             "inLanguage": locale, "license": CC0,
+             "isPartOf": site_ld(base, locale)},
+            crumbs(base, [(text["guide_name"], url)])],
     )
 
 
@@ -508,8 +512,10 @@ def og_head(page: str, post: dict, base: str, tags=(), locale="en") -> str:
     }
     if post["edited_by"]:
         article["editor"] = {"@type": "Person", "name": post["edited_by"]}
-    if img:
-        article["image"] = img
+    card = og_image.entry_card(post, tags, locale)
+    # the picture og:image names: an upload, else the card drawn here
+    article["image"] = img or og_image.card_url(base, card, locale,
+                                                post_id=post["id"])
     if tags:
         article["keywords"] = list(tags)
     if post["lang"]:
@@ -520,8 +526,7 @@ def og_head(page: str, post: dict, base: str, tags=(), locale="en") -> str:
         page, title=title, desc=desc, canonical=url, locale=locale,
         og=og_tags(title, desc, url, "article", base=base, image=img,
                    locale=locale,
-                   card=og_image.entry_card(post, tags, locale),
-                   post_id=post["id"])
+                   card=card, post_id=post["id"])
            + [("article:published_time", post["created_at"]),
               ("article:modified_time", post["updated_at"])],
         ld=[article, crumbs(base, [(value, base + value_path(section,
@@ -532,9 +537,10 @@ def og_head(page: str, post: dict, base: str, tags=(), locale="en") -> str:
 
 def index_html(con, request, path: str, page: str, base: str) -> HTMLResponse:
     locale = request_ui_locale(request)
+    text = seo_locale.words(locale)
 
-    def answer(body, content_locale=locale):
-        res = HTMLResponse(body)
+    def answer(body, content_locale=locale, status=200):
+        res = HTMLResponse(body, status_code=status)
         # The number in a title varies by explicit UI preference first and
         # Accept-Language second. A cache must not hand the German spelling to
         # a French request (or the reverse).
@@ -580,6 +586,14 @@ def index_html(con, request, path: str, page: str, base: str) -> HTMLResponse:
                 "SELECT tag FROM post_tags WHERE post_id = ? ORDER BY tag",
                 (hit.group(1),))]
             return answer(og_head(page, dict(row), base, tags, locale))
+        # Nothing live at this id -- never was, or an operator took it down.
+        # The app still answers with the same document (PostPage draws its
+        # recovery view from the API, not from this status), but a crawler
+        # is told the page is not there rather than reading a 200.
+        return answer(write_head(page, title=text["site_title"],
+                                 desc=text["site_desc"],
+                                 robots="noindex, follow", locale=locale),
+                      status=404)
     # Everything else: /search, /random, /new, /p/{id}/edit, an entry an
     # operator took down, and every mistyped path -- which answers 200 with the
     # app's "Nothing here" and would otherwise be indexed as a copy of the
@@ -591,4 +605,8 @@ def index_html(con, request, path: str, page: str, base: str) -> HTMLResponse:
     # added there would arrive claiming to be indexable until somebody
     # remembered this file. Being indexable is the thing that has to be spelled
     # out; not being indexable is the safe answer to give a stranger.
-    return answer(write_head(page, robots="noindex, follow", locale=locale))
+    # The site's own words in the request's language, or <html lang="de">
+    # would sit over the English blurb index.html was built with.
+    return answer(write_head(page, title=text["site_title"],
+                             desc=text["site_desc"],
+                             robots="noindex, follow", locale=locale))
