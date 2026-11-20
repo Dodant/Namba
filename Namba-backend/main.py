@@ -1,5 +1,7 @@
 """Namba API -- an open, no-login wiki of numbers."""
+import math
 import os
+import random
 import re
 import time
 import traceback
@@ -804,6 +806,20 @@ def list_posts(
                                        OR t.body LIKE ? ESCAPE '{db.LIKE_ESC}')))"""
             )
             args += [db.like(term)] * 5
+    if sort == "random" and not format:
+        # Draw the format first, weighted by the square root of its count, then
+        # a row of it: a row-uniform draw is mostly whichever format the wiki
+        # happens to hold most of (ABBR), and a format-uniform one would put
+        # a handful of TIME entries on every sixth click. The root sits
+        # between the two and needs no retuning as the counts move.
+        found = "\n".join(sql[1:] + (["WHERE " + " AND ".join(where)] if where else []))
+        counts = con.execute(
+            f"SELECT p.format, COUNT(*) FROM posts p\n{found}\nGROUP BY p.format", args
+        ).fetchall()
+        if counts:
+            fmts, ns = zip(*counts)
+            where.append("p.format = ?")
+            args.append(random.choices(fmts, [math.sqrt(n) for n in ns])[0])
     if where:
         sql.append("WHERE " + " AND ".join(where))
     order = {

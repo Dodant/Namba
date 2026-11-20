@@ -3006,6 +3006,14 @@ def test_api_round_trip():
              for _ in range(40)}
     assert len(draws) > 1, draws
     assert draws <= set(ids), draws
+    # ...and draws a format before a row, so the format the wiki holds most of
+    # does not take nearly every click: each format in the set turns up.
+    import random as _random
+    _random.seed(0)
+    fmts = {p["format"] for p in c.get("/api/posts").json()}
+    drawn = {c.get("/api/posts", params={"sort": "random", "limit": 1}).json()[0]["format"]
+             for _ in range(60)}
+    assert len(fmts) > 2 and drawn == fmts, (drawn, fmts)
 
     # likes
     assert c.post(f"/api/posts/{a['id']}/like").json()["likes"] == 1
