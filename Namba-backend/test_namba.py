@@ -1,4 +1,5 @@
 """Self-check: python test_namba.py   (no pytest, no fixtures)"""
+import html
 import io
 import json
 import math
@@ -498,6 +499,7 @@ def test_share_card():
     assert 'property="og:image" content="http://testserver/uploads/x.png"' in page
     assert "og.png" not in page and "/og/" not in page, "its own picture, not a card"
     assert "og:image:alt" not in page
+    assert _ld(page)[0][0]["image"] == "http://testserver/uploads/x.png"
 
     # a title with a quote in it must not break out of the attribute
     ev = c.post("/api/posts", json={"value": "13", "title": 'the "unlucky" <one>'}).json()
@@ -542,7 +544,10 @@ def test_share_card():
     for keeps_its_name in ("/", "/index.html"):
         assert "cache-control" not in c.get(keeps_its_name).headers, keeps_its_name
     assert c.get("/api/tags").status_code == 200
-    assert c.get(f"/p/{p['id']}999").text.count("og:title") == 0, "unknown id got a card"
+    unknown = c.get(f"/p/{p['id']}999")
+    assert unknown.text.count("og:title") == 0, "unknown id got a card"
+    # the same document for the app, but a crawler is told there is no page
+    assert unknown.status_code == 404, unknown.status_code
     # ...but a mistyped *endpoint* is not a page. The catch-all used to hand it
     # index.html with a 200, so a client asking the wrong /api path got HTML
     # where it expected JSON and res.ok said everything was fine.
@@ -692,13 +697,18 @@ def test_localized_metadata():
     guide = c.get("/guide", headers={"Accept-Language": "ko-KR"}).text
     assert "<title>항목 작성 지침 — Namba</title>" in guide
     assert seo_locale.words("ko")["guide_desc"] in guide
-    crumb, = _ld(guide)[0]
+    webpage, crumb = _ld(guide)[0]
     assert crumb["itemListElement"][-1]["name"] == "항목 작성 지침"
+    assert webpage["@type"] == "WebPage" and webpage["inLanguage"] == "ko", webpage
 
     noindex = c.get("/new", headers={"Accept-Language": "zh-CN"})
     assert noindex.headers["content-language"] == "zh-Hans"
     assert '<html lang="zh-Hans">' in noindex.text
     assert 'content="noindex, follow"' in noindex.text
+    # and the words under that lang are the same language, not index.html's
+    zh = seo_locale.words("zh-Hans")
+    assert f"<title>{zh['site_title']}</title>" in noindex.text, noindex.text[:400]
+    assert html.escape(zh["site_desc"], quote=True) in noindex.text
 
     # The explicit UI cookie remains authoritative over Accept-Language for
     # every metadata field, not only for decimal punctuation.
@@ -904,7 +914,11 @@ def test_head_per_route():
     assert [i["item"] for i in crumb["itemListElement"]] == [
         "http://testserver/", "http://testserver/a/DNA",
         f"http://testserver/p/{dna['id']}"], crumb
+    # the drawn card og:image names, since there is no upload to name
+    assert article["image"].startswith(
+        f"http://testserver/og/p/{dna['id']}.png?l=en&h="), article
     admin.set_status(dna["id"], "HIDDEN")
+    assert c.get(f"/p/{dna['id']}").status_code == 404, "a hidden entry is no page"
 
     # -- and a date's entry says what happens on it, with the crumb into the
     # third section. Same argument as the abbreviation above: og_head picks
@@ -948,7 +962,10 @@ def test_head_per_route():
     assert "noindex" not in page, "the one page that says what a wiki keeps"
     assert "only counts its own sequels" in page, page[:800]
     assert "a wiki of numbers" not in page, "the site's own blurb, on the rules"
-    crumb, = _ld(page)[0]
+    webpage, crumb = _ld(page)[0]
+    assert webpage["@type"] == "WebPage", webpage
+    assert webpage["url"] == "http://testserver/guide", webpage
+    assert webpage["isPartOf"]["@id"] == "http://testserver/#site", webpage
     assert [i["name"] for i in crumb["itemListElement"]] == [
         "Namba", "Entry guidelines"], crumb
     assert [i["item"] for i in crumb["itemListElement"]] == [
