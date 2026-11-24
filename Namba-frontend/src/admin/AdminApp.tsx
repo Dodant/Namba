@@ -36,7 +36,7 @@ const NAV: Item[] = [
   { to: '/reports', label: 'Reports', group: 'Moderation', tally: 'reports_open' },
   { to: '/abuse', label: 'Spam & abuse', group: 'Moderation' },
   { to: '/content', label: 'All content', group: 'Content' },
-  { to: '/origins', label: 'Origins', group: 'Content' },
+  { to: '/origins', label: 'Origins', group: 'Content', tally: 'origin_flags_open' },
   { to: '/changes', label: 'Recent changes', group: 'Content' },
   { to: '/blocks', label: 'Blocked clients', group: 'Security', tally: 'blocked' },
   { to: '/audit', label: 'Audit log', group: 'Security' },

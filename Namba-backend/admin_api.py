@@ -438,6 +438,9 @@ def stats(_=Depends(auth.require_admin), con=Depends(db.get_db)):
         "requests_pending": one("""SELECT COUNT(*) FROM delete_requests
                                    WHERE status = 'PENDING'"""),
         "reports_open": one("SELECT COUNT(*) FROM reports WHERE status = 'OPEN'"),
+        # reports and removal requests about a link, which wait on the Origins
+        # page and in neither queue above
+        "origin_flags_open": one("SELECT COUNT(*) FROM origin_flags WHERE status = 'OPEN'"),
         # How long the oldest thing has been waiting, which is the number a
         # queue is actually judged by: two pending requests is nothing and two
         # pending requests from March is a wiki nobody is minding. NULL when
@@ -447,7 +450,8 @@ def stats(_=Depends(auth.require_admin), con=Depends(db.get_db)):
         "oldest_report": one("""SELECT MIN(created_at) FROM reports
                                 WHERE status = 'OPEN'"""),
         "edits_24h": one("""SELECT COUNT(*) FROM events
-                            WHERE action IN ('EDIT', 'RESTORE') AND at > ?""",
+                            WHERE action IN ('EDIT', 'RESTORE', 'ORIGIN_EDIT', 'ORIGIN_REVERT')
+                              AND at > ?""",
                          _since(24 * 60)),
         # An ERROR row is not a write. It has no admin_id either -- a 500 is
         # nobody's decision -- so without this the one number that says whether
@@ -1042,12 +1046,16 @@ def abuse(
         """SELECT ip_hash,
                   COUNT(*) AS writes,
                   COUNT(DISTINCT client_hash) AS browsers,
-                  COUNT(DISTINCT target_id) AS targets,
-                  SUM(action = 'CREATE') AS creates,
-                  SUM(action = 'EDIT') AS edits,
+                  -- with its type: post 5 and origin 5 are two targets
+                  COUNT(DISTINCT target_type || ':' || target_id) AS targets,
+                  SUM(action IN ('CREATE', 'ORIGIN')) AS creates,
+                  SUM(action IN ('EDIT', 'ORIGIN_EDIT')) AS edits,
                   SUM(action = 'COMMENT') AS comments,
-                  SUM(action = 'DELETE_REQUEST') AS requests,
-                  SUM(action = 'REPORT') AS reports,
+                  -- ORIGIN_FLAG is both kinds on a link; meta says which
+                  SUM(action = 'DELETE_REQUEST' OR (action = 'ORIGIN_FLAG'
+                      AND json_extract(meta, '$.kind') = 'remove')) AS requests,
+                  SUM(action = 'REPORT' OR (action = 'ORIGIN_FLAG'
+                      AND json_extract(meta, '$.kind') = 'report')) AS reports,
                   SUM(action = 'UPLOAD') AS uploads,
                   MIN(at) AS first_at, MAX(at) AS last_at,
                   MAX(client_hash) AS a_client,

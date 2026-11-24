@@ -440,9 +440,9 @@ the sitemap.
 - **`guard` replaced `rate_limit` and hands back an identity.** It is still the
   single `Depends` on every write, it still refuses at 20 a minute, and it now
   returns the caller's three hashes so a route can record what happened without
-  asking twice — twelve writes log, eleven binding `who=Depends(guard)` and
-  `put_translation` binding `client=Depends(guard)`. The two that do not log
-  bind `_=Depends(guard)`. `like` and `unlike` are the two:
+  asking twice — seventeen writes log, sixteen binding `who=Depends(guard)` and
+  `put_translation` binding `client=Depends(guard)`. The four that do not log
+  bind `_=Depends(guard)`. `like` and `unlike`, on an entry and on a link, are the four:
   a like says nothing about the entry and at one row per tap the abuse view
   would be nothing else. The limiter counts hashes now, not addresses.
 - **`origins` is one link a row, and `store.leads_back` is its one rule.**

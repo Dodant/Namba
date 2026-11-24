@@ -1626,7 +1626,8 @@ def live_origin(con, origin_id: int):
 
 
 class OriginEditIn(Text):
-    """What an edit may change: the story, the two notes and the language.
+    """What an edit may change: the story, the two notes, the language and
+    the two pictures.
 
     Not the two names. They are what the link is -- every chain through it
     joins on them -- so retyping one is not a correction, it is a different
@@ -1667,7 +1668,10 @@ def edit_origin(origin_id: int, o: OriginEditIn, who=Depends(guard), con=Depends
     """
     editor = nick(o.author)
     with writing(con):
-        rewrite_origin(con, live_origin(con, origin_id), o.model_dump(), editor)
+        was = live_origin(con, origin_id)
+        # only what was sent: a field left out of an edit is left as it was,
+        # which is how edit_post reads one
+        rewrite_origin(con, was, {**was, **o.model_dump(exclude_unset=True)}, editor)
         events.record(con, "ORIGIN_EDIT", client=who, who=editor,
                       target_type="origin", target_id=origin_id)
         return live_origin(con, origin_id)
@@ -1694,7 +1698,7 @@ def list_origin_revisions(origin_id: int, con=Depends(get_db)):
     """The newest versions an edit replaced, newest first, for the history
     beside the edit form. Capped like a post's, and the rows stay.
 
-    Whole, where a post's are four labels: every version of a link has the
+    Whole, where a post's are labels and an excerpt: every version of a link has the
     same two names, so its words are the only thing that says which version
     a Restore would bring back -- and they are 600 characters at most.
     """

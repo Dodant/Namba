@@ -87,3 +87,12 @@ them decide (ADR-0007).
   ground that nothing snapshotted a link. The requester asked for an Edit
   shaped like an entry's the same day, so the snapshot was added instead:
   `origin_revisions`, written by `edit_origin` before it writes the row.
+
+- 2026-11-24: a pre-merge review found four things and each was changed.
+  The list folded every entry whose name was somebody's origin, so a name's
+  second origin was live and on no row; `rows` now folds only the entry a
+  chain follows. `edit_origin` wrote every field, so a body carrying two
+  fields blanked the rest; it now writes what was sent, as `edit_post` does.
+  `purge_origin` left a link's pictures on disk; it removes them by the rule
+  `purge` has. And the back office's tallies did not know the `ORIGIN*`
+  actions or a link's open flags, which are now counted.

@@ -179,6 +179,8 @@ def test_origins():
     gone = c.post(f"/api/origins/{a['id']}/delete-request",
                   json={"reason": "OTHER", "detail": "mine", "author": "ada"})
     assert gone.status_code == 201, gone.text  # a different kind, so not the 409
+    assert c.post(f"/api/origins/{a['id']}/delete-request",
+                  json={"reason": "OTHER", "author": "ada"}).status_code == 409
     assert c.post(f"/api/origins/{a['id']}/report",
                   json={"reason": "NOT-A-REASON"}).status_code == 422
 
@@ -192,8 +194,11 @@ def test_origins():
         "name": "og-pic2", "origin": "og-src3", "author": "ada",
         "name_image": "https://example.com/x.png"}).status_code == 422
     r = c.patch(f"/api/origins/{pic.json()['id']}", json={
-        "author": "grace", "name_image": "/uploads/og-c.png"})
+        "author": "grace", "name_image": "/uploads/og-c.png", "origin_image": None})
     assert (r.json()["name_image"], r.json()["origin_image"]) == ("/uploads/og-c.png", None), r.text
+    # an edit carries what it changes: a field it leaves out stays as it was
+    r = c.patch(f"/api/origins/{pic.json()['id']}", json={"author": "grace", "body": "said"})
+    assert (r.json()["name_image"], r.json()["body"]) == ("/uploads/og-c.png", "said"), r.text
     import gc_uploads
     con = db.connect()
     assert {"og-a.png", "og-b.png", "og-c.png"} <= gc_uploads.referenced(con)
@@ -212,6 +217,9 @@ def test_origins():
     assert c.get("/api/admin/origins").status_code == 401
     assert c.post(f"/api/admin/origins/{b['id']}/status",
                   json={"status": "HIDDEN"}).status_code == 401
+    assert c.get(f"/api/admin/origins/{a['id']}/flags").status_code == 401
+    assert c.post(f"/api/admin/origins/{a['id']}/flags/close",
+                  json={"status": "RESOLVED"}).status_code == 401
     op = _operator(TestClient(main.app))
     # the flags reach the operator's page, and closing them leaves the link
     rows = op.get("/api/admin/origins").json()["rows"]
@@ -231,6 +239,15 @@ def test_origins():
                   json={"status": "HIDDEN", "note": "spam"})
     assert hid.status_code == 200 and hid.json()["was"] == "ACTIVE", hid.text
     assert b["id"] not in [o["id"] for o in live()], "a hidden link is still public"
+    # and not only off the list: every route that takes its id has lost it
+    for verb, path, body in (
+            ("PATCH", "", {"author": "x", "body": "y"}), ("GET", "/revisions", None),
+            ("POST", "/revisions/1/restore", {"author": "x"}), ("GET", "/comments", None),
+            ("POST", "/comments", {"author": "x", "body": "y"}), ("POST", "/like", None),
+            ("DELETE", "/like", None), ("POST", "/report", {"reason": "SPAM"}),
+            ("POST", "/delete-request", {"reason": "OTHER", "author": "x"})):
+        r = c.request(verb, f"/api/origins/{b['id']}{path}", json=body)
+        assert r.status_code == 404, (verb, path, r.status_code)
     rows = op.get("/api/admin/origins", params={"q": "og-JavaScript"}).json()
     assert {r["id"]: r["status"] for r in rows["rows"]}[b["id"]] == "HIDDEN", rows
     only = op.get("/api/admin/origins", params={"status": "HIDDEN"}).json()["rows"]
@@ -243,6 +260,16 @@ def test_origins():
                    json={"status": "HIDDEN"}).status_code == 404
     assert op.post(f"/api/admin/origins/{b['id']}/status",
                    json={"status": "GONE"}).status_code == 422
+    # DELETED is the third state and moves like the other two
+    move = lambda oid, to: op.post(f"/api/admin/origins/{oid}/status", json={"status": to})
+    assert move(a["id"], "ACTIVE").status_code == 409
+    assert move(b["id"], "DELETED").json()["was"] == "HIDDEN"
+    assert len(_events(action="ORIGIN_DELETE", target_id=b["id"])) == 1
+    assert move(b["id"], "DELETED").status_code == 409
+    assert move(b["id"], "HIDDEN").json()["was"] == "DELETED"
+    assert move(pic.json()["id"], "DELETED").status_code == 200
+    assert pic.json()["id"] not in [o["id"] for o in live()]
+    assert move(pic.json()["id"], "ACTIVE").json()["was"] == "DELETED"
 
     # a hidden link holds no place in a chain, so the other half of its loop
     # can be filed -- and then it is the restore that is refused
@@ -274,6 +301,13 @@ def test_origins():
         raise AssertionError("purged a link that was already gone")
     except LookupError:
         pass
+    # and its pictures, the two it has and the ones its edits replaced
+    os.makedirs(db.UPLOAD_DIR, exist_ok=True)
+    pics = [os.path.join(db.UPLOAD_DIR, n) for n in ("og-a.png", "og-b.png", "og-c.png")]
+    for path in pics:
+        open(path, "wb").close()
+    admin.purge_origin(pic.json()["id"])
+    assert not [p for p in pics if os.path.exists(p)], "a purge left a link's pictures"
 
 
 def test_a_revision_says_what_it_said():
@@ -2274,7 +2308,7 @@ def test_admin_content_and_dashboard():
     admin.set_status(fresh["id"], "HIDDEN")
     assert st["edits_24h"] >= 1 and st["writes_1h"] >= 1
     assert set(st) == {"numbers", "entries", "hidden", "created_today",
-                       "edited_today", "requests_pending", "reports_open",
+                       "edited_today", "requests_pending", "reports_open", "origin_flags_open",
                        "oldest_request", "oldest_report",
                        "edits_24h", "writes_1h", "errors_24h", "blocked",
                        "comments"}, st

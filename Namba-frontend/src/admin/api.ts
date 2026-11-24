@@ -25,6 +25,7 @@ export type Stats = {
   edited_today: number
   requests_pending: number
   reports_open: number
+  origin_flags_open: number
   /** When the oldest thing still waiting arrived, or null when nothing is.
       A queue is judged by its age rather than its length: two pending
       requests is nothing and two pending requests from March is a wiki

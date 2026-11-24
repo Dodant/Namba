@@ -150,10 +150,13 @@ def purge(post_id):
 def purge_origin(origin_id):
     """Remove one Origins link. Not reversible.
 
-    The same exception `purge` is, for the same removal a law requires, and
-    smaller: a link has no picture and nothing filed about it, so the row and
-    the versions its edits replaced -- which cascade -- are all there is. Its `events` rows stay, for the reason `purge`
-    gives. Returns the two names, so the shell can say what went.
+    The same exception `purge` is, for the same removal a law requires. The
+    row goes, and what hangs off it cascades: the versions its edits
+    replaced, its comments, and the reports and removal requests about it.
+    Its pictures go by the rule `purge` gives -- once nothing left names
+    them, and that includes the ones only an old version held. Its `events`
+    rows stay, for the reason `purge` gives. Returns the two names, so the
+    shell can say what went.
     """
     con = db.connect()
     try:
@@ -161,8 +164,16 @@ def purge_origin(origin_id):
                           (origin_id,)).fetchone()
         if row is None:
             raise LookupError(f"no origin {origin_id}")
+        pics = {os.path.basename(p) for r in con.execute(
+            """SELECT name_image, origin_image FROM origins WHERE id = ?
+               UNION SELECT name_image, origin_image FROM origin_revisions
+                     WHERE origin_id = ?""", (origin_id, origin_id)) for p in r if p}
         with con:
             con.execute("DELETE FROM origins WHERE id = ?", (origin_id,))
+        for name in pics - gc_uploads.referenced(con):
+            path = os.path.join(UPLOAD_DIR, name)
+            if os.path.isfile(path):
+                os.remove(path)
         return row["name"], row["origin"]
     finally:
         con.close()
