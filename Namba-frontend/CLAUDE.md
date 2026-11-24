@@ -259,6 +259,34 @@ is a real typecheck; the bare command on its own is a green that means
 nothing. `-b --noEmit` builds the referenced projects' types without writing
 any.
 
+## Origins
+
+The seventh tab is not a format. `/origins` lists where names came from and
+`/origins/new` files one, and both live in `pages/Origins.tsx`; `FmtTabs` in
+`Home.tsx` is the one strip the index and this page both draw, so the tab
+exists in a single place.
+
+**An entry is one link, never a chain.** `Origin` in `api.ts` says this name
+came from that one, with the story between them. `JavaScript ← Java ← Java
+coffee` is two entries, joined in `origins.ts` because one entry's origin is
+another's name — compared NFC and case-folded, drawn as typed. A chain
+therefore grows when somebody files the next link, and a name with two origins
+is two entries, the way two meanings of 42 are. `origins.test.ts` holds the
+joining, the loop guard and the language rule below.
+
+- **The form publishes a chain as a loop over one route**, `POST /api/origins`
+  per link. Each link is true on its own, so half a chain is still a list of
+  true things; the links that landed leave the form, or a second press of
+  Publish would file them twice.
+- **A link told in two languages is drawn once.** `preferLang` keeps one entry
+  per (name, origin) pair, the reader's entry-text language first. "Written
+  in" on the form is the same free-form name `Post.lang` is.
+- **A loop is refused in the form and survived in the list.** `loops` stops a
+  chain that arrives back at its own first name; `chain` carries a seen set
+  anyway, since the form is not the only way to write to an open API.
+- **`Chain` draws both the list's rows and the form's preview**, so what the
+  form promises is what the list does.
+
 ## Two kinds of language
 
 Interface locale and entry language are separate state. `UiProvider` owns
