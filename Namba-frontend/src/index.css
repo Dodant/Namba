@@ -1253,16 +1253,20 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
    dvh, because a phone's toolbars make vh a promise it does not keep. */
 .side .revs {
   max-height: min(40dvh, 320px); overflow-y: auto; overscroll-behavior-y: contain;
-  border-left: 1px solid var(--line); padding-left: 4px;
+  /* the rail is painted inside the box, not as its border: this list
+     scrolls, a scroll port clips at its padding edge, and a dot centred on
+     a border would lose its outer half to that clip */
+  padding-left: 8px;
+  background: linear-gradient(var(--line), var(--line)) 3px 0 / 1px 100% no-repeat;
 }
 /* stacked, it is the end of the page and the page is the scroller */
 @media (max-width: 820px) {
   .side .revs { max-height: none; overflow: visible; }
 }
-.side .rev { padding: 11px 0 11px 10px; position: relative; border: 0; }
+.side .rev { padding: 11px 0 11px 7px; position: relative; border: 0; }
 /* the dot sits on the rail, not in the row -- it is the timeline, not a bullet */
 .side .rev::before {
-  content: ''; position: absolute; left: -4px; top: 15px;
+  content: ''; position: absolute; left: -8px; top: 15px;
   width: 7px; height: 7px; border-radius: 50%; background: var(--line);
 }
 .side .rev.now::before { background: var(--accent); }
