@@ -121,7 +121,7 @@ function Feed({ lang }: { lang: string }) {
                 </Link>
               ))}
               <span>
-                {m.common.by(p.author)} · {fmtDate(p.created_at, locale)}
+                {m.common.by(p.author)}{' '}<span className="when">· {fmtDate(p.created_at, locale)}</span>
               </span>
               {p.updated_at !== p.created_at && (
                 <span>

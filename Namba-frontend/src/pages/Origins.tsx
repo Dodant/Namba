@@ -213,7 +213,7 @@ function Rail({ of }: { of: Origin }) {
           {revs.data?.map((r) => (
             <li className="rev" key={r.id}>
               <b>{of.name} ← {of.origin}</b>
-              <span>{revisionBy(r.written_by, m)} · {fmtDate(r.created_at, locale)}</span>
+              <span>{revisionBy(r.written_by, m)}{' '}<span className="when">· {fmtDate(r.created_at, locale)}</span></span>
             </li>
           ))}
         </ol>
@@ -486,7 +486,7 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
               <div className="panel-main">
                 <span className="panel-t">{of.name} ← {of.origin}</span>
                 <span className="panel-m">
-                  {revisionBy(r.written_by, m)} · {fmtDate(r.created_at, locale)}
+                  {revisionBy(r.written_by, m)}{' '}<span className="when">· {fmtDate(r.created_at, locale)}</span>
                 </span>
               </div>
               <button type="button" className="pill" disabled={busy} onClick={() => restore(r.id)}>

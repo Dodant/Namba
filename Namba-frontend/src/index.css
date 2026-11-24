@@ -576,6 +576,10 @@ input:focus, textarea:focus { -webkit-user-select: text; user-select: text; }
 }
 .chips-fold .chips { margin: 12px 0 0; }
 
+/* the dot and the date of a byline, kept whole: a line that runs out breaks
+   before "· 3 minutes ago" rather than through the middle of it */
+.when { white-space: nowrap; }
+
 /* --- number index ------------------------------------------------- */
 .band { margin: 0 0 clamp(24px, 4vw, 34px); }
 /* the rule runs from the label to the count, so a band reads as one line

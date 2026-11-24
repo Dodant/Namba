@@ -1015,7 +1015,7 @@ function Editor() {
                   <div className="panel-main">
                     <span className="panel-t">{r.title}</span>
                     <span className="panel-m">
-                      {revisionBy(r.author, m)} · {fmtDate(r.at, locale)}
+                      {revisionBy(r.author, m)}{' '}<span className="when">· {fmtDate(r.at, locale)}</span>
                     </span>
                   </div>
                   {/* type=button and outside the form both, so a restore can

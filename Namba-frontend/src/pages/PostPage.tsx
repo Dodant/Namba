@@ -84,7 +84,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
                 <li className="rev" key={r.id}>
                   <b>{r.title}</b>
                   <span>
-                    {showValue(r.value, r.grouped, locale, r.format)} · {revisionBy(r.author, m)} · {fmtDate(r.at, locale)}
+                    {showValue(r.value, r.grouped, locale, r.format)} · {revisionBy(r.author, m)}{' '}<span className="when">· {fmtDate(r.at, locale)}</span>
                   </span>
                   <button className="btn small" onClick={() => resurrect(r)}>
                     {m.common.restore}
@@ -306,7 +306,7 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
               <li className="rev" key={r.id}>
                 <b>{r.title}</b>
                 <span>
-                  {revisionBy(r.author, m)} · {fmtDate(r.at, locale)}
+                  {revisionBy(r.author, m)}{' '}<span className="when">· {fmtDate(r.at, locale)}</span>
                 </span>
               </li>
             ))}
@@ -462,7 +462,7 @@ const cmt = (c: Comment, locale = 'en') => (
   <div className="cmt" key={c.id}>
     <p>{c.body}</p>
     <span>
-      {c.author} · {fmtDate(c.created_at, locale)}
+      {c.author}{' '}<span className="when">· {fmtDate(c.created_at, locale)}</span>
     </span>
   </div>
 )
