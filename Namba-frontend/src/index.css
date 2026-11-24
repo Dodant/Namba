@@ -1549,16 +1549,16 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 
 /* --- forms -------------------------------------------------------- */
 /* the same shape the read page has: the thing you are working on, and the
-   history of it on a rail beside. 720 + 320 + the gap fits inside .wrap, so
+   history of it on a rail beside. 764 + 280 + the gap fits inside .wrap, so
    the two columns sit together rather than at opposite edges of the page.
    340 rather than the read page's 250: these rows carry a Restore button as
    well as the byline, and narrower left "Aug 19," and "2026" on two lines. */
 .form-layout {
-  /* .wrap is 1092 inside its gutters: 712 of form, 60 of air, 320 of rail */
-  display: grid; grid-template-columns: minmax(0, 720px) 320px;
-  /* 40 where the two only just fit, at 1130, opening to 60 as the window
+  /* .wrap is 1092 inside its gutters: 764 of form, 48 of air, 280 of rail */
+  display: grid; grid-template-columns: minmax(0, 764px) 280px;
+  /* 40 where the two only just fit, at 1130, opening to 48 as the window
      gives the room: the rail stands a little off the form, not against it */
-  gap: 0 clamp(40px, calc(100vw - 1090px), 60px); align-items: start;
+  gap: 0 clamp(40px, calc(100vw - 1090px), 48px); align-items: start;
 }
 /* below this the two would not both fit, and the rail goes back to being the
    last thing on the page. .side's own breakpoint is 820, so this repeats what
@@ -1573,8 +1573,8 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    breaking wherever it runs out */
 .form-side .field :is(label, .field-label) { flex-wrap: wrap; }
 .form-side .field .hint { flex-basis: 100%; }
-/* 720px is a line you can read, and a form is a column of fields anyway. */
-.form { max-width: 720px; padding-bottom: 28px; }
+/* 764px is a line you can read, and a form is a column of fields anyway. */
+.form { max-width: 764px; padding-bottom: 28px; }
 /* The rules page takes the container's whole width instead, which is the
    .wrap's 1160 and no more. It reads wider than a measure wants -- the eight
    two-column tables are what the width is for, and they were the narrow thing
