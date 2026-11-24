@@ -6,6 +6,7 @@ import {
 } from '../api'
 import { byName, chain, loops, nameKey, preferLang, rows } from '../origins'
 import { NicknameField } from '../components/NicknameField'
+import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
 import { useUi } from '../uiLocale'
 import { FmtTabs } from './Home'
@@ -47,7 +48,8 @@ function Chain({ links, open = false, kids, onPick }: {
           const n = kids?.get(nameKey(l.origin)) ?? 0
           return (
             <li key={i}>
-              <h3>{l.name} ← {l.origin}</h3>
+              {/* one link is already named by the row above it */}
+              {links.length > 1 && <h3>{l.name} ← {l.origin}</h3>}
               {l.body && <p>{l.body}</p>}
               <div className="meta">
                 {l.author && <span>{m.common.by(l.author)}{l.lang ? ` · ${l.lang}` : ''}</span>}
@@ -55,14 +57,17 @@ function Chain({ links, open = false, kids, onPick }: {
                 {/^\d+$/.test(l.origin) && (
                   <Link to={entryPath(l.origin, 'INTEGER')}>{entryPath(l.origin, 'INTEGER')}</Link>
                 )}
-                {/* only in the list: the preview draws links that have no id yet */}
-                {onPick && 'id' in l && (
-                  <Link to={`/origins/${(l as Origin).id}/edit`}>{m.common.edit}</Link>
-                )}
                 {n > 1 && onPick && (
                   <button type="button" className="meta-btn" onClick={() => onPick(l.origin)}>
                     {m.origins.cameFromHere(n)}
                   </button>
+                )}
+                {/* only in the list: the preview draws links that have no id yet */}
+                {onPick && 'id' in l && (
+                  <span className="og-end">
+                    <Like post={l as Origin} origin />
+                    <Link to={`/origins/${(l as Origin).id}/edit`}>{m.common.edit}</Link>
+                  </span>
                 )}
               </div>
             </li>

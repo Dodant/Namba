@@ -950,7 +950,7 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
         # is pure, an entry under a value that already has ten is normal, and
         # there is no uniqueness here to race for. So the lock is held for the
         # three statements below landing together, not for a read -- see
-        # db.writing() and ADR-0007 for the twelve writes where it is the read.
+        # db.writing() and ADR-0007 for the fourteen writes where it is the read.
         value, fmt, key = resolve_format(value, p.format)
         if p.in_memoriam and p.on_this_day:
             raise HTTPException(422, "On this day and In Memoriam are mutually exclusive")
@@ -1513,7 +1513,7 @@ def remove_link(
 
 # --- origins ------------------------------------------------------------
 ORIGIN_NAME_MAX, ORIGIN_NOTE_MAX, ORIGIN_BODY_MAX = 80, 40, 600
-ORIGIN_COLS = "id, name, name_note, origin, origin_note, body, author, lang, created_at"
+ORIGIN_COLS = "id, name, name_note, origin, origin_note, body, author, lang, likes, created_at"
 
 
 class OriginIn(Text):
@@ -1591,6 +1591,34 @@ def create_origin(o: OriginIn, who=Depends(guard), con=Depends(get_db)):
         row = con.execute(f"SELECT {ORIGIN_COLS} FROM origins WHERE id = ?",
                           (cur.lastrowid,)).fetchone()
     return dict(row)
+
+
+def live_origin(con, origin_id: int):
+    """The link, or 404 -- a hidden one cannot be liked any more than read."""
+    row = con.execute(f"SELECT {ORIGIN_COLS} FROM origins WHERE id = ? AND status = ?",
+                      (origin_id, LIVE)).fetchone()
+    if not row:
+        raise HTTPException(404, "no such origin")
+    return dict(row)
+
+
+@app.post("/api/origins/{origin_id}/like")
+def like_origin(origin_id: int, _=Depends(guard), con=Depends(get_db)):
+    # the same counter, the same trade and the same silence in events as
+    # like() on a post -- see the note there
+    with writing(con):
+        live_origin(con, origin_id)
+        con.execute("UPDATE origins SET likes = likes + 1 WHERE id = ?", (origin_id,))
+        return {"likes": live_origin(con, origin_id)["likes"]}
+
+
+@app.delete("/api/origins/{origin_id}/like")
+def unlike_origin(origin_id: int, _=Depends(guard), con=Depends(get_db)):
+    with writing(con):
+        live_origin(con, origin_id)
+        con.execute("UPDATE origins SET likes = MAX(likes - 1, 0) WHERE id = ?",
+                    (origin_id,))
+        return {"likes": live_origin(con, origin_id)["likes"]}
 
 
 @app.post("/api/upload")

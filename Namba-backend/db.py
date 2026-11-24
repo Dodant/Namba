@@ -337,6 +337,7 @@ CREATE TABLE IF NOT EXISTS origins (
   body        TEXT NOT NULL,
   author      TEXT NOT NULL,
   lang        TEXT,                       -- what body is written in; free-form, like posts.lang
+  likes       INTEGER NOT NULL DEFAULT 0,
   status      TEXT NOT NULL DEFAULT 'ACTIVE',
   created_at  TEXT NOT NULL
 );
@@ -598,6 +599,14 @@ def _birth_year_column(con):
         con.execute("ALTER TABLE posts ADD COLUMN year INTEGER")
 
 
+def _origin_likes_column(con):
+    """`origins.likes`, the counter a post has, for a database whose origins
+    table was made before a link could be liked."""
+    have = {r["name"] for r in con.execute("PRAGMA table_info(origins)")}
+    if "likes" not in have:
+        con.execute("ALTER TABLE origins ADD COLUMN likes INTEGER NOT NULL DEFAULT 0")
+
+
 def _on_this_day_column(con):
     """The Calendar index's historical-event fold.
 
@@ -657,6 +666,7 @@ MIGRATIONS = (
     _birth_year_column,
     _on_this_day_column,
     _birth_death_is_now_in_memoriam,
+    _origin_likes_column,
 )
 
 

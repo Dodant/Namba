@@ -286,6 +286,9 @@ joining, the loop guard and the language rule below.
   languages the pair is already told in off the menu; publishing files a
   second row through the same route. Nothing snapshots a link, so there is no
   rewrite to offer.
+- **A link is liked the way an entry is**, with the same `Like` button told
+  the id is an origin's: its own route and its own localStorage key, since the
+  two tables number their rows apart.
 - **A loop is refused in the form and survived in the list.** `loops` stops a
   chain that arrives back at its own first name; `chain` carries a seen set
   anyway, since the form is not the only way to write to an open API.

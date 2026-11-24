@@ -62,4 +62,5 @@ Origins are outside the header search, the sitemap, the server-written
 `<head>`, `/api/contributors` and the delete-request and report queues. Each
 of those reads `posts`.
 
-Thirteen public routes write now, and twelve of them decide (ADR-0007).
+Fifteen public routes write now — the create and a like and its undo, the
+same counter a post has — and fourteen of them decide (ADR-0007).

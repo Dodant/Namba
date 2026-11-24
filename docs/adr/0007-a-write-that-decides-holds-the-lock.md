@@ -52,4 +52,6 @@ race becomes a 500.
   decides: `create_origin` asks `store.leads_back` whether the link would
   close a loop. Twelve of the thirteen decide and the test probes those
   twelve. The operator's `set_origin_status` asks the same question when it
-  puts a hidden link back, and opens `writing()` for it.
+  puts a hidden link back, and opens `writing()` for it. The same day a
+  link gained a like and its undo, which decide the way a post's do — is the
+  link live — so fourteen of fifteen decide and the test probes fourteen.

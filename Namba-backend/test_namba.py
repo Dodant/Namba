@@ -133,6 +133,13 @@ def test_origins():
         r = c.post("/api/origins", json={"name": "og-n", "origin": "og-o",
                                          "body": "b", "author": "ada", **bad})
         assert r.status_code == 422, (bad, r.status_code)
+    # a like is a counter on the link, floored at zero, and a missing link is 404
+    assert c.post(f"/api/origins/{a['id']}/like").json() == {"likes": 1}
+    assert [o["likes"] for o in c.get("/api/origins").json() if o["id"] == a["id"]] == [1]
+    assert c.delete(f"/api/origins/{a['id']}/like").json() == {"likes": 0}
+    assert c.delete(f"/api/origins/{a['id']}/like").json() == {"likes": 0}
+    assert c.post("/api/origins/999999/like").status_code == 404
+
     # the story is optional: a link with none, or only spaces, is still a link
     for more in ({}, {"body": "  "}):
         r = c.post("/api/origins", json={"name": "og-bare", "origin": "og-src",
@@ -3730,10 +3737,10 @@ def test_purge_takes_the_words_that_asked_for_it():
 
 
 def test_every_write_decides_inside_the_lock():
-    """One rule for the twelve public writes that decide: the read a route
+    """One rule for the fourteen public writes that decide: the read a route
     decides on runs with the write lock already held.
 
-    Twelve of thirteen, because a create decides nothing about another row --
+    Fourteen of fifteen, because a create decides nothing about another row --
     `resolve_format` is pure, and an entry under a value that already has ten
     is normal here. So it is not probed: there is no read to catch it holding,
     and a probe that fired on a pure call would report the rule as kept by a
@@ -3778,7 +3785,7 @@ def test_every_write_decides_inside_the_lock():
 
     where = [(main, "fetch_one"), (store, "fetch_one"),
              (main, "_already_open"), (main, "guard_public"),
-             (main, "leads_back")]
+             (main, "leads_back"), (main, "live_origin")]
     real = [(mod, name, getattr(mod, name)) for mod, name in where]
     for mod, name in where:
         setattr(mod, name, watch(name, dict((n, f) for _, n, f in real)[name]))
@@ -3829,13 +3836,17 @@ def test_every_write_decides_inside_the_lock():
         locked("origin", lambda: c.post("/api/origins", json={
             "name": "lock-fig", "origin": "lock-ficus", "body": "its Latin name",
             "author": "hesse"}))
+        oid = c.get("/api/origins").json()[-1]["id"]
+        locked("like an origin", lambda: c.post(f"/api/origins/{oid}/like"))
+        locked("unlike an origin", lambda: c.delete(f"/api/origins/{oid}/like"))
     finally:
         for mod, name, fn in real:
             setattr(mod, name, fn)
 
     # ...and the probe reached every kind of deciding read there is, so none of
-    # the twelve passed by touching nothing
-    assert seen == {"fetch_one", "_already_open", "guard_public", "leads_back"}, seen
+    # the fourteen passed by touching nothing
+    assert seen == {"fetch_one", "_already_open", "guard_public", "leads_back",
+                    "live_origin"}, seen
 
 
 def test_linking_a_pair_twice_is_one_event():

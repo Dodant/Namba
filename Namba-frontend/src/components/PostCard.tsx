@@ -7,21 +7,23 @@ import { useUi } from '../uiLocale'
 /* Takes only the fields it uses rather than a whole Post, so the number index
    can hand it a bare entry. The API counter stays the same; In Memoriam gives
    that gesture the memorial language and candle it has on screen. */
-export function Like({ post }: {
+export function Like({ post, origin = false }: {
   post: { id: number; likes: number; in_memoriam?: boolean }
+  /** the id is an Origins link's, not an entry's */
+  origin?: boolean
 }) {
   const { locale, m } = useUi()
   const [n, setN] = useState(post.likes)
-  const [on, setOn] = useState(() => liked.has(post.id))
+  const [on, setOn] = useState(() => liked.has(post.id, origin))
 
   async function toggle() {
-    const next = liked.toggle(post.id)
+    const next = liked.toggle(post.id, origin)
     setOn(next)
     setN((v) => v + (next ? 1 : -1)) // optimistic
     try {
-      setN((await api.like(post.id, next)).likes)
+      setN((await api.like(post.id, next, origin)).likes)
     } catch {
-      liked.toggle(post.id) // put the browser's record back
+      liked.toggle(post.id, origin) // put the browser's record back
       setOn(!next)
       setN((v) => v - (next ? 1 : -1))
     }

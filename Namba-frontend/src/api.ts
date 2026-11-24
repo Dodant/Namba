@@ -264,7 +264,7 @@ export type OriginInput = {
   /** what the story is written in, the same free-form name `Post.lang` is */
   lang: string | null
 }
-export type Origin = OriginInput & { id: number; created_at: string }
+export type Origin = OriginInput & { id: number; likes: number; created_at: string }
 
 export type Params = Record<string, string | number | undefined | null>
 
@@ -355,8 +355,9 @@ export const api = {
   update: (id: number, p: Partial<PostInput>) =>
     req<Post>(`/api/posts/${id}`, json('PATCH', p)),
 
-  like: (id: number, on: boolean) =>
-    req<{ likes: number }>(`/api/posts/${id}/like`, { method: on ? 'POST' : 'DELETE' }),
+  like: (id: number, on: boolean, origin = false) =>
+    req<{ likes: number }>(`/api/${origin ? 'origins' : 'posts'}/${id}/like`,
+      { method: on ? 'POST' : 'DELETE' }),
 
   link: (id: number, other_id: number, author: string) =>
     req<Post>(`/api/posts/${id}/links`, json('POST', { other_id, author })),
@@ -486,17 +487,19 @@ export const contentLanguage = {
 }
 
 const LIKED = 'namba.liked'
-const likedSet = (): Set<number> =>
-  new Set(JSON.parse(localStorage.getItem(LIKED) ?? '[]'))
+/* an origin's ids are another table's, so its likes are another key's */
+const likedKey = (origin: boolean) => (origin ? `${LIKED}.origins` : LIKED)
+const likedSet = (origin: boolean): Set<number> =>
+  new Set(JSON.parse(localStorage.getItem(likedKey(origin)) ?? '[]'))
 
 export const liked = {
-  has: (id: number) => likedSet().has(id),
-  toggle: (id: number) => {
-    const s = likedSet()
+  has: (id: number, origin = false) => likedSet(origin).has(id),
+  toggle: (id: number, origin = false) => {
+    const s = likedSet(origin)
     const on = !s.has(id)
     if (on) s.add(id)
     else s.delete(id)
-    localStorage.setItem(LIKED, JSON.stringify([...s]))
+    localStorage.setItem(likedKey(origin), JSON.stringify([...s]))
     return on
   },
 }
