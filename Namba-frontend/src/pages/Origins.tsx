@@ -307,14 +307,16 @@ function ImageButton({ id, value, onChange, onError }: {
   const { m } = useUi()
   const [busy, setBusy] = useState(false)
   return (
-    <div className="field og-img">
+    /* data-tip and not title: the button has no label over it, so what it is
+       has to arrive as soon as it is pointed at, not after the browser's wait */
+    <div className="field og-img" data-tip={value ? m.form.remove : `${m.form.image} · ${m.form.imageHint}`}>
       {value ? (
-        <button type="button" id={id} className="og-pic" title={m.form.remove}
+        <button type="button" id={id} className="og-pic"
                 aria-label={m.form.remove} onClick={() => onChange(null)}>
           <img src={value} alt="" decoding="async" />
         </button>
       ) : (
-        <label className={`og-pic ${busy ? 'busy' : ''}`} title={m.form.imageHint}>
+        <label className={`og-pic ${busy ? 'busy' : ''}`}>
           {busy ? <span aria-hidden="true">…</span> : (
             /* a framed picture: a sun over a hill, the sign for "image" */
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none"
