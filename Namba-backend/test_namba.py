@@ -182,6 +182,23 @@ def test_origins():
     assert c.post(f"/api/origins/{a['id']}/report",
                   json={"reason": "NOT-A-REASON"}).status_code == 422
 
+    # a picture of either name is one of this wiki's uploads and nothing else;
+    # an edit that replaces one keeps the old path, where the sweep can see it
+    pic = c.post("/api/origins", json={
+        "name": "og-pic", "origin": "og-src2", "author": "ada",
+        "name_image": "/uploads/og-a.png", "origin_image": "/uploads/og-b.png"})
+    assert pic.status_code == 201 and pic.json()["origin_image"] == "/uploads/og-b.png", pic.text
+    assert c.post("/api/origins", json={
+        "name": "og-pic2", "origin": "og-src3", "author": "ada",
+        "name_image": "https://example.com/x.png"}).status_code == 422
+    r = c.patch(f"/api/origins/{pic.json()['id']}", json={
+        "author": "grace", "name_image": "/uploads/og-c.png"})
+    assert (r.json()["name_image"], r.json()["origin_image"]) == ("/uploads/og-c.png", None), r.text
+    import gc_uploads
+    con = db.connect()
+    assert {"og-a.png", "og-b.png", "og-c.png"} <= gc_uploads.referenced(con)
+    con.close()
+
     # the story is optional: a link with none, or only spaces, is still a link
     for more in ({}, {"body": "  "}):
         r = c.post("/api/origins", json={"name": "og-bare", "origin": "og-src",

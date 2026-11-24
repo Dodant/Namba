@@ -28,7 +28,7 @@ NAME_RX = re.compile(r"/uploads/([A-Za-z0-9._-]+)")
 def referenced(con):
     """Every uploaded name the database still points at.
 
-    Four places, not just posts.image: a body can carry ![](/uploads/x.png), a
+    Not just posts.image: a body can carry ![](/uploads/x.png), a
     translation's body can too, and a revision snapshot is an entry in full --
     which is exactly what lets a restore hand an old path back. Snapshots are
     scanned as text rather than parsed, so a name sitting in any field of any
@@ -40,6 +40,11 @@ def referenced(con):
         "SELECT body FROM posts",
         "SELECT body FROM translations",
         "SELECT snapshot FROM revisions",
+        # a link's two pictures, and the ones its edits replaced: a restore
+        # hands those paths back the way a post's snapshot does
+        "SELECT name_image FROM origins", "SELECT origin_image FROM origins",
+        "SELECT name_image FROM origin_revisions",
+        "SELECT origin_image FROM origin_revisions",
     ):
         for (text,) in con.execute(sql):
             names.update(NAME_RX.findall(text or ""))

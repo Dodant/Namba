@@ -143,6 +143,18 @@ export function OriginPage({ lang }: { lang: string }) {
           </div>
         )}
 
+        {(of.name_image || of.origin_image) && (
+          <div className="og-figs">
+            {([[of.name_image, of.name], [of.origin_image, of.origin]] as const).map(
+              ([src, name]) => src && (
+                <figure key={name}>
+                  <img src={src} alt={name} decoding="async" />
+                  <figcaption>{name}</figcaption>
+                </figure>
+              ))}
+          </div>
+        )}
+
         {of.body ? (
           <div className="body"><p>{of.body}</p></div>
         ) : (
@@ -283,13 +295,59 @@ export default function Origins({ lang }: { lang: string }) {
   )
 }
 
+/* The picture of one name, at the far end of its row. One control that is
+   the whole of PostForm's image field: it picks and uploads, and once there
+   is a picture it shows it and takes it away again. */
+function ImageButton({ id, value, onChange, onError }: {
+  id: string
+  value: string | null
+  onChange: (url: string | null) => void
+  onError: (msg: string) => void
+}) {
+  const { m } = useUi()
+  const [busy, setBusy] = useState(false)
+  return (
+    <div className="field og-img">
+      <label htmlFor={id}>{m.form.image}</label>
+      {value ? (
+        <button type="button" id={id} className="og-pic" title={m.form.remove}
+                aria-label={m.form.remove} onClick={() => onChange(null)}>
+          <img src={value} alt="" decoding="async" />
+        </button>
+      ) : (
+        <label className={`og-pic ${busy ? 'busy' : ''}`} title={m.form.imageHint}>
+          <span aria-hidden="true">{busy ? '…' : '+'}</span>
+          <input
+            id={id}
+            type="file"
+            accept="image/*"
+            disabled={busy}
+            onChange={async (e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              setBusy(true)
+              try {
+                onChange((await api.upload(file)).url)
+              } catch (err) {
+                onError(errorText(err))
+              } finally {
+                setBusy(false)
+              }
+            }}
+          />
+        </label>
+      )}
+    </div>
+  )
+}
+
 const LANGS = Object.keys(LANG_CODE)
 /* ponytail: four links is five names, and longer than any chain filed so far.
    A longer one is the same form submitted twice -- the second picks up where
    the first stopped, because a chain is only links that meet. */
 const MAX_LINKS = 4
-type Stop = { name: string; note: string }
-const BLANK: Stop = { name: '', note: '' }
+type Stop = { name: string; note: string; image: string | null }
+const BLANK: Stop = { name: '', note: '', image: null }
 
 /* The chain stood on end: a name, the story, the name it came from, and so
    on down. stops[i] came from stops[i + 1], and stories[i] is how. */
@@ -324,6 +382,8 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
   const uid = useId()
   const [nameNote, setNameNote] = useState(of.name_note ?? '')
   const [originNote, setOriginNote] = useState(of.origin_note ?? '')
+  const [nameImage, setNameImage] = useState(of.name_image)
+  const [originImage, setOriginImage] = useState(of.origin_image)
   const [body, setBody] = useState(of.body)
   const [written, setWritten] = useState(of.lang ?? '')
   const [author, setAuthor] = useState(nickname.get)
@@ -344,6 +404,7 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
       await api.editOrigin(of.id, {
         name_note: nameNote.trim() || null, origin_note: originNote.trim() || null,
         body: body.trim(), author: author.trim(), lang: written || null,
+        name_image: nameImage, origin_image: originImage,
       })
       nav(`/origins/${of.id}`)
     } catch (e) {
@@ -362,6 +423,8 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
       setCur(next)
       setNameNote(next.name_note ?? '')
       setOriginNote(next.origin_note ?? '')
+      setNameImage(next.name_image)
+      setOriginImage(next.origin_image)
       setBody(next.body)
       setWritten(next.lang ?? '')
     } catch (e) {
@@ -374,7 +437,8 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
   /* the filing form's row: the name beside what it is. The name is there to
      be read -- it is what the link is, and an edit does not retype it */
   const stop = (key: string, label: string, name: string, value: string,
-                set: (v: string) => void) => (
+                set: (v: string) => void, image: string | null,
+                setImage: (v: string | null) => void) => (
     <div className="og-stop">
       <div className="field">
         <label htmlFor={`${uid}-${key}n`}>{label}</label>
@@ -387,6 +451,7 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
         <input id={`${uid}-${key}`} maxLength={40} value={value}
                onChange={(e) => set(e.target.value)} />
       </div>
+      <ImageButton id={`${uid}-${key}i`} value={image} onChange={setImage} onError={setErr} />
     </div>
   )
 
@@ -396,7 +461,7 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
       <h1>{m.form.editTitle}</h1>
       <fieldset className="form-fields" disabled={busy}>
         <div className="og-rail">
-          {stop('n', m.origins.name, of.name, nameNote, setNameNote)}
+          {stop('n', m.origins.name, of.name, nameNote, setNameNote, nameImage, setNameImage)}
           <div className="field">
             <label htmlFor={`${uid}-s`}>
               {m.origins.story} <span className="hint">{m.origins.storyHint}</span>
@@ -404,7 +469,7 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
             <textarea id={`${uid}-s`} maxLength={600} value={body}
                       onChange={(e) => setBody(e.target.value)} />
           </div>
-          {stop('o', m.origins.origin, of.origin, originNote, setOriginNote)}
+          {stop('o', m.origins.origin, of.origin, originNote, setOriginNote, originImage, setOriginImage)}
         </div>
         <div className="field">
           <label htmlFor={`${uid}-lang`}>{m.form.writtenIn}</label>
@@ -522,7 +587,8 @@ export function OriginForm({ lang, of, taken }: {
   const uid = useId()
   const got = useAsync(() => api.origins(), [])
   const [stops, setStops] = useState<Stop[]>(of
-    ? [{ name: of.name, note: of.name_note ?? '' }, { name: of.origin, note: of.origin_note ?? '' }]
+    ? [{ name: of.name, note: of.name_note ?? '', image: of.name_image },
+       { name: of.origin, note: of.origin_note ?? '', image: of.origin_image }]
     : [BLANK, BLANK])
   const langs = LANGS.filter((l) => !taken?.includes(l))
   const [stories, setStories] = useState<string[]>([''])
@@ -536,6 +602,7 @@ export function OriginForm({ lang, of, taken }: {
   const draft: OriginInput[] = stories.map((body, i) => ({
     name: stops[i].name.trim(), name_note: stops[i].note.trim() || null,
     origin: stops[i + 1].name.trim(), origin_note: stops[i + 1].note.trim() || null,
+    name_image: stops[i].image, origin_image: stops[i + 1].image,
     body: body.trim(), author: author.trim(), lang: written,
   }))
   /* the draft first, so the preview follows what is being typed before it
@@ -623,6 +690,8 @@ export function OriginForm({ lang, of, taken }: {
                       onChange={(e) => setStop(i, { note: e.target.value })}
                     />
                   </div>
+                  <ImageButton id={`${uid}-i${i}`} value={s.image}
+                               onChange={(image) => setStop(i, { image })} onError={setErr} />
                   {hint(i) && <p className="fine">{hint(i)}</p>}
                 </div>
                 {i < stories.length && (

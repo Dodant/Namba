@@ -263,6 +263,9 @@ export type OriginInput = {
   author: string
   /** what the story is written in, the same free-form name `Post.lang` is */
   lang: string | null
+  /** a picture of each name: one of this wiki's uploads, as `Post.image` is */
+  name_image: string | null
+  origin_image: string | null
 }
 /** A version an edit replaced, as the label the history draws. */
 export type OriginRevision = { id: number; body: string; written_by: string; created_at: string }

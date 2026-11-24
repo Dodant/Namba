@@ -299,6 +299,12 @@ joining, the loop guard and the language rule below.
 - **An entry's rail is `PostPage`'s.** Edit history, `Comments` and
   `FlagPanel`, about the link that was asked for; the last two are the same
   components with `origin` set, which only changes the route they call.
+- **Each name on a form's row has a picture button at its far end.**
+  `ImageButton` is `PostForm`'s image field in one control: it uploads
+  through `api.upload`, then shows the picture and removes it on a press. In
+  a chain the middle name's picture is sent twice, as its note is — as one
+  link's `origin_image` and the next one's `name_image`. The entry draws the
+  two under its meta row.
 - **A link is liked the way an entry is**, with the same `Like` button told
   the id is an origin's: its own route and its own localStorage key, since the
   two tables number their rows apart.

@@ -338,6 +338,8 @@ CREATE TABLE IF NOT EXISTS origins (
   author      TEXT NOT NULL,
   lang        TEXT,                       -- what body is written in; free-form, like posts.lang
   likes       INTEGER NOT NULL DEFAULT 0,
+  name_image  TEXT,                       -- a picture of each name: one of this
+  origin_image TEXT,                      -- wiki's uploads, like posts.image
   edited_by   TEXT,                       -- the last editor; author stays the first writer
   status      TEXT NOT NULL DEFAULT 'ACTIVE',
   created_at  TEXT NOT NULL
@@ -351,6 +353,8 @@ CREATE TABLE IF NOT EXISTS origin_revisions (
   origin_note TEXT,
   body        TEXT NOT NULL,
   lang        TEXT,
+  name_image  TEXT,
+  origin_image TEXT,
   written_by  TEXT NOT NULL,              -- who wrote the version this row keeps
   created_at  TEXT NOT NULL               -- when it was replaced
 );
@@ -658,6 +662,16 @@ def _origin_edited_by_column(con):
         con.execute("ALTER TABLE origins ADD COLUMN edited_by TEXT")
 
 
+def _origin_image_columns(con):
+    """A picture for each of a link's two names, on the link and on the
+    versions its edits keep, for a database that had both tables first."""
+    for table in ("origins", "origin_revisions"):
+        have = {r["name"] for r in con.execute(f"PRAGMA table_info({table})")}
+        for col in ("name_image", "origin_image"):
+            if col not in have:
+                con.execute(f"ALTER TABLE {table} ADD COLUMN {col} TEXT")
+
+
 def _on_this_day_column(con):
     """The Calendar index's historical-event fold.
 
@@ -719,6 +733,7 @@ MIGRATIONS = (
     _birth_death_is_now_in_memoriam,
     _origin_likes_column,
     _origin_edited_by_column,
+    _origin_image_columns,
 )
 
 

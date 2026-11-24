@@ -467,8 +467,11 @@ the sitemap.
   second open one of the same kind from the same reader, through
   `_already_open`. The operator reads them at `/api/admin/origins/{id}/flags`
   and closes them at `.../flags/close`, which does nothing to the link. The edit takes the
-  story, the two notes and the language, never a name, and logs
-  `ORIGIN_EDIT`. `rewrite_origin` is the one place a link's words change: it
+  story, the two notes, the language and the two pictures — `ORIGIN_WORDS`,
+  the one list `rewrite_origin` both keeps and writes — never a name, and
+  logs `ORIGIN_EDIT`. A picture is `name_image` or `origin_image`, held to
+  `own_upload` like `posts.image`, and `gc_uploads.referenced` reads both
+  columns off the link and off its kept versions. `rewrite_origin` is the one place a link's words change: it
   copies them into `origin_revisions` and then writes, so the restore
   (`ORIGIN_REVERT`, a name `ORIGIN_RESTORE` had already taken for an operator
   unhiding one) keeps what it replaces exactly as an edit does.

@@ -1516,7 +1516,18 @@ def remove_link(
 # --- origins ------------------------------------------------------------
 ORIGIN_NAME_MAX, ORIGIN_NOTE_MAX, ORIGIN_BODY_MAX = 80, 40, 600
 ORIGIN_COLS = ("id, name, name_note, origin, origin_note, body, author, lang, likes, "
-               "edited_by, created_at")
+               "name_image, origin_image, edited_by, created_at")
+# what an edit may rewrite and a version keeps: everything but the two names
+ORIGIN_WORDS = ("name_note", "origin_note", "body", "lang", "name_image", "origin_image")
+
+
+def own_upload(v):
+    """A picture is one of this wiki's uploads -- the rule `PostIn` states
+    for `image`, for the same reason, on a link's two."""
+    if v is not None and not UPLOAD_PATH.match(v):
+        raise ValueError("an image is one of this wiki's uploads: /uploads/<name>."
+                         + "|".join(sorted(e[1:] for e in ALLOWED_EXT)))
+    return v
 
 
 class OriginIn(Text):
@@ -1534,6 +1545,10 @@ class OriginIn(Text):
     body: str = Field(default="", max_length=ORIGIN_BODY_MAX)
     author: str = Field(min_length=1, max_length=40)
     lang: Optional[str] = Field(default=None, max_length=40)
+    name_image: Optional[str] = Field(default=None, max_length=300)
+    origin_image: Optional[str] = Field(default=None, max_length=300)
+
+    _own = field_validator("name_image", "origin_image")(own_upload)
 
     @field_validator("name", "origin")
     @classmethod
@@ -1585,10 +1600,10 @@ def create_origin(o: OriginIn, who=Depends(guard), con=Depends(get_db)):
                      f"following that back arrives at {o.name} again")
         cur = con.execute(
             """INSERT INTO origins (name, name_note, origin, origin_note, body,
-                                    author, lang, created_at)
-               VALUES (?,?,?,?,?,?,?,?)""",
+                                    author, lang, name_image, origin_image, created_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?)""",
             (o.name, o.name_note, o.origin, o.origin_note, o.body, author,
-             o.lang, now()))
+             o.lang, o.name_image, o.origin_image, now()))
         events.record(con, "ORIGIN", client=who, who=author,
                       target_type="origin", target_id=cur.lastrowid)
         row = con.execute(f"SELECT {ORIGIN_COLS} FROM origins WHERE id = ?",
@@ -1618,6 +1633,10 @@ class OriginEditIn(Text):
     body: str = Field(default="", max_length=ORIGIN_BODY_MAX)
     author: str = Field(min_length=1, max_length=40)
     lang: Optional[str] = Field(default=None, max_length=40)
+    name_image: Optional[str] = Field(default=None, max_length=300)
+    origin_image: Optional[str] = Field(default=None, max_length=300)
+
+    _own = field_validator("name_image", "origin_image")(own_upload)
 
     @field_validator("body")
     @classmethod
@@ -1643,26 +1662,26 @@ def edit_origin(origin_id: int, o: OriginEditIn, who=Depends(guard), con=Depends
     """
     editor = nick(o.author)
     with writing(con):
-        rewrite_origin(con, live_origin(con, origin_id), o.name_note, o.origin_note,
-                       o.body, o.lang, editor)
+        rewrite_origin(con, live_origin(con, origin_id), o.model_dump(), editor)
         events.record(con, "ORIGIN_EDIT", client=who, who=editor,
                       target_type="origin", target_id=origin_id)
         return live_origin(con, origin_id)
 
 
-def rewrite_origin(con, was, name_note, origin_note, body, lang, by):
-    """Keep `was`'s words, then write the new ones -- the one way a link's
-    words change, so an edit and a restore cannot disagree about what is kept."""
+def rewrite_origin(con, was, new, by):
+    """Keep `was`'s words, then write `new`'s -- the one way a link's words
+    change, so an edit and a restore cannot disagree about what is kept.
+    ORIGIN_WORDS is both lists, so a field cannot be written and not kept."""
+    cols = ", ".join(ORIGIN_WORDS)
     con.execute(
-        """INSERT INTO origin_revisions (origin_id, name_note, origin_note, body,
-                                         lang, written_by, created_at)
-           VALUES (?,?,?,?,?,?,?)""",
-        (was["id"], was["name_note"], was["origin_note"], was["body"], was["lang"],
+        f"""INSERT INTO origin_revisions (origin_id, {cols}, written_by, created_at)
+            VALUES (?, {", ".join("?" * len(ORIGIN_WORDS))}, ?, ?)""",
+        (was["id"], *(was[c] for c in ORIGIN_WORDS),
          was["edited_by"] or was["author"], now()))
     con.execute(
-        """UPDATE origins SET name_note = ?, origin_note = ?, body = ?, lang = ?,
-                              edited_by = ? WHERE id = ?""",
-        (name_note, origin_note, body, lang, by, was["id"]))
+        f"""UPDATE origins SET {", ".join(c + " = ?" for c in ORIGIN_WORDS)},
+                               edited_by = ? WHERE id = ?""",
+        (*(new[c] for c in ORIGIN_WORDS), by, was["id"]))
 
 
 @app.get("/api/origins/{origin_id}/revisions")
@@ -1690,8 +1709,7 @@ def restore_origin_revision(origin_id: int, rev_id: int, body: RestoreIn,
             (rev_id, origin_id)).fetchone()
         if old is None:
             raise HTTPException(404, "revision not found")
-        rewrite_origin(con, was, old["name_note"], old["origin_note"], old["body"],
-                       old["lang"], by)
+        rewrite_origin(con, was, old, by)
         events.record(con, "ORIGIN_REVERT", client=who, who=by,
                       target_type="origin", target_id=origin_id)
         return live_origin(con, origin_id)

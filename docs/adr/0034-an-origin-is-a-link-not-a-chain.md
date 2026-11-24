@@ -77,6 +77,12 @@ them decide (ADR-0007).
 
 ## History
 
+- 2026-11-24: a picture for each of a link's two names, `name_image` and
+  `origin_image`, asked for as a button at the end of each row of the form.
+  Two columns rather than one because the row it sits on is a name's, and in
+  a chain the middle name is one link's origin and the next one's name — the
+  shape the two notes already have.
+
 - 2026-11-24: the first version of this record had no edit at all, on the
   ground that nothing snapshotted a link. The requester asked for an Edit
   shaped like an entry's the same day, so the snapshot was added instead:
