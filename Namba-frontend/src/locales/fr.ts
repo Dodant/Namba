@@ -196,8 +196,6 @@ export const FR: Messages = {
     addTitle: 'Ajouter une origine',
     filter: 'Filtrer les noms, les origines et les histoires',
     folded: 'Regrouper en chaînes',
-    count: (names: number, links: number) =>
-      `${fmtCount(names, 'fr')} ${names === 1 ? 'nom' : 'noms'} · ${fmtCount(links, 'fr')} ${links === 1 ? 'lien' : 'liens'}`,
     empty: 'Aucune origine n’a encore été écrite.',
     noMatches: 'Aucun nom ne correspond.',
     cameFromHere: (n: number) => `${fmtCount(n, 'fr')} noms viennent d’ici`,

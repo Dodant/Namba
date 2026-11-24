@@ -175,7 +175,6 @@ export const ZH_HANS: Messages = {
     addTitle: '添加由来',
     filter: '筛选名字、由来和故事',
     folded: '合并成链',
-    count: (names: number, links: number) => `${fmtCount(names, 'zh-Hans')} 个名字 · ${fmtCount(links, 'zh-Hans')} 条连接`,
     empty: '还没有人写下由来。',
     noMatches: '没有匹配的名字。',
     cameFromHere: (n: number) => `${fmtCount(n, 'zh-Hans')} 个名字源自这里`,

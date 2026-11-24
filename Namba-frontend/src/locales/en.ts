@@ -215,8 +215,6 @@ export const EN = {
     addTitle: 'Add an origin',
     filter: 'Filter names, origins and stories',
     folded: 'Fold into chains',
-    count: (names: number, links: number) =>
-      `${fmtCount(names, 'en')} ${names === 1 ? 'name' : 'names'} · ${fmtCount(links, 'en')} ${links === 1 ? 'link' : 'links'}`,
     empty: 'No origins written yet.',
     noMatches: 'No names match.',
     cameFromHere: (n: number) => `${fmtCount(n, 'en')} names came from here`,

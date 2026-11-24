@@ -193,8 +193,6 @@ export const DE: Messages = {
     addTitle: 'Herkunft hinzufügen',
     filter: 'Namen, Herkünfte und Geschichten filtern',
     folded: 'Zu Ketten zusammenfassen',
-    count: (names: number, links: number) =>
-      `${fmtCount(names, 'de')} ${names === 1 ? 'Name' : 'Namen'} · ${fmtCount(links, 'de')} ${links === 1 ? 'Verbindung' : 'Verbindungen'}`,
     empty: 'Noch keine Herkunft geschrieben.',
     noMatches: 'Kein Name passt.',
     cameFromHere: (n: number) => `${fmtCount(n, 'de')} Namen stammen von hier`,

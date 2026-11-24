@@ -171,7 +171,6 @@ export const KO: Messages = {
     addTitle: '유래 추가',
     filter: '이름, 유래, 이야기 걸러 보기',
     folded: '사슬로 묶기',
-    count: (names: number, links: number) => `이름 ${fmtCount(names, 'ko')}개 · 연결 ${fmtCount(links, 'ko')}개`,
     empty: '아직 작성된 유래가 없습니다.',
     noMatches: '맞는 이름이 없습니다.',
     cameFromHere: (n: number) => `여기서 나온 이름 ${fmtCount(n, 'ko')}개`,

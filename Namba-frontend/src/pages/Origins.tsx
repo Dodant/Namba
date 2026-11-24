@@ -99,7 +99,6 @@ export default function Origins({ lang }: { lang: string }) {
       nameKey([l.name, l.name_note, l.origin, l.origin_note, l.body].filter(Boolean).join(' '))
         .includes(needle)))
     .sort((a, b) => a[0].name.localeCompare(b[0].name, locale))
-  const names = new Set(list.flatMap((e) => [nameKey(e.name), nameKey(e.origin)])).size
 
   return (
     <>
@@ -131,7 +130,7 @@ export default function Origins({ lang }: { lang: string }) {
       {got.loading && <p className="empty" role="status">{m.common.loading}</p>}
       {got.data && (
         <>
-          <p className="quiet">{m.origins.count(names, list.length)}</p>
+          <p className="quiet">{m.common.entries(list.length)}</p>
           {shown.map((r) => (
             <Chain
               key={r[0].id}

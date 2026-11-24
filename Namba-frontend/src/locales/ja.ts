@@ -176,7 +176,6 @@ export const JA: Messages = {
     addTitle: '由来を追加',
     filter: '名前・由来・物語で絞り込む',
     folded: '連鎖にまとめる',
-    count: (names: number, links: number) => `名前 ${fmtCount(names, 'ja')}件 · リンク ${fmtCount(links, 'ja')}件`,
     empty: 'まだ由来がありません。',
     noMatches: '一致する名前がありません。',
     cameFromHere: (n: number) => `ここから生まれた名前 ${fmtCount(n, 'ja')}件`,
