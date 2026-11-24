@@ -11,7 +11,7 @@ import { useAsync } from '../useAsync'
 import { revisionBy, useUi } from '../uiLocale'
 import FlagPanel from '../components/FlagPanel'
 import { fmtCount, fmtDate, numSize } from '../format'
-import { FmtTabs } from './Home'
+import { FmtTabs, Photo } from './Home'
 import { Comments } from './PostPage'
 
 const Name = ({ text, note, head }: { text: string; note?: string | null; head?: boolean }) => (
@@ -276,6 +276,8 @@ export default function Origins({ lang }: { lang: string }) {
             <div className="og-row" key={r[0].id}>
               <Link className="og-link" to={`/origins/${r[0].id}`}>
                 <Names links={r} />
+                {/* the index's own mark for an entry with a picture */}
+                {r.some((l) => l.name_image || l.origin_image) && <Photo label={m.home.hasImage} />}
                 <span className="og-teaser">{r.find((l) => l.body)?.body}</span>
               </Link>
               {/* the index's own like: same class, same reveal, same absence

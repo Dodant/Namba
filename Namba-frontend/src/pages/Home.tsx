@@ -14,7 +14,7 @@ import { useUi, type Messages } from '../uiLocale'
 
 /* one path instead of an icon package -- it inherits currentColor and the
    row's font size, so it stays as quiet as the text beside it */
-const Photo = ({ label }: { label: string }) => (
+export const Photo = ({ label }: { label: string }) => (
   <svg className="ix-img" viewBox="0 0 16 16" role="img" aria-label={label}>
     <rect x="1.4" y="3" width="13.2" height="10" rx="1.6" fill="none"
           stroke="currentColor" strokeWidth="1.3" />
