@@ -261,13 +261,22 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
     }
   }
 
-  const note = (key: string, label: string, value: string, set: (v: string) => void) => (
-    <div className="field">
-      <label htmlFor={`${uid}-${key}`}>
-        {label} · {m.origins.note} <span className="hint">{m.origins.noteHint}</span>
-      </label>
-      <input id={`${uid}-${key}`} maxLength={40} value={value}
-             onChange={(e) => set(e.target.value)} />
+  /* the filing form's row: the name beside what it is. The name is there to
+     be read -- it is what the link is, and an edit does not retype it */
+  const stop = (key: string, label: string, name: string, value: string,
+                set: (v: string) => void) => (
+    <div className="og-stop">
+      <div className="field">
+        <label htmlFor={`${uid}-${key}n`}>{label}</label>
+        <input id={`${uid}-${key}n`} readOnly value={name} />
+      </div>
+      <div className="field">
+        <label htmlFor={`${uid}-${key}`}>
+          {m.origins.note} <span className="hint">{m.origins.noteHint}</span>
+        </label>
+        <input id={`${uid}-${key}`} maxLength={40} value={value}
+               onChange={(e) => set(e.target.value)} />
+      </div>
     </div>
   )
 
@@ -275,16 +284,17 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
     <div className="form-layout">
     <form className="form" onSubmit={submit}>
       <h1>{m.form.editTitle}</h1>
-      <p className="og-page"><Names links={[of]} /></p>
       <fieldset className="form-fields" disabled={busy}>
-        {note('n', of.name, nameNote, setNameNote)}
-        {note('o', of.origin, originNote, setOriginNote)}
-        <div className="field">
-          <label htmlFor={`${uid}-s`}>
-            {m.origins.story} <span className="hint">{m.origins.storyHint}</span>
-          </label>
-          <textarea id={`${uid}-s`} maxLength={600} value={body}
-                    onChange={(e) => setBody(e.target.value)} />
+        <div className="og-rail">
+          {stop('n', m.origins.name, of.name, nameNote, setNameNote)}
+          <div className="field">
+            <label htmlFor={`${uid}-s`}>
+              {m.origins.story} <span className="hint">{m.origins.storyHint}</span>
+            </label>
+            <textarea id={`${uid}-s`} maxLength={600} value={body}
+                      onChange={(e) => setBody(e.target.value)} />
+          </div>
+          {stop('o', m.origins.origin, of.origin, originNote, setOriginNote)}
         </div>
         <div className="field">
           <label htmlFor={`${uid}-lang`}>{m.form.writtenIn}</label>

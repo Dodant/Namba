@@ -2298,5 +2298,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .og-stop .field { margin-bottom: 14px; }
 .og-stop .fine { grid-column: 1 / -1; margin: -6px 0 14px; color: var(--accent); }
 .og-rail > .actions { margin: 0 0 clamp(20px, 3.5vw, 28px); }
+/* the edit form's rail ends on a stop, with no buttons to hold the gap */
+.og-rail > .og-stop:last-child .field { margin-bottom: clamp(20px, 3.5vw, 28px); }
 .og-preview { min-width: 0; }
 @media (max-width: 560px) { .og-stop { grid-template-columns: minmax(0, 1fr); } }
