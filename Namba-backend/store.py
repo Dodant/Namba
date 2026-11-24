@@ -519,3 +519,37 @@ def write_translations(con, post_id, rows):
             for r in rows
         ],
     )
+
+
+def leads_back(con, name, origin):
+    """Would filing `name` as having come from `origin` close a loop?
+
+    The deciding read of both writes that can make a link live: the public
+    create, and an operator putting a hidden one back. It walks every live
+    link rather than the first per name, because a name may have two origins
+    filed and a loop through the second is still a loop. A name that is its
+    own origin is the shortest one and needs no branch of its own.
+
+    Names are compared case-folded and stored as typed, which is the rule
+    `/a/` reads by; `nameKey` in the front end's `origins.ts` is the same
+    comparison, drawn rather than enforced.
+
+    ponytail: reads the whole live table per write. Writes are twenty a
+    minute per address and a row is two short strings; an index on the folded
+    name and a walk per step is the upgrade if this is ever thousands of rows.
+    """
+    def key(s):
+        return s.strip().lower()
+
+    up = {}
+    for r in con.execute("SELECT name, origin FROM origins WHERE status = ?", (LIVE,)):
+        up.setdefault(key(r["name"]), set()).add(key(r["origin"]))
+    target, todo, seen = key(name), [key(origin)], set()
+    while todo:
+        k = todo.pop()
+        if k == target:
+            return True
+        if k not in seen:
+            seen.add(k)
+            todo.extend(up.get(k, ()))
+    return False

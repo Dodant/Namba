@@ -5,7 +5,9 @@
     Nothing here holds a token. The session is an httpOnly cookie the browser
     sends by existing, which is why every call below looks like a plain fetch
     and why a 401 is the only thing that means "signed out". */
-import { json, qs, req, type Format, type Params, type Post, type PostStatus } from '../api'
+import {
+  json, qs, req, type Format, type Origin, type Params, type Post, type PostStatus,
+} from '../api'
 
 export type Role = 'ADMIN' | 'SUPER_ADMIN'
 export type Who = { id: number; email: string; role: Role }
@@ -23,6 +25,7 @@ export type Stats = {
   edited_today: number
   requests_pending: number
   reports_open: number
+  origin_flags_open: number
   /** When the oldest thing still waiting arrived, or null when nothing is.
       A queue is judged by its age rather than its length: two pending
       requests is nothing and two pending requests from March is a wiki
@@ -246,6 +249,19 @@ export type Abuse = {
   duplicates: Duplicate[]
 }
 
+/** A link as an operator reads it: the public shape plus what was decided. */
+/** `flags` is the open reports and removal requests on the link, together. */
+export type OriginRow = Origin & { status: PostStatus; flags: number }
+export type OriginFlag = {
+  id: number
+  kind: 'report' | 'remove'
+  reason: string
+  detail: string
+  requested_by: string | null
+  status: string
+  created_at: string
+}
+
 export type Block = {
   id: number
   type: string
@@ -352,6 +368,21 @@ export const adm = {
 
   abuse: (p: Params = {}) => req<Abuse>(`/api/admin/abuse${qs(p)}`),
 
+  origins: (p: Params = {}) => req<Page<OriginRow>>(`/api/admin/origins${qs(p)}`),
+
+  /** The Origins twin of setStatus, and the same route is the undo. */
+  setOriginStatus: (id: number, status: PostStatus, note: string) =>
+    req<{ id: number; status: PostStatus; was: PostStatus }>(
+      `/api/admin/origins/${id}/status`, json('POST', { status, note }),
+    ),
+
+  originFlags: (id: number) => req<OriginFlag[]>(`/api/admin/origins/${id}/flags`),
+
+  /** Closes every open flag on the link and does nothing to the link. */
+  closeOriginFlags: (id: number, note: string) =>
+    req<{ closed: number }>(`/api/admin/origins/${id}/flags/close`,
+      json('POST', { status: 'RESOLVED', note })),
+
   blocks: (p: Params = {}) => req<Page<Block>>(`/api/admin/blocks${qs(p)}`),
 
   /** `hours: null` is permanent, and has to be sent as such: a block nobody
@@ -410,6 +441,14 @@ export const ACTION_LABEL: Record<string, string> = {
   ADMIN_DEACTIVATE: 'revoked an operator',
   ADMIN_PASSWORD: 'changed a password',
   ADMIN_TOTP_ENROLL: 'enrolled an authenticator',
+  ORIGIN: 'filed an origin',
+  ORIGIN_EDIT: 'edited an origin',
+  ORIGIN_FLAG: 'flagged an origin',
+  ORIGIN_FLAGS_CLOSE: 'closed the flags on an origin',
+  ORIGIN_REVERT: 'restored an origin\'s earlier version',
+  ORIGIN_HIDE: 'hid an origin',
+  ORIGIN_DELETE: 'removed an origin',
+  ORIGIN_RESTORE: 'put an origin back',
   CONTENT_HIDE: 'hid an entry',
   CONTENT_DELETE: 'removed an entry',
   CONTENT_RESTORE: 'put an entry back',

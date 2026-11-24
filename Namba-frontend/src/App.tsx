@@ -14,6 +14,9 @@ import PostPage from './pages/PostPage'
 import PostForm from './pages/PostForm'
 import Guide from './pages/Guide'
 import Heatmap from './pages/Heatmap'
+import Origins, {
+  OriginEdit, OriginForm, OriginPage, OriginTranslate,
+} from './pages/Origins'
 import { useAsync } from './useAsync'
 import { UI_LOCALES, type UiLocale } from './locales'
 import { UiProvider, useUi } from './uiLocale'
@@ -660,6 +663,11 @@ function Wiki() {
             <Route path="/guide" element={<Guide />} />
             <Route path="/contributors" element={<Contributors />} />
             <Route path="/heatmap" element={<Heatmap lang={lang} />} />
+            <Route path="/origins" element={<Origins lang={lang} />} />
+            <Route path="/origins/new" element={<OriginForm lang={lang} />} />
+            <Route path="/origins/:id" element={<OriginPage lang={lang} />} />
+            <Route path="/origins/:id/edit" element={<OriginEdit />} />
+            <Route path="/origins/:id/translate" element={<OriginTranslate lang={lang} />} />
             <Route
               path="*"
               element={

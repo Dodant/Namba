@@ -19,4 +19,5 @@ export const GLOBAL_NAV = {
 export const GLOBAL_TERMS = {
   search: 'Search',
   github: 'GitHub',
+  origins: 'Origins',
 } as const

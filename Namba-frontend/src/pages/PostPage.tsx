@@ -8,6 +8,7 @@ import {
   type Comment, type Revision,
 } from '../api'
 import { fmtCount, fmtDate, numSize, plain, showValue } from '../format'
+import { Photo } from './Home'
 import FlagPanel from '../components/FlagPanel'
 import { NicknameField } from '../components/NicknameField'
 import { Like } from '../components/PostCard'
@@ -82,9 +83,10 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
             <ol className="revs">
               {revs.data.map((r) => (
                 <li className="rev" key={r.id}>
-                  <b>{r.title}</b>
+                  <b>{r.title}{r.image && <Photo label={m.home.hasImage} />}</b>
+                  {r.body && <span className="ver-b">{plain(r.body)}</span>}
                   <span>
-                    {showValue(r.value, r.grouped, locale, r.format)} · {revisionBy(r.author, m)} · {fmtDate(r.at, locale)}
+                    {showValue(r.value, r.grouped, locale, r.format)} · {revisionBy(r.author, m)}{' '}<span className="when">· {fmtDate(r.at, locale)}</span>
                   </span>
                   <button className="btn small" onClick={() => resurrect(r)}>
                     {m.common.restore}
@@ -297,16 +299,18 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
           </summary>
           <ol className="revs">
             <li className="rev now">
-              <b>{post.title}</b>
+              <b>{post.title}{post.image && <Photo label={m.home.hasImage} />}</b>
+              {post.body && <span className="ver-b">{plain(post.body)}</span>}
               <span>
                 {m.post.current} · {post.edited_by ? m.post.editedBy(post.edited_by) : m.common.by(post.author)}
               </span>
             </li>
             {revs.data?.map((r) => (
               <li className="rev" key={r.id}>
-                <b>{r.title}</b>
+                <b>{r.title}{r.image && <Photo label={m.home.hasImage} />}</b>
+                {r.body && <span className="ver-b">{plain(r.body)}</span>}
                 <span>
-                  {revisionBy(r.author, m)} · {fmtDate(r.at, locale)}
+                  {revisionBy(r.author, m)}{' '}<span className="when">· {fmtDate(r.at, locale)}</span>
                 </span>
               </li>
             ))}
@@ -341,7 +345,7 @@ const COMMENTS_SHOWN = 5
     Nothing here rewrites or removes a comment. With no accounts a Remove button
     belongs to nobody, and unlike an entry a comment has no revision behind it,
     so the button would be the loss rather than the guard against it. */
-function Comments({ id }: { id: string }) {
+export function Comments({ id, origin = false }: { id: string; origin?: boolean }) {
   const { locale, m } = useUi()
   const uid = useId()
   const fid = (name: string) => `${uid}-${name}`
@@ -353,8 +357,8 @@ function Comments({ id }: { id: string }) {
 
   useEffect(() => {
     setSaid(null)
-    api.comments(id).then(setSaid, (e) => setErr(errorText(e)))
-  }, [id])
+    api.comments(id, origin).then(setSaid, (e) => setErr(errorText(e)))
+  }, [id, origin])
 
   /* The POST answers with the list, so what came back is the state: no refetch,
      no bump dep. The nickname is remembered the way every other form on the
@@ -369,7 +373,7 @@ function Comments({ id }: { id: string }) {
     setErr('')
     nickname.set(author)
     try {
-      setSaid(await api.comment(id, { author: author.trim(), body }))
+      setSaid(await api.comment(id, { author: author.trim(), body }, origin))
       setBody('')
     } catch (e) {
       setErr(errorText(e))
@@ -462,7 +466,7 @@ const cmt = (c: Comment, locale = 'en') => (
   <div className="cmt" key={c.id}>
     <p>{c.body}</p>
     <span>
-      {c.author} · {fmtDate(c.created_at, locale)}
+      {c.author}{' '}<span className="when">· {fmtDate(c.created_at, locale)}</span>
     </span>
   </div>
 )

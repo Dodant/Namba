@@ -7,11 +7,13 @@ import {
 } from '../api'
 import {
   canGroupValue, canonicalNumber, cleanNumberInput, fmtDate, monthDay,
-  monthDays, monthDayValue, monthName, showValue, todayMonthDay,
+  monthDays, monthDayValue, monthName, showValue, todayMonthDay, plain,
 } from '../format'
 import { UI_LOCALES } from '../locales'
 import { draftIsStale, leaveDraft, openDraft, type DraftFields, type DraftStatus } from '../drafts'
 import ExistingEntries from '../components/ExistingEntries'
+import { ImageButton } from '../components/ImageButton'
+import { Photo } from './Home'
 import { NicknameField } from '../components/NicknameField'
 import { useAsync } from '../useAsync'
 import { revisionBy, useUi, type Messages } from '../uiLocale'
@@ -460,20 +462,6 @@ function Editor() {
     }
   }
 
-  async function pickImage(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setErr('')
-    setUploading(true)
-    try {
-      setImage((await api.upload(file)).url)
-      setImageFailed(false)
-    } catch (e) {
-      setErr(errorText(e))
-    } finally {
-      setUploading(false)
-    }
-  }
 
   function acceptPanelWrite(next: Post) {
     // A panel write advances a current base, but never a restored stale one.
@@ -789,18 +777,30 @@ function Editor() {
           </div>
         </div>
 
-        <div className="field">
-          <label htmlFor={fid('title')}>
-            {m.form.title}{' '}
-            <span className="hint">{m.form.titleHint}</span>
-          </label>
-          <input
-            id={fid('title')}
-            required
-            maxLength={200}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={m.form.titlePlaceholder(section)}
+        {/* the picture sits at the end of the title's row, as it does beside
+            each name of an Origins link */}
+        <div className="title-row">
+          <div className="field">
+            <label htmlFor={fid('title')}>
+              {m.form.title}{' '}
+              <span className="hint">{m.form.titleHint}</span>
+            </label>
+            <input
+              id={fid('title')}
+              required
+              maxLength={200}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={m.form.titlePlaceholder(section)}
+            />
+          </div>
+          <ImageButton
+            id={fid('image')}
+            value={image}
+            onChange={(url) => { setImage(url); setImageFailed(false) }}
+            onError={setErr}
+            onBusy={setUploading}
+            onBroken={() => setImageFailed(true)}
           />
         </div>
 
@@ -893,17 +893,18 @@ function Editor() {
                 </button>
               ),
             )}
+            {/* at the far end of the chips' own row, and gone once pressed:
+                it opens the rest and there is nothing to fold back for */}
+            {!allCategories && (vocab.data?.length ?? 0) > 8 && (
+              <button
+                type="button"
+                className="category-more"
+                onClick={() => setAllCategories(true)}
+              >
+                {m.form.allCategories}
+              </button>
+            )}
           </div>
-          {(vocab.data?.length ?? 0) > 8 && (
-            <button
-              type="button"
-              className="category-more"
-              aria-expanded={allCategories}
-              onClick={() => setAllCategories((open) => !open)}
-            >
-              {allCategories ? m.form.fewerCategories : m.form.allCategories}
-            </button>
-          )}
           <div className="coin">
             <input
               value={coined}
@@ -935,37 +936,6 @@ function Editor() {
               {m.form.add}
             </button>
           </div>
-        </div>
-
-        <div className="field">
-          <label htmlFor={fid('image')}>
-            {m.form.image}{' '}
-            <span className="hint">{m.form.imageHint}</span>
-          </label>
-          {image ? (
-            <div className="file-row">
-              <img className="thumb" src={image} alt="" decoding="async" onError={() => setImageFailed(true)} />
-              <button type="button" className="pill" onClick={() => { setImage(null); setImageFailed(false) }}>
-                {m.form.remove}
-              </button>
-            </div>
-          ) : (
-            <>
-              <input
-                id={fid('image')}
-                className="file"
-                type="file"
-                accept="image/*"
-                disabled={uploading}
-                onChange={pickImage}
-              />
-              {uploading && (
-                <p className="fine" role="status">
-                  {m.form.uploading}
-                </p>
-              )}
-            </>
-          )}
         </div>
 
         {imageFailed && <p className="err" role="alert">{m.form.draftImageMissing}</p>}
@@ -1034,7 +1004,10 @@ function Editor() {
             <div className="panel">
               <div className="panel-row now">
                 <div className="panel-main">
-                  <span className="panel-t now">{post.title}</span>
+                  <span className="panel-t now">
+                    {post.title}{post.image && <Photo label={m.home.hasImage} />}
+                  </span>
+                  {post.body && <span className="ver-b">{plain(post.body)}</span>}
                   <span className="panel-m">
                     {m.form.current} ·{' '}
                     {post.edited_by ? m.post.editedBy(post.edited_by) : m.common.by(post.author)}
@@ -1044,9 +1017,12 @@ function Editor() {
               {revs.map((r) => (
                 <div className="panel-row" key={r.id}>
                   <div className="panel-main">
-                    <span className="panel-t">{r.title}</span>
+                    <span className="panel-t">
+                      {r.title}{r.image && <Photo label={m.home.hasImage} />}
+                    </span>
+                    {r.body && <span className="ver-b">{plain(r.body)}</span>}
                     <span className="panel-m">
-                      {revisionBy(r.author, m)} · {fmtDate(r.at, locale)}
+                      {revisionBy(r.author, m)}{' '}<span className="when">· {fmtDate(r.at, locale)}</span>
                     </span>
                   </div>
                   {/* type=button and outside the form both, so a restore can

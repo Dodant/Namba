@@ -11,6 +11,7 @@ import Requests from './pages/Requests'
 import Reports from './pages/Reports'
 import Abuse from './pages/Abuse'
 import Blocks from './pages/Blocks'
+import Origins from './pages/Origins'
 import Log from './pages/Log'
 import Plugin from './pages/Plugin'
 import Operators from './pages/Operators'
@@ -35,6 +36,7 @@ const NAV: Item[] = [
   { to: '/reports', label: 'Reports', group: 'Moderation', tally: 'reports_open' },
   { to: '/abuse', label: 'Spam & abuse', group: 'Moderation' },
   { to: '/content', label: 'All content', group: 'Content' },
+  { to: '/origins', label: 'Origins', group: 'Content', tally: 'origin_flags_open' },
   { to: '/changes', label: 'Recent changes', group: 'Content' },
   { to: '/blocks', label: 'Blocked clients', group: 'Security', tally: 'blocked' },
   { to: '/audit', label: 'Audit log', group: 'Security' },
@@ -204,6 +206,7 @@ export default function AdminApp() {
                 entry's page. */}
             <Route path="/changes" element={<Log kind="anon" />} />
             <Route path="/abuse" element={<Abuse />} />
+            <Route path="/origins" element={<Origins />} />
             <Route path="/blocks" element={<Blocks />} />
             <Route path="/audit" element={<Log kind="admin" />} />
             <Route path="/plugin" element={<Plugin />} />

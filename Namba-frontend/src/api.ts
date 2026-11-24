@@ -212,6 +212,10 @@ export type Revision = {
       date. */
   format: Format
   grouped: boolean
+  /** the first lines of that version's body and whether it had a picture --
+      what tells two versions with one title apart before a Restore */
+  body: string
+  image: boolean
 }
 
 /** Something said beside an entry rather than in it. No `edited_by` and no
@@ -248,6 +252,38 @@ export type PostInput = {
   in_memoriam?: boolean
   on_this_day?: boolean
   year?: number | null
+}
+
+/** One Origins entry: `name` came from `origin`, and `body` is the story of
+    how. A link and not a page -- chains are worked out in `origins.ts` from
+    entries whose origin is another's name. The two notes say what each name
+    is the name of, since Python is a snake until somebody says otherwise. */
+export type OriginInput = {
+  name: string
+  name_note: string | null
+  origin: string
+  origin_note: string | null
+  body: string
+  author: string
+  /** what the story is written in, the same free-form name `Post.lang` is */
+  lang: string | null
+  /** a picture of each name: one of this wiki's uploads, as `Post.image` is */
+  name_image: string | null
+  origin_image: string | null
+}
+/** A version an edit replaced: its words, since those are all that tell one
+    version of a link from another. */
+export type OriginRevision = Omit<OriginInput, 'name' | 'origin' | 'author'> & {
+  id: number
+  written_by: string
+  created_at: string
+}
+export type Origin = OriginInput & {
+  id: number
+  likes: number
+  /** the last editor; `author` stays the first writer, as on a post */
+  edited_by: string | null
+  created_at: string
 }
 
 export type Params = Record<string, string | number | undefined | null>
@@ -318,6 +354,8 @@ export const json = (method: string, body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 })
 
+const beside = (origin: boolean) => (origin ? 'origins' : 'posts')
+
 export const api = {
   tags: (p: { format?: string } = {}) =>
     req<{ tag: Tag; count: number }[]>(`/api/tags${qs(p)}`),
@@ -339,8 +377,9 @@ export const api = {
   update: (id: number, p: Partial<PostInput>) =>
     req<Post>(`/api/posts/${id}`, json('PATCH', p)),
 
-  like: (id: number, on: boolean) =>
-    req<{ likes: number }>(`/api/posts/${id}/like`, { method: on ? 'POST' : 'DELETE' }),
+  like: (id: number, on: boolean, origin = false) =>
+    req<{ likes: number }>(`/api/${beside(origin)}/${id}/like`,
+      { method: on ? 'POST' : 'DELETE' }),
 
   link: (id: number, other_id: number, author: string) =>
     req<Post>(`/api/posts/${id}/links`, json('POST', { other_id, author })),
@@ -365,27 +404,44 @@ export const api = {
   restore: (id: number, rev: number, author: string) =>
     req<Post>(`/api/posts/${id}/revisions/${rev}/restore`, json('POST', { author })),
 
-  comments: (id: number | string) => req<Comment[]>(`/api/posts/${id}/comments`),
+  /* `origin` on the four below, as on like(): the same thing said beside an
+     Origins link, whose ids are another table's */
+  comments: (id: number | string, origin = false) =>
+    req<Comment[]>(`/api/${beside(origin)}/${id}/comments`),
 
   /** Ask for an entry to go. There is no route that takes one away — this leads
       to a person reading it, which is the whole design. */
   requestDeletion: (
     id: number | string,
     r: { reason: string; detail: string; author: string },
-  ) => req<{ id: number; status: string }>(`/api/posts/${id}/delete-request`,
+    origin = false,
+  ) => req<{ id: number; status: string }>(`/api/${beside(origin)}/${id}/delete-request`,
                                            json('POST', r)),
 
   /** Say something is wrong without asking for the entry to go. No nickname:
       a report is addressed to whoever runs the wiki and read once, and a byline
       on it would only ever be a name to hold against somebody. */
-  report: (id: number | string, r: { reason: string; detail: string }) =>
-    req<{ id: number; open: number }>(`/api/posts/${id}/report`, json('POST', r)),
+  report: (id: number | string, r: { reason: string; detail: string }, origin = false) =>
+    req<{ id: number }>(`/api/${beside(origin)}/${id}/report`, json('POST', r)),
 
   /** Answers with the whole list, newest first, so what comes back *is* the new
       state -- the same shape link() and translate() hand the post back in, and
       the reason nothing here needs a refetch. */
-  comment: (id: number | string, c: { author: string; body: string }) =>
-    req<Comment[]>(`/api/posts/${id}/comments`, json('POST', c)),
+  comment: (id: number | string, c: { author: string; body: string }, origin = false) =>
+    req<Comment[]>(`/api/${beside(origin)}/${id}/comments`, json('POST', c)),
+
+  origins: () => req<Origin[]>('/api/origins'),
+
+  createOrigin: (o: OriginInput) => req<Origin>('/api/origins', json('POST', o)),
+
+  originRevisions: (id: number) => req<OriginRevision[]>(`/api/origins/${id}/revisions`),
+
+  restoreOrigin: (id: number, rev: number, author: string) =>
+    req<Origin>(`/api/origins/${id}/revisions/${rev}/restore`, json('POST', { author })),
+
+  /** the words only: the two names are what the link is, and are not sent */
+  editOrigin: (id: number, o: Omit<OriginInput, 'name' | 'origin'>) =>
+    req<Origin>(`/api/origins/${id}`, json('PATCH', o)),
 
   upload: (file: File) => {
     const fd = new FormData()
@@ -466,17 +522,19 @@ export const contentLanguage = {
 }
 
 const LIKED = 'namba.liked'
-const likedSet = (): Set<number> =>
-  new Set(JSON.parse(localStorage.getItem(LIKED) ?? '[]'))
+/* an origin's ids are another table's, so its likes are another key's */
+const likedKey = (origin: boolean) => (origin ? `${LIKED}.origins` : LIKED)
+const likedSet = (origin: boolean): Set<number> =>
+  new Set(JSON.parse(localStorage.getItem(likedKey(origin)) ?? '[]'))
 
 export const liked = {
-  has: (id: number) => likedSet().has(id),
-  toggle: (id: number) => {
-    const s = likedSet()
+  has: (id: number, origin = false) => likedSet(origin).has(id),
+  toggle: (id: number, origin = false) => {
+    const s = likedSet(origin)
     const on = !s.has(id)
     if (on) s.add(id)
     else s.delete(id)
-    localStorage.setItem(LIKED, JSON.stringify([...s]))
+    localStorage.setItem(likedKey(origin), JSON.stringify([...s]))
     return on
   },
 }

@@ -448,6 +448,34 @@ opposite, and only its regex says `[0-9]`.
   `UFO`. The front end keeps the same shape: on an edit the Format select is
   `disabled` for an entry already at `/a/` or `/c/`, and Abbreviation is off
   the menu for one at `/n/`.
+- **An origin is one link, and a chain is never stored.** Origins is the
+  seventh tab and it is not a format: an `origins` row says this name came
+  from that one and, optionally, tells the story between them. `JavaScript ← Java ← Java
+  coffee` is two rows that meet because one row's origin is the other's name,
+  joined in the browser by `origins.ts` — the argument that makes a number a
+  column and not a table, applied to names. So a chain grows when somebody
+  files the next link, a name with two origins is two rows the way two
+  meanings of 42 are, and the same link told in a second language is a second
+  row of which the list draws one. Names are compared case-folded and stored
+  as typed.
+
+  **A loop is refused by whichever write would close it**: the public create,
+  and an operator putting a hidden link back. `store.leads_back` is the
+  deciding read of both and runs inside the lock. **An edit rewrites a
+  link's words and never its two names**: the names are what the link is, the
+  way a value is what an entry is filed under, so retyping one is a different
+  link and that one is filed. The version an edit replaces goes to
+  `origin_revisions` in the same transaction, `author` stays the first writer
+  and the editor is `edited_by`. A restore puts a version's words back and is
+  an edit itself, so it is undone by another. A link has what an entry has
+  beside it — comments, a report and a removal request — in tables of its
+  own, and the two flags are read and closed on the back office's Origins
+  page, where Hide already is. Hiding is the same `status` a post has, and
+  `admin.py purge-origin` is its hard delete. Do not add a relation
+  vocabulary (homage, eponym, pun) — the story says which, and a list would
+  be one more row in the hand-copied table above. `test_origins` holds the
+  write, the loop and the hide (ADR-0034).
+
 - **A link in an entry stays a link.** No unfurling, no fetched thumbnails.
   Rendering a card means the server fetching a URL a stranger typed, and with
   no accounts there is nobody to rate-limit or ban — `http://169.254.169.254/`
@@ -513,7 +541,7 @@ opposite, and only its regex says `[0-9]`.
   what `test_the_plugin_still_names_itself` notices (ADR-0028).
 
 - **A write that decides holds the lock while it decides.** `db.writing(con)`
-  is the transaction every one of the twelve public write routes opens, and it
+  is the transaction every one of the twenty public write routes opens, and it
   is `BEGIN IMMEDIATE` rather than `with con:` for a reason that is easy to get
   wrong: Python's sqlite3 in legacy isolation mode begins its transaction
   before the first *write*, so a SELECT earlier in the block holds nothing at
@@ -523,12 +551,12 @@ opposite, and only its regex says `[0-9]`.
   it: read outside the lock, both see no Korean tab, both write, and the entry
   has two (ADR-0007 has the measurement).
 
-  Eleven of the twelve decide, and the twelfth is why `resolve_format` being
+  Nineteen of the twenty decide, and the twentieth is why `resolve_format` being
   pure is written down here. A create reads nothing it acts on: several
   entries under one value is normal, and there is no uniqueness to race for.
   It still opens `db.writing`, because three statements have to land together
   — but the lock is for the writes, not for a read, and
-  `test_every_write_decides_inside_the_lock` probes the other eleven rather
+  `test_every_write_decides_inside_the_lock` probes the other nineteen rather
   than claiming this one keeps a rule it has nothing to keep. Giving
   `resolve_format` a lookup again puts the race back.
 

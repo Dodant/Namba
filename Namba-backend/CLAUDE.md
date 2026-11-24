@@ -407,8 +407,9 @@ the sitemap.
   up after themselves in is not an audit log, so do not add a route that edits
   one, and do not "clean up" old rows without saying so out loud. It has no
   foreign keys for the reason `revisions` has none — a record of what happened
-  to a thing outlives the thing — and `target_id` points at five different
-  tables anyway (`posts`, `reports`, `delete_requests`, `blocks`, `admins`).
+  to a thing outlives the thing — and `target_id` points at six different
+  tables anyway (`posts`, `origins`, `reports`, `delete_requests`, `blocks`,
+  `admins`).
   `admin_id` is the whole split: `NULL` is a visitor, set is an operator's own
   decision, which is why the activity feed and the audit log are
   one table with two filters rather than two tables of the same shape.
@@ -419,7 +420,7 @@ the sitemap.
   `kind`. All exact matches, never `LIKE` -- these are vocabulary and
   identity, and a substring match would make `CONTENT_DELETE` a hit for
   `DELETE` and quietly widen a filter an operator is trusting. `target_type`
-  travels with `target_id` because that id points at five tables, so id 5
+  travels with `target_id` because that id points at six tables, so id 5
   alone is post 5 and block 5 and admin 5 at once -- and the pair is what
   `idx_events_target` leads with, so asking both ways is the correct one and
   the fast one. `hours` is checked in the body rather than by `Query(ge=1)`,
@@ -439,11 +440,44 @@ the sitemap.
 - **`guard` replaced `rate_limit` and hands back an identity.** It is still the
   single `Depends` on every write, it still refuses at 20 a minute, and it now
   returns the caller's three hashes so a route can record what happened without
-  asking twice — eleven writes log, ten binding `who=Depends(guard)` and
-  `put_translation` binding `client=Depends(guard)`. The two that do not log
-  bind `_=Depends(guard)`. `like` and `unlike` are the two:
+  asking twice — seventeen writes log, sixteen binding `who=Depends(guard)` and
+  `put_translation` binding `client=Depends(guard)`. The four that do not log
+  bind `_=Depends(guard)`. `like` and `unlike`, on an entry and on a link, are the four:
   a like says nothing about the entry and at one row per tap the abuse view
   would be nothing else. The limiter counts hashes now, not addresses.
+- **`origins` is one link a row, and `store.leads_back` is its one rule.**
+  `GET /api/origins` answers every live link and the front end joins them
+  into chains; `POST /api/origins` files one, logs `ORIGIN` against
+  `target_type='origin'`, and refuses a link that would close a loop. That
+  check lives in `store.py` because the operator's
+  `POST /api/admin/origins/{id}/status` asks it too when it puts a hidden link
+  back, and `admin_api` may not import `main`. It walks every live link, not
+  the first per name: a name may have two origins filed, and a loop through
+  the second is still a loop. A hidden link holds no place in a chain, which
+  is why the other half of its loop can be filed while it is hidden and why
+  it is then the restore that answers 409.
+
+  `GET /api/origins` is the one public read of it and carries `LIVE`;
+  `/api/admin/origins` is the one read that does not. `live_origin` is the
+  deciding read of the seven writes on a link that already exists — the like,
+  its undo, `PATCH /api/origins/{id}`, the restore, a comment, a report and a
+  removal request. The last three write `origin_comments` and `origin_flags`
+  rather than the tables a post's use, whose `post_id` would read an origin's
+  id as an entry's; `flag_origin` files both kinds of flag and refuses a
+  second open one of the same kind from the same reader, through
+  `_already_open`. The operator reads them at `/api/admin/origins/{id}/flags`
+  and closes them at `.../flags/close`, which does nothing to the link. The edit takes the
+  story, the two notes, the language and the two pictures — `ORIGIN_WORDS`,
+  the one list `rewrite_origin` both keeps and writes — never a name, and
+  logs `ORIGIN_EDIT`. A picture is `name_image` or `origin_image`, held to
+  `own_upload` like `posts.image`, and `gc_uploads.referenced` reads both
+  columns off the link and off its kept versions. `rewrite_origin` is the one place a link's words change: it
+  copies them into `origin_revisions` and then writes, so the restore
+  (`ORIGIN_REVERT`, a name `ORIGIN_RESTORE` had already taken for an operator
+  unhiding one) keeps what it replaces exactly as an edit does.
+  `GET /api/origins/{id}/revisions` is the history, capped at
+  `REVISIONS_SHOWN`. The table cascades with its link, so `purge-origin`
+  takes it (ADR-0034).
 - **`now()` lives in `db.py`.** It is a property of the schema — every date
   column is written by it — and `events.py` needs it without importing the app.
   `main.py` imports the name, so `main.now` is still what `test_recent_sort`

@@ -4,6 +4,7 @@
     hide <id>                take it off the public wiki
     show <id>                put it back
     purge <id> --yes         the one hard delete there is -- see below
+    purge-origin <id> --yes  the same, for one link on the Origins tab
 
     admins                   who can sign in to the back office
     add <email> [--super]    create an operator; prompts for the password
@@ -144,6 +145,38 @@ def purge(post_id):
     finally:
         con.close()
     return None
+
+
+def purge_origin(origin_id):
+    """Remove one Origins link. Not reversible.
+
+    The same exception `purge` is, for the same removal a law requires. The
+    row goes, and what hangs off it cascades: the versions its edits
+    replaced, its comments, and the reports and removal requests about it.
+    Its pictures go by the rule `purge` gives -- once nothing left names
+    them, and that includes the ones only an old version held. Its `events`
+    rows stay, for the reason `purge` gives. Returns the two names, so the
+    shell can say what went.
+    """
+    con = db.connect()
+    try:
+        row = con.execute("SELECT name, origin FROM origins WHERE id = ?",
+                          (origin_id,)).fetchone()
+        if row is None:
+            raise LookupError(f"no origin {origin_id}")
+        pics = {os.path.basename(p) for r in con.execute(
+            """SELECT name_image, origin_image FROM origins WHERE id = ?
+               UNION SELECT name_image, origin_image FROM origin_revisions
+                     WHERE origin_id = ?""", (origin_id, origin_id)) for p in r if p}
+        with con:
+            con.execute("DELETE FROM origins WHERE id = ?", (origin_id,))
+        for name in pics - gc_uploads.referenced(con):
+            path = os.path.join(UPLOAD_DIR, name)
+            if os.path.isfile(path):
+                os.remove(path)
+        return row["name"], row["origin"]
+    finally:
+        con.close()
 
 
 def admins():
@@ -377,6 +410,12 @@ if __name__ == "__main__":
         elif cmd in ("deactivate", "activate") and rest:
             set_active(rest[0], cmd == "activate")
             print(f"{rest[0]} is now {'active' if cmd == 'activate' else 'revoked'}")
+        elif cmd == "purge-origin" and rest and rest[0].isdigit():
+            if "--yes" not in rest:
+                raise SystemExit("this is permanent: the link and its story.\n"
+                                 "pass --yes to go ahead.")
+            name, origin = purge_origin(int(rest[0]))
+            print(f"purged origin {rest[0]}: {name} <- {origin}")
         elif cmd in ("status", "hide", "show", "purge") and rest and rest[0].isdigit():
             pid = int(rest[0])
             if cmd == "status":

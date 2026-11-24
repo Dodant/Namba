@@ -131,7 +131,7 @@ CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id, id DESC);
 -- Append-only. Nothing in this codebase issues an UPDATE or a DELETE here, and
 -- that is the point -- an audit log an operator can tidy is not one. No foreign
 -- keys either, for the reason revisions has none: a record of what happened to
--- a thing must outlive the thing, and target_id points at five different
+-- a thing must outlive the thing, and target_id points at six different
 -- tables anyway.
 --
 -- No raw address is stored. The three hashes are salted with the install's own
@@ -314,6 +314,81 @@ CREATE TABLE IF NOT EXISTS blocks (
   lifted_by   INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_blocks_target ON blocks(target_hash);
+
+-- Where a name came from: `name` came from `origin`, and `body` is how. One
+-- row is one link and nothing stores a chain -- "JavaScript, from Java, from
+-- Java coffee" is two rows that meet because one's origin is the other's name,
+-- which is the argument posts.value makes about a number being a column and
+-- not a table. So a chain grows when somebody files the next link, and a name
+-- with two origins is two rows, the way two meanings of 42 are (ADR-0034).
+--
+-- Its own table and not a seventh format: a post is a value and what it means,
+-- and this is two names and what happened between them. The notes say what a
+-- name is the name of -- Python is a snake until somebody says otherwise.
+--
+-- status is the vocabulary posts.status is, for the same reason: hiding is
+-- what moderation means here and no route removes a row.
+CREATE TABLE IF NOT EXISTS origins (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  name        TEXT NOT NULL,
+  name_note   TEXT,
+  origin      TEXT NOT NULL,
+  origin_note TEXT,
+  body        TEXT NOT NULL,
+  author      TEXT NOT NULL,
+  lang        TEXT,                       -- what body is written in; free-form, like posts.lang
+  likes       INTEGER NOT NULL DEFAULT 0,
+  name_image  TEXT,                       -- a picture of each name: one of this
+  origin_image TEXT,                      -- wiki's uploads, like posts.image
+  edited_by   TEXT,                       -- the last editor; author stays the first writer
+  status      TEXT NOT NULL DEFAULT 'ACTIVE',
+  created_at  TEXT NOT NULL
+);
+-- What an edit replaced, so an edit on an open wiki is never a loss. The two
+-- names are not here: an edit cannot change them.
+CREATE TABLE IF NOT EXISTS origin_revisions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  origin_id   INTEGER NOT NULL REFERENCES origins(id) ON DELETE CASCADE,
+  name_note   TEXT,
+  origin_note TEXT,
+  body        TEXT NOT NULL,
+  lang        TEXT,
+  name_image  TEXT,
+  origin_image TEXT,
+  written_by  TEXT NOT NULL,              -- who wrote the version this row keeps
+  created_at  TEXT NOT NULL               -- when it was replaced
+);
+CREATE INDEX IF NOT EXISTS idx_origin_revisions ON origin_revisions(origin_id, id);
+-- What is said beside a link. Its own table because comments.post_id is a
+-- foreign key on posts, and an origin's id is another table's.
+CREATE TABLE IF NOT EXISTS origin_comments (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  origin_id  INTEGER NOT NULL REFERENCES origins(id) ON DELETE CASCADE,
+  author     TEXT NOT NULL,
+  body       TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_origin_comments ON origin_comments(origin_id, id DESC);
+-- A report or a removal request about a link. One table where posts have two:
+-- both are read on the one Origins page of the back office and closed there
+-- together, by an operator who has Hide on the same row. It cascades, so a
+-- purge takes the words that asked for it with the link.
+CREATE TABLE IF NOT EXISTS origin_flags (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  origin_id     INTEGER NOT NULL REFERENCES origins(id) ON DELETE CASCADE,
+  kind          TEXT NOT NULL,                     -- report | remove
+  reason        TEXT NOT NULL,
+  detail        TEXT NOT NULL DEFAULT '',
+  requested_by  TEXT,                              -- a removal request's nickname
+  ip_hash       TEXT, ua_hash TEXT, client_hash TEXT,
+  status        TEXT NOT NULL DEFAULT 'OPEN',      -- OPEN | RESOLVED
+  created_at    TEXT NOT NULL,
+  decided_at    TEXT,
+  decided_by    INTEGER,
+  decision_note TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_origin_flags ON origin_flags(origin_id, status);
+CREATE INDEX IF NOT EXISTS idx_origins_status ON origins(status, id);
 """
 
 # What the TEXT columns above may hold. Here rather than beside the routes
@@ -571,6 +646,32 @@ def _birth_year_column(con):
         con.execute("ALTER TABLE posts ADD COLUMN year INTEGER")
 
 
+def _origin_likes_column(con):
+    """`origins.likes`, the counter a post has, for a database whose origins
+    table was made before a link could be liked."""
+    have = {r["name"] for r in con.execute("PRAGMA table_info(origins)")}
+    if "likes" not in have:
+        con.execute("ALTER TABLE origins ADD COLUMN likes INTEGER NOT NULL DEFAULT 0")
+
+
+def _origin_edited_by_column(con):
+    """`origins.edited_by`. Its own step and not a line in the one above: that
+    one has already run wherever likes arrived, and never runs again."""
+    have = {r["name"] for r in con.execute("PRAGMA table_info(origins)")}
+    if "edited_by" not in have:
+        con.execute("ALTER TABLE origins ADD COLUMN edited_by TEXT")
+
+
+def _origin_image_columns(con):
+    """A picture for each of a link's two names, on the link and on the
+    versions its edits keep, for a database that had both tables first."""
+    for table in ("origins", "origin_revisions"):
+        have = {r["name"] for r in con.execute(f"PRAGMA table_info({table})")}
+        for col in ("name_image", "origin_image"):
+            if col not in have:
+                con.execute(f"ALTER TABLE {table} ADD COLUMN {col} TEXT")
+
+
 def _on_this_day_column(con):
     """The Calendar index's historical-event fold.
 
@@ -630,6 +731,9 @@ MIGRATIONS = (
     _birth_year_column,
     _on_this_day_column,
     _birth_death_is_now_in_memoriam,
+    _origin_likes_column,
+    _origin_edited_by_column,
+    _origin_image_columns,
 )
 
 

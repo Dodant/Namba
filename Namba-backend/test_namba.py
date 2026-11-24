@@ -85,6 +85,248 @@ class TestClient(_TestClient):
         return super().request(method, url, **kwargs)
 
 
+def test_origins():
+    """An Origins entry is one link between two names, and everything else
+    about the tab follows from that: chains are never stored, a loop is
+    refused by whichever write would close it, and hiding is the whole of
+    moderation here as it is for an entry.
+    """
+    c = _TestClient(main.app)
+
+    def file(name, origin, **more):
+        return c.post("/api/origins", json={
+            "name": name, "origin": origin, "body": "a story", "author": "ada", **more})
+
+    def live():
+        return [o for o in c.get("/api/origins").json() if o["name"].startswith("og-")]
+
+    before = len(_events())
+    # decomposed Hangul in, composed out: one name is one spelling
+    a = file("  og-Java ", "og-\u110c\u1161\u1107\u1161", name_note=" language ",
+             origin_note="  ", lang="")
+    assert a.status_code == 201, a.text
+    a = a.json()
+    assert (a["name"], a["origin"]) == ("og-Java", "og-\uc790\ubc14"), a
+    assert (a["name_note"], a["origin_note"], a["lang"]) == ("language", None, None), a
+    assert "status" not in a, "the public shape does not say what an operator decided"
+    b = file("og-JavaScript", "og-Java", lang="English").json()
+    assert [o["id"] for o in live()] == [a["id"], b["id"]], live()
+
+    made = [e for e in _events() if e["target_type"] == "origin"
+            and e["target_id"] in (a["id"], b["id"])]
+    assert [(e["action"], e["actor"], e["admin_id"]) for e in made] == \
+        [("ORIGIN", "ada", None)] * 2, made
+    c.get("/api/origins")
+    assert len(_events()) == before + 2, "a read reached the table"
+
+    # the same pair again is the story told twice, not a refusal
+    assert file("og-JavaScript", "og-Java", lang="\ud55c\uad6d\uc5b4").status_code == 201
+
+    # a loop is refused however long it is and however it is cased
+    for name, origin in (("og-Java", "og-Java"), ("og-java", "OG-JAVASCRIPT"),
+                         ("og-\uc790\ubc14", "og-javascript")):
+        r = file(name, origin)
+        assert r.status_code == 422 and "again" in r.text, (name, origin, r.text)
+    # ...and so is everything a model refuses
+    for bad in ({"name": "   "}, {"name": "x" * 81},
+                {"body": "x" * 601}, {"author": "anonymous"}, {"name_note": "x" * 41}):
+        r = c.post("/api/origins", json={"name": "og-n", "origin": "og-o",
+                                         "body": "b", "author": "ada", **bad})
+        assert r.status_code == 422, (bad, r.status_code)
+    # a like is a counter on the link, floored at zero, and a missing link is 404
+    assert c.post(f"/api/origins/{a['id']}/like").json() == {"likes": 1}
+    assert [o["likes"] for o in c.get("/api/origins").json() if o["id"] == a["id"]] == [1]
+    assert c.delete(f"/api/origins/{a['id']}/like").json() == {"likes": 0}
+    assert c.delete(f"/api/origins/{a['id']}/like").json() == {"likes": 0}
+    assert c.post("/api/origins/999999/like").status_code == 404
+
+    # an edit rewrites the words and never the names; the first writer keeps
+    # the byline, and what was replaced is kept rather than lost
+    r = c.patch(f"/api/origins/{a['id']}", json={
+        "body": "retold", "name_note": "a language", "author": "grace",
+        "name": "og-Other"})
+    assert r.status_code == 200, r.text
+    e = r.json()
+    assert (e["body"], e["name_note"], e["author"], e["edited_by"], e["name"]) == (
+        "retold", "a language", "ada", "grace", a["name"]), e
+    # the history beside the form, and a restore that is itself undoable
+    revs = c.get(f"/api/origins/{a['id']}/revisions").json()
+    assert [(v["body"], v["written_by"]) for v in revs] == [("a story", "ada")], revs
+    r = c.post(f"/api/origins/{a['id']}/revisions/{revs[0]['id']}/restore",
+               json={"author": "hopper"})
+    assert r.status_code == 200, r.text
+    assert (r.json()["body"], r.json()["name_note"], r.json()["edited_by"]) == (
+        "a story", "language", "hopper"), r.json()
+    revs = c.get(f"/api/origins/{a['id']}/revisions").json()
+    assert [(v["body"], v["written_by"]) for v in revs] == [
+        ("retold", "grace"), ("a story", "ada")], revs
+    assert c.post(f"/api/origins/{b['id']}/revisions/{revs[0]['id']}/restore",
+                  json={"author": "hopper"}).status_code == 404, "another link's version"
+    assert c.get("/api/origins/999999/revisions").status_code == 404
+    assert c.patch("/api/origins/999999", json={"author": "grace"}).status_code == 404
+    assert c.patch(f"/api/origins/{a['id']}", json={"body": "x"}).status_code == 422
+
+    # beside the link: a comment, and the two flags an operator reads
+    said = c.post(f"/api/origins/{a['id']}/comments", json={"body": "nice", "author": "ada"})
+    assert said.status_code == 201 and [x["body"] for x in said.json()] == ["nice"], said.text
+    assert c.get(f"/api/origins/{a['id']}/comments").json() == said.json()
+    assert c.post("/api/origins/999999/comments",
+                  json={"body": "x", "author": "ada"}).status_code == 404
+    flag = lambda: c.post(f"/api/origins/{a['id']}/report",
+                          json={"reason": "SPAM", "detail": "an advert"})
+    assert flag().status_code == 201
+    assert flag().status_code == 409, "one open report per reader"
+    gone = c.post(f"/api/origins/{a['id']}/delete-request",
+                  json={"reason": "OTHER", "detail": "mine", "author": "ada"})
+    assert gone.status_code == 201, gone.text  # a different kind, so not the 409
+    assert c.post(f"/api/origins/{a['id']}/delete-request",
+                  json={"reason": "OTHER", "author": "ada"}).status_code == 409
+    assert c.post(f"/api/origins/{a['id']}/report",
+                  json={"reason": "NOT-A-REASON"}).status_code == 422
+
+    # a picture of either name is one of this wiki's uploads and nothing else;
+    # an edit that replaces one keeps the old path, where the sweep can see it
+    pic = c.post("/api/origins", json={
+        "name": "og-pic", "origin": "og-src2", "author": "ada",
+        "name_image": "/uploads/og-a.png", "origin_image": "/uploads/og-b.png"})
+    assert pic.status_code == 201 and pic.json()["origin_image"] == "/uploads/og-b.png", pic.text
+    assert c.post("/api/origins", json={
+        "name": "og-pic2", "origin": "og-src3", "author": "ada",
+        "name_image": "https://example.com/x.png"}).status_code == 422
+    r = c.patch(f"/api/origins/{pic.json()['id']}", json={
+        "author": "grace", "name_image": "/uploads/og-c.png", "origin_image": None})
+    assert (r.json()["name_image"], r.json()["origin_image"]) == ("/uploads/og-c.png", None), r.text
+    # an edit carries what it changes: a field it leaves out stays as it was
+    r = c.patch(f"/api/origins/{pic.json()['id']}", json={"author": "grace", "body": "said"})
+    assert (r.json()["name_image"], r.json()["body"]) == ("/uploads/og-c.png", "said"), r.text
+    import gc_uploads
+    con = db.connect()
+    assert {"og-a.png", "og-b.png", "og-c.png"} <= gc_uploads.referenced(con)
+    con.close()
+
+    # the story is optional: a link with none, or only spaces, is still a link
+    for more in ({}, {"body": "  "}):
+        r = c.post("/api/origins", json={"name": "og-bare", "origin": "og-src",
+                                         "author": "ada", **more})
+        assert r.status_code == 201 and r.json()["body"] == "", r.text
+    r = c.post("/api/origins", headers={"sec-fetch-site": "cross-site"}, json={
+        "name": "og-n", "origin": "og-o", "body": "b", "author": "ada"})
+    assert r.status_code == 403, r.status_code
+
+    # the operator's half: a login, the hidden rows, and the hide itself
+    assert c.get("/api/admin/origins").status_code == 401
+    assert c.post(f"/api/admin/origins/{b['id']}/status",
+                  json={"status": "HIDDEN"}).status_code == 401
+    assert c.get(f"/api/admin/origins/{a['id']}/flags").status_code == 401
+    assert c.post(f"/api/admin/origins/{a['id']}/flags/close",
+                  json={"status": "RESOLVED"}).status_code == 401
+    op = _operator(TestClient(main.app))
+    # the flags reach the operator's page, and closing them leaves the link
+    rows = op.get("/api/admin/origins").json()["rows"]
+    assert rows[0]["id"] == a["id"] and rows[0]["flags"] == 2, rows[0]
+    flags = op.get(f"/api/admin/origins/{a['id']}/flags").json()
+    assert {(f["kind"], f["reason"], f["detail"]) for f in flags} == {
+        ("report", "SPAM", "an advert"), ("remove", "OTHER", "mine")}, flags
+    closed = op.post(f"/api/admin/origins/{a['id']}/flags/close",
+                     json={"status": "RESOLVED", "note": "read"})
+    assert closed.status_code == 200 and closed.json()["closed"] == 2, closed.text
+    assert op.post(f"/api/admin/origins/{a['id']}/flags/close",
+                   json={"status": "RESOLVED"}).status_code == 404
+    assert a["id"] in [o["id"] for o in live()]
+    assert flag().status_code == 201, "a closed report does not hold the next one"
+
+    hid = op.post(f"/api/admin/origins/{b['id']}/status",
+                  json={"status": "HIDDEN", "note": "spam"})
+    assert hid.status_code == 200 and hid.json()["was"] == "ACTIVE", hid.text
+    assert b["id"] not in [o["id"] for o in live()], "a hidden link is still public"
+    # and not only off the list: every route that takes its id has lost it
+    for verb, path, body in (
+            ("PATCH", "", {"author": "x", "body": "y"}), ("GET", "/revisions", None),
+            ("POST", "/revisions/1/restore", {"author": "x"}), ("GET", "/comments", None),
+            ("POST", "/comments", {"author": "x", "body": "y"}), ("POST", "/like", None),
+            ("DELETE", "/like", None), ("POST", "/report", {"reason": "SPAM"}),
+            ("POST", "/delete-request", {"reason": "OTHER", "author": "x"})):
+        r = c.request(verb, f"/api/origins/{b['id']}{path}", json=body)
+        assert r.status_code == 404, (verb, path, r.status_code)
+    rows = op.get("/api/admin/origins", params={"q": "og-JavaScript"}).json()
+    assert {r["id"]: r["status"] for r in rows["rows"]}[b["id"]] == "HIDDEN", rows
+    only = op.get("/api/admin/origins", params={"status": "HIDDEN"}).json()["rows"]
+    assert only and all(r["status"] == "HIDDEN" for r in only), only
+    audit = _events(action="ORIGIN_HIDE", target_id=b["id"])
+    assert len(audit) == 1 and audit[0]["admin_id"] and "spam" in audit[0]["meta"], audit
+    again = op.post(f"/api/admin/origins/{b['id']}/status", json={"status": "HIDDEN"})
+    assert again.status_code == 409, again.status_code
+    assert op.post("/api/admin/origins/999999/status",
+                   json={"status": "HIDDEN"}).status_code == 404
+    assert op.post(f"/api/admin/origins/{b['id']}/status",
+                   json={"status": "GONE"}).status_code == 422
+    # DELETED is the third state and moves like the other two
+    move = lambda oid, to: op.post(f"/api/admin/origins/{oid}/status", json={"status": to})
+    assert move(a["id"], "ACTIVE").status_code == 409
+    assert move(b["id"], "DELETED").json()["was"] == "HIDDEN"
+    assert len(_events(action="ORIGIN_DELETE", target_id=b["id"])) == 1
+    assert move(b["id"], "DELETED").status_code == 409
+    assert move(b["id"], "HIDDEN").json()["was"] == "DELETED"
+    assert move(pic.json()["id"], "DELETED").status_code == 200
+    assert pic.json()["id"] not in [o["id"] for o in live()]
+    assert move(pic.json()["id"], "ACTIVE").json()["was"] == "DELETED"
+
+    # a hidden link holds no place in a chain, so the other half of its loop
+    # can be filed -- and then it is the restore that is refused
+    con = db.connect()
+    with con:  # the Korean retelling of the same link, out of the way
+        con.execute("UPDATE origins SET status = 'HIDDEN' WHERE name = 'og-JavaScript'")
+    con.close()
+    back = file("og-\uc790\ubc14", "og-JavaScript")
+    assert back.status_code == 201, back.text
+    shut = op.post(f"/api/admin/origins/{b['id']}/status", json={"status": "ACTIVE"})
+    assert shut.status_code == 409 and "loop" in shut.text, shut.text
+    op.post(f"/api/admin/origins/{back.json()['id']}/status", json={"status": "HIDDEN"})
+    assert op.post(f"/api/admin/origins/{b['id']}/status",
+                   json={"status": "ACTIVE"}).status_code == 200
+    assert b["id"] in [o["id"] for o in live()]
+
+    # the one hard delete, from a shell
+    assert admin.purge_origin(a["id"]) == ("og-Java", "og-\uc790\ubc14")
+    assert a["id"] not in [o["id"] for o in live()]
+    con = db.connect()
+    assert not con.execute("SELECT 1 FROM origin_revisions WHERE origin_id = ?",
+                           (a["id"],)).fetchone(), "a purge left what an edit replaced"
+    for table in ("origin_comments", "origin_flags"):
+        assert not con.execute(f"SELECT 1 FROM {table} WHERE origin_id = ?",
+                               (a["id"],)).fetchone(), f"a purge left {table}"
+    con.close()
+    try:
+        admin.purge_origin(a["id"])
+        raise AssertionError("purged a link that was already gone")
+    except LookupError:
+        pass
+    # and its pictures, the two it has and the ones its edits replaced
+    os.makedirs(db.UPLOAD_DIR, exist_ok=True)
+    pics = [os.path.join(db.UPLOAD_DIR, n) for n in ("og-a.png", "og-b.png", "og-c.png")]
+    for path in pics:
+        open(path, "wb").close()
+    admin.purge_origin(pic.json()["id"])
+    assert not [p for p in pics if os.path.exists(p)], "a purge left a link's pictures"
+
+
+def test_a_revision_says_what_it_said():
+    """Two versions under one title are the same row twice unless the history
+    carries what each said: the start of its body, and whether it had a
+    picture. That is what a Restore is chosen by."""
+    c = TestClient(main.app)
+    p = c.post("/api/posts", json={
+        "value": "4711", "title": "A cologne", "body": "first " + "x" * 300,
+        "image": "/uploads/rev-a.png"}).json()
+    c.patch(f"/api/posts/{p['id']}", json={"body": "second", "image": None,
+                                            "author": "hesse"})
+    c.patch(f"/api/posts/{p['id']}", json={"body": "third", "author": "hesse"})
+    revs = c.get(f"/api/posts/{p['id']}/revisions").json()
+    assert [(r["body"][:6], r["image"]) for r in revs] == [
+        ("second", False), ("first ", True)], revs
+    assert len(revs[1]["body"]) == main.BLURB, "the excerpt is capped"
+
+
 def test_parse():
     cases = {
         "42": ("INTEGER", 42.0),
@@ -2066,7 +2308,7 @@ def test_admin_content_and_dashboard():
     admin.set_status(fresh["id"], "HIDDEN")
     assert st["edits_24h"] >= 1 and st["writes_1h"] >= 1
     assert set(st) == {"numbers", "entries", "hidden", "created_today",
-                       "edited_today", "requests_pending", "reports_open",
+                       "edited_today", "requests_pending", "reports_open", "origin_flags_open",
                        "oldest_request", "oldest_report",
                        "edits_24h", "writes_1h", "errors_24h", "blocked",
                        "comments"}, st
@@ -3626,10 +3868,10 @@ def test_purge_takes_the_words_that_asked_for_it():
 
 
 def test_every_write_decides_inside_the_lock():
-    """One rule for the eleven public writes that decide: the read a route
+    """One rule for the nineteen public writes that decide: the read a route
     decides on runs with the write lock already held.
 
-    Eleven of twelve, because a create decides nothing about another row --
+    Nineteen of twenty, because a create decides nothing about another row --
     `resolve_format` is pure, and an entry under a value that already has ten
     is normal here. So it is not probed: there is no read to catch it holding,
     and a probe that fired on a pure call would report the rule as kept by a
@@ -3673,7 +3915,8 @@ def test_every_write_decides_inside_the_lock():
         return probe
 
     where = [(main, "fetch_one"), (store, "fetch_one"),
-             (main, "_already_open"), (main, "guard_public")]
+             (main, "_already_open"), (main, "guard_public"),
+             (main, "leads_back"), (main, "live_origin")]
     real = [(mod, name, getattr(mod, name)) for mod, name in where]
     for mod, name in where:
         setattr(mod, name, watch(name, dict((n, f) for _, n, f in real)[name]))
@@ -3688,7 +3931,7 @@ def test_every_write_decides_inside_the_lock():
             assert log[0][1] is True, (what, log[:3])
             return res
 
-        # two entries for the eleven writes below to decide about. Not through
+        # two entries for eleven of the writes below to decide about. Not through
         # locked(): a create is the write with nothing to decide, and the probe
         # would see no read at all.
         a = c.post("/api/posts", json={
@@ -3718,13 +3961,35 @@ def test_every_write_decides_inside_the_lock():
         rev = c.get(f"/api/posts/{pid}/revisions").json()[0]["id"]
         locked("restore", lambda: c.post(
             f"/api/posts/{pid}/revisions/{rev}/restore", json={"author": "hesse"}))
+        # the twelfth is not about an entry: an Origins link decides whether
+        # it would close a loop, and two halves of one filed together must
+        # not both read a table that holds neither
+        locked("origin", lambda: c.post("/api/origins", json={
+            "name": "lock-fig", "origin": "lock-ficus", "body": "its Latin name",
+            "author": "hesse"}))
+        oid = c.get("/api/origins").json()[-1]["id"]
+        locked("edit an origin", lambda: c.patch(
+            f"/api/origins/{oid}", json={"body": "ficus", "author": "hesse"}))
+        orev = c.get(f"/api/origins/{oid}/revisions").json()[0]["id"]
+        locked("restore an origin", lambda: c.post(
+            f"/api/origins/{oid}/revisions/{orev}/restore", json={"author": "hesse"}))
+        locked("comment on an origin", lambda: c.post(
+            f"/api/origins/{oid}/comments", json={"body": "a fig", "author": "hesse"}))
+        locked("report an origin", lambda: c.post(
+            f"/api/origins/{oid}/report", json={"reason": "SPAM"}))
+        locked("ask for an origin to go", lambda: c.post(
+            f"/api/origins/{oid}/delete-request",
+            json={"reason": "OTHER", "author": "hesse"}))
+        locked("like an origin", lambda: c.post(f"/api/origins/{oid}/like"))
+        locked("unlike an origin", lambda: c.delete(f"/api/origins/{oid}/like"))
     finally:
         for mod, name, fn in real:
             setattr(mod, name, fn)
 
     # ...and the probe reached every kind of deciding read there is, so none of
-    # the eleven passed by touching nothing
-    assert seen == {"fetch_one", "_already_open", "guard_public"}, seen
+    # the nineteen passed by touching nothing
+    assert seen == {"fetch_one", "_already_open", "guard_public", "leads_back",
+                    "live_origin"}, seen
 
 
 def test_linking_a_pair_twice_is_one_event():

@@ -438,6 +438,9 @@ def stats(_=Depends(auth.require_admin), con=Depends(db.get_db)):
         "requests_pending": one("""SELECT COUNT(*) FROM delete_requests
                                    WHERE status = 'PENDING'"""),
         "reports_open": one("SELECT COUNT(*) FROM reports WHERE status = 'OPEN'"),
+        # reports and removal requests about a link, which wait on the Origins
+        # page and in neither queue above
+        "origin_flags_open": one("SELECT COUNT(*) FROM origin_flags WHERE status = 'OPEN'"),
         # How long the oldest thing has been waiting, which is the number a
         # queue is actually judged by: two pending requests is nothing and two
         # pending requests from March is a wiki nobody is minding. NULL when
@@ -447,7 +450,8 @@ def stats(_=Depends(auth.require_admin), con=Depends(db.get_db)):
         "oldest_report": one("""SELECT MIN(created_at) FROM reports
                                 WHERE status = 'OPEN'"""),
         "edits_24h": one("""SELECT COUNT(*) FROM events
-                            WHERE action IN ('EDIT', 'RESTORE') AND at > ?""",
+                            WHERE action IN ('EDIT', 'RESTORE', 'ORIGIN_EDIT', 'ORIGIN_REVERT')
+                              AND at > ?""",
                          _since(24 * 60)),
         # An ERROR row is not a write. It has no admin_id either -- a 500 is
         # nobody's decision -- so without this the one number that says whether
@@ -589,7 +593,7 @@ def activity(
     # substring match on an action would make CONTENT_DELETE a hit for DELETE
     # and quietly widen an audit filter an operator is trusting.
     # target_type comes along with target_id rather than being optional
-    # beside it: `target_id` points at five tables, so id 5 alone is post 5 and
+    # beside it: `target_id` points at six tables, so id 5 alone is post 5 and
     # block 5 and admin 5 at once -- and the pair is what `idx_events_target`
     # leads with, so asking both ways is the correct one and the fast one.
     for column, value in (("e.action", action), ("e.admin_id", admin_id),
@@ -805,6 +809,108 @@ def set_post_status(
     return {"id": post_id, "status": body.status, "was": was["status"]}
 
 
+# --- origins ------------------------------------------------------------
+@router.get("/origins")
+def list_all_origins(
+    q: Optional[str] = None,
+    status: str = "ALL",
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _=Depends(auth.require_admin),
+    con=Depends(db.get_db),
+):
+    """Every link, hidden ones included, newest first -- the Origins twin of
+    the content table, and the only read of this table without `store.LIVE`."""
+    where, args = [], []
+    q = db.nfc(q)
+    if status != "ALL":
+        if status not in db.POST_STATUSES:
+            raise HTTPException(422, f"status must be ALL or one of {db.POST_STATUSES}")
+        where.append("status = ?")
+        args.append(status)
+    if q:
+        where.append(f"""(name LIKE ? ESCAPE '{db.LIKE_ESC}'
+                          OR origin LIKE ? ESCAPE '{db.LIKE_ESC}'
+                          OR body LIKE ? ESCAPE '{db.LIKE_ESC}')""")
+        args += [db.like(q)] * 3
+    # flagged links first, since those are the ones somebody is waiting on
+    sql = f"""SELECT o.*, (SELECT COUNT(*) FROM origin_flags f
+                           WHERE f.origin_id = o.id AND f.status = 'OPEN') AS flags
+              FROM origins o
+              {"WHERE " + " AND ".join(where) if where else ""}
+              ORDER BY flags > 0 DESC, id DESC"""
+    return _page(con, sql, tuple(args), limit, offset)
+
+
+@router.get("/origins/{origin_id}/flags")
+def origin_flags(origin_id: int, _=Depends(auth.require_admin), con=Depends(db.get_db)):
+    """Every report and removal request filed against one link, newest first."""
+    return [dict(r) for r in con.execute(
+        "SELECT * FROM origin_flags WHERE origin_id = ? ORDER BY id DESC", (origin_id,))]
+
+
+@router.post("/origins/{origin_id}/flags/close")
+def close_origin_flags(
+    origin_id: int,
+    body: StatusIn,
+    request: Request,
+    who=Depends(auth.require_admin),
+    con=Depends(db.get_db),
+):
+    """Closes every open flag on one link. Like `decide_reports`, it does
+    nothing to the link: hiding it is the status route, with its own row."""
+    with con:
+        cur = con.execute(
+            """UPDATE origin_flags SET status = 'RESOLVED', decided_at = ?,
+                   decided_by = ?, decision_note = ?
+               WHERE origin_id = ? AND status = 'OPEN'""",
+            (db.now(), who["id"], body.note.strip(), origin_id))
+        if cur.rowcount:
+            events.record(con, "ORIGIN_FLAGS_CLOSE", client=events.client_of(request),
+                          admin_id=who["id"], target_type="origin", target_id=origin_id,
+                          closed=cur.rowcount, note=body.note.strip())
+    if not cur.rowcount:
+        raise HTTPException(404, "no open flags on that origin")
+    return {"origin_id": origin_id, "closed": cur.rowcount}
+
+
+@router.post("/origins/{origin_id}/status")
+def set_origin_status(
+    origin_id: int,
+    body: StatusIn,
+    request: Request,
+    who=Depends(auth.require_admin),
+    con=Depends(db.get_db),
+):
+    """Hide a link, mark it removed, or put it back. The same route is the
+    undo, as it is for an entry.
+
+    Putting one back asks the question a create asks: links filed while this
+    one was hidden may have closed the other half of a loop, and a loop is
+    refused whichever write would complete it. Hence the lock.
+    """
+    if body.status not in db.POST_STATUSES:
+        raise HTTPException(422, f"status must be one of {db.POST_STATUSES}")
+    action = {"ACTIVE": "ORIGIN_RESTORE", "HIDDEN": "ORIGIN_HIDE",
+              "DELETED": "ORIGIN_DELETE"}[body.status]
+    with db.writing(con):
+        was = con.execute("SELECT name, origin, status FROM origins WHERE id = ?",
+                          (origin_id,)).fetchone()
+        if was is None:
+            raise HTTPException(404, "no such origin")
+        if was["status"] == body.status:
+            raise HTTPException(409, f"already {body.status}")
+        if body.status == store.LIVE and store.leads_back(con, was["name"], was["origin"]):
+            raise HTTPException(
+                409, f"putting this back would close a loop: {was['origin']} "
+                     f"now leads to {was['name']}")
+        con.execute("UPDATE origins SET status = ? WHERE id = ?", (body.status, origin_id))
+        events.record(con, action, client=events.client_of(request),
+                      admin_id=who["id"], target_type="origin", target_id=origin_id,
+                      was=was["status"], note=body.note.strip())
+    return {"id": origin_id, "status": body.status, "was": was["status"]}
+
+
 class ValueIn(Text):
     value: str = Field(min_length=1, max_length=32)
     format: Optional[str] = None
@@ -940,12 +1046,16 @@ def abuse(
         """SELECT ip_hash,
                   COUNT(*) AS writes,
                   COUNT(DISTINCT client_hash) AS browsers,
-                  COUNT(DISTINCT target_id) AS targets,
-                  SUM(action = 'CREATE') AS creates,
-                  SUM(action = 'EDIT') AS edits,
+                  -- with its type: post 5 and origin 5 are two targets
+                  COUNT(DISTINCT target_type || ':' || target_id) AS targets,
+                  SUM(action IN ('CREATE', 'ORIGIN')) AS creates,
+                  SUM(action IN ('EDIT', 'ORIGIN_EDIT')) AS edits,
                   SUM(action = 'COMMENT') AS comments,
-                  SUM(action = 'DELETE_REQUEST') AS requests,
-                  SUM(action = 'REPORT') AS reports,
+                  -- ORIGIN_FLAG is both kinds on a link; meta says which
+                  SUM(action = 'DELETE_REQUEST' OR (action = 'ORIGIN_FLAG'
+                      AND json_extract(meta, '$.kind') = 'remove')) AS requests,
+                  SUM(action = 'REPORT' OR (action = 'ORIGIN_FLAG'
+                      AND json_extract(meta, '$.kind') = 'report')) AS reports,
                   SUM(action = 'UPLOAD') AS uploads,
                   MIN(at) AS first_at, MAX(at) AS last_at,
                   MAX(client_hash) AS a_client,

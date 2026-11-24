@@ -26,7 +26,7 @@ import seo
 from db import UPLOAD_DIR, get_db, nfc, now, writing
 from store import (
     LIVE, Text, apply_snapshot, fetch_one, guard_public, load_snapshot,
-    refuse_a_future_year, resolve_format, section_of, section_sql,
+    leads_back, refuse_a_future_year, resolve_format, section_of, section_sql,
     section_where, shape, snapshot, ungroup, write_tags,
 )
 from numfmt import FORMATS, bucket_of
@@ -904,7 +904,7 @@ def list_revisions(post_id: int, con=Depends(get_db)):
     hero says 25 December. Neither is a different number.
     """
     guard_public(con, post_id)
-    # The four fields, asked for by name. SQLite reads them out of the stored
+    # The fields a row draws, asked for by name. SQLite reads them out of the stored
     # JSON, so an entry fought over five hundred times is not five hundred
     # whole entries parsed in Python to draw fifty labels. A key a snapshot
     # does not carry comes back NULL, which is what `.get()` answered.
@@ -913,11 +913,16 @@ def list_revisions(post_id: int, con=Depends(get_db)):
                   json_extract(snapshot, '$.title')   AS title,
                   json_extract(snapshot, '$.value')   AS value,
                   json_extract(snapshot, '$.format')  AS format,
-                  json_extract(snapshot, '$.grouped') AS grouped
+                  json_extract(snapshot, '$.grouped') AS grouped,
+                  -- the start of what that version said, and whether it had a
+                  -- picture: two versions under one title are otherwise the
+                  -- same row twice, and a Restore is chosen by reading them
+                  substr(coalesce(json_extract(snapshot, '$.body'), ''), 1, ?) AS body,
+                  json_extract(snapshot, '$.image') IS NOT NULL AS image
            FROM revisions WHERE post_id = ? ORDER BY id DESC LIMIT ?""",
-        (post_id, REVISIONS_SHOWN),
+        (BLURB, post_id, REVISIONS_SHOWN),
     ).fetchall()
-    return [dict(r, grouped=bool(r["grouped"])) for r in rows]
+    return [dict(r, grouped=bool(r["grouped"]), image=bool(r["image"])) for r in rows]
 
 
 @app.get("/api/posts/{post_id}/comments")
@@ -950,7 +955,7 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
         # is pure, an entry under a value that already has ten is normal, and
         # there is no uniqueness here to race for. So the lock is held for the
         # three statements below landing together, not for a read -- see
-        # db.writing() and ADR-0007 for the eleven writes where it is the read.
+        # db.writing() and ADR-0007 for the nineteen writes where it is the read.
         value, fmt, key = resolve_format(value, p.format)
         if p.in_memoriam and p.on_this_day:
             raise HTTPException(422, "On this day and In Memoriam are mutually exclusive")
@@ -1380,7 +1385,7 @@ def add_comment(post_id: int, c: CommentIn, who=Depends(guard), con=Depends(get_
     return list_comments(post_id, con)
 
 
-def _already_open(con, table, post_id, who, open_state):
+def _already_open(con, table, post_id, who, open_state, key="post_id", also=""):
     """Has this client already got something waiting on this entry?
 
     A count is only worth reading if it counts *people*: without this one
@@ -1397,8 +1402,10 @@ def _already_open(con, table, post_id, who, open_state):
     """
     col, val = ("client_hash", who["client_hash"]) if who["client_hash"] \
         else ("ip_hash", who["ip_hash"])
+    # `key` and `also` are for origin_flags, which keys on another column and
+    # holds two kinds in one table; both are literals at the call site
     return con.execute(
-        f"SELECT 1 FROM {table} WHERE post_id = ? AND {col} = ? AND status = ?",
+        f"SELECT 1 FROM {table} WHERE {key} = ? AND {col} = ? AND status = ?{also}",
         (post_id, val, open_state),
     ).fetchone() is not None
 
@@ -1509,6 +1516,297 @@ def remove_link(
                           target_type="post",
                           target_id=post_id, other=other_id)
     return get_post(post_id, con)
+
+
+# --- origins ------------------------------------------------------------
+ORIGIN_NAME_MAX, ORIGIN_NOTE_MAX, ORIGIN_BODY_MAX = 80, 40, 600
+ORIGIN_COLS = ("id, name, name_note, origin, origin_note, body, author, lang, likes, "
+               "name_image, origin_image, edited_by, created_at")
+# what an edit may rewrite and a version keeps: everything but the two names
+ORIGIN_WORDS = ("name_note", "origin_note", "body", "lang", "name_image", "origin_image")
+
+
+def own_upload(v):
+    """A picture is one of this wiki's uploads -- the rule `PostIn` states
+    for `image`, for the same reason, on a link's two."""
+    if v is not None and not UPLOAD_PATH.match(v):
+        raise ValueError("an image is one of this wiki's uploads: /uploads/<name>."
+                         + "|".join(sorted(e[1:] for e in ALLOWED_EXT)))
+    return v
+
+
+class OriginIn(Text):
+    """One link: this name came from that one, and the story of how.
+
+    A name is stored as typed, like every value here -- only the space around
+    it goes. A blank note or language is no note and no language, and the
+    story is optional: the link alone already says something true.
+    """
+
+    name: str = Field(min_length=1, max_length=ORIGIN_NAME_MAX)
+    name_note: Optional[str] = Field(default=None, max_length=ORIGIN_NOTE_MAX)
+    origin: str = Field(min_length=1, max_length=ORIGIN_NAME_MAX)
+    origin_note: Optional[str] = Field(default=None, max_length=ORIGIN_NOTE_MAX)
+    body: str = Field(default="", max_length=ORIGIN_BODY_MAX)
+    author: str = Field(min_length=1, max_length=40)
+    lang: Optional[str] = Field(default=None, max_length=40)
+    name_image: Optional[str] = Field(default=None, max_length=300)
+    origin_image: Optional[str] = Field(default=None, max_length=300)
+
+    _own = field_validator("name_image", "origin_image")(own_upload)
+
+    @field_validator("name", "origin")
+    @classmethod
+    def not_blank(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("must not be blank")
+        return v
+
+    @field_validator("body")
+    @classmethod
+    def trimmed(cls, v):
+        return v.strip()
+
+    @field_validator("name_note", "origin_note", "lang")
+    @classmethod
+    def blank_is_none(cls, v):
+        return (v or "").strip() or None
+
+
+@app.get("/api/origins")
+def list_origins(con=Depends(get_db)):
+    """Every live link, oldest first. The front end joins them into chains.
+
+    ponytail: the whole table in one answer, because a chain can only be drawn
+    from all of its links and a page of them would cut one in half. Rows are
+    capped at 80 + 40 + 80 + 40 + 600 characters; when this is too many to
+    send, the answer is the server joining chains, not paging links.
+    """
+    return [dict(r) for r in con.execute(
+        f"SELECT {ORIGIN_COLS} FROM origins WHERE status = ? ORDER BY id", (LIVE,))]
+
+
+@app.post("/api/origins", status_code=201)
+def create_origin(o: OriginIn, who=Depends(guard), con=Depends(get_db)):
+    """File one link. A chain of three is this route called three times: each
+    link is true on its own, so half a chain is still a list of true things.
+
+    The same pair twice is two rows and is allowed -- the second is the story
+    told again, usually in another language, and the list draws one of them.
+    What is refused is a loop, since a name cannot come from itself however
+    many steps it takes, and that read is inside the lock.
+    """
+    author = nick(o.author)
+    with writing(con):
+        if leads_back(con, o.name, o.origin):
+            raise HTTPException(
+                422, f"{o.name} cannot come from {o.origin}: "
+                     f"following that back arrives at {o.name} again")
+        cur = con.execute(
+            """INSERT INTO origins (name, name_note, origin, origin_note, body,
+                                    author, lang, name_image, origin_image, created_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+            (o.name, o.name_note, o.origin, o.origin_note, o.body, author,
+             o.lang, o.name_image, o.origin_image, now()))
+        events.record(con, "ORIGIN", client=who, who=author,
+                      target_type="origin", target_id=cur.lastrowid)
+        row = con.execute(f"SELECT {ORIGIN_COLS} FROM origins WHERE id = ?",
+                          (cur.lastrowid,)).fetchone()
+    return dict(row)
+
+
+def live_origin(con, origin_id: int):
+    """The link, or 404 -- a hidden one cannot be liked any more than read."""
+    row = con.execute(f"SELECT {ORIGIN_COLS} FROM origins WHERE id = ? AND status = ?",
+                      (origin_id, LIVE)).fetchone()
+    if not row:
+        raise HTTPException(404, "no such origin")
+    return dict(row)
+
+
+class OriginEditIn(Text):
+    """What an edit may change: the story, the two notes, the language and
+    the two pictures.
+
+    Not the two names. They are what the link is -- every chain through it
+    joins on them -- so retyping one is not a correction, it is a different
+    link, and that one is filed.
+    """
+
+    name_note: Optional[str] = Field(default=None, max_length=ORIGIN_NOTE_MAX)
+    origin_note: Optional[str] = Field(default=None, max_length=ORIGIN_NOTE_MAX)
+    body: str = Field(default="", max_length=ORIGIN_BODY_MAX)
+    author: str = Field(min_length=1, max_length=40)
+    lang: Optional[str] = Field(default=None, max_length=40)
+    name_image: Optional[str] = Field(default=None, max_length=300)
+    origin_image: Optional[str] = Field(default=None, max_length=300)
+
+    _own = field_validator("name_image", "origin_image")(own_upload)
+
+    @field_validator("body")
+    @classmethod
+    def trimmed(cls, v):
+        return v.strip()
+
+    @field_validator("name_note", "origin_note", "lang")
+    @classmethod
+    def blank_is_none(cls, v):
+        return (v or "").strip() or None
+
+
+@app.patch("/api/origins/{origin_id}")
+def edit_origin(origin_id: int, o: OriginEditIn, who=Depends(guard), con=Depends(get_db)):
+    """Rewrite one link's words. The version replaced goes to
+    `origin_revisions` first, in the same transaction, so nothing an edit
+    takes is gone; `author` stays the first writer and the editor is
+    `edited_by`, as on a post.
+
+    shortcut: no `base_updated_at`, so two editors a minute apart are last
+    write wins -- the first one's text is in the revisions, not lost. Add the
+    409 when a link has enough fields for that to cost somebody work.
+    """
+    editor = nick(o.author)
+    with writing(con):
+        was = live_origin(con, origin_id)
+        # only what was sent: a field left out of an edit is left as it was,
+        # which is how edit_post reads one
+        rewrite_origin(con, was, {**was, **o.model_dump(exclude_unset=True)}, editor)
+        events.record(con, "ORIGIN_EDIT", client=who, who=editor,
+                      target_type="origin", target_id=origin_id)
+        return live_origin(con, origin_id)
+
+
+def rewrite_origin(con, was, new, by):
+    """Keep `was`'s words, then write `new`'s -- the one way a link's words
+    change, so an edit and a restore cannot disagree about what is kept.
+    ORIGIN_WORDS is both lists, so a field cannot be written and not kept."""
+    cols = ", ".join(ORIGIN_WORDS)
+    con.execute(
+        f"""INSERT INTO origin_revisions (origin_id, {cols}, written_by, created_at)
+            VALUES (?, {", ".join("?" * len(ORIGIN_WORDS))}, ?, ?)""",
+        (was["id"], *(was[c] for c in ORIGIN_WORDS),
+         was["edited_by"] or was["author"], now()))
+    con.execute(
+        f"""UPDATE origins SET {", ".join(c + " = ?" for c in ORIGIN_WORDS)},
+                               edited_by = ? WHERE id = ?""",
+        (*(new[c] for c in ORIGIN_WORDS), by, was["id"]))
+
+
+@app.get("/api/origins/{origin_id}/revisions")
+def list_origin_revisions(origin_id: int, con=Depends(get_db)):
+    """The newest versions an edit replaced, newest first, for the history
+    beside the edit form. Capped like a post's, and the rows stay.
+
+    Whole, where a post's are labels and an excerpt: every version of a link has the
+    same two names, so its words are the only thing that says which version
+    a Restore would bring back -- and they are 600 characters at most.
+    """
+    live_origin(con, origin_id)
+    return [dict(r) for r in con.execute(
+        f"""SELECT id, {", ".join(ORIGIN_WORDS)}, written_by, created_at
+            FROM origin_revisions WHERE origin_id = ? ORDER BY id DESC LIMIT ?""",
+        (origin_id, REVISIONS_SHOWN))]
+
+
+@app.post("/api/origins/{origin_id}/revisions/{rev_id}/restore")
+def restore_origin_revision(origin_id: int, rev_id: int, body: RestoreIn,
+                            who=Depends(guard), con=Depends(get_db)):
+    """Put an earlier version's words back. A restore is an edit: what it
+    replaces is kept too, so a restore is undone by another one. The names
+    are not in a version, so it cannot move a link or close a loop."""
+    by = nick(body.author)
+    with writing(con):
+        was = live_origin(con, origin_id)
+        old = con.execute(
+            "SELECT * FROM origin_revisions WHERE id = ? AND origin_id = ?",
+            (rev_id, origin_id)).fetchone()
+        if old is None:
+            raise HTTPException(404, "revision not found")
+        rewrite_origin(con, was, old, by)
+        events.record(con, "ORIGIN_REVERT", client=who, who=by,
+                      target_type="origin", target_id=origin_id)
+        return live_origin(con, origin_id)
+
+
+@app.get("/api/origins/{origin_id}/comments")
+def list_origin_comments(origin_id: int, con=Depends(get_db)):
+    """What has been said beside this link, newest first, capped like a post's."""
+    live_origin(con, origin_id)
+    return [dict(r) for r in con.execute(
+        """SELECT id, author, body, created_at FROM origin_comments
+           WHERE origin_id = ? ORDER BY id DESC LIMIT ?""",
+        (origin_id, COMMENTS_SHOWN))]
+
+
+@app.post("/api/origins/{origin_id}/comments", status_code=201)
+def add_origin_comment(origin_id: int, c: CommentIn, who=Depends(guard),
+                       con=Depends(get_db)):
+    """A remark beside a link, answered with the list as a post's is."""
+    author = nick(c.author)
+    with writing(con):
+        live_origin(con, origin_id)
+        con.execute(
+            "INSERT INTO origin_comments (origin_id, author, body, created_at) VALUES (?,?,?,?)",
+            (origin_id, author, c.body, now()))
+        events.record(con, "COMMENT", client=who, who=author,
+                      target_type="origin", target_id=origin_id)
+        return list_origin_comments(origin_id, con)
+
+
+def flag_origin(con, origin_id, kind, reason, detail, who, asked_by=None):
+    """File one flag, once per reader per kind while theirs is still open."""
+    live_origin(con, origin_id)
+    if _already_open(con, "origin_flags", origin_id, who, "OPEN", key="origin_id",
+                     also=f" AND kind = '{kind}'"):
+        raise HTTPException(409, "you have already flagged this entry")
+    cur = con.execute(
+        """INSERT INTO origin_flags (origin_id, kind, reason, detail, requested_by,
+                                     ip_hash, ua_hash, client_hash, created_at)
+           VALUES (?,?,?,?,?,?,?,?,?)""",
+        (origin_id, kind, reason, detail.strip(), asked_by, who["ip_hash"],
+         who["ua_hash"], who["client_hash"], now()))
+    events.record(con, "ORIGIN_FLAG", client=who, who=asked_by, target_type="origin",
+                  target_id=origin_id, kind=kind, reason=reason)
+    return cur.lastrowid
+
+
+@app.post("/api/origins/{origin_id}/report", status_code=201)
+def report_origin(origin_id: int, r: ReportIn, who=Depends(guard), con=Depends(get_db)):
+    """Say something is wrong with a link. Read by an operator, on the
+    Origins page of the back office, and never listed in public."""
+    with writing(con):
+        return {"id": flag_origin(con, origin_id, "report", r.reason, r.detail, who)}
+
+
+@app.post("/api/origins/{origin_id}/delete-request", status_code=201)
+def request_origin_deletion(origin_id: int, r: DeleteRequestIn, who=Depends(guard),
+                            con=Depends(get_db)):
+    """Ask for a link to go. As with an entry, it leads to a person reading
+    it: hiding is the operator's own button."""
+    asked_by = nick(r.author)
+    with writing(con):
+        return {"id": flag_origin(con, origin_id, "remove", r.reason, r.detail, who,
+                                  asked_by), "status": "OPEN"}
+
+
+@app.post("/api/origins/{origin_id}/like")
+def like_origin(origin_id: int, _=Depends(guard), con=Depends(get_db)):
+    # the same counter, the same trade and the same silence in events as
+    # like() on a post -- see the note there
+    with writing(con):
+        live_origin(con, origin_id)
+        con.execute("UPDATE origins SET likes = likes + 1 WHERE id = ?", (origin_id,))
+        return {"likes": live_origin(con, origin_id)["likes"]}
+
+
+@app.delete("/api/origins/{origin_id}/like")
+def unlike_origin(origin_id: int, _=Depends(guard), con=Depends(get_db)):
+    with writing(con):
+        live_origin(con, origin_id)
+        con.execute("UPDATE origins SET likes = MAX(likes - 1, 0) WHERE id = ?",
+                    (origin_id,))
+        return {"likes": live_origin(con, origin_id)["likes"]}
 
 
 @app.post("/api/upload")

@@ -26,7 +26,11 @@ const KINDS = ['report', 'remove'] as const
     `/edit` with the controls that do. It is also the whole of what this wiki
     has instead of a Delete button: a deletion is requested here, in words,
     rather than taken by one stranger's click. */
-export default function FlagPanel({ id }: { id: number | string }) {
+export default function FlagPanel({ id, origin = false }: {
+  id: number | string
+  /** the id is an Origins link's, not an entry's */
+  origin?: boolean
+}) {
   const { m } = useUi()
   const uid = useId()
   const fid = (name: string) => `${uid}-${name}`
@@ -62,9 +66,9 @@ export default function FlagPanel({ id }: { id: number | string }) {
         nickname.set(author)
         await api.requestDeletion(id, {
           reason, detail, author: author.trim(),
-        })
+        }, origin)
       } else {
-        await api.report(id, { reason, detail })
+        await api.report(id, { reason, detail }, origin)
       }
       setSent(kind === 'remove' ? m.flag.requested : m.flag.reported)
     } catch (e) {

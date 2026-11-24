@@ -259,6 +259,78 @@ is a real typecheck; the bare command on its own is a green that means
 nothing. `-b --noEmit` builds the referenced projects' types without writing
 any.
 
+## Origins
+
+The seventh tab is not a format. `/origins` lists where names came from and
+`/origins/new` files one, and both live in `pages/Origins.tsx`; `FmtTabs` in
+`Home.tsx` is the one strip the index and this page both draw, so the tab
+exists in a single place.
+
+**An entry is one link, never a chain.** `Origin` in `api.ts` says this name
+came from that one, with the story between them. `JavaScript ← Java ← Java
+coffee` is two entries, joined in `origins.ts` because one entry's origin is
+another's name — compared NFC and case-folded, drawn as typed. A chain
+therefore grows when somebody files the next link, and a name with two origins
+is two entries, the way two meanings of 42 are. `origins.test.ts` holds the
+joining, the loop guard and the language rule below.
+
+- **The form publishes a chain as a loop over one route**, `POST /api/origins`
+  per link. Each link is true on its own, so half a chain is still a list of
+  true things; the links that landed leave the form, or a second press of
+  Publish would file them twice.
+- **A link told in two languages is drawn once.** `preferLang` keeps one entry
+  per (name, origin) pair, the reader's entry-text language first. "Written
+  in" on the form is the same free-form name `Post.lang` is.
+- **Edit on a link is shaped like an entry's.** `/origins/:id/edit` has the
+  story, the two notes and the language in fields, and under them the
+  Translations panel `PostForm` draws. The two names are shown and not
+  offered. A translation here is another row for the same pair rather than a
+  child of this one, so the panel's rows link to each telling's own edit page
+  and "+ Add translation" is `/origins/:id/translate` — the filing form with
+  the names fixed and the languages already told off the menu. The History
+  aside is `PostForm`'s too, each row titled `name ← origin` with that
+  version's notes and story under it, since the names never differ; a
+  restore refills the fields from what came back.
+- **An entry is laid out as `PostPage` lays out a number's**, with its
+  classes: the hero with the name where the numeral is, the meta row's like
+  and Show credits / Edit pair, the story as the body, and the names further
+  back where related entries go. No tab strip, as on `/p/:id`. Language tabs
+  appear once the pair is told twice and are links between the tellings,
+  since each is a row with an address of its own.
+- **An entry's rail is `PostPage`'s.** Edit history, `Comments` and
+  `FlagPanel`, about the link that was asked for; the last two are the same
+  components with `origin` set, which only changes the route they call.
+- **Each name on a form's row has a picture button at its far end.**
+  `components/ImageButton.tsx` is the one image control in the app, and
+  `PostForm` draws the same one at the end of its title's row: it uploads
+  through `api.upload`, then shows the picture and removes it on a press.
+  It has no label over it, so what it is arrives as a `data-tip` on hover or
+  focus. `onBusy` is how `PostForm` keeps Publish off mid-upload and
+  `onBroken` how it learns a recovered draft's picture is gone. In
+  a chain the middle name's picture is sent twice, as its note is — as one
+  link's `origin_image` and the next one's `name_image`. The entry draws the
+  two under its meta row.
+- **A link is liked the way an entry is**, with the same `Like` button told
+  the id is an origin's: its own route and its own localStorage key, since the
+  two tables number their rows apart.
+- **A loop is refused in the form and survived in the list.** `loops` stops a
+  chain that arrives back at its own first name; `chain` carries a seen set
+  anyway, since the form is not the only way to write to an open API.
+- **A row is a link to `/origins/:id`**, the entry: that link and every link
+  it leads back through, each with its story.
+  The page is worked out from the whole list like the rows are, so there is
+  no second read. "N names came from here" there is `/origins?q=`, which is
+  the list's only filter: it has no box of its own and always draws chains
+  folded, so the Origins tab is the way back to the whole of it. The row's like is the index's
+  `.ix-like`, so it is revealed and hidden by the same rules.
+- **`Names` draws the list's rows and the form's preview**, so what the
+  form promises is what the list does.
+- **The back office has one page for it**, `admin/pages/Origins.tsx`: every
+  link with its status, hidden ones included, and a Hide that is its own
+  undo. One row is one link there too, so hiding one cuts a chain at that
+  point and takes nothing else. A refusal — the 409 for a link that would now
+  close a loop — is drawn inside the dialog.
+
 ## Two kinds of language
 
 Interface locale and entry language are separate state. `UiProvider` owns
