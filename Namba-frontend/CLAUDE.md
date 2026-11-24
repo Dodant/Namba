@@ -296,8 +296,8 @@ joining, the loop guard and the language rule below.
   it leads back through, each with its story, its byline, a like and Edit.
   The page is worked out from the whole list like the rows are, so there is
   no second read. "N names came from here" there is `/origins?q=`, which the
-  list takes as its filter's first value. The row's like shows on hover,
-  focus, once given, and always where there is no hover.
+  list takes as its filter's first value. The row's like is the index's
+  `.ix-like`, so it is revealed and hidden by the same rules.
 - **`Names` draws the list's rows, the entry and the form's preview**, so what the
   form promises is what the list does.
 - **The back office has one page for it**, `admin/pages/Origins.tsx`: every

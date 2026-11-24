@@ -915,7 +915,8 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
 .ix-like .btn:hover, .ix-like .btn.on { color: var(--hit); }
 @media (hover: hover) {
   .ix-like { opacity: 0; }
-  .ix-e:hover .ix-like, .ix-e:focus-within .ix-like { opacity: 1; }
+  .ix-e:hover .ix-like, .ix-e:focus-within .ix-like,
+  .og-row:hover .ix-like, .og-row:focus-within .ix-like { opacity: 1; }
 }
 /* display, not opacity: out of the row and out of the a11y tree both */
 @media (hover: none) { .ix-like { display: none; } }
@@ -2262,11 +2263,6 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline;
   gap: 2px 28px; padding: 13px 0; color: inherit; text-decoration: none;
 }
-/* the like is there for whoever reaches for it: a pointer over the row, a
-   keyboard inside it, a like already given, or a screen with no hover at all */
-.og-row > .btn { opacity: 0; }
-.og-row:hover > .btn, .og-row:focus-within > .btn, .og-row > .btn.on { opacity: 1; }
-@media (hover: none) { .og-row > .btn { opacity: 1; } }
 .og-link:hover { text-decoration: none; }
 .og-page h1 { font-size: 17px; font-weight: 400; margin: clamp(20px, 3vw, 26px) 0 14px; }
 .og-chain { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }

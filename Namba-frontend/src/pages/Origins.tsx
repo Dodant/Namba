@@ -155,7 +155,9 @@ export default function Origins({ lang }: { lang: string }) {
                 <Names links={r} />
                 <span className="og-teaser">{r.find((l) => l.body)?.body}</span>
               </Link>
-              <Like post={r[0]} origin />
+              {/* the index's own like: same class, same reveal, same absence
+                  on a screen with no hover */}
+              <span className="ix-like"><Like post={r[0]} origin /></span>
             </div>
           ))}
           {!shown.length && (
