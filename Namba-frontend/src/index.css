@@ -1185,7 +1185,7 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
 .detail-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(200px, 22vw, 280px);
-  gap: 0 clamp(24px, 3.6vw, 44px);
+  gap: 0 clamp(24px, 5vw, 72px);
   align-items: start;
 }
 /* The rail holds a form now, and a sticky box taller than the viewport pins its
@@ -1555,7 +1555,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
    well as the byline, and narrower left "Aug 19," and "2026" on two lines. */
 .form-layout {
   display: grid; grid-template-columns: minmax(0, 680px) 340px;
-  gap: 0 40px; align-items: start;
+  /* 40 where the two only just fit, at 1130, opening to 72 as the window
+     gives the room: the rail stands a little off the form, not against it */
+  gap: 0 clamp(40px, calc(100vw - 1090px), 72px); align-items: start;
 }
 /* below this the two would not both fit, and the rail goes back to being the
    last thing on the page. .side's own breakpoint is 820, so this repeats what
