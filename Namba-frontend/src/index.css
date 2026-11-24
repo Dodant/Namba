@@ -233,7 +233,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
     .quiet, .section, .field label, .field .field-label, .field.check,
     .calendar-role legend, .category-more, .draft-notice p,
     .form h1, .form-intro, .fine, .feed-intro, .hero-said p, .empty, .panel-empty,
-    .body-none, .foot) {
+    .body-none, .foot, .og-head, .og-arrow) {
   -webkit-user-select: none;
   user-select: none;
   -webkit-user-drag: none;
@@ -1657,7 +1657,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 /* react-markdown renders a cell's text as a paragraph, and .body p carries a
    bottom margin meant for prose. Two rows of it pushed every table open. */
 .body :is(th, td) > p { margin: 0; }
-.form h1, .guide h1 {
+.form h1, .guide h1, .og-head h1 {
   font-size: clamp(26px, 4vw, 31px); font-weight: 400; letter-spacing: -0.015em;
   margin: clamp(20px, 3vw, 26px) 0 8px;
 }
@@ -2241,3 +2241,54 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .form-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
 .draft-notice { margin-bottom: 24px; }
 .draft-notice p { overflow-wrap: anywhere; }
+
+/* --- origins ------------------------------------------------------ */
+/* A row is a chain read left to right -- the name, then each name it came
+   from -- and opens into the story of each link. The form is the same chain
+   stood on end, which is why the rail and the open row share a left rule. */
+.og-head {
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+  gap: 12px 24px; margin-bottom: 18px;
+}
+.og-head h1 { margin-top: 6px; }
+.og-head .feed-intro { margin: 0; }
+.og-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.og-tools .field { margin-bottom: 12px; }
+.og-tools .field:first-child { flex: 1 1 240px; max-width: 420px; }
+.og-row { border-bottom: 1px solid var(--rule); }
+.og-row summary { list-style: none; cursor: pointer; padding: 13px 0; }
+.og-row summary::-webkit-details-marker { display: none; }
+.og-chain { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.og-name { font-size: 17px; overflow-wrap: anywhere; }
+.og-name.head { font-size: 21px; font-weight: 500; }
+.og-row summary:hover .og-name.head { color: var(--accent); }
+.og-name small {
+  margin-left: 7px; font-family: var(--mono); font-size: var(--fs-meta);
+  font-weight: 400; color: var(--muted);
+}
+.og-arrow { font-family: var(--mono); color: var(--accent); }
+/* one line of the first story, so a closed row still says why */
+.og-teaser {
+  display: block; margin-top: 3px; max-width: 68ch; font-size: var(--fs-fine);
+  color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.og-row[open] .og-teaser { display: none; }
+.og-steps, .og-rail { margin-left: 4px; padding-left: 20px; border-left: 1px solid var(--line); }
+.og-steps { list-style: none; margin-top: 0; margin-bottom: 18px; display: grid; gap: 16px; }
+.og-steps li, .og-stop { position: relative; }
+.og-steps li::before, .og-stop::before {
+  content: ''; position: absolute; left: -24px; top: 5px; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--accent);
+}
+.og-steps h3 {
+  margin: 0; font-family: var(--mono); font-size: var(--fs-ctl); font-weight: 500;
+  color: var(--ink-soft); overflow-wrap: anywhere;
+}
+.og-steps p { margin: 4px 0 6px; max-width: 68ch; }
+.og-steps .meta a { color: var(--accent); }
+.og-stop { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 0 12px; }
+.og-stop .field { margin-bottom: 14px; }
+.og-stop .fine { grid-column: 1 / -1; margin: -6px 0 14px; color: var(--accent); }
+.og-rail > .actions { margin: 0 0 clamp(20px, 3.5vw, 28px); }
+.og-preview { min-width: 0; }
+@media (max-width: 560px) { .og-stop { grid-template-columns: minmax(0, 1fr); } }

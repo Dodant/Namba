@@ -281,16 +281,14 @@ function bandCount(band: Band, format: Format, m: Messages) {
   )
 }
 
-function Index({ lang }: { lang: string }) {
-  const { locale, m } = useUi()
-  const [params, setParams] = useSearchParams()
-  // an unknown ?format= is the first tab, not a request the API refuses
-  const format: Format = FORMATS.find((f) => f === params.get('format')) ?? 'INTEGER'
-  const tag = params.get('tag') ?? ''
-  /* its own param rather than a reserved tag: tags are free-form, so any word
-     meaning "none" is a word somebody can coin. One filter at a time. */
-  const untagged = !tag && params.has('untagged')
-
+/* The strip every index wears, Origins included: the six formats and, past
+   the last divider, the one tab that is not a format. With no `format` the
+   Origins tab is the page you are on. `query` is what a format tab carries
+   across -- the category filter, which Origins has none of. */
+export function FmtTabs(
+  { format, query = {} }: { format?: Format; query?: Record<string, string> },
+) {
+  const { m } = useUi()
   /* The strip keeps whole words and scrolls, so the tab you are on can start
      off the end of it -- and a strip showing four tabs with no underline on
      any of them says the page belongs to none of them. Nothing in CSS can ask
@@ -308,6 +306,57 @@ function Index({ lang }: { lang: string }) {
       ?.querySelector('[aria-current="page"]')
       ?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
   }, [format])
+
+  return (
+    <nav className="tabs fmts" ref={strip} aria-label={m.home.entryKinds}>
+      {FORMATS.map((f, i) => (
+        <Link
+          key={f}
+          /* .apart wherever the section changes, not on a position in
+             FORMATS: the gaps are the /n/, /c/ and /a/ lines, so reordering
+             that array moves the tabs and leaves the gaps where they
+             belong. index.css draws each one as 12px and a hairline -- the
+             strip scrolls rather than spreading, so there is no free space
+             to spend -- and two of them make three groups read as three. */
+          className={`${i > 0 && sectionOf(f) !== sectionOf(FORMATS[i - 1])
+            ? 'apart ' : ''}${f === format ? 'on' : ''}`}
+          aria-current={f === format ? 'page' : undefined}
+          to={`/?${new URLSearchParams({
+            format: f,
+            ...query,
+          })}`}
+        >
+          {/* Whole words at every width. Six of them want past 400px and a
+              320px screen has 288, so the strip scrolls -- see .tabs.fmts
+              in index.css, and the layout effect above, which is what keeps
+              the tab you are on from starting off the end of it. A label
+              here is its label: the strip scrolls rather than shortening
+              them to "Int" and "Abbr." to fit. */}
+          {m.format[f]}
+        </Link>
+      ))}
+      {/* Not a format: links between names, on a page of its own. Apart
+          for the reason the other two gaps are -- the section changes. */}
+      <Link
+        className={`apart ${format ? '' : 'on'}`}
+        aria-current={format ? undefined : 'page'}
+        to="/origins"
+      >
+        {m.origins.title}
+      </Link>
+    </nav>
+  )
+}
+
+function Index({ lang }: { lang: string }) {
+  const { locale, m } = useUi()
+  const [params, setParams] = useSearchParams()
+  // an unknown ?format= is the first tab, not a request the API refuses
+  const format: Format = FORMATS.find((f) => f === params.get('format')) ?? 'INTEGER'
+  const tag = params.get('tag') ?? ''
+  /* its own param rather than a reserved tag: tags are free-form, so any word
+     meaning "none" is a word somebody can coin. One filter at a time. */
+  const untagged = !tag && params.has('untagged')
 
   const tags = useAsync(() => api.tags({ format }), [format])
   const numbers = useAsync(() => api.numbers({ format, tag, lang, untagged: untagged ? '1' : undefined }),
@@ -455,34 +504,7 @@ function Index({ lang }: { lang: string }) {
 
   return (
     <>
-      <nav className="tabs fmts" ref={strip} aria-label={m.home.entryKinds}>
-        {FORMATS.map((f, i) => (
-          <Link
-            key={f}
-            /* .apart wherever the section changes, not on a position in
-               FORMATS: the gaps are the /n/, /c/ and /a/ lines, so reordering
-               that array moves the tabs and leaves the gaps where they
-               belong. index.css draws each one as 12px and a hairline -- the
-               strip scrolls rather than spreading, so there is no free space
-               to spend -- and two of them make three groups read as three. */
-            className={`${i > 0 && sectionOf(f) !== sectionOf(FORMATS[i - 1])
-              ? 'apart ' : ''}${f === format ? 'on' : ''}`}
-            aria-current={f === format ? 'page' : undefined}
-            to={`/?${new URLSearchParams({
-              format: f,
-              ...(tag ? { tag } : untagged ? { untagged: '1' } : {}),
-            })}`}
-          >
-            {/* Whole words at every width. Six of them want past 400px and a
-                320px screen has 288, so the strip scrolls -- see .tabs.fmts
-                in index.css, and the layout effect above, which is what keeps
-                the tab you are on from starting off the end of it. A label
-                here is its label: the strip scrolls rather than shortening
-                them to "Int" and "Abbr." to fit. */}
-            {m.format[f]}
-          </Link>
-        ))}
-      </nav>
+      <FmtTabs format={format} query={tag ? { tag } : untagged ? { untagged: '1' } : {}} />
 
       {/* Wears .band so it folds and reads like the bands under it. Closed by
           default -- twenty chips is a wall in front of the thing people came

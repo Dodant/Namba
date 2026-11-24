@@ -250,6 +250,22 @@ export type PostInput = {
   year?: number | null
 }
 
+/** One Origins entry: `name` came from `origin`, and `body` is the story of
+    how. A link and not a page -- chains are worked out in `origins.ts` from
+    entries whose origin is another's name. The two notes say what each name
+    is the name of, since Python is a snake until somebody says otherwise. */
+export type OriginInput = {
+  name: string
+  name_note: string | null
+  origin: string
+  origin_note: string | null
+  body: string
+  author: string
+  /** what the story is written in, the same free-form name `Post.lang` is */
+  lang: string | null
+}
+export type Origin = OriginInput & { id: number; created_at: string }
+
 export type Params = Record<string, string | number | undefined | null>
 
 /* Exported for the back office's client, which is a separate bundle and needs
@@ -386,6 +402,10 @@ export const api = {
       the reason nothing here needs a refetch. */
   comment: (id: number | string, c: { author: string; body: string }) =>
     req<Comment[]>(`/api/posts/${id}/comments`, json('POST', c)),
+
+  origins: () => req<Origin[]>('/api/origins'),
+
+  createOrigin: (o: OriginInput) => req<Origin>('/api/origins', json('POST', o)),
 
   upload: (file: File) => {
     const fd = new FormData()
