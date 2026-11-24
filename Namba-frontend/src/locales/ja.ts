@@ -142,7 +142,7 @@ export const JA: Messages = {
     conflict: (fields: string[]) =>
       `この項目を開いている間に別の人が保存しました。変更された箇所: ${fields.length ? fields.join('、') : '画面に見えない部分'}。入力した内容は残っています — もう一度「変更を保存」を押すと上書きされます。`,
     conflictCompare: '先に相手の内容を見る ↗',
-    cc0: (editing: boolean) => `${editing ? '保存すると' : '公開すると'}、この投稿はCC0で公開されます。誰でも許可なく、あらゆる目的に再利用できます。`,
+    cc0: (editing: boolean) => `${editing ? '保存すると' : '公開すると'}、この投稿はCC0で公開されます。\n誰でも許可なく、あらゆる目的に再利用できます。`,
     history: '履歴', historyHint: 'このURLの以前の版を復元', current: '現在',
     translations: '翻訳', translationsHint: 'この項目を別の言語で記述',
     editTranslation: '翻訳を編集', addTranslation: '+ 翻訳を追加',

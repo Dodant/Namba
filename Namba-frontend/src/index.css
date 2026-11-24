@@ -1454,7 +1454,10 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 @media (max-width: 560px) {
   .spacer { flex: 1 0 100%; }
 }
-.form-fields > .actions { margin: 26px 0 0; }
+/* the form's last word sits at its far end, in every form: the row that
+   commits, and under it the waiver, one sentence to a line */
+.form-fields > .actions { margin: 26px 0 0; justify-content: flex-end; }
+.form-fields > .actions + .fine { text-align: right; white-space: pre-line; }
 .form-fields > .actions .btn { padding: 10px 18px; }
 
 /* what the entry is filed under and its response at one end, and what you can
@@ -2311,6 +2314,6 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .og-stop .field { margin-bottom: 14px; }
 .og-stop .fine { grid-column: 1 / -1; margin: -6px 0 14px; color: var(--accent); }
 .og-rail { margin-bottom: 14px; }
-.og-rail + .actions { margin: 0 0 clamp(20px, 3.5vw, 28px) 25px; }
+.og-rail + .actions { margin: 0 0 clamp(20px, 3.5vw, 28px) 25px; justify-content: flex-start; }
 .og-preview { min-width: 0; }
 @media (max-width: 560px) { .og-stop { grid-template-columns: minmax(0, 1fr); } }

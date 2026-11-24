@@ -138,7 +138,7 @@ export const KO: Messages = {
     conflict: (fields: string[]) =>
       `이 엔트리를 열어 둔 사이에 다른 사람이 저장했습니다. 바뀐 곳: ${fields.length ? fields.join(', ') : '화면에 보이지 않는 부분'}. 작성하신 내용은 그대로 있습니다 — 변경 내용 저장을 다시 누르면 그 위에 저장되고,`,
     conflictCompare: '먼저 그쪽 내용을 볼 수도 있습니다 ↗',
-    cc0: (editing: boolean) => `${editing ? '저장하면' : '게시하면'} 이 기여분은 CC0으로 공개됩니다. 누구나 허락 없이 어떤 목적으로든 재사용할 수 있습니다.`,
+    cc0: (editing: boolean) => `${editing ? '저장하면' : '게시하면'} 이 기여분은 CC0으로 공개됩니다.\n누구나 허락 없이 어떤 목적으로든 재사용할 수 있습니다.`,
     history: '기록', historyHint: '이 주소의 이전 버전 복원', current: '현재',
     translations: '번역', translationsHint: '이 엔트리를 다른 언어로 작성',
     editTranslation: '번역 수정', addTranslation: '+ 번역 추가',

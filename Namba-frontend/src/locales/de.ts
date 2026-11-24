@@ -154,7 +154,7 @@ export const DE: Messages = {
       `Jemand anderes hat diesen Eintrag gespeichert, während er bei Ihnen offen war, und dabei geändert: ${fields.length ? fields.join(', ') : 'etwas, das hier nicht zu sehen ist'}. Nichts von dem, was Sie geschrieben haben, ist verloren — drücken Sie erneut auf Änderungen speichern, um Ihre Fassung darüber zu schreiben, oder`,
     conflictCompare: 'lesen Sie zuerst deren Fassung ↗',
     publish: 'Veröffentlichen',
-    cc0: (editing: boolean) => `${editing ? 'Durch das Speichern' : 'Durch das Veröffentlichen'} wird dieser Beitrag unter CC0 freigegeben. Er darf ohne Nachfrage für jeden Zweck weiterverwendet werden.`,
+    cc0: (editing: boolean) => `${editing ? 'Durch das Speichern' : 'Durch das Veröffentlichen'} wird dieser Beitrag unter CC0 freigegeben.\nEr darf ohne Nachfrage für jeden Zweck weiterverwendet werden.`,
     history: 'Versionsgeschichte', historyHint: 'eine frühere Version unter derselben Adresse wiederherstellen',
     current: 'aktuell', translations: 'Übersetzungen', translationsHint: 'dieser Eintrag in anderen Sprachen',
     editTranslation: 'Übersetzung bearbeiten', addTranslation: '+ Übersetzung hinzufügen',

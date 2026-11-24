@@ -142,7 +142,7 @@ export const ZH_HANS: Messages = {
     conflict: (fields: string[]) =>
       `在您打开此条目期间，其他人保存了它，改动了：${fields.length ? fields.join('、') : '页面上看不到的部分'}。您输入的内容没有丢失 — 再次点击保存更改即可覆盖，或者`,
     conflictCompare: '先看看他们的版本 ↗',
-    cc0: (editing: boolean) => `${editing ? '保存后' : '发布后'}，这份贡献将以CC0发布。任何人都可以不经许可将其用于任何用途。`,
+    cc0: (editing: boolean) => `${editing ? '保存后' : '发布后'}，这份贡献将以CC0发布。\n任何人都可以不经许可将其用于任何用途。`,
     history: '历史记录', historyHint: '恢复此地址下的早期版本', current: '当前',
     translations: '翻译', translationsHint: '使用其他语言编写此条目',
     editTranslation: '编辑翻译', addTranslation: '+ 添加翻译',

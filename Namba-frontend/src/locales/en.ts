@@ -180,7 +180,7 @@ export const EN = {
     conflict: (fields: string[]) =>
       `Somebody else saved this entry while you had it open, changing ${fields.length ? fields.join(', ') : 'nothing you can see'}. Nothing you typed is lost — press Save changes again to write your version over theirs, or`,
     conflictCompare: 'read theirs first ↗',
-    cc0: (editing: boolean) => `${editing ? 'Saving' : 'Publishing'} releases this contribution under CC0. Anyone may reuse it for any purpose without asking.`,
+    cc0: (editing: boolean) => `${editing ? 'Saving' : 'Publishing'} releases this contribution under CC0.\nAnyone may reuse it for any purpose without asking.`,
     history: 'History', historyHint: 'restore an earlier version at this same address', current: 'current',
     translations: 'Translations', translationsHint: 'this entry in other languages',
     editTranslation: 'Edit translation', addTranslation: '+ Add translation',

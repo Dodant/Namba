@@ -152,7 +152,7 @@ export const ES: Messages = {
     conflict: (fields: string[]) =>
       `Otra persona guardó esta entrada mientras la tenías abierta y cambió: ${fields.length ? fields.join(', ') : 'algo que no se ve aquí'}. No se ha perdido nada de lo que escribiste: pulsa Guardar cambios otra vez para escribir tu versión sobre la suya, o`,
     conflictCompare: 'lee antes la suya ↗',
-    cc0: (editing: boolean) => `Al ${editing ? 'guardar' : 'publicar'}, esta contribución se libera bajo CC0. Cualquiera puede reutilizarla para cualquier fin sin pedir permiso.`,
+    cc0: (editing: boolean) => `Al ${editing ? 'guardar' : 'publicar'}, esta contribución se libera bajo CC0.\nCualquiera puede reutilizarla para cualquier fin sin pedir permiso.`,
     history: 'Historial', historyHint: 'restaura una versión anterior en esta misma dirección', current: 'actual',
     translations: 'Traducciones', translationsHint: 'esta entrada en otros idiomas',
     editTranslation: 'Editar traducción', addTranslation: '+ Añadir traducción',
