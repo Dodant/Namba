@@ -8,6 +8,7 @@ import {
   type Comment, type Revision,
 } from '../api'
 import { fmtCount, fmtDate, numSize, plain, showValue } from '../format'
+import { Photo } from './Home'
 import FlagPanel from '../components/FlagPanel'
 import { NicknameField } from '../components/NicknameField'
 import { Like } from '../components/PostCard'
@@ -82,7 +83,8 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
             <ol className="revs">
               {revs.data.map((r) => (
                 <li className="rev" key={r.id}>
-                  <b>{r.title}</b>
+                  <b>{r.title}{r.image && <Photo label={m.home.hasImage} />}</b>
+                  {r.body && <span className="ver-b">{plain(r.body)}</span>}
                   <span>
                     {showValue(r.value, r.grouped, locale, r.format)} · {revisionBy(r.author, m)}{' '}<span className="when">· {fmtDate(r.at, locale)}</span>
                   </span>
@@ -297,14 +299,16 @@ export default function PostPage({ contentLang }: { contentLang: string }) {
           </summary>
           <ol className="revs">
             <li className="rev now">
-              <b>{post.title}</b>
+              <b>{post.title}{post.image && <Photo label={m.home.hasImage} />}</b>
+              {post.body && <span className="ver-b">{plain(post.body)}</span>}
               <span>
                 {m.post.current} · {post.edited_by ? m.post.editedBy(post.edited_by) : m.common.by(post.author)}
               </span>
             </li>
             {revs.data?.map((r) => (
               <li className="rev" key={r.id}>
-                <b>{r.title}</b>
+                <b>{r.title}{r.image && <Photo label={m.home.hasImage} />}</b>
+                {r.body && <span className="ver-b">{plain(r.body)}</span>}
                 <span>
                   {revisionBy(r.author, m)}{' '}<span className="when">· {fmtDate(r.at, locale)}</span>
                 </span>

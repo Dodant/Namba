@@ -7,12 +7,13 @@ import {
 } from '../api'
 import {
   canGroupValue, canonicalNumber, cleanNumberInput, fmtDate, monthDay,
-  monthDays, monthDayValue, monthName, showValue, todayMonthDay,
+  monthDays, monthDayValue, monthName, showValue, todayMonthDay, plain,
 } from '../format'
 import { UI_LOCALES } from '../locales'
 import { draftIsStale, leaveDraft, openDraft, type DraftFields, type DraftStatus } from '../drafts'
 import ExistingEntries from '../components/ExistingEntries'
 import { ImageButton } from '../components/ImageButton'
+import { Photo } from './Home'
 import { NicknameField } from '../components/NicknameField'
 import { useAsync } from '../useAsync'
 import { revisionBy, useUi, type Messages } from '../uiLocale'
@@ -1003,7 +1004,10 @@ function Editor() {
             <div className="panel">
               <div className="panel-row now">
                 <div className="panel-main">
-                  <span className="panel-t now">{post.title}</span>
+                  <span className="panel-t now">
+                    {post.title}{post.image && <Photo label={m.home.hasImage} />}
+                  </span>
+                  {post.body && <span className="ver-b">{plain(post.body)}</span>}
                   <span className="panel-m">
                     {m.form.current} ·{' '}
                     {post.edited_by ? m.post.editedBy(post.edited_by) : m.common.by(post.author)}
@@ -1013,7 +1017,10 @@ function Editor() {
               {revs.map((r) => (
                 <div className="panel-row" key={r.id}>
                   <div className="panel-main">
-                    <span className="panel-t">{r.title}</span>
+                    <span className="panel-t">
+                      {r.title}{r.image && <Photo label={m.home.hasImage} />}
+                    </span>
+                    {r.body && <span className="ver-b">{plain(r.body)}</span>}
                     <span className="panel-m">
                       {revisionBy(r.author, m)}{' '}<span className="when">· {fmtDate(r.at, locale)}</span>
                     </span>

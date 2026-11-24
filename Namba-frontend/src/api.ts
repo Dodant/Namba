@@ -212,6 +212,10 @@ export type Revision = {
       date. */
   format: Format
   grouped: boolean
+  /** the first lines of that version's body and whether it had a picture --
+      what tells two versions with one title apart before a Restore */
+  body: string
+  image: boolean
 }
 
 /** Something said beside an entry rather than in it. No `edited_by` and no

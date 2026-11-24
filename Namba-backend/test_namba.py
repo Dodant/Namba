@@ -276,6 +276,23 @@ def test_origins():
         pass
 
 
+def test_a_revision_says_what_it_said():
+    """Two versions under one title are the same row twice unless the history
+    carries what each said: the start of its body, and whether it had a
+    picture. That is what a Restore is chosen by."""
+    c = TestClient(main.app)
+    p = c.post("/api/posts", json={
+        "value": "4711", "title": "A cologne", "body": "first " + "x" * 300,
+        "image": "/uploads/rev-a.png"}).json()
+    c.patch(f"/api/posts/{p['id']}", json={"body": "second", "image": None,
+                                            "author": "hesse"})
+    c.patch(f"/api/posts/{p['id']}", json={"body": "third", "author": "hesse"})
+    revs = c.get(f"/api/posts/{p['id']}/revisions").json()
+    assert [(r["body"][:6], r["image"]) for r in revs] == [
+        ("second", False), ("first ", True)], revs
+    assert len(revs[1]["body"]) == main.BLURB, "the excerpt is capped"
+
+
 def test_parse():
     cases = {
         "42": ("INTEGER", 42.0),

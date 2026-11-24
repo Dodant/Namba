@@ -201,7 +201,7 @@ function Version({ of, v }: { of: Origin; v: Omit<OriginInput, 'name' | 'origin'
         {v.origin_note && <small>{v.origin_note}</small>}
         {(v.name_image || v.origin_image) && <Photo label={m.home.hasImage} />}
       </b>
-      <span className="og-ver-b">{v.body || m.post.noDetails}</span>
+      <span className="ver-b">{v.body || m.post.noDetails}</span>
     </>
   )
 }

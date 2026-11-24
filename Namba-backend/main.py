@@ -904,7 +904,7 @@ def list_revisions(post_id: int, con=Depends(get_db)):
     hero says 25 December. Neither is a different number.
     """
     guard_public(con, post_id)
-    # The four fields, asked for by name. SQLite reads them out of the stored
+    # The fields a row draws, asked for by name. SQLite reads them out of the stored
     # JSON, so an entry fought over five hundred times is not five hundred
     # whole entries parsed in Python to draw fifty labels. A key a snapshot
     # does not carry comes back NULL, which is what `.get()` answered.
@@ -913,11 +913,16 @@ def list_revisions(post_id: int, con=Depends(get_db)):
                   json_extract(snapshot, '$.title')   AS title,
                   json_extract(snapshot, '$.value')   AS value,
                   json_extract(snapshot, '$.format')  AS format,
-                  json_extract(snapshot, '$.grouped') AS grouped
+                  json_extract(snapshot, '$.grouped') AS grouped,
+                  -- the start of what that version said, and whether it had a
+                  -- picture: two versions under one title are otherwise the
+                  -- same row twice, and a Restore is chosen by reading them
+                  substr(coalesce(json_extract(snapshot, '$.body'), ''), 1, ?) AS body,
+                  json_extract(snapshot, '$.image') IS NOT NULL AS image
            FROM revisions WHERE post_id = ? ORDER BY id DESC LIMIT ?""",
-        (post_id, REVISIONS_SHOWN),
+        (BLURB, post_id, REVISIONS_SHOWN),
     ).fetchall()
-    return [dict(r, grouped=bool(r["grouped"])) for r in rows]
+    return [dict(r, grouped=bool(r["grouped"]), image=bool(r["image"])) for r in rows]
 
 
 @app.get("/api/posts/{post_id}/comments")

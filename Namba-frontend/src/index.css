@@ -2311,7 +2311,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   margin: 0 2px 0 5px; font-family: var(--mono); font-size: var(--fs-meta);
   font-weight: 400; color: var(--muted);
 }
-.og-ver-b {
+.ver-b {
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
   font-size: var(--fs-fine); line-height: 1.45; color: var(--ink-soft); margin: 2px 0;
 }
