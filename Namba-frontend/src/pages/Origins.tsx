@@ -10,7 +10,7 @@ import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
 import { revisionBy, useUi } from '../uiLocale'
 import FlagPanel from '../components/FlagPanel'
-import { fmtCount, fmtDate } from '../format'
+import { fmtCount, fmtDate, numSize } from '../format'
 import { FmtTabs } from './Home'
 import { Comments } from './PostPage'
 
@@ -37,73 +37,142 @@ const Names = ({ links }: { links: readonly OriginInput[] }) => (
   </span>
 )
 
-/* The story of each link. `kids` is given by the entry page alone, and is
-   what turns on the controls a published link has and a preview does not. */
-function Steps({ links, kids }: {
-  links: readonly OriginInput[]
-  kids?: Map<string, number>
-}) {
+/* The story of each link, under the form's preview. */
+function Steps({ links }: { links: readonly OriginInput[] }) {
   const { m } = useUi()
   return (
     <ol className="og-steps">
-      {links.map((l, i) => {
-        const n = kids?.get(nameKey(l.origin)) ?? 0
-        return (
-          <li key={i}>
-            {/* one link is already named by the line above it */}
-            {links.length > 1 && <h3>{l.name} ← {l.origin}</h3>}
-            {l.body && <p>{l.body}</p>}
-            <div className="meta">
-              {l.author && <span>{m.common.by(l.author)}{l.lang ? ` · ${l.lang}` : ''}</span>}
-              {/* a name that is a number has a page of its own on this wiki */}
-              {/^\d+$/.test(l.origin) && (
-                <Link to={entryPath(l.origin, 'INTEGER')}>{entryPath(l.origin, 'INTEGER')}</Link>
-              )}
-              {n > 1 && (
-                <Link to={`/origins?q=${encodeURIComponent(l.origin)}`}>
-                  {m.origins.cameFromHere(n)}
-                </Link>
-              )}
-              {kids && 'id' in l && (
-                <span className="og-end">
-                  <Like post={l as Origin} origin />
-                  <Link to={`/origins/${(l as Origin).id}/edit`}>{m.common.edit}</Link>
-                </span>
-              )}
-            </div>
-          </li>
-        )
-      })}
+      {links.map((l, i) => (
+        <li key={i}>
+          {/* one link is already named by the line above it */}
+          {links.length > 1 && <h3>{l.name} ← {l.origin}</h3>}
+          {l.body && <p>{l.body}</p>}
+          <div className="meta">
+            {l.author && <span>{m.common.by(l.author)}{l.lang ? ` · ${l.lang}` : ''}</span>}
+          </div>
+        </li>
+      ))}
     </ol>
   )
 }
 
-/* One entry: a link, and every link it leads back through. Worked out from
-   the whole list, as the list's rows are, because a chain is only links that
-   meet. The link asked for is drawn first whatever language it is in. */
+/* One entry, laid out as PostPage lays out a number's: the hero, the meta
+   row with its like and its Show credits / Edit pair, the story as the body,
+   and the rail. What a number's page has and a link's does not is a value to
+   file under, so the name stands where the numeral does; what a link has and
+   a number does not is the names further back, which take the place related
+   entries have. Worked out from the whole list, as the list's rows are. */
 export function OriginPage({ lang }: { lang: string }) {
-  const { m } = useUi()
+  const { locale, m } = useUi()
   const { id } = useParams()
   const got = useAsync(() => api.origins(), [])
+  const [credits, setCredits] = useState(false)
   const list = useMemo(() => preferLang(got.data ?? [], lang), [got.data, lang])
   const of = got.data?.find((o) => String(o.id) === id)
   if (got.err) return <p className="err" role="alert">{got.err}</p>
-  if (!got.data) return <p className="empty" role="status">{m.common.loading}</p>
+  if (!got.data) return <p className="empty wait" role="status">{m.common.loading}</p>
   if (!of) return <p className="empty">{m.origins.noMatches}</p>
-  const kids = new Map<string, number>()
-  for (const e of list) kids.set(nameKey(e.origin), (kids.get(nameKey(e.origin)) ?? 0) + 1)
-  const links = chain(byName(list), of)
+  // the same link in other languages, this one included: the page's tabs
+  const told = got.data.filter((o) => samePair(o, of))
+  const siblings = list.filter((e) => nameKey(e.origin) === nameKey(of.origin)).length
+  const back = chain(byName(list), of).slice(1)
   return (
-    <>
-      <FmtTabs />
-      <div className="detail-layout">
-        <article className="og-page">
-          <h1><Names links={links} /></h1>
-          <Steps links={links} kids={kids} />
-        </article>
-        <Rail key={of.id} of={of} />
-      </div>
-    </>
+    <div className="detail-layout">
+      <article className="detail">
+        {told.length > 1 && (
+          <nav className="tabs langs" aria-label={m.post.language}>
+            {told.map((o) => (
+              <Link
+                key={o.id}
+                className={o.id === of.id ? 'on' : ''}
+                aria-current={o.id === of.id ? 'true' : undefined}
+                to={`/origins/${o.id}`}
+              >
+                {o.lang ?? m.post.original()}
+              </Link>
+            ))}
+          </nav>
+        )}
+
+        <div className="hero og-hero">
+          <Link className={`num ${numSize(of.name)}`} to={`/origins?q=${encodeURIComponent(of.name)}`}>
+            {of.name}
+          </Link>
+          <h1>
+            {of.name_note && <small>{of.name_note}</small>}
+            <span className="og-arrow">←</span>
+            {of.origin}
+            {of.origin_note && <small>{of.origin_note}</small>}
+          </h1>
+        </div>
+
+        <div className="meta post-meta">
+          {/* a name that is a number has a page of its own on this wiki */}
+          {/^\d+$/.test(of.origin) && (
+            <Link className="tag" to={entryPath(of.origin, 'INTEGER')}>
+              {entryPath(of.origin, 'INTEGER')}
+            </Link>
+          )}
+          {siblings > 1 && (
+            <Link className="tag" to={`/origins?q=${encodeURIComponent(of.origin)}`}>
+              {m.origins.cameFromHere(siblings)}
+            </Link>
+          )}
+          <span className="post-like">
+            <Like key={of.id} post={of} origin />
+          </span>
+          <span className="spacer" />
+          <button
+            type="button"
+            className="meta-btn"
+            aria-expanded={credits}
+            onClick={() => setCredits((v) => !v)}
+          >
+            {credits ? m.post.hideCredits : m.post.showCredits}
+          </button>
+          <span className="meta-sep" aria-hidden="true">/</span>
+          <Link className="meta-btn" to={`/origins/${of.id}/edit`}>{m.post.edit}</Link>
+        </div>
+
+        {credits && (
+          <div className="credits">
+            <span>{m.post.writtenBy(of.author, fmtDate(of.created_at, locale))}</span>
+            {of.edited_by && <span>{m.post.editedBy(of.edited_by)}</span>}
+            <span>{m.post.originalCredit(of.lang)}</span>
+            <span className="last">{m.post.editPromise}</span>
+          </div>
+        )}
+
+        {of.body ? (
+          <div className="body"><p>{of.body}</p></div>
+        ) : (
+          <div className="body body-none">
+            <p>
+              {m.post.noDetails}{' '}
+              <Link to={`/origins/${of.id}/edit`}>{m.post.sayMeaning}</Link>
+            </p>
+          </div>
+        )}
+
+        {/* the rest of the chain: each name further back is an entry too */}
+        {!!back.length && (
+          <>
+            <h2 className="section">{m.post.related}</h2>
+            {back.map((l) => (
+              <div className="rel" key={l.id}>
+                <div className="rel-main">
+                  <Link className="rel-t" to={`/origins/${l.id}`}>
+                    {l.name} <span className="og-arrow">←</span> {l.origin}
+                  </Link>
+                  {l.body && <div className="rel-b">{l.body}</div>}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+      </article>
+      <Rail key={of.id} of={of} />
+    </div>
   )
 }
 
