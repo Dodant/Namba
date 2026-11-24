@@ -892,17 +892,18 @@ function Editor() {
                 </button>
               ),
             )}
+            {/* at the far end of the chips' own row, and gone once pressed:
+                it opens the rest and there is nothing to fold back for */}
+            {!allCategories && (vocab.data?.length ?? 0) > 8 && (
+              <button
+                type="button"
+                className="category-more"
+                onClick={() => setAllCategories(true)}
+              >
+                {m.form.allCategories}
+              </button>
+            )}
           </div>
-          {(vocab.data?.length ?? 0) > 8 && (
-            <button
-              type="button"
-              className="category-more"
-              aria-expanded={allCategories}
-              onClick={() => setAllCategories((open) => !open)}
-            >
-              {allCategories ? m.form.fewerCategories : m.form.allCategories}
-            </button>
-          )}
           <div className="coin">
             <input
               value={coined}
