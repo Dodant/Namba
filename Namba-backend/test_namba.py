@@ -140,6 +140,23 @@ def test_origins():
     assert c.delete(f"/api/origins/{a['id']}/like").json() == {"likes": 0}
     assert c.post("/api/origins/999999/like").status_code == 404
 
+    # an edit rewrites the words and never the names; the first writer keeps
+    # the byline, and what was replaced is kept rather than lost
+    r = c.patch(f"/api/origins/{a['id']}", json={
+        "body": "retold", "name_note": "a language", "author": "grace",
+        "name": "og-Other"})
+    assert r.status_code == 200, r.text
+    e = r.json()
+    assert (e["body"], e["name_note"], e["author"], e["edited_by"], e["name"]) == (
+        "retold", "a language", "ada", "grace", a["name"]), e
+    con = db.connect()
+    kept = [tuple(x) for x in con.execute(
+        "SELECT body, written_by FROM origin_revisions WHERE origin_id = ?", (a["id"],))]
+    con.close()
+    assert kept == [("a story", "ada")], kept
+    assert c.patch("/api/origins/999999", json={"author": "grace"}).status_code == 404
+    assert c.patch(f"/api/origins/{a['id']}", json={"body": "x"}).status_code == 422
+
     # the story is optional: a link with none, or only spaces, is still a link
     for more in ({}, {"body": "  "}):
         r = c.post("/api/origins", json={"name": "og-bare", "origin": "og-src",
@@ -189,6 +206,10 @@ def test_origins():
     # the one hard delete, from a shell
     assert admin.purge_origin(a["id"]) == ("og-Java", "og-\uc790\ubc14")
     assert a["id"] not in [o["id"] for o in live()]
+    con = db.connect()
+    assert not con.execute("SELECT 1 FROM origin_revisions WHERE origin_id = ?",
+                           (a["id"],)).fetchone(), "a purge left what an edit replaced"
+    con.close()
     try:
         admin.purge_origin(a["id"])
         raise AssertionError("purged a link that was already gone")
@@ -3737,10 +3758,10 @@ def test_purge_takes_the_words_that_asked_for_it():
 
 
 def test_every_write_decides_inside_the_lock():
-    """One rule for the fourteen public writes that decide: the read a route
+    """One rule for the fifteen public writes that decide: the read a route
     decides on runs with the write lock already held.
 
-    Fourteen of fifteen, because a create decides nothing about another row --
+    Fifteen of sixteen, because a create decides nothing about another row --
     `resolve_format` is pure, and an entry under a value that already has ten
     is normal here. So it is not probed: there is no read to catch it holding,
     and a probe that fired on a pure call would report the rule as kept by a
@@ -3837,6 +3858,8 @@ def test_every_write_decides_inside_the_lock():
             "name": "lock-fig", "origin": "lock-ficus", "body": "its Latin name",
             "author": "hesse"}))
         oid = c.get("/api/origins").json()[-1]["id"]
+        locked("edit an origin", lambda: c.patch(
+            f"/api/origins/{oid}", json={"body": "ficus", "author": "hesse"}))
         locked("like an origin", lambda: c.post(f"/api/origins/{oid}/like"))
         locked("unlike an origin", lambda: c.delete(f"/api/origins/{oid}/like"))
     finally:
@@ -3844,7 +3867,7 @@ def test_every_write_decides_inside_the_lock():
             setattr(mod, name, fn)
 
     # ...and the probe reached every kind of deciding read there is, so none of
-    # the fourteen passed by touching nothing
+    # the fifteen passed by touching nothing
     assert seen == {"fetch_one", "_already_open", "guard_public", "leads_back",
                     "live_origin"}, seen
 

@@ -338,9 +338,23 @@ CREATE TABLE IF NOT EXISTS origins (
   author      TEXT NOT NULL,
   lang        TEXT,                       -- what body is written in; free-form, like posts.lang
   likes       INTEGER NOT NULL DEFAULT 0,
+  edited_by   TEXT,                       -- the last editor; author stays the first writer
   status      TEXT NOT NULL DEFAULT 'ACTIVE',
   created_at  TEXT NOT NULL
 );
+-- What an edit replaced, so an edit on an open wiki is never a loss. The two
+-- names are not here: an edit cannot change them.
+CREATE TABLE IF NOT EXISTS origin_revisions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  origin_id   INTEGER NOT NULL REFERENCES origins(id) ON DELETE CASCADE,
+  name_note   TEXT,
+  origin_note TEXT,
+  body        TEXT NOT NULL,
+  lang        TEXT,
+  written_by  TEXT NOT NULL,              -- who wrote the version this row keeps
+  created_at  TEXT NOT NULL               -- when it was replaced
+);
+CREATE INDEX IF NOT EXISTS idx_origin_revisions ON origin_revisions(origin_id, id);
 CREATE INDEX IF NOT EXISTS idx_origins_status ON origins(status, id);
 """
 
@@ -607,6 +621,14 @@ def _origin_likes_column(con):
         con.execute("ALTER TABLE origins ADD COLUMN likes INTEGER NOT NULL DEFAULT 0")
 
 
+def _origin_edited_by_column(con):
+    """`origins.edited_by`. Its own step and not a line in the one above: that
+    one has already run wherever likes arrived, and never runs again."""
+    have = {r["name"] for r in con.execute("PRAGMA table_info(origins)")}
+    if "edited_by" not in have:
+        con.execute("ALTER TABLE origins ADD COLUMN edited_by TEXT")
+
+
 def _on_this_day_column(con):
     """The Calendar index's historical-event fold.
 
@@ -667,6 +689,7 @@ MIGRATIONS = (
     _on_this_day_column,
     _birth_death_is_now_in_memoriam,
     _origin_likes_column,
+    _origin_edited_by_column,
 )
 
 

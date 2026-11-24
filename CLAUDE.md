@@ -461,9 +461,12 @@ opposite, and only its regex says `[0-9]`.
 
   **A loop is refused by whichever write would close it**: the public create,
   and an operator putting a hidden link back. `store.leads_back` is the
-  deciding read of both and runs inside the lock. **A link is not edited**:
-  nothing snapshots one, so an edit would be a loss with no undo, and a wrong
-  link is hidden and filed again. Hiding is the same `status` a post has, and
+  deciding read of both and runs inside the lock. **An edit rewrites a
+  link's words and never its two names**: the names are what the link is, the
+  way a value is what an entry is filed under, so retyping one is a different
+  link and that one is filed. The version an edit replaces goes to
+  `origin_revisions` in the same transaction, `author` stays the first writer
+  and the editor is `edited_by`. Hiding is the same `status` a post has, and
   `admin.py purge-origin` is its hard delete. Do not add a relation
   vocabulary (homage, eponym, pun) — the story says which, and a list would
   be one more row in the hand-copied table above. `test_origins` holds the
@@ -534,7 +537,7 @@ opposite, and only its regex says `[0-9]`.
   what `test_the_plugin_still_names_itself` notices (ADR-0028).
 
 - **A write that decides holds the lock while it decides.** `db.writing(con)`
-  is the transaction every one of the fifteen public write routes opens, and it
+  is the transaction every one of the sixteen public write routes opens, and it
   is `BEGIN IMMEDIATE` rather than `with con:` for a reason that is easy to get
   wrong: Python's sqlite3 in legacy isolation mode begins its transaction
   before the first *write*, so a SELECT earlier in the block holds nothing at
@@ -544,12 +547,12 @@ opposite, and only its regex says `[0-9]`.
   it: read outside the lock, both see no Korean tab, both write, and the entry
   has two (ADR-0007 has the measurement).
 
-  Fourteen of the fifteen decide, and the fifteenth is why `resolve_format` being
+  Fifteen of the sixteen decide, and the sixteenth is why `resolve_format` being
   pure is written down here. A create reads nothing it acts on: several
   entries under one value is normal, and there is no uniqueness to race for.
   It still opens `db.writing`, because three statements have to land together
   — but the lock is for the writes, not for a read, and
-  `test_every_write_decides_inside_the_lock` probes the other fourteen rather
+  `test_every_write_decides_inside_the_lock` probes the other fifteen rather
   than claiming this one keeps a rule it has nothing to keep. Giving
   `resolve_format` a lookup again puts the race back.
 

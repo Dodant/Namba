@@ -182,10 +182,15 @@ const BLANK: Stop = { name: '', note: '' }
 
 /* The chain stood on end: a name, the story, the name it came from, and so
    on down. stops[i] came from stops[i + 1], and stories[i] is how. */
-/* Edit on a link. A link is not rewritten -- nothing snapshots one -- so what
-   this page adds is the same link told in another language: a second row
-   for the same pair, of which the list draws the reader's. */
-export function OriginEdit({ lang }: { lang: string }) {
+const samePair = (a: OriginInput, b: OriginInput) =>
+  nameKey(a.name) === nameKey(b.name) && nameKey(a.origin) === nameKey(b.origin)
+
+/* Edit on a link, shaped like an entry's: the words in fields, and under them
+   the same link in other languages. The two names are shown and not offered
+   -- they are what the link is, the way a value is what an entry is filed
+   under -- and a translation is another row for the same pair, so each one
+   is edited on a page of its own. */
+export function OriginEdit() {
   const { m } = useUi()
   const { id } = useParams()
   const got = useAsync(() => api.origins(), [])
@@ -193,9 +198,133 @@ export function OriginEdit({ lang }: { lang: string }) {
   if (got.err) return <p className="err" role="alert">{got.err}</p>
   if (!got.data) return <p className="empty" role="status">{m.common.loading}</p>
   if (!of) return <p className="empty">{m.origins.noMatches}</p>
-  const taken = got.data
-    .filter((o) => nameKey(o.name) === nameKey(of.name) && nameKey(o.origin) === nameKey(of.origin))
-    .map((o) => o.lang)
+  return <EditFields key={of.id} of={of} others={got.data.filter((o) => o.id !== of.id && samePair(o, of))} />
+}
+
+function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
+  const { m } = useUi()
+  const nav = useNavigate()
+  const uid = useId()
+  const [nameNote, setNameNote] = useState(of.name_note ?? '')
+  const [originNote, setOriginNote] = useState(of.origin_note ?? '')
+  const [body, setBody] = useState(of.body)
+  const [written, setWritten] = useState(of.lang ?? '')
+  const [author, setAuthor] = useState(nickname.get)
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
+  /* its own language stays on the menu whatever it is -- an API client may
+     have filed one this list does not carry -- and a sibling's does not */
+  const langs = [...new Set([of.lang, ...LANGS])]
+    .filter((l): l is string => !!l && !others.some((o) => o.lang === l))
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (!validNickname(author)) return setErr(m.common.nicknameRequired)
+    nickname.set(author)
+    setErr('')
+    setBusy(true)
+    try {
+      await api.editOrigin(of.id, {
+        name_note: nameNote.trim() || null, origin_note: originNote.trim() || null,
+        body: body.trim(), author: author.trim(), lang: written || null,
+      })
+      nav(`/origins/${of.id}`)
+    } catch (e) {
+      setErr(errorText(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const note = (key: string, label: string, value: string, set: (v: string) => void) => (
+    <div className="field">
+      <label htmlFor={`${uid}-${key}`}>
+        {label} · {m.origins.note} <span className="hint">{m.origins.noteHint}</span>
+      </label>
+      <input id={`${uid}-${key}`} maxLength={40} value={value}
+             onChange={(e) => set(e.target.value)} />
+    </div>
+  )
+
+  return (
+    <form className="form" onSubmit={submit}>
+      <h1>{m.form.editTitle}</h1>
+      <p className="og-page"><Names links={[of]} /></p>
+      <fieldset className="form-fields" disabled={busy}>
+        {note('n', of.name, nameNote, setNameNote)}
+        {note('o', of.origin, originNote, setOriginNote)}
+        <div className="field">
+          <label htmlFor={`${uid}-s`}>
+            {m.origins.story} <span className="hint">{m.origins.storyHint}</span>
+          </label>
+          <textarea id={`${uid}-s`} maxLength={600} value={body}
+                    onChange={(e) => setBody(e.target.value)} />
+        </div>
+        <div className="field">
+          <label htmlFor={`${uid}-lang`}>{m.form.writtenIn}</label>
+          <div className="select narrow">
+            <select id={`${uid}-lang`} value={written} onChange={(e) => setWritten(e.target.value)}>
+              {langs.map((l) => (
+                <option key={l} value={l}>{langLabel(l)}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="field" role="group" aria-labelledby={`${uid}-tr`}>
+          <span className="field-label" id={`${uid}-tr`}>
+            {m.form.translations} <span className="hint">{m.form.translationsHint}</span>
+          </span>
+          <div className="panel">
+            {others.map((o) => (
+              <div className="panel-row" key={o.id}>
+                <span className="panel-lang">{o.lang}</span>
+                <span className="panel-title">{o.body}</span>
+                <span className="panel-by">{o.edited_by ?? o.author}</span>
+                <Link className="pill" to={`/origins/${o.id}/edit`}>{m.form.editTranslation}</Link>
+              </div>
+            ))}
+            <div className="panel-row">
+              <Link className="panel-add" to={`/origins/${of.id}/translate`}>
+                {m.form.addTranslation}
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <NicknameField
+          id={`${uid}-author`}
+          label={m.form.nickname}
+          hint={m.form.noAccountHint}
+          value={author}
+          onChange={setAuthor}
+        />
+
+        {err && <p className="err" role="alert">{err}</p>}
+
+        <div className="actions">
+          <button className="btn primary" disabled={busy}>
+            {busy ? m.form.publishing : m.form.saveChanges}
+          </button>
+          <Link className="btn" to={`/origins/${of.id}`}>{m.common.cancel}</Link>
+        </div>
+        <p className="fine">{m.form.cc0(false)}</p>
+      </fieldset>
+    </form>
+  )
+}
+
+/* "+ Add translation" on the edit page: the form below with this link's two
+   names fixed and the languages the pair is already told in off the menu. */
+export function OriginTranslate({ lang }: { lang: string }) {
+  const { m } = useUi()
+  const { id } = useParams()
+  const got = useAsync(() => api.origins(), [])
+  const of = got.data?.find((o) => String(o.id) === id)
+  if (got.err) return <p className="err" role="alert">{got.err}</p>
+  if (!got.data) return <p className="empty" role="status">{m.common.loading}</p>
+  if (!of) return <p className="empty">{m.origins.noMatches}</p>
+  const taken = got.data.filter((o) => samePair(o, of)).map((o) => o.lang)
   return <OriginForm key={of.id} lang={lang} of={of} taken={taken} />
 }
 

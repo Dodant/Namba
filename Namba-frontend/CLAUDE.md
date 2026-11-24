@@ -281,11 +281,13 @@ joining, the loop guard and the language rule below.
 - **A link told in two languages is drawn once.** `preferLang` keeps one entry
   per (name, origin) pair, the reader's entry-text language first. "Written
   in" on the form is the same free-form name `Post.lang` is.
-- **Edit on a link adds a telling, it does not rewrite one.**
-  `/origins/:id/edit` is the same form with the two names fixed and the
-  languages the pair is already told in off the menu; publishing files a
-  second row through the same route. Nothing snapshots a link, so there is no
-  rewrite to offer.
+- **Edit on a link is shaped like an entry's.** `/origins/:id/edit` has the
+  story, the two notes and the language in fields, and under them the
+  Translations panel `PostForm` draws. The two names are shown and not
+  offered. A translation here is another row for the same pair rather than a
+  child of this one, so the panel's rows link to each telling's own edit page
+  and "+ Add translation" is `/origins/:id/translate` — the filing form with
+  the names fixed and the languages already told off the menu.
 - **A link is liked the way an entry is**, with the same `Like` button told
   the id is an origin's: its own route and its own localStorage key, since the
   two tables number their rows apart.

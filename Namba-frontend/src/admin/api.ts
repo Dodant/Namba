@@ -424,6 +424,7 @@ export const ACTION_LABEL: Record<string, string> = {
   ADMIN_PASSWORD: 'changed a password',
   ADMIN_TOTP_ENROLL: 'enrolled an authenticator',
   ORIGIN: 'filed an origin',
+  ORIGIN_EDIT: 'edited an origin',
   ORIGIN_HIDE: 'hid an origin',
   ORIGIN_DELETE: 'removed an origin',
   ORIGIN_RESTORE: 'put an origin back',

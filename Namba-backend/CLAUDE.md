@@ -457,11 +457,15 @@ the sitemap.
   is why the other half of its loop can be filed while it is hidden and why
   it is then the restore that answers 409.
 
-  The table is new, so `CREATE TABLE IF NOT EXISTS` reaches every existing
-  database and there is no step in `MIGRATIONS` for it. `GET /api/origins` is
-  the one public read of it and carries `LIVE`; `/api/admin/origins` is the
-  one read that does not. There is no edit route and no revisions behind a
-  link (ADR-0034).
+  `GET /api/origins` is the one public read of it and carries `LIVE`;
+  `/api/admin/origins` is the one read that does not. `live_origin` is the
+  deciding read of the three writes on a link that already exists — the like,
+  its undo and `PATCH /api/origins/{id}`. The edit takes the story, the two
+  notes and the language, never a name; it copies the row's words into
+  `origin_revisions` before it writes, and logs `ORIGIN_EDIT`. Nothing reads
+  that table yet: it is what makes an edit recoverable, from a shell, until a
+  restore route exists. It cascades with its link, so `purge-origin` takes
+  it (ADR-0034).
 - **`now()` lives in `db.py`.** It is a property of the schema — every date
   column is written by it — and `events.py` needs it without importing the app.
   `main.py` imports the name, so `main.now` is still what `test_recent_sort`

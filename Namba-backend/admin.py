@@ -151,8 +151,8 @@ def purge_origin(origin_id):
     """Remove one Origins link. Not reversible.
 
     The same exception `purge` is, for the same removal a law requires, and
-    smaller: a link has no history, no picture and nothing filed about it, so
-    the row is all there is. Its `events` rows stay, for the reason `purge`
+    smaller: a link has no picture and nothing filed about it, so the row and
+    the versions its edits replaced -- which cascade -- are all there is. Its `events` rows stay, for the reason `purge`
     gives. Returns the two names, so the shell can say what went.
     """
     con = db.connect()

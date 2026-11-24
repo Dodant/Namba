@@ -54,13 +54,22 @@ drawn from all of its links. That is fine at hundreds of rows and is the
 first thing to revisit at thousands; the answer then is the server joining
 chains, not paging links.
 
-A link cannot be edited through the public API. There is no revision table
-behind it, so an edit would be a loss with no undo. A wrong link is hidden by
-an operator and filed again.
+A link's words can be edited through the public API and its two names cannot:
+the names are the link. `origin_revisions` keeps what each edit replaced, so
+an edit is not a loss; nothing reads that table yet, and putting a version
+back is a shell's job until a restore route exists. A link filed under the
+wrong name is hidden by an operator and filed again.
 
 Origins are outside the header search, the sitemap, the server-written
 `<head>`, `/api/contributors` and the delete-request and report queues. Each
 of those reads `posts`.
 
-Fifteen public routes write now — the create and a like and its undo, the
-same counter a post has — and fourteen of them decide (ADR-0007).
+Sixteen public routes write now — the create, the edit, and a like and its
+undo, the same counter a post has — and fifteen of them decide (ADR-0007).
+
+## History
+
+- 2026-11-24: the first version of this record had no edit at all, on the
+  ground that nothing snapshotted a link. The requester asked for an Edit
+  shaped like an entry's the same day, so the snapshot was added instead:
+  `origin_revisions`, written by `edit_origin` before it writes the row.

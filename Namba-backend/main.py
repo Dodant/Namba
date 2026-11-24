@@ -950,7 +950,7 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
         # is pure, an entry under a value that already has ten is normal, and
         # there is no uniqueness here to race for. So the lock is held for the
         # three statements below landing together, not for a read -- see
-        # db.writing() and ADR-0007 for the fourteen writes where it is the read.
+        # db.writing() and ADR-0007 for the fifteen writes where it is the read.
         value, fmt, key = resolve_format(value, p.format)
         if p.in_memoriam and p.on_this_day:
             raise HTTPException(422, "On this day and In Memoriam are mutually exclusive")
@@ -1513,7 +1513,8 @@ def remove_link(
 
 # --- origins ------------------------------------------------------------
 ORIGIN_NAME_MAX, ORIGIN_NOTE_MAX, ORIGIN_BODY_MAX = 80, 40, 600
-ORIGIN_COLS = "id, name, name_note, origin, origin_note, body, author, lang, likes, created_at"
+ORIGIN_COLS = ("id, name, name_note, origin, origin_note, body, author, lang, likes, "
+               "edited_by, created_at")
 
 
 class OriginIn(Text):
@@ -1600,6 +1601,60 @@ def live_origin(con, origin_id: int):
     if not row:
         raise HTTPException(404, "no such origin")
     return dict(row)
+
+
+class OriginEditIn(Text):
+    """What an edit may change: the story, the two notes and the language.
+
+    Not the two names. They are what the link is -- every chain through it
+    joins on them -- so retyping one is not a correction, it is a different
+    link, and that one is filed.
+    """
+
+    name_note: Optional[str] = Field(default=None, max_length=ORIGIN_NOTE_MAX)
+    origin_note: Optional[str] = Field(default=None, max_length=ORIGIN_NOTE_MAX)
+    body: str = Field(default="", max_length=ORIGIN_BODY_MAX)
+    author: str = Field(min_length=1, max_length=40)
+    lang: Optional[str] = Field(default=None, max_length=40)
+
+    @field_validator("body")
+    @classmethod
+    def trimmed(cls, v):
+        return v.strip()
+
+    @field_validator("name_note", "origin_note", "lang")
+    @classmethod
+    def blank_is_none(cls, v):
+        return (v or "").strip() or None
+
+
+@app.patch("/api/origins/{origin_id}")
+def edit_origin(origin_id: int, o: OriginEditIn, who=Depends(guard), con=Depends(get_db)):
+    """Rewrite one link's words. The version replaced goes to
+    `origin_revisions` first, in the same transaction, so nothing an edit
+    takes is gone; `author` stays the first writer and the editor is
+    `edited_by`, as on a post.
+
+    shortcut: no `base_updated_at`, so two editors a minute apart are last
+    write wins -- the first one's text is in the revisions, not lost. Add the
+    409 when a link has enough fields for that to cost somebody work.
+    """
+    editor = nick(o.author)
+    with writing(con):
+        was = live_origin(con, origin_id)
+        con.execute(
+            """INSERT INTO origin_revisions (origin_id, name_note, origin_note, body,
+                                             lang, written_by, created_at)
+               VALUES (?,?,?,?,?,?,?)""",
+            (origin_id, was["name_note"], was["origin_note"], was["body"], was["lang"],
+             was["edited_by"] or was["author"], now()))
+        con.execute(
+            """UPDATE origins SET name_note = ?, origin_note = ?, body = ?, lang = ?,
+                                  edited_by = ? WHERE id = ?""",
+            (o.name_note, o.origin_note, o.body, o.lang, editor, origin_id))
+        events.record(con, "ORIGIN_EDIT", client=who, who=editor,
+                      target_type="origin", target_id=origin_id)
+        return live_origin(con, origin_id)
 
 
 @app.post("/api/origins/{origin_id}/like")

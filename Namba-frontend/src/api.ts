@@ -264,7 +264,13 @@ export type OriginInput = {
   /** what the story is written in, the same free-form name `Post.lang` is */
   lang: string | null
 }
-export type Origin = OriginInput & { id: number; likes: number; created_at: string }
+export type Origin = OriginInput & {
+  id: number
+  likes: number
+  /** the last editor; `author` stays the first writer, as on a post */
+  edited_by: string | null
+  created_at: string
+}
 
 export type Params = Record<string, string | number | undefined | null>
 
@@ -407,6 +413,10 @@ export const api = {
   origins: () => req<Origin[]>('/api/origins'),
 
   createOrigin: (o: OriginInput) => req<Origin>('/api/origins', json('POST', o)),
+
+  /** the words only: the two names are what the link is, and are not sent */
+  editOrigin: (id: number, o: Omit<OriginInput, 'name' | 'origin'>) =>
+    req<Origin>(`/api/origins/${id}`, json('PATCH', o)),
 
   upload: (file: File) => {
     const fd = new FormData()
