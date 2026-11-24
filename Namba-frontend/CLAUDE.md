@@ -292,7 +292,13 @@ joining, the loop guard and the language rule below.
 - **A loop is refused in the form and survived in the list.** `loops` stops a
   chain that arrives back at its own first name; `chain` carries a seen set
   anyway, since the form is not the only way to write to an open API.
-- **`Chain` draws both the list's rows and the form's preview**, so what the
+- **A row is a link to `/origins/:id`**, the entry: that link and every link
+  it leads back through, each with its story, its byline, a like and Edit.
+  The page is worked out from the whole list like the rows are, so there is
+  no second read. "N names came from here" there is `/origins?q=`, which the
+  list takes as its filter's first value. The row's like shows on hover,
+  focus, once given, and always where there is no hover.
+- **`Names` draws the list's rows, the entry and the form's preview**, so what the
   form promises is what the list does.
 - **The back office has one page for it**, `admin/pages/Origins.tsx`: every
   link with its status, hidden ones included, and a Hide that is its own

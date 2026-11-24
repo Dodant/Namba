@@ -2244,8 +2244,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 
 /* --- origins ------------------------------------------------------ */
 /* A row is a chain read left to right -- the name, then each name it came
-   from -- and opens into the story of each link. The form is the same chain
-   stood on end, which is why the rail and the open row share a left rule. */
+   from -- with the first story beside it, and is a link to the entry. The
+   form is the same chain stood on end, which is why the rail and the entry's
+   steps share a left rule. */
 .og-head {
   display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
   gap: 12px 24px; margin-bottom: 18px;
@@ -2256,24 +2257,32 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .og-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
 .og-tools .field { margin-bottom: 12px; }
 .og-tools .field:first-child { flex: 1 1 240px; max-width: 420px; }
-.og-row { border-bottom: 1px solid var(--rule); }
-.og-row summary { list-style: none; cursor: pointer; padding: 13px 0; }
-.og-row summary::-webkit-details-marker { display: none; }
+.og-row { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--rule); }
+.og-link {
+  flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 2px 28px; padding: 13px 0; color: inherit; text-decoration: none;
+}
+/* the like is there for whoever reaches for it: a pointer over the row, a
+   keyboard inside it, a like already given, or a screen with no hover at all */
+.og-row > .btn { opacity: 0; }
+.og-row:hover > .btn, .og-row:focus-within > .btn, .og-row > .btn.on { opacity: 1; }
+@media (hover: none) { .og-row > .btn { opacity: 1; } }
+.og-link:hover { text-decoration: none; }
+.og-page h1 { font-size: 17px; font-weight: 400; margin: clamp(20px, 3vw, 26px) 0 14px; }
 .og-chain { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
 .og-name { font-size: 17px; overflow-wrap: anywhere; }
 .og-name.head { font-size: clamp(24px, 3.4vw, 28px); font-weight: 500; letter-spacing: -0.01em; }
-.og-row summary:hover .og-name.head { color: var(--accent); }
+.og-link:hover .og-name.head { color: var(--accent); }
 .og-name small {
   margin-left: 7px; font-family: var(--mono); font-size: var(--fs-meta);
   font-weight: 400; color: var(--muted);
 }
 .og-arrow { font-family: var(--mono); color: var(--accent); }
-/* one line of the first story, so a closed row still says why */
+/* one line of the first story beside the names, so a row still says why */
 .og-teaser {
-  display: block; margin-top: 3px; max-width: 68ch; font-size: var(--fs-fine);
+  flex: 1 1 24ch; min-width: 0; font-size: var(--fs-fine);
   color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.og-row[open] .og-teaser { display: none; }
 .og-steps, .og-rail { margin-left: 4px; padding-left: 20px; border-left: 1px solid var(--line); }
 .og-steps { list-style: none; margin-top: 0; margin-bottom: 18px; display: grid; gap: 16px; }
 .og-steps li, .og-stop { position: relative; }

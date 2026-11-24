@@ -1,5 +1,5 @@
 import { Fragment, useId, useMemo, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   api, entryPath, errorText, LANG_CODE, langLabel, nickname, validNickname,
   type Origin, type OriginInput,
@@ -18,63 +18,86 @@ const Name = ({ text, note, head }: { text: string; note?: string | null; head?:
   </span>
 )
 
-/* One chain, drawn the same way by the list and by the form's preview, so
-   what the form promises is what the list does. Closed it is the names in a
-   row; open it is each link's story. `OriginInput` rather than `Origin`
-   because the preview draws links nobody has published yet. */
-function Chain({ links, open = false, kids, onPick }: {
+/* A chain read left to right: the name, then each name it came from. The
+   list's row, the entry page and the form's preview all draw this line, so
+   what the form promises is what the other two do. `OriginInput` rather than
+   `Origin` because the preview draws links nobody has published yet. */
+const Names = ({ links }: { links: readonly OriginInput[] }) => (
+  <span className="og-chain">
+    <Name text={links[0].name} note={links[0].name_note} head />
+    {links.map((l, i) => (
+      <Fragment key={i}>
+        <span className="og-arrow">←</span>
+        <Name text={l.origin} note={l.origin_note ?? links[i + 1]?.name_note} />
+      </Fragment>
+    ))}
+  </span>
+)
+
+/* The story of each link. `kids` is given by the entry page alone, and is
+   what turns on the controls a published link has and a preview does not. */
+function Steps({ links, kids }: {
   links: readonly OriginInput[]
-  open?: boolean
   kids?: Map<string, number>
-  onPick?: (name: string) => void
 }) {
   const { m } = useUi()
   return (
-    <details className="og-row" open={open}>
-      <summary>
-        <span className="og-chain">
-          <Name text={links[0].name} note={links[0].name_note} head />
-          {links.map((l, i) => (
-            <Fragment key={i}>
-              <span className="og-arrow">←</span>
-              <Name text={l.origin} note={l.origin_note ?? links[i + 1]?.name_note} />
-            </Fragment>
-          ))}
-        </span>
-        <span className="og-teaser">{links.find((l) => l.body)?.body}</span>
-      </summary>
-      <ol className="og-steps">
-        {links.map((l, i) => {
-          const n = kids?.get(nameKey(l.origin)) ?? 0
-          return (
-            <li key={i}>
-              {/* one link is already named by the row above it */}
-              {links.length > 1 && <h3>{l.name} ← {l.origin}</h3>}
-              {l.body && <p>{l.body}</p>}
-              <div className="meta">
-                {l.author && <span>{m.common.by(l.author)}{l.lang ? ` · ${l.lang}` : ''}</span>}
-                {/* a name that is a number has a page of its own on this wiki */}
-                {/^\d+$/.test(l.origin) && (
-                  <Link to={entryPath(l.origin, 'INTEGER')}>{entryPath(l.origin, 'INTEGER')}</Link>
-                )}
-                {n > 1 && onPick && (
-                  <button type="button" className="meta-btn" onClick={() => onPick(l.origin)}>
-                    {m.origins.cameFromHere(n)}
-                  </button>
-                )}
-                {/* only in the list: the preview draws links that have no id yet */}
-                {onPick && 'id' in l && (
-                  <span className="og-end">
-                    <Like post={l as Origin} origin />
-                    <Link to={`/origins/${(l as Origin).id}/edit`}>{m.common.edit}</Link>
-                  </span>
-                )}
-              </div>
-            </li>
-          )
-        })}
-      </ol>
-    </details>
+    <ol className="og-steps">
+      {links.map((l, i) => {
+        const n = kids?.get(nameKey(l.origin)) ?? 0
+        return (
+          <li key={i}>
+            {/* one link is already named by the line above it */}
+            {links.length > 1 && <h3>{l.name} ← {l.origin}</h3>}
+            {l.body && <p>{l.body}</p>}
+            <div className="meta">
+              {l.author && <span>{m.common.by(l.author)}{l.lang ? ` · ${l.lang}` : ''}</span>}
+              {/* a name that is a number has a page of its own on this wiki */}
+              {/^\d+$/.test(l.origin) && (
+                <Link to={entryPath(l.origin, 'INTEGER')}>{entryPath(l.origin, 'INTEGER')}</Link>
+              )}
+              {n > 1 && (
+                <Link to={`/origins?q=${encodeURIComponent(l.origin)}`}>
+                  {m.origins.cameFromHere(n)}
+                </Link>
+              )}
+              {kids && 'id' in l && (
+                <span className="og-end">
+                  <Like post={l as Origin} origin />
+                  <Link to={`/origins/${(l as Origin).id}/edit`}>{m.common.edit}</Link>
+                </span>
+              )}
+            </div>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+/* One entry: a link, and every link it leads back through. Worked out from
+   the whole list, as the list's rows are, because a chain is only links that
+   meet. The link asked for is drawn first whatever language it is in. */
+export function OriginPage({ lang }: { lang: string }) {
+  const { m } = useUi()
+  const { id } = useParams()
+  const got = useAsync(() => api.origins(), [])
+  const list = useMemo(() => preferLang(got.data ?? [], lang), [got.data, lang])
+  const of = got.data?.find((o) => String(o.id) === id)
+  if (got.err) return <p className="err" role="alert">{got.err}</p>
+  if (!got.data) return <p className="empty" role="status">{m.common.loading}</p>
+  if (!of) return <p className="empty">{m.origins.noMatches}</p>
+  const kids = new Map<string, number>()
+  for (const e of list) kids.set(nameKey(e.origin), (kids.get(nameKey(e.origin)) ?? 0) + 1)
+  const links = chain(byName(list), of)
+  return (
+    <>
+      <FmtTabs />
+      <article className="og-page">
+        <h1><Names links={links} /></h1>
+        <Steps links={links} kids={kids} />
+      </article>
+    </>
   )
 }
 
@@ -84,15 +107,10 @@ function Chain({ links, open = false, kids, onPick }: {
 export default function Origins({ lang }: { lang: string }) {
   const { locale, m } = useUi()
   const got = useAsync(() => api.origins(), [])
-  const [q, setQ] = useState('')
+  // ?q= is how an entry page hands a name back to this list
+  const [q, setQ] = useState(useSearchParams()[0].get('q') ?? '')
   const [folded, setFolded] = useState(true)
   const list = useMemo(() => preferLang(got.data ?? [], lang), [got.data, lang])
-  const kids = useMemo(() => {
-    const k = new Map<string, number>()
-    for (const e of list) k.set(nameKey(e.origin), (k.get(nameKey(e.origin)) ?? 0) + 1)
-    return k
-  }, [list])
-
   const needle = nameKey(q)
   const shown = rows(list, folded)
     .filter((r) => !needle || r.some((l) =>
@@ -132,15 +150,13 @@ export default function Origins({ lang }: { lang: string }) {
         <>
           <p className="quiet">{m.common.entries(list.length)}</p>
           {shown.map((r) => (
-            <Chain
-              key={r[0].id}
-              links={r}
-              kids={kids}
-              onPick={(name) => {
-                setQ(name)
-                window.scrollTo(0, 0)
-              }}
-            />
+            <div className="og-row" key={r[0].id}>
+              <Link className="og-link" to={`/origins/${r[0].id}`}>
+                <Names links={r} />
+                <span className="og-teaser">{r.find((l) => l.body)?.body}</span>
+              </Link>
+              <Like post={r[0]} origin />
+            </div>
           ))}
           {!shown.length && (
             <p className="empty">
@@ -383,7 +399,7 @@ export function OriginForm({ lang, of, taken }: {
       <aside className="og-preview">
         <h2 className="section">{m.origins.preview}</h2>
         {draft[0].name && draft[0].origin
-          ? <Chain links={chain(names, draft[0])} open />
+          ? <><Names links={chain(names, draft[0])} /><Steps links={chain(names, draft[0])} /></>
           : <p className="fine">{m.origins.previewHint}</p>}
       </aside>
     </div>
