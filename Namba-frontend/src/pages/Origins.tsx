@@ -348,6 +348,9 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
   const [author, setAuthor] = useState(nickname.get)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  // pictures still uploading; a count, since two can be on their way at once
+  const [ups, setUps] = useState(0)
+  const onBusy = (b: boolean) => setUps((n) => n + (b ? 1 : -1))
   /* its own language stays on the menu whatever it is -- an API client may
      have filed one this list does not carry -- and a sibling's does not */
   const langs = [...new Set([written, ...LANGS])]
@@ -410,7 +413,7 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
         <input id={`${uid}-${key}`} maxLength={40} value={value}
                onChange={(e) => set(e.target.value)} />
       </div>
-      <ImageButton id={`${uid}-${key}i`} value={image} onChange={setImage} onError={setErr} />
+      <ImageButton id={`${uid}-${key}i`} value={image} onChange={setImage} onError={setErr} onBusy={onBusy} />
     </div>
   )
 
@@ -475,7 +478,7 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
         {err && <p className="err" role="alert">{err}</p>}
 
         <div className="actions">
-          <button className="btn primary" disabled={busy}>
+          <button className="btn primary" disabled={busy || ups > 0}>
             {busy ? m.form.publishing : m.form.saveChanges}
           </button>
           <Link className="btn" to={`/origins/${of.id}`}>{m.common.cancel}</Link>
@@ -560,6 +563,9 @@ export function OriginForm({ lang, of, taken, all }: {
   const [author, setAuthor] = useState(nickname.get)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  // pictures still uploading; a count, since two can be on their way at once
+  const [ups, setUps] = useState(0)
+  const onBusy = (b: boolean) => setUps((n) => n + (b ? 1 : -1))
 
   const known = useMemo(() => preferLang(got.data ?? [], written), [got.data, written])
   const draft: OriginInput[] = stories.map((body, i) => ({
@@ -654,7 +660,8 @@ export function OriginForm({ lang, of, taken, all }: {
                     />
                   </div>
                   <ImageButton id={`${uid}-i${i}`} value={s.image}
-                               onChange={(image) => setStop(i, { image })} onError={setErr} />
+                               onChange={(image) => setStop(i, { image })} onError={setErr}
+                               onBusy={onBusy} />
                   {hint(i) && <p className="fine">{hint(i)}</p>}
                 </div>
                 {i < stories.length && (
@@ -681,6 +688,7 @@ export function OriginForm({ lang, of, taken, all }: {
               <button
                 type="button"
                 className="btn"
+                disabled={ups > 0}
                 onClick={() => {
                   setStops((x) => [...x, BLANK])
                   setStories((x) => [...x, ''])
@@ -693,6 +701,7 @@ export function OriginForm({ lang, of, taken, all }: {
               <button
                 type="button"
                 className="btn"
+                disabled={ups > 0}
                 onClick={() => {
                   setStops((x) => x.slice(0, -1))
                   setStories((x) => x.slice(0, -1))
@@ -731,7 +740,7 @@ export function OriginForm({ lang, of, taken, all }: {
           {err && <p className="err" role="alert">{err}</p>}
 
           <div className="actions">
-            <button className="btn primary" disabled={busy}>
+            <button className="btn primary" disabled={busy || ups > 0}>
               {busy ? m.form.publishing : m.form.publish}
             </button>
             <Link className="btn" to="/origins">{m.common.cancel}</Link>
