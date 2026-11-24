@@ -308,7 +308,6 @@ function ImageButton({ id, value, onChange, onError }: {
   const [busy, setBusy] = useState(false)
   return (
     <div className="field og-img">
-      <label htmlFor={id}>{m.form.image}</label>
       {value ? (
         <button type="button" id={id} className="og-pic" title={m.form.remove}
                 aria-label={m.form.remove} onClick={() => onChange(null)}>
@@ -316,9 +315,18 @@ function ImageButton({ id, value, onChange, onError }: {
         </button>
       ) : (
         <label className={`og-pic ${busy ? 'busy' : ''}`} title={m.form.imageHint}>
-          <span aria-hidden="true">{busy ? '…' : '+'}</span>
+          {busy ? <span aria-hidden="true">…</span> : (
+            /* a framed picture: a sun over a hill, the sign for "image" */
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="16" rx="3" />
+              <circle cx="8.5" cy="9.5" r="1.6" />
+              <path d="M21 16l-5-5-9 9" />
+            </svg>
+          )}
           <input
             id={id}
+            aria-label={m.form.image}
             type="file"
             accept="image/*"
             disabled={busy}
