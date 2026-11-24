@@ -23,8 +23,8 @@ const Name = ({ text, note, head }: { text: string; note?: string | null; head?:
 )
 
 /* A chain read left to right: the name, then each name it came from. The
-   list's row, the entry page and the form's preview all draw this line, so
-   what the form promises is what the other two do. `OriginInput` rather than
+   list's row and the form's preview both draw this line, so what the form
+   promises is what the list does. `OriginInput` rather than
    `Origin` because the preview draws links nobody has published yet. */
 const Names = ({ links }: { links: readonly OriginInput[] }) => (
   <span className="og-chain">
@@ -253,7 +253,7 @@ export default function Origins({ lang }: { lang: string }) {
   const q = useSearchParams()[0].get('q') ?? ''
   const list = useMemo(() => preferLang(got.data ?? [], lang), [got.data, lang])
   const needle = nameKey(q)
-  const shown = rows(list, true)
+  const shown = rows(list)
     .filter((r) => !needle || r.some((l) =>
       nameKey([l.name, l.name_note, l.origin, l.origin_note, l.body].filter(Boolean).join(' '))
         .includes(needle)))
@@ -304,11 +304,12 @@ const LANGS = Object.keys(LANG_CODE)
    A longer one is the same form submitted twice -- the second picks up where
    the first stopped, because a chain is only links that meet. */
 const MAX_LINKS = 4
+/* The chain stood on end: a name, the story, the name it came from, and so
+   on down. stops[i] came from stops[i + 1], and stories[i] is how. */
 type Stop = { name: string; note: string; image: string | null }
 const BLANK: Stop = { name: '', note: '', image: null }
 
-/* The chain stood on end: a name, the story, the name it came from, and so
-   on down. stops[i] came from stops[i + 1], and stories[i] is how. */
+/* the same link, whatever language it is told in */
 const samePair = (a: OriginInput, b: OriginInput) =>
   nameKey(a.name) === nameKey(b.name) && nameKey(a.origin) === nameKey(b.origin)
 
@@ -349,8 +350,8 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
   const [busy, setBusy] = useState(false)
   /* its own language stays on the menu whatever it is -- an API client may
      have filed one this list does not carry -- and a sibling's does not */
-  const langs = [...new Set([of.lang, ...LANGS])]
-    .filter((l): l is string => !!l && !others.some((o) => o.lang === l))
+  const langs = [...new Set([written, ...LANGS])]
+    .filter((l) => !!l && (l === written || !others.some((o) => o.lang === l)))
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -433,6 +434,8 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
           <label htmlFor={`${uid}-lang`}>{m.form.writtenIn}</label>
           <div className="select narrow">
             <select id={`${uid}-lang`} value={written} onChange={(e) => setWritten(e.target.value)}>
+              {/* filed with no language: the menu says so rather than showing the first one */}
+              {!written && <option value="">—</option>}
               {langs.map((l) => (
                 <option key={l} value={l}>{langLabel(l)}</option>
               ))}
@@ -530,20 +533,22 @@ export function OriginTranslate({ lang }: { lang: string }) {
   if (!got.data) return <p className="empty" role="status">{m.common.loading}</p>
   if (!of) return <p className="empty">{m.origins.noMatches}</p>
   const taken = got.data.filter((o) => samePair(o, of)).map((o) => o.lang)
-  return <OriginForm key={of.id} lang={lang} of={of} taken={taken} />
+  return <OriginForm key={of.id} lang={lang} of={of} taken={taken} all={got.data} />
 }
 
 /* `of` is the link being translated: its two names are fixed, the languages
    it is already told in are off the menu, and the story is the point. */
-export function OriginForm({ lang, of, taken }: {
+export function OriginForm({ lang, of, taken, all }: {
   lang: string
   of?: Origin
   taken?: (string | null)[]
+  /** every live link, when the page that draws this form has already read them */
+  all?: Origin[]
 }) {
   const { m } = useUi()
   const nav = useNavigate()
   const uid = useId()
-  const got = useAsync(() => api.origins(), [])
+  const got = useAsync(() => (all ? Promise.resolve(all) : api.origins()), [])
   const [stops, setStops] = useState<Stop[]>(of
     ? [{ name: of.name, note: of.name_note ?? '', image: of.name_image },
        { name: of.origin, note: of.origin_note ?? '', image: of.origin_image }]

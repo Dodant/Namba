@@ -161,7 +161,7 @@ export default function Origins() {
         verb={hiding ? 'Hide it' : 'Put it back'}
         danger={hiding}
         busy={busy}
-        onCancel={() => setAsk(null)}
+        onCancel={() => { setAsk(null); setNote('') }}
         onOk={decide}
       >
         <p>
@@ -185,7 +185,7 @@ export default function Origins() {
         title="Reports and removal requests"
         verb="Close them"
         busy={busy}
-        onCancel={() => setFlagged(null)}
+        onCancel={() => { setFlagged(null); setNote('') }}
         onOk={closeFlags}
       >
         {flagged && (

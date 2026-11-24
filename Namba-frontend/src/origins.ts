@@ -65,13 +65,14 @@ export function loops(names: Map<string, Link>, e: Link): boolean {
   return false
 }
 
-/** The list as chains. Folded, a name that is somebody's origin is drawn
-    inside that chain and gets no row of its own; unfolded, every entry heads
-    a row. */
-export function rows<T extends Link>(list: readonly T[], folded: boolean): T[][] {
+/** The list as chains. An entry a chain already draws gets no row of its
+    own, and that is the entry `byName` holds for a name that is somebody's
+    origin -- not every entry under that name. A name's second origin is in
+    no chain, so without a row it would be live and on no page. */
+export function rows<T extends Link>(list: readonly T[]): T[][] {
   const names = byName(list)
   const origins = new Set(list.map((e) => nameKey(e.origin)))
   return list
-    .filter((e) => !folded || !origins.has(nameKey(e.name)))
+    .filter((e) => !origins.has(nameKey(e.name)) || names.get(nameKey(e.name)) !== e)
     .map((e) => chain(names, e))
 }

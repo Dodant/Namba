@@ -1559,7 +1559,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 /* the same shape the read page has: the thing you are working on, and the
    history of it on a rail beside. 724 + 320 + the gap fits inside .wrap, so
    the two columns sit together rather than at opposite edges of the page.
-   340 rather than the read page's 250: these rows carry a Restore button as
+   320 rather than the read page's 250: these rows carry a Restore button as
    well as the byline, and narrower left "Aug 19," and "2026" on two lines. */
 .form-layout {
   /* .wrap is 1092 inside its gutters: 724 of form, 48 of air, 320 of rail */
@@ -1835,7 +1835,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 /* editing an entry cannot move it to another number, so there the field is
    the number rather than a box to type one in -- the hard border above is
    what says "type here", and this is the only field that ever drops it */
-.num-field input:read-only { border-color: var(--line); cursor: default; }
+.num-field input:read-only, .og-stop input:read-only { border-color: var(--line); cursor: default; }
 /* The lookup belongs to the number field: it answers the value being typed,
    not the entry as a whole. A quiet inset keeps it helpful without competing
    with the title field that follows. */
@@ -2119,7 +2119,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   .field.check input[type="radio"] { width: 20px; height: 20px; }
   /* into the 33-40 band with the rest of them, on the one axis that is safe
      to grow here -- see the rule itself for why the margin stays vertical */
-  .category-more { padding: 9px 0; margin: -9px 0; }
+  .category-more { padding: 9px 0; margin: -9px 0 -9px auto; }
   /* the rule box sits at the top of its sentence and was nudged 2px down to
      centre a 13px box on the first line; at 20px the centre is 1.5px up */
   .field.check.says-a-rule input[type="checkbox"],
@@ -2253,7 +2253,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 /* --- origins ------------------------------------------------------ */
 /* A row is a chain read left to right -- the name, then each name it came
    from -- with the first story beside it, and is a link to the entry. The
-   form is the same chain stood on end, which is why the rail and the entry's
+   form is the same chain stood on end, which is why the rail and the preview's
    steps share a left rule. */
 .og-head {
   display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
@@ -2307,7 +2307,6 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   color: var(--ink-soft); overflow-wrap: anywhere;
 }
 .og-steps p { margin: 4px 0 6px; max-width: 68ch; }
-.og-steps .meta a { color: var(--accent); }
 /* one version in a history: the names in the row's title weight, that
    version's notes small beside them, and its story clamped under both */
 .og-ver-t { font-weight: 500; overflow-wrap: anywhere; }
@@ -2315,9 +2314,10 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   margin: 0 2px 0 5px; font-family: var(--mono); font-size: var(--fs-meta);
   font-weight: 400; color: var(--muted);
 }
-.ver-b {
+.rev .ver-b, .panel-main .ver-b {
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
-  font-size: var(--fs-fine); line-height: 1.45; color: var(--ink-soft); margin: 2px 0;
+  font-family: inherit; font-size: var(--fs-fine); line-height: 1.45; color: var(--ink-soft);
+  margin: 2px 0;
 }
 .panel-row.now .og-ver-t { color: var(--accent); }
 /* An entry's hero: the name where a number's page has its numeral. A name
@@ -2326,8 +2326,8 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .og-hero h1 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
 .og-hero h1 small { font-family: var(--mono); font-size: var(--fs-meta); color: var(--muted); }
 .og-stop { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 7fr) auto; gap: 0 12px; }
-/* the picture of the name on this row: a square the height of the inputs
-   beside it, which is the + to add one and then the picture itself */
+/* the picture of the name on this row: a round button the height of the
+   inputs beside it, which is the way to add one and then the picture itself */
 /* .field .og-pic: the empty one is a <label>, and .field's label rule is the
    row of small caps above an input -- which this is not */
 .field .og-pic {
@@ -2337,6 +2337,8 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   font-family: var(--mono); font-size: 18px; color: var(--muted); cursor: pointer;
 }
 .og-pic:hover, .og-pic:focus-within { border-color: var(--accent); color: var(--accent); }
+/* the file input inside is 1px and clear, so the ring is drawn on the button */
+.og-pic:has(:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; }
 /* no label over it, so it sits on the row's floor beside the inputs */
 .og-img { align-self: end; position: relative; }
 /* an entry's title with its picture at the end of the row */
@@ -2346,7 +2348,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .og-img[data-tip]::after {
   content: attr(data-tip); position: absolute; right: 0; bottom: calc(100% + 8px);
   padding: 6px 10px; border-radius: 8px; background: var(--ink); color: var(--bg);
-  font-family: var(--mono); font-size: var(--fs-meta); white-space: nowrap;
+  font-family: var(--mono); font-size: var(--fs-meta);
+  /* one line where there is room, wrapped where a phone has none */
+  width: max-content; max-width: min(288px, 80vw);
   opacity: 0; pointer-events: none; transition: opacity 0.12s;
 }
 .og-img[data-tip]:hover::after, .og-img[data-tip]:focus-within::after { opacity: 1; }

@@ -317,13 +317,13 @@ joining, the loop guard and the language rule below.
   chain that arrives back at its own first name; `chain` carries a seen set
   anyway, since the form is not the only way to write to an open API.
 - **A row is a link to `/origins/:id`**, the entry: that link and every link
-  it leads back through, each with its story, its byline, a like and Edit.
+  it leads back through, each with its story.
   The page is worked out from the whole list like the rows are, so there is
   no second read. "N names came from here" there is `/origins?q=`, which is
   the list's only filter: it has no box of its own and always draws chains
   folded, so the Origins tab is the way back to the whole of it. The row's like is the index's
   `.ix-like`, so it is revealed and hidden by the same rules.
-- **`Names` draws the list's rows, the entry and the form's preview**, so what the
+- **`Names` draws the list's rows and the form's preview**, so what the
   form promises is what the list does.
 - **The back office has one page for it**, `admin/pages/Origins.tsx`: every
   link with its status, hidden ones included, and a Hide that is its own

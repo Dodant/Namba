@@ -17,8 +17,13 @@ test('links join into a chain, up to case', () => {
 })
 
 test('folded, a name inside a chain gets no row of its own', () => {
-  assert.deepEqual(heads(rows(JAVA, true)), ['JavaScript', 'Python', 'spam'])
-  assert.equal(rows(JAVA, false).length, JAVA.length)
+  assert.deepEqual(heads(rows(JAVA)), ['JavaScript', 'Python', 'spam'])
+})
+
+test("a name's second origin is in no chain, so it keeps a row", () => {
+  const list = [L('X', 'Y'), L('X', 'W'), L('Z', 'X')]
+  const drawn = new Set(rows(list).flat())
+  assert.deepEqual(list.filter((e) => !drawn.has(e)), [])
 })
 
 test('a loop is seen, and following one still ends', () => {
