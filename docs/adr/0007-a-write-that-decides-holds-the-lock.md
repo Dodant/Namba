@@ -48,3 +48,8 @@ race becomes a 500.
   route with nothing to keep. `create_post` still opens `writing()` — three
   statements land together — but for the writes, not for a read. A lookup put
   back into `resolve_format` puts the 2026-09-09 race back with it.
+- 2026-11-24: Origins added a thirteenth public write (ADR-0034), and it
+  decides: `create_origin` asks `store.leads_back` whether the link would
+  close a loop. Twelve of the thirteen decide and the test probes those
+  twelve. The operator's `set_origin_status` asks the same question when it
+  puts a hidden link back, and opens `writing()` for it.

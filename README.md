@@ -88,7 +88,7 @@ including the test suite:
 | `auth.py` | operator passwords and sessions — the only login here |
 | `events.py` | who a request is from, as hashes, and the log of what they did |
 | `gc_uploads.py` | the cron job that deletes pictures nothing points at |
-| `admin.py` | the operator's commands — accounts, TOTP enrollment, `hide`, `show`, `purge` |
+| `admin.py` | the operator's commands — accounts, TOTP enrollment, `hide`, `show`, `purge`, `purge-origin` |
 
 `Namba-frontend` — React + Vite, no state library and no UI kit. `src/api.ts` is
 the whole client; `Browse.tsx` serves the number (`/n/`), abbreviation (`/a/`),

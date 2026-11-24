@@ -46,3 +46,4 @@ the rule it introduces.
 | [0031](0031-unfinished-forms-stay-in-the-browser.md) | Unfinished main entry forms are browser-local drafts | accepted | 2026-09-16 |
 | [0032](0032-contributors-is-a-tally-not-a-profile.md) | The contributors page is a tally, not a profile | accepted | 2026-10-12 |
 | [0033](0033-every-number-draws-its-own-card.md) | Entries and value pages draw their own share card | accepted | 2026-11-05 |
+| [0034](0034-an-origin-is-a-link-not-a-chain.md) | An origin is one link, and a chain is never stored | accepted | 2026-11-24 |

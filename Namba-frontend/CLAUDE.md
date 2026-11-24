@@ -286,6 +286,11 @@ joining, the loop guard and the language rule below.
   anyway, since the form is not the only way to write to an open API.
 - **`Chain` draws both the list's rows and the form's preview**, so what the
   form promises is what the list does.
+- **The back office has one page for it**, `admin/pages/Origins.tsx`: every
+  link with its status, hidden ones included, and a Hide that is its own
+  undo. One row is one link there too, so hiding one cuts a chain at that
+  point and takes nothing else. A refusal — the 409 for a link that would now
+  close a loop — is drawn inside the dialog.
 
 ## Two kinds of language
 
