@@ -56,16 +56,17 @@ chains, not paging links.
 
 A link's words can be edited through the public API and its two names cannot:
 the names are the link. `origin_revisions` keeps what each edit replaced, so
-an edit is not a loss; nothing reads that table yet, and putting a version
-back is a shell's job until a restore route exists. A link filed under the
+an edit is not a loss, and the edit form lists them with a Restore beside
+each. A link filed under the
 wrong name is hidden by an operator and filed again.
 
 Origins are outside the header search, the sitemap, the server-written
 `<head>`, `/api/contributors` and the delete-request and report queues. Each
 of those reads `posts`.
 
-Sixteen public routes write now — the create, the edit, and a like and its
-undo, the same counter a post has — and fifteen of them decide (ADR-0007).
+Seventeen public routes write now — the create, the edit, the restore, and
+a like and its undo, the same counter a post has — and sixteen of them
+decide (ADR-0007).
 
 ## History
 

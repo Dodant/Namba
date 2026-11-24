@@ -1,14 +1,15 @@
-import { Fragment, useId, useMemo, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useId, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   api, entryPath, errorText, LANG_CODE, langLabel, nickname, validNickname,
-  type Origin, type OriginInput,
+  type Origin, type OriginInput, type OriginRevision,
 } from '../api'
 import { byName, chain, loops, nameKey, preferLang, rows } from '../origins'
 import { NicknameField } from '../components/NicknameField'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
-import { useUi } from '../uiLocale'
+import { fmtDate } from '../format'
+import { revisionBy, useUi } from '../uiLocale'
 import { FmtTabs } from './Home'
 
 const Name = ({ text, note, head }: { text: string; note?: string | null; head?: boolean }) => (
@@ -202,7 +203,13 @@ export function OriginEdit() {
 }
 
 function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
-  const { m } = useUi()
+  const { locale, m } = useUi()
+  // the link as last saved: `of` is what the page loaded, a restore moves this
+  const [cur, setCur] = useState(of)
+  const [revs, setRevs] = useState<OriginRevision[]>([])
+  useEffect(() => {
+    api.originRevisions(of.id).then(setRevs, () => {})
+  }, [of.id, cur])
   const nav = useNavigate()
   const uid = useId()
   const [nameNote, setNameNote] = useState(of.name_note ?? '')
@@ -236,6 +243,24 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
     }
   }
 
+  async function restore(rev: number) {
+    setErr('')
+    setBusy(true)
+    try {
+      // a restore replaces the words, so the fields follow it
+      const next = await api.restoreOrigin(of.id, rev, nickname.get())
+      setCur(next)
+      setNameNote(next.name_note ?? '')
+      setOriginNote(next.origin_note ?? '')
+      setBody(next.body)
+      setWritten(next.lang ?? '')
+    } catch (e) {
+      setErr(errorText(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const note = (key: string, label: string, value: string, set: (v: string) => void) => (
     <div className="field">
       <label htmlFor={`${uid}-${key}`}>
@@ -247,6 +272,7 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
   )
 
   return (
+    <div className="form-layout">
     <form className="form" onSubmit={submit}>
       <h1>{m.form.editTitle}</h1>
       <p className="og-page"><Names links={[of]} /></p>
@@ -311,6 +337,41 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
         <p className="fine">{m.form.cc0(false)}</p>
       </fieldset>
     </form>
+
+    {/* the aside PostForm draws, with the story where an entry has a title */}
+    <aside className="side form-side">
+      <div className="field" role="group" aria-labelledby={`${uid}-hist`}>
+        <span className="field-label" id={`${uid}-hist`}>
+          {m.form.history} <span className="hint">{m.form.historyHint}</span>
+        </span>
+        <div className="panel">
+          <div className="panel-row now">
+            <div className="panel-main">
+              <span className="panel-t now">{cur.body || '—'}</span>
+              <span className="panel-m">
+                {m.form.current} ·{' '}
+                {cur.edited_by ? m.post.editedBy(cur.edited_by) : m.common.by(cur.author)}
+              </span>
+            </div>
+          </div>
+          {revs.map((r) => (
+            <div className="panel-row" key={r.id}>
+              <div className="panel-main">
+                <span className="panel-t">{r.body || '—'}</span>
+                <span className="panel-m">
+                  {revisionBy(r.written_by, m)} · {fmtDate(r.created_at, locale)}
+                </span>
+              </div>
+              <button type="button" className="pill" disabled={busy} onClick={() => restore(r.id)}>
+                {m.common.restore}
+              </button>
+            </div>
+          ))}
+          {!revs.length && <div className="panel-row panel-empty">{m.post.noEdits}</div>}
+        </div>
+      </div>
+    </aside>
+    </div>
   )
 }
 

@@ -459,13 +459,16 @@ the sitemap.
 
   `GET /api/origins` is the one public read of it and carries `LIVE`;
   `/api/admin/origins` is the one read that does not. `live_origin` is the
-  deciding read of the three writes on a link that already exists — the like,
-  its undo and `PATCH /api/origins/{id}`. The edit takes the story, the two
-  notes and the language, never a name; it copies the row's words into
-  `origin_revisions` before it writes, and logs `ORIGIN_EDIT`. Nothing reads
-  that table yet: it is what makes an edit recoverable, from a shell, until a
-  restore route exists. It cascades with its link, so `purge-origin` takes
-  it (ADR-0034).
+  deciding read of the four writes on a link that already exists — the like,
+  its undo, `PATCH /api/origins/{id}` and the restore. The edit takes the
+  story, the two notes and the language, never a name, and logs
+  `ORIGIN_EDIT`. `rewrite_origin` is the one place a link's words change: it
+  copies them into `origin_revisions` and then writes, so the restore
+  (`ORIGIN_REVERT`, a name `ORIGIN_RESTORE` had already taken for an operator
+  unhiding one) keeps what it replaces exactly as an edit does.
+  `GET /api/origins/{id}/revisions` is the history, capped at
+  `REVISIONS_SHOWN`. The table cascades with its link, so `purge-origin`
+  takes it (ADR-0034).
 - **`now()` lives in `db.py`.** It is a property of the schema — every date
   column is written by it — and `events.py` needs it without importing the app.
   `main.py` imports the name, so `main.now` is still what `test_recent_sort`

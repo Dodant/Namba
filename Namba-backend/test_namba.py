@@ -149,11 +149,20 @@ def test_origins():
     e = r.json()
     assert (e["body"], e["name_note"], e["author"], e["edited_by"], e["name"]) == (
         "retold", "a language", "ada", "grace", a["name"]), e
-    con = db.connect()
-    kept = [tuple(x) for x in con.execute(
-        "SELECT body, written_by FROM origin_revisions WHERE origin_id = ?", (a["id"],))]
-    con.close()
-    assert kept == [("a story", "ada")], kept
+    # the history beside the form, and a restore that is itself undoable
+    revs = c.get(f"/api/origins/{a['id']}/revisions").json()
+    assert [(v["body"], v["written_by"]) for v in revs] == [("a story", "ada")], revs
+    r = c.post(f"/api/origins/{a['id']}/revisions/{revs[0]['id']}/restore",
+               json={"author": "hopper"})
+    assert r.status_code == 200, r.text
+    assert (r.json()["body"], r.json()["name_note"], r.json()["edited_by"]) == (
+        "a story", "language", "hopper"), r.json()
+    revs = c.get(f"/api/origins/{a['id']}/revisions").json()
+    assert [(v["body"], v["written_by"]) for v in revs] == [
+        ("retold", "grace"), ("a story", "ada")], revs
+    assert c.post(f"/api/origins/{b['id']}/revisions/{revs[0]['id']}/restore",
+                  json={"author": "hopper"}).status_code == 404, "another link's version"
+    assert c.get("/api/origins/999999/revisions").status_code == 404
     assert c.patch("/api/origins/999999", json={"author": "grace"}).status_code == 404
     assert c.patch(f"/api/origins/{a['id']}", json={"body": "x"}).status_code == 422
 
@@ -3758,10 +3767,10 @@ def test_purge_takes_the_words_that_asked_for_it():
 
 
 def test_every_write_decides_inside_the_lock():
-    """One rule for the fifteen public writes that decide: the read a route
+    """One rule for the sixteen public writes that decide: the read a route
     decides on runs with the write lock already held.
 
-    Fifteen of sixteen, because a create decides nothing about another row --
+    Sixteen of seventeen, because a create decides nothing about another row --
     `resolve_format` is pure, and an entry under a value that already has ten
     is normal here. So it is not probed: there is no read to catch it holding,
     and a probe that fired on a pure call would report the rule as kept by a
@@ -3860,6 +3869,9 @@ def test_every_write_decides_inside_the_lock():
         oid = c.get("/api/origins").json()[-1]["id"]
         locked("edit an origin", lambda: c.patch(
             f"/api/origins/{oid}", json={"body": "ficus", "author": "hesse"}))
+        orev = c.get(f"/api/origins/{oid}/revisions").json()[0]["id"]
+        locked("restore an origin", lambda: c.post(
+            f"/api/origins/{oid}/revisions/{orev}/restore", json={"author": "hesse"}))
         locked("like an origin", lambda: c.post(f"/api/origins/{oid}/like"))
         locked("unlike an origin", lambda: c.delete(f"/api/origins/{oid}/like"))
     finally:
@@ -3867,7 +3879,7 @@ def test_every_write_decides_inside_the_lock():
             setattr(mod, name, fn)
 
     # ...and the probe reached every kind of deciding read there is, so none of
-    # the fifteen passed by touching nothing
+    # the sixteen passed by touching nothing
     assert seen == {"fetch_one", "_already_open", "guard_public", "leads_back",
                     "live_origin"}, seen
 

@@ -950,7 +950,7 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
         # is pure, an entry under a value that already has ten is normal, and
         # there is no uniqueness here to race for. So the lock is held for the
         # three statements below landing together, not for a read -- see
-        # db.writing() and ADR-0007 for the fifteen writes where it is the read.
+        # db.writing() and ADR-0007 for the sixteen writes where it is the read.
         value, fmt, key = resolve_format(value, p.format)
         if p.in_memoriam and p.on_this_day:
             raise HTTPException(422, "On this day and In Memoriam are mutually exclusive")
@@ -1641,18 +1641,56 @@ def edit_origin(origin_id: int, o: OriginEditIn, who=Depends(guard), con=Depends
     """
     editor = nick(o.author)
     with writing(con):
-        was = live_origin(con, origin_id)
-        con.execute(
-            """INSERT INTO origin_revisions (origin_id, name_note, origin_note, body,
-                                             lang, written_by, created_at)
-               VALUES (?,?,?,?,?,?,?)""",
-            (origin_id, was["name_note"], was["origin_note"], was["body"], was["lang"],
-             was["edited_by"] or was["author"], now()))
-        con.execute(
-            """UPDATE origins SET name_note = ?, origin_note = ?, body = ?, lang = ?,
-                                  edited_by = ? WHERE id = ?""",
-            (o.name_note, o.origin_note, o.body, o.lang, editor, origin_id))
+        rewrite_origin(con, live_origin(con, origin_id), o.name_note, o.origin_note,
+                       o.body, o.lang, editor)
         events.record(con, "ORIGIN_EDIT", client=who, who=editor,
+                      target_type="origin", target_id=origin_id)
+        return live_origin(con, origin_id)
+
+
+def rewrite_origin(con, was, name_note, origin_note, body, lang, by):
+    """Keep `was`'s words, then write the new ones -- the one way a link's
+    words change, so an edit and a restore cannot disagree about what is kept."""
+    con.execute(
+        """INSERT INTO origin_revisions (origin_id, name_note, origin_note, body,
+                                         lang, written_by, created_at)
+           VALUES (?,?,?,?,?,?,?)""",
+        (was["id"], was["name_note"], was["origin_note"], was["body"], was["lang"],
+         was["edited_by"] or was["author"], now()))
+    con.execute(
+        """UPDATE origins SET name_note = ?, origin_note = ?, body = ?, lang = ?,
+                              edited_by = ? WHERE id = ?""",
+        (name_note, origin_note, body, lang, by, was["id"]))
+
+
+@app.get("/api/origins/{origin_id}/revisions")
+def list_origin_revisions(origin_id: int, con=Depends(get_db)):
+    """The newest versions an edit replaced, newest first, for the history
+    beside the edit form. Capped like a post's, and the rows stay."""
+    live_origin(con, origin_id)
+    return [dict(r) for r in con.execute(
+        """SELECT id, body, written_by, created_at FROM origin_revisions
+           WHERE origin_id = ? ORDER BY id DESC LIMIT ?""",
+        (origin_id, REVISIONS_SHOWN))]
+
+
+@app.post("/api/origins/{origin_id}/revisions/{rev_id}/restore")
+def restore_origin_revision(origin_id: int, rev_id: int, body: RestoreIn,
+                            who=Depends(guard), con=Depends(get_db)):
+    """Put an earlier version's words back. A restore is an edit: what it
+    replaces is kept too, so a restore is undone by another one. The names
+    are not in a version, so it cannot move a link or close a loop."""
+    by = nick(body.author)
+    with writing(con):
+        was = live_origin(con, origin_id)
+        old = con.execute(
+            "SELECT * FROM origin_revisions WHERE id = ? AND origin_id = ?",
+            (rev_id, origin_id)).fetchone()
+        if old is None:
+            raise HTTPException(404, "revision not found")
+        rewrite_origin(con, was, old["name_note"], old["origin_note"], old["body"],
+                       old["lang"], by)
+        events.record(con, "ORIGIN_REVERT", client=who, who=by,
                       target_type="origin", target_id=origin_id)
         return live_origin(con, origin_id)
 

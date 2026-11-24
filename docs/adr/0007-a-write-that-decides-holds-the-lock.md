@@ -55,4 +55,5 @@ race becomes a 500.
   puts a hidden link back, and opens `writing()` for it. The same day a
   link gained a like and its undo, which decide the way a post's do — is the
   link live — so fourteen of fifteen decide and the test probes fourteen. Then the
-  edit of a link, deciding on the same read: fifteen of sixteen.
+  edit of a link and the restore of one, deciding on the same read:
+  sixteen of seventeen.

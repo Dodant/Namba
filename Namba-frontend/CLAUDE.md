@@ -287,7 +287,9 @@ joining, the loop guard and the language rule below.
   offered. A translation here is another row for the same pair rather than a
   child of this one, so the panel's rows link to each telling's own edit page
   and "+ Add translation" is `/origins/:id/translate` — the filing form with
-  the names fixed and the languages already told off the menu.
+  the names fixed and the languages already told off the menu. The History
+  aside is `PostForm`'s too, with the story where an entry has a title; a
+  restore refills the fields from what came back.
 - **A link is liked the way an entry is**, with the same `Like` button told
   the id is an origin's: its own route and its own localStorage key, since the
   two tables number their rows apart.

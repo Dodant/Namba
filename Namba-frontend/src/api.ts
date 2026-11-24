@@ -264,6 +264,8 @@ export type OriginInput = {
   /** what the story is written in, the same free-form name `Post.lang` is */
   lang: string | null
 }
+/** A version an edit replaced, as the label the history draws. */
+export type OriginRevision = { id: number; body: string; written_by: string; created_at: string }
 export type Origin = OriginInput & {
   id: number
   likes: number
@@ -413,6 +415,11 @@ export const api = {
   origins: () => req<Origin[]>('/api/origins'),
 
   createOrigin: (o: OriginInput) => req<Origin>('/api/origins', json('POST', o)),
+
+  originRevisions: (id: number) => req<OriginRevision[]>(`/api/origins/${id}/revisions`),
+
+  restoreOrigin: (id: number, rev: number, author: string) =>
+    req<Origin>(`/api/origins/${id}/revisions/${rev}/restore`, json('POST', { author })),
 
   /** the words only: the two names are what the link is, and are not sent */
   editOrigin: (id: number, o: Omit<OriginInput, 'name' | 'origin'>) =>
