@@ -189,6 +189,23 @@ export function OriginPage({ lang }: { lang: string }) {
   )
 }
 
+/* What one version of a link said, under the two names every version
+   shares: the notes beside them and the story, so a Restore can be read
+   before it is pressed. */
+function Version({ of, v }: { of: Origin; v: Omit<OriginInput, 'name' | 'origin' | 'author'> }) {
+  const { m } = useUi()
+  return (
+    <>
+      <b className="og-ver-t">
+        {of.name}{v.name_note && <small>{v.name_note}</small>} ← {of.origin}
+        {v.origin_note && <small>{v.origin_note}</small>}
+        {(v.name_image || v.origin_image) && <Photo label={m.home.hasImage} />}
+      </b>
+      <span className="og-ver-b">{v.body || m.post.noDetails}</span>
+    </>
+  )
+}
+
 /* The rail an entry has, about the link that was asked for: how its words
    got here, what people make of it, and the one thing to do if it should not
    be here. The same three folds PostPage draws, the last two the same
@@ -205,14 +222,14 @@ function Rail({ of }: { of: Origin }) {
         </summary>
         <ol className="revs">
           <li className="rev now">
-            <b>{of.name} ← {of.origin}</b>
+            <Version of={of} v={of} />
             <span>
               {m.post.current} · {of.edited_by ? m.post.editedBy(of.edited_by) : m.common.by(of.author)}
             </span>
           </li>
           {revs.data?.map((r) => (
             <li className="rev" key={r.id}>
-              <b>{of.name} ← {of.origin}</b>
+              <Version of={of} v={r} />
               <span>{revisionBy(r.written_by, m)}{' '}<span className="when">· {fmtDate(r.created_at, locale)}</span></span>
             </li>
           ))}
@@ -464,8 +481,8 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
       </fieldset>
     </form>
 
-    {/* the aside PostForm draws. Each row is titled with the link, which
-        no version changes, so who and when are what tell them apart */}
+    {/* the aside PostForm draws. Every row has the same two names, so each
+        also says what that version's words were */}
     <aside className="side form-side">
       <div className="field" role="group" aria-labelledby={`${uid}-hist`}>
         <span className="field-label" id={`${uid}-hist`}>
@@ -474,7 +491,7 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
         <div className="panel">
           <div className="panel-row now">
             <div className="panel-main">
-              <span className="panel-t now">{of.name} ← {of.origin}</span>
+              <Version of={of} v={cur} />
               <span className="panel-m">
                 {m.form.current} ·{' '}
                 {cur.edited_by ? m.post.editedBy(cur.edited_by) : m.common.by(cur.author)}
@@ -484,7 +501,7 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
           {revs.map((r) => (
             <div className="panel-row" key={r.id}>
               <div className="panel-main">
-                <span className="panel-t">{of.name} ← {of.origin}</span>
+                <Version of={of} v={r} />
                 <span className="panel-m">
                   {revisionBy(r.written_by, m)}{' '}<span className="when">· {fmtDate(r.created_at, locale)}</span>
                 </span>

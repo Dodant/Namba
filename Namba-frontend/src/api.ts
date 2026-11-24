@@ -267,8 +267,13 @@ export type OriginInput = {
   name_image: string | null
   origin_image: string | null
 }
-/** A version an edit replaced, as the label the history draws. */
-export type OriginRevision = { id: number; body: string; written_by: string; created_at: string }
+/** A version an edit replaced: its words, since those are all that tell one
+    version of a link from another. */
+export type OriginRevision = Omit<OriginInput, 'name' | 'origin' | 'author'> & {
+  id: number
+  written_by: string
+  created_at: string
+}
 export type Origin = OriginInput & {
   id: number
   likes: number

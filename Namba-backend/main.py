@@ -1687,11 +1687,16 @@ def rewrite_origin(con, was, new, by):
 @app.get("/api/origins/{origin_id}/revisions")
 def list_origin_revisions(origin_id: int, con=Depends(get_db)):
     """The newest versions an edit replaced, newest first, for the history
-    beside the edit form. Capped like a post's, and the rows stay."""
+    beside the edit form. Capped like a post's, and the rows stay.
+
+    Whole, where a post's are four labels: every version of a link has the
+    same two names, so its words are the only thing that says which version
+    a Restore would bring back -- and they are 600 characters at most.
+    """
     live_origin(con, origin_id)
     return [dict(r) for r in con.execute(
-        """SELECT id, body, written_by, created_at FROM origin_revisions
-           WHERE origin_id = ? ORDER BY id DESC LIMIT ?""",
+        f"""SELECT id, {", ".join(ORIGIN_WORDS)}, written_by, created_at
+            FROM origin_revisions WHERE origin_id = ? ORDER BY id DESC LIMIT ?""",
         (origin_id, REVISIONS_SHOWN))]
 
 

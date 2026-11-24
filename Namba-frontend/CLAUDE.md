@@ -288,7 +288,8 @@ joining, the loop guard and the language rule below.
   child of this one, so the panel's rows link to each telling's own edit page
   and "+ Add translation" is `/origins/:id/translate` — the filing form with
   the names fixed and the languages already told off the menu. The History
-  aside is `PostForm`'s too, each row titled `name ← origin`; a
+  aside is `PostForm`'s too, each row titled `name ← origin` with that
+  version's notes and story under it, since the names never differ; a
   restore refills the fields from what came back.
 - **An entry is laid out as `PostPage` lays out a number's**, with its
   classes: the hero with the name where the numeral is, the meta row's like
