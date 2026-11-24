@@ -40,7 +40,7 @@ function Chain({ links, open = false, kids, onPick }: {
             </Fragment>
           ))}
         </span>
-        <span className="og-teaser">{links[0].body}</span>
+        <span className="og-teaser">{links.find((l) => l.body)?.body}</span>
       </summary>
       <ol className="og-steps">
         {links.map((l, i) => {
@@ -48,7 +48,7 @@ function Chain({ links, open = false, kids, onPick }: {
           return (
             <li key={i}>
               <h3>{l.name} ← {l.origin}</h3>
-              <p>{l.body}</p>
+              {l.body && <p>{l.body}</p>}
               <div className="meta">
                 {l.author && <span>{m.common.by(l.author)}{l.lang ? ` · ${l.lang}` : ''}</span>}
                 {/* a name that is a number has a page of its own on this wiki */}
@@ -196,7 +196,7 @@ export function OriginForm({ lang }: { lang: string }) {
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    if (draft.some((d) => !d.name || !d.origin || !d.body)) return setErr(m.origins.required)
+    if (draft.some((d) => !d.name || !d.origin)) return setErr(m.origins.required)
     for (const d of draft) {
       if (nameKey(d.name) === nameKey(d.origin)) return setErr(m.origins.same(d.name))
       if (loops(names, d)) return setErr(m.origins.loop(d.name))
@@ -271,7 +271,6 @@ export function OriginForm({ lang }: { lang: string }) {
                     <textarea
                       id={`${uid}-s${i}`}
                       maxLength={600}
-                      required
                       value={stories[i]}
                       onChange={(e) =>
                         setStories((all) => all.map((x, k) => (k === i ? e.target.value : x)))}

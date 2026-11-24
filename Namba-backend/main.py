@@ -1520,24 +1520,30 @@ class OriginIn(Text):
     """One link: this name came from that one, and the story of how.
 
     A name is stored as typed, like every value here -- only the space around
-    it goes. A blank note or language is no note and no language.
+    it goes. A blank note or language is no note and no language, and the
+    story is optional: the link alone already says something true.
     """
 
     name: str = Field(min_length=1, max_length=ORIGIN_NAME_MAX)
     name_note: Optional[str] = Field(default=None, max_length=ORIGIN_NOTE_MAX)
     origin: str = Field(min_length=1, max_length=ORIGIN_NAME_MAX)
     origin_note: Optional[str] = Field(default=None, max_length=ORIGIN_NOTE_MAX)
-    body: str = Field(min_length=1, max_length=ORIGIN_BODY_MAX)
+    body: str = Field(default="", max_length=ORIGIN_BODY_MAX)
     author: str = Field(min_length=1, max_length=40)
     lang: Optional[str] = Field(default=None, max_length=40)
 
-    @field_validator("name", "origin", "body")
+    @field_validator("name", "origin")
     @classmethod
     def not_blank(cls, v):
         v = v.strip()
         if not v:
             raise ValueError("must not be blank")
         return v
+
+    @field_validator("body")
+    @classmethod
+    def trimmed(cls, v):
+        return v.strip()
 
     @field_validator("name_note", "origin_note", "lang")
     @classmethod

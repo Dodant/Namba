@@ -450,7 +450,7 @@ opposite, and only its regex says `[0-9]`.
   the menu for one at `/n/`.
 - **An origin is one link, and a chain is never stored.** Origins is the
   seventh tab and it is not a format: an `origins` row says this name came
-  from that one and tells the story between them. `JavaScript ← Java ← Java
+  from that one and, optionally, tells the story between them. `JavaScript ← Java ← Java
   coffee` is two rows that meet because one row's origin is the other's name,
   joined in the browser by `origins.ts` — the argument that makes a number a
   column and not a table, applied to names. So a chain grows when somebody

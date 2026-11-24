@@ -128,11 +128,16 @@ def test_origins():
         r = file(name, origin)
         assert r.status_code == 422 and "again" in r.text, (name, origin, r.text)
     # ...and so is everything a model refuses
-    for bad in ({"name": "   "}, {"body": " "}, {"name": "x" * 81},
+    for bad in ({"name": "   "}, {"name": "x" * 81},
                 {"body": "x" * 601}, {"author": "anonymous"}, {"name_note": "x" * 41}):
         r = c.post("/api/origins", json={"name": "og-n", "origin": "og-o",
                                          "body": "b", "author": "ada", **bad})
         assert r.status_code == 422, (bad, r.status_code)
+    # the story is optional: a link with none, or only spaces, is still a link
+    for more in ({}, {"body": "  "}):
+        r = c.post("/api/origins", json={"name": "og-bare", "origin": "og-src",
+                                         "author": "ada", **more})
+        assert r.status_code == 201 and r.json()["body"] == "", r.text
     r = c.post("/api/origins", headers={"sec-fetch-site": "cross-site"}, json={
         "name": "og-n", "origin": "og-o", "body": "b", "author": "ada"})
     assert r.status_code == 403, r.status_code

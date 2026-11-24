@@ -19,7 +19,8 @@ happened between them, and it belongs to both.
 ## Decision
 
 Origins is a seventh tab and its own table. `origins` holds one link per row:
-`name` came from `origin`, with `body` telling how, a short note on each side
+`name` came from `origin`, with `body` telling how when somebody knows
+(the story is optional, stored empty rather than null), a short note on each side
 saying what the name is the name of, a nickname and the language the story is
 written in.
 
