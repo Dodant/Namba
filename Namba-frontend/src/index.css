@@ -1199,6 +1199,12 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
   max-height: calc(100dvh - 40px);
   overflow-y: auto; overscroll-behavior-y: contain;
 }
+/* Where the header is sticky the rail stops under it, not behind it: 104 is
+   the header and its air, the figure scroll-padding-top uses beside .top. */
+@media (min-width: 901px) {
+  /* 84 and the rail's own 20 of padding: its first line lands on the 104 */
+  .side { top: 84px; max-height: calc(100dvh - 104px); }
+}
 /* Both of the rail's sections are a <details>, so the space between them is
    between the two of them and not under a heading: with Edit history closed,
    a margin on the Comments heading would have been 20px of nothing. The caret,
