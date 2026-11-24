@@ -2281,11 +2281,22 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .og-steps, .og-rail { margin-left: 4px; padding-left: 20px; border-left: 1px solid var(--line); }
+/* The rule runs from the first dot to the last and no further. It is a
+   border, which cannot know where a dot is, so the two ends are painted over
+   in the page's own colour: above the first dot, and below the last. */
+.og-steps li::after, .og-rail > .og-stop:first-child::after, .og-rail > .og-stop:last-child::after {
+  content: ''; position: absolute; left: -22px; width: 3px; background: var(--bg);
+}
+.og-steps li:not(:first-child):not(:last-child)::after { content: none; }
+.og-steps li:first-child::after, .og-rail > .og-stop:first-child::after { top: 0; height: 8px; }
+.og-steps li:last-child::after, .og-rail > .og-stop:last-child::after { top: 9px; bottom: 0; height: auto; }
+.og-steps li:only-child::after { top: 0; }
 .og-steps { list-style: none; margin-top: 0; margin-bottom: 18px; display: grid; gap: 16px; }
 .og-steps li, .og-stop { position: relative; }
 .og-steps li::before, .og-stop::before {
   content: ''; position: absolute; left: -24px; top: 5px; width: 7px; height: 7px;
   border-radius: 50%; background: var(--accent);
+  z-index: 1; /* over the paint that ends the rule */
 }
 .og-steps h3 {
   margin: 0; font-family: var(--mono); font-size: var(--fs-ctl); font-weight: 500;
@@ -2297,8 +2308,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .og-stop { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 7fr); gap: 0 12px; }
 .og-stop .field { margin-bottom: 14px; }
 .og-stop .fine { grid-column: 1 / -1; margin: -6px 0 14px; color: var(--accent); }
-.og-rail > .actions { margin: 0 0 clamp(20px, 3.5vw, 28px); }
-/* the edit form's rail ends on a stop, with no buttons to hold the gap */
-.og-rail > .og-stop:last-child .field { margin-bottom: clamp(20px, 3.5vw, 28px); }
+.og-rail { margin-bottom: 14px; }
+.og-rail + .actions { margin: 0 0 clamp(20px, 3.5vw, 28px) 25px; }
 .og-preview { min-width: 0; }
 @media (max-width: 560px) { .og-stop { grid-template-columns: minmax(0, 1fr); } }

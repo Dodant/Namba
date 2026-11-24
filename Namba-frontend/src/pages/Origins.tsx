@@ -531,32 +531,33 @@ export function OriginForm({ lang, of, taken }: {
                 )}
               </Fragment>
             ))}
-            <div className="actions">
-              {!of && stories.length < MAX_LINKS && (
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => {
-                    setStops((x) => [...x, BLANK])
-                    setStories((x) => [...x, ''])
-                  }}
-                >
-                  {m.origins.addStep}
-                </button>
-              )}
-              {stories.length > 1 && (
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => {
-                    setStops((x) => x.slice(0, -1))
-                    setStories((x) => x.slice(0, -1))
-                  }}
-                >
-                  {m.origins.removeStep}
-                </button>
-              )}
-            </div>
+          </div>
+          {/* under the rail, not on it: the line stops at the last name */}
+          <div className="actions">
+            {!of && stories.length < MAX_LINKS && (
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setStops((x) => [...x, BLANK])
+                  setStories((x) => [...x, ''])
+                }}
+              >
+                {m.origins.addStep}
+              </button>
+            )}
+            {stories.length > 1 && (
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setStops((x) => x.slice(0, -1))
+                  setStories((x) => x.slice(0, -1))
+                }}
+              >
+                {m.origins.removeStep}
+              </button>
+            )}
           </div>
           <datalist id={`${uid}-names`}>
             {[...new Set(known.flatMap((x) => [x.name, x.origin]))].map((n) => (
