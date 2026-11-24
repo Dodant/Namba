@@ -30,7 +30,7 @@ export function ImageButton({ id, value, onChange, onError, onBusy, onBroken }: 
         </button>
       ) : (
         <label className={`og-pic ${busy ? 'busy' : ''}`}>
-          {busy ? <span role="status" aria-label={m.form.uploading}>…</span> : (
+          {busy ? <span role="status" aria-label={m.form.uploading}>·</span> : (
             /* a framed picture: a sun over a hill, the sign for "image" */
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
