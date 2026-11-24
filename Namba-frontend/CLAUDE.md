@@ -281,6 +281,11 @@ joining, the loop guard and the language rule below.
 - **A link told in two languages is drawn once.** `preferLang` keeps one entry
   per (name, origin) pair, the reader's entry-text language first. "Written
   in" on the form is the same free-form name `Post.lang` is.
+- **Edit on a link adds a telling, it does not rewrite one.**
+  `/origins/:id/edit` is the same form with the two names fixed and the
+  languages the pair is already told in off the menu; publishing files a
+  second row through the same route. Nothing snapshots a link, so there is no
+  rewrite to offer.
 - **A loop is refused in the form and survived in the list.** `loops` stops a
   chain that arrives back at its own first name; `chain` carries a seen set
   anyway, since the form is not the only way to write to an open API.

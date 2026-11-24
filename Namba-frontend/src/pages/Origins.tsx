@@ -1,8 +1,8 @@
 import { Fragment, useId, useMemo, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   api, entryPath, errorText, LANG_CODE, langLabel, nickname, validNickname,
-  type OriginInput,
+  type Origin, type OriginInput,
 } from '../api'
 import { byName, chain, loops, nameKey, preferLang, rows } from '../origins'
 import { NicknameField } from '../components/NicknameField'
@@ -54,6 +54,10 @@ function Chain({ links, open = false, kids, onPick }: {
                 {/* a name that is a number has a page of its own on this wiki */}
                 {/^\d+$/.test(l.origin) && (
                   <Link to={entryPath(l.origin, 'INTEGER')}>{entryPath(l.origin, 'INTEGER')}</Link>
+                )}
+                {/* only in the list: the preview draws links that have no id yet */}
+                {onPick && 'id' in l && (
+                  <Link to={`/origins/${(l as Origin).id}/edit`}>{m.common.edit}</Link>
                 )}
                 {n > 1 && onPick && (
                   <button type="button" className="meta-btn" onClick={() => onPick(l.origin)}>
@@ -156,15 +160,41 @@ const BLANK: Stop = { name: '', note: '' }
 
 /* The chain stood on end: a name, the story, the name it came from, and so
    on down. stops[i] came from stops[i + 1], and stories[i] is how. */
-export function OriginForm({ lang }: { lang: string }) {
+/* Edit on a link. A link is not rewritten -- nothing snapshots one -- so what
+   this page adds is the same link told in another language: a second row
+   for the same pair, of which the list draws the reader's. */
+export function OriginEdit({ lang }: { lang: string }) {
+  const { m } = useUi()
+  const { id } = useParams()
+  const got = useAsync(() => api.origins(), [])
+  const of = got.data?.find((o) => String(o.id) === id)
+  if (got.err) return <p className="err" role="alert">{got.err}</p>
+  if (!got.data) return <p className="empty" role="status">{m.common.loading}</p>
+  if (!of) return <p className="empty">{m.origins.noMatches}</p>
+  const taken = got.data
+    .filter((o) => nameKey(o.name) === nameKey(of.name) && nameKey(o.origin) === nameKey(of.origin))
+    .map((o) => o.lang)
+  return <OriginForm key={of.id} lang={lang} of={of} taken={taken} />
+}
+
+/* `of` is the link being translated: its two names are fixed, the languages
+   it is already told in are off the menu, and the story is the point. */
+export function OriginForm({ lang, of, taken }: {
+  lang: string
+  of?: Origin
+  taken?: (string | null)[]
+}) {
   const { m } = useUi()
   const nav = useNavigate()
   const uid = useId()
   const got = useAsync(() => api.origins(), [])
-  const [stops, setStops] = useState<Stop[]>([BLANK, BLANK])
+  const [stops, setStops] = useState<Stop[]>(of
+    ? [{ name: of.name, note: of.name_note ?? '' }, { name: of.origin, note: of.origin_note ?? '' }]
+    : [BLANK, BLANK])
+  const langs = LANGS.filter((l) => !taken?.includes(l))
   const [stories, setStories] = useState<string[]>([''])
   // starts on the language the reader asked to read in, when it is one we list
-  const [written, setWritten] = useState(LANGS.includes(lang) ? lang : LANGS[0])
+  const [written, setWritten] = useState(langs.includes(lang) ? lang : langs[0])
   const [author, setAuthor] = useState(nickname.get)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
@@ -184,7 +214,7 @@ export function OriginForm({ lang }: { lang: string }) {
 
   function hint(i: number) {
     const k = nameKey(stops[i].name)
-    if (!k) return ''
+    if (!k || of) return ''
     if (i === 0) {
       const n = known.filter((e) => nameKey(e.name) === k).length
       return n ? m.origins.has(m.common.entries(n)) : ''
@@ -228,8 +258,8 @@ export function OriginForm({ lang }: { lang: string }) {
   return (
     <div className="form-layout">
       <form className="form" onSubmit={submit}>
-        <h1>{m.origins.addTitle}</h1>
-        <p className="form-intro">{m.origins.formIntro}</p>
+        <h1>{of ? m.form.translations : m.origins.addTitle}</h1>
+        <p className="form-intro">{of ? m.form.translationsHint : m.origins.formIntro}</p>
         <fieldset className="form-fields" disabled={busy}>
           <div className="og-rail">
             {stops.map((s, i) => (
@@ -244,6 +274,7 @@ export function OriginForm({ lang }: { lang: string }) {
                       list={`${uid}-names`}
                       maxLength={80}
                       required
+                      readOnly={!!of}
                       value={s.name}
                       onChange={(e) => setStop(i, { name: e.target.value })}
                     />
@@ -271,6 +302,7 @@ export function OriginForm({ lang }: { lang: string }) {
                     <textarea
                       id={`${uid}-s${i}`}
                       maxLength={600}
+                      required={!!of}
                       value={stories[i]}
                       onChange={(e) =>
                         setStories((all) => all.map((x, k) => (k === i ? e.target.value : x)))}
@@ -280,7 +312,7 @@ export function OriginForm({ lang }: { lang: string }) {
               </Fragment>
             ))}
             <div className="actions">
-              {stories.length < MAX_LINKS && (
+              {!of && stories.length < MAX_LINKS && (
                 <button
                   type="button"
                   className="btn"
@@ -315,8 +347,9 @@ export function OriginForm({ lang }: { lang: string }) {
           <div className="field">
             <label htmlFor={`${uid}-lang`}>{m.form.writtenIn}</label>
             <div className="select narrow">
-              <select id={`${uid}-lang`} value={written} onChange={(e) => setWritten(e.target.value)}>
-                {LANGS.map((l) => (
+              <select id={`${uid}-lang`} required value={written ?? ''}
+                      onChange={(e) => setWritten(e.target.value)}>
+                {langs.map((l) => (
                   <option key={l} value={l}>{langLabel(l)}</option>
                 ))}
               </select>
