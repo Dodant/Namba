@@ -589,7 +589,7 @@ def activity(
     # substring match on an action would make CONTENT_DELETE a hit for DELETE
     # and quietly widen an audit filter an operator is trusting.
     # target_type comes along with target_id rather than being optional
-    # beside it: `target_id` points at five tables, so id 5 alone is post 5 and
+    # beside it: `target_id` points at six tables, so id 5 alone is post 5 and
     # block 5 and admin 5 at once -- and the pair is what `idx_events_target`
     # leads with, so asking both ways is the correct one and the fast one.
     for column, value in (("e.action", action), ("e.admin_id", admin_id),
@@ -803,6 +803,73 @@ def set_post_status(
                       admin_id=who["id"], target_type="post", target_id=post_id,
                       was=was["status"], note=body.note.strip())
     return {"id": post_id, "status": body.status, "was": was["status"]}
+
+
+# --- origins ------------------------------------------------------------
+@router.get("/origins")
+def list_all_origins(
+    q: Optional[str] = None,
+    status: str = "ALL",
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _=Depends(auth.require_admin),
+    con=Depends(db.get_db),
+):
+    """Every link, hidden ones included, newest first -- the Origins twin of
+    the content table, and the only read of this table without `store.LIVE`."""
+    where, args = [], []
+    q = db.nfc(q)
+    if status != "ALL":
+        if status not in db.POST_STATUSES:
+            raise HTTPException(422, f"status must be ALL or one of {db.POST_STATUSES}")
+        where.append("status = ?")
+        args.append(status)
+    if q:
+        where.append(f"""(name LIKE ? ESCAPE '{db.LIKE_ESC}'
+                          OR origin LIKE ? ESCAPE '{db.LIKE_ESC}'
+                          OR body LIKE ? ESCAPE '{db.LIKE_ESC}')""")
+        args += [db.like(q)] * 3
+    sql = f"""SELECT * FROM origins
+              {"WHERE " + " AND ".join(where) if where else ""}
+              ORDER BY id DESC"""
+    return _page(con, sql, tuple(args), limit, offset)
+
+
+@router.post("/origins/{origin_id}/status")
+def set_origin_status(
+    origin_id: int,
+    body: StatusIn,
+    request: Request,
+    who=Depends(auth.require_admin),
+    con=Depends(db.get_db),
+):
+    """Hide a link, mark it removed, or put it back. The same route is the
+    undo, as it is for an entry.
+
+    Putting one back asks the question a create asks: links filed while this
+    one was hidden may have closed the other half of a loop, and a loop is
+    refused whichever write would complete it. Hence the lock.
+    """
+    if body.status not in db.POST_STATUSES:
+        raise HTTPException(422, f"status must be one of {db.POST_STATUSES}")
+    action = {"ACTIVE": "ORIGIN_RESTORE", "HIDDEN": "ORIGIN_HIDE",
+              "DELETED": "ORIGIN_DELETE"}[body.status]
+    with db.writing(con):
+        was = con.execute("SELECT name, origin, status FROM origins WHERE id = ?",
+                          (origin_id,)).fetchone()
+        if was is None:
+            raise HTTPException(404, "no such origin")
+        if was["status"] == body.status:
+            raise HTTPException(409, f"already {body.status}")
+        if body.status == store.LIVE and store.leads_back(con, was["name"], was["origin"]):
+            raise HTTPException(
+                409, f"putting this back would close a loop: {was['origin']} "
+                     f"now leads to {was['name']}")
+        con.execute("UPDATE origins SET status = ? WHERE id = ?", (body.status, origin_id))
+        events.record(con, action, client=events.client_of(request),
+                      admin_id=who["id"], target_type="origin", target_id=origin_id,
+                      was=was["status"], note=body.note.strip())
+    return {"id": origin_id, "status": body.status, "was": was["status"]}
 
 
 class ValueIn(Text):

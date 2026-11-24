@@ -26,7 +26,7 @@ import seo
 from db import UPLOAD_DIR, get_db, nfc, now, writing
 from store import (
     LIVE, Text, apply_snapshot, fetch_one, guard_public, load_snapshot,
-    refuse_a_future_year, resolve_format, section_of, section_sql,
+    leads_back, refuse_a_future_year, resolve_format, section_of, section_sql,
     section_where, shape, snapshot, ungroup, write_tags,
 )
 from numfmt import FORMATS, bucket_of
@@ -950,7 +950,7 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
         # is pure, an entry under a value that already has ten is normal, and
         # there is no uniqueness here to race for. So the lock is held for the
         # three statements below landing together, not for a read -- see
-        # db.writing() and ADR-0007 for the eleven writes where it is the read.
+        # db.writing() and ADR-0007 for the twelve writes where it is the read.
         value, fmt, key = resolve_format(value, p.format)
         if p.in_memoriam and p.on_this_day:
             raise HTTPException(422, "On this day and In Memoriam are mutually exclusive")
@@ -1509,6 +1509,82 @@ def remove_link(
                           target_type="post",
                           target_id=post_id, other=other_id)
     return get_post(post_id, con)
+
+
+# --- origins ------------------------------------------------------------
+ORIGIN_NAME_MAX, ORIGIN_NOTE_MAX, ORIGIN_BODY_MAX = 80, 40, 600
+ORIGIN_COLS = "id, name, name_note, origin, origin_note, body, author, lang, created_at"
+
+
+class OriginIn(Text):
+    """One link: this name came from that one, and the story of how.
+
+    A name is stored as typed, like every value here -- only the space around
+    it goes. A blank note or language is no note and no language.
+    """
+
+    name: str = Field(min_length=1, max_length=ORIGIN_NAME_MAX)
+    name_note: Optional[str] = Field(default=None, max_length=ORIGIN_NOTE_MAX)
+    origin: str = Field(min_length=1, max_length=ORIGIN_NAME_MAX)
+    origin_note: Optional[str] = Field(default=None, max_length=ORIGIN_NOTE_MAX)
+    body: str = Field(min_length=1, max_length=ORIGIN_BODY_MAX)
+    author: str = Field(min_length=1, max_length=40)
+    lang: Optional[str] = Field(default=None, max_length=40)
+
+    @field_validator("name", "origin", "body")
+    @classmethod
+    def not_blank(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("must not be blank")
+        return v
+
+    @field_validator("name_note", "origin_note", "lang")
+    @classmethod
+    def blank_is_none(cls, v):
+        return (v or "").strip() or None
+
+
+@app.get("/api/origins")
+def list_origins(con=Depends(get_db)):
+    """Every live link, oldest first. The front end joins them into chains.
+
+    ponytail: the whole table in one answer, because a chain can only be drawn
+    from all of its links and a page of them would cut one in half. Rows are
+    capped at 80 + 40 + 80 + 40 + 600 characters; when this is too many to
+    send, the answer is the server joining chains, not paging links.
+    """
+    return [dict(r) for r in con.execute(
+        f"SELECT {ORIGIN_COLS} FROM origins WHERE status = ? ORDER BY id", (LIVE,))]
+
+
+@app.post("/api/origins", status_code=201)
+def create_origin(o: OriginIn, who=Depends(guard), con=Depends(get_db)):
+    """File one link. A chain of three is this route called three times: each
+    link is true on its own, so half a chain is still a list of true things.
+
+    The same pair twice is two rows and is allowed -- the second is the story
+    told again, usually in another language, and the list draws one of them.
+    What is refused is a loop, since a name cannot come from itself however
+    many steps it takes, and that read is inside the lock.
+    """
+    author = nick(o.author)
+    with writing(con):
+        if leads_back(con, o.name, o.origin):
+            raise HTTPException(
+                422, f"{o.name} cannot come from {o.origin}: "
+                     f"following that back arrives at {o.name} again")
+        cur = con.execute(
+            """INSERT INTO origins (name, name_note, origin, origin_note, body,
+                                    author, lang, created_at)
+               VALUES (?,?,?,?,?,?,?,?)""",
+            (o.name, o.name_note, o.origin, o.origin_note, o.body, author,
+             o.lang, now()))
+        events.record(con, "ORIGIN", client=who, who=author,
+                      target_type="origin", target_id=cur.lastrowid)
+        row = con.execute(f"SELECT {ORIGIN_COLS} FROM origins WHERE id = ?",
+                          (cur.lastrowid,)).fetchone()
+    return dict(row)
 
 
 @app.post("/api/upload")

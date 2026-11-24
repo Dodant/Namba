@@ -131,7 +131,7 @@ CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id, id DESC);
 -- Append-only. Nothing in this codebase issues an UPDATE or a DELETE here, and
 -- that is the point -- an audit log an operator can tidy is not one. No foreign
 -- keys either, for the reason revisions has none: a record of what happened to
--- a thing must outlive the thing, and target_id points at five different
+-- a thing must outlive the thing, and target_id points at six different
 -- tables anyway.
 --
 -- No raw address is stored. The three hashes are salted with the install's own
@@ -314,6 +314,33 @@ CREATE TABLE IF NOT EXISTS blocks (
   lifted_by   INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_blocks_target ON blocks(target_hash);
+
+-- Where a name came from: `name` came from `origin`, and `body` is how. One
+-- row is one link and nothing stores a chain -- "JavaScript, from Java, from
+-- Java coffee" is two rows that meet because one's origin is the other's name,
+-- which is the argument posts.value makes about a number being a column and
+-- not a table. So a chain grows when somebody files the next link, and a name
+-- with two origins is two rows, the way two meanings of 42 are (ADR-0034).
+--
+-- Its own table and not a seventh format: a post is a value and what it means,
+-- and this is two names and what happened between them. The notes say what a
+-- name is the name of -- Python is a snake until somebody says otherwise.
+--
+-- status is the vocabulary posts.status is, for the same reason: hiding is
+-- what moderation means here and no route removes a row.
+CREATE TABLE IF NOT EXISTS origins (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  name        TEXT NOT NULL,
+  name_note   TEXT,
+  origin      TEXT NOT NULL,
+  origin_note TEXT,
+  body        TEXT NOT NULL,
+  author      TEXT NOT NULL,
+  lang        TEXT,                       -- what body is written in; free-form, like posts.lang
+  status      TEXT NOT NULL DEFAULT 'ACTIVE',
+  created_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_origins_status ON origins(status, id);
 """
 
 # What the TEXT columns above may hold. Here rather than beside the routes
