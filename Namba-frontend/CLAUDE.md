@@ -300,8 +300,12 @@ joining, the loop guard and the language rule below.
   `FlagPanel`, about the link that was asked for; the last two are the same
   components with `origin` set, which only changes the route they call.
 - **Each name on a form's row has a picture button at its far end.**
-  `ImageButton` is `PostForm`'s image field in one control: it uploads
-  through `api.upload`, then shows the picture and removes it on a press. In
+  `components/ImageButton.tsx` is the one image control in the app, and
+  `PostForm` draws the same one at the end of its title's row: it uploads
+  through `api.upload`, then shows the picture and removes it on a press.
+  It has no label over it, so what it is arrives as a `data-tip` on hover or
+  focus. `onBusy` is how `PostForm` keeps Publish off mid-upload and
+  `onBroken` how it learns a recovered draft's picture is gone. In
   a chain the middle name's picture is sent twice, as its note is — as one
   link's `origin_image` and the next one's `name_image`. The entry draws the
   two under its meta row.

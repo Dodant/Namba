@@ -12,6 +12,7 @@ import {
 import { UI_LOCALES } from '../locales'
 import { draftIsStale, leaveDraft, openDraft, type DraftFields, type DraftStatus } from '../drafts'
 import ExistingEntries from '../components/ExistingEntries'
+import { ImageButton } from '../components/ImageButton'
 import { NicknameField } from '../components/NicknameField'
 import { useAsync } from '../useAsync'
 import { revisionBy, useUi, type Messages } from '../uiLocale'
@@ -460,20 +461,6 @@ function Editor() {
     }
   }
 
-  async function pickImage(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setErr('')
-    setUploading(true)
-    try {
-      setImage((await api.upload(file)).url)
-      setImageFailed(false)
-    } catch (e) {
-      setErr(errorText(e))
-    } finally {
-      setUploading(false)
-    }
-  }
 
   function acceptPanelWrite(next: Post) {
     // A panel write advances a current base, but never a restored stale one.
@@ -789,18 +776,30 @@ function Editor() {
           </div>
         </div>
 
-        <div className="field">
-          <label htmlFor={fid('title')}>
-            {m.form.title}{' '}
-            <span className="hint">{m.form.titleHint}</span>
-          </label>
-          <input
-            id={fid('title')}
-            required
-            maxLength={200}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={m.form.titlePlaceholder(section)}
+        {/* the picture sits at the end of the title's row, as it does beside
+            each name of an Origins link */}
+        <div className="title-row">
+          <div className="field">
+            <label htmlFor={fid('title')}>
+              {m.form.title}{' '}
+              <span className="hint">{m.form.titleHint}</span>
+            </label>
+            <input
+              id={fid('title')}
+              required
+              maxLength={200}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={m.form.titlePlaceholder(section)}
+            />
+          </div>
+          <ImageButton
+            id={fid('image')}
+            value={image}
+            onChange={(url) => { setImage(url); setImageFailed(false) }}
+            onError={setErr}
+            onBusy={setUploading}
+            onBroken={() => setImageFailed(true)}
           />
         </div>
 
@@ -935,37 +934,6 @@ function Editor() {
               {m.form.add}
             </button>
           </div>
-        </div>
-
-        <div className="field">
-          <label htmlFor={fid('image')}>
-            {m.form.image}{' '}
-            <span className="hint">{m.form.imageHint}</span>
-          </label>
-          {image ? (
-            <div className="file-row">
-              <img className="thumb" src={image} alt="" decoding="async" onError={() => setImageFailed(true)} />
-              <button type="button" className="pill" onClick={() => { setImage(null); setImageFailed(false) }}>
-                {m.form.remove}
-              </button>
-            </div>
-          ) : (
-            <>
-              <input
-                id={fid('image')}
-                className="file"
-                type="file"
-                accept="image/*"
-                disabled={uploading}
-                onChange={pickImage}
-              />
-              {uploading && (
-                <p className="fine" role="status">
-                  {m.form.uploading}
-                </p>
-              )}
-            </>
-          )}
         </div>
 
         {imageFailed && <p className="err" role="alert">{m.form.draftImageMissing}</p>}

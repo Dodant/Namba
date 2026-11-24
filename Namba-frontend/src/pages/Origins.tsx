@@ -5,6 +5,7 @@ import {
   type Origin, type OriginInput, type OriginRevision,
 } from '../api'
 import { byName, chain, loops, nameKey, preferLang, rows } from '../origins'
+import { ImageButton } from '../components/ImageButton'
 import { NicknameField } from '../components/NicknameField'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
@@ -294,62 +295,6 @@ export default function Origins({ lang }: { lang: string }) {
         </>
       )}
     </>
-  )
-}
-
-/* The picture of one name, at the far end of its row. One control that is
-   the whole of PostForm's image field: it picks and uploads, and once there
-   is a picture it shows it and takes it away again. */
-function ImageButton({ id, value, onChange, onError }: {
-  id: string
-  value: string | null
-  onChange: (url: string | null) => void
-  onError: (msg: string) => void
-}) {
-  const { m } = useUi()
-  const [busy, setBusy] = useState(false)
-  return (
-    /* data-tip and not title: the button has no label over it, so what it is
-       has to arrive as soon as it is pointed at, not after the browser's wait */
-    <div className="field og-img" data-tip={value ? m.form.remove : `${m.form.image} · ${m.form.imageHint}`}>
-      {value ? (
-        <button type="button" id={id} className="og-pic"
-                aria-label={m.form.remove} onClick={() => onChange(null)}>
-          <img src={value} alt="" decoding="async" />
-        </button>
-      ) : (
-        <label className={`og-pic ${busy ? 'busy' : ''}`}>
-          {busy ? <span aria-hidden="true">…</span> : (
-            /* a framed picture: a sun over a hill, the sign for "image" */
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="16" rx="3" />
-              <circle cx="8.5" cy="9.5" r="1.6" />
-              <path d="M21 16l-5-5-9 9" />
-            </svg>
-          )}
-          <input
-            id={id}
-            aria-label={m.form.image}
-            type="file"
-            accept="image/*"
-            disabled={busy}
-            onChange={async (e) => {
-              const file = e.target.files?.[0]
-              if (!file) return
-              setBusy(true)
-              try {
-                onChange((await api.upload(file)).url)
-              } catch (err) {
-                onError(errorText(err))
-              } finally {
-                setBusy(false)
-              }
-            }}
-          />
-        </label>
-      )}
-    </div>
   )
 }
 

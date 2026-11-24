@@ -1909,17 +1909,6 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 }
 .lang-pick select:hover { border-color: var(--accent); color: var(--accent); }
 .lang-pick::after { right: 13px; }
-/* the real input, styled -- a fake one cannot open a file picker */
-.field input.file {
-  border: 0; background: none; padding: 0;
-  font-size: var(--fs-fine); color: var(--faint);
-}
-.field input.file::file-selector-button {
-  font-family: var(--mono); font-size: var(--fs-ctl-soft); padding: 8px 14px; margin-right: 12px;
-  border: 1px solid var(--line); border-radius: 999px;
-  background: var(--panel); color: var(--ink); cursor: pointer;
-}
-.field input.file::file-selector-button:hover { border-color: var(--accent); color: var(--accent); }
 .field input::placeholder, .field textarea::placeholder { color: var(--faint); }
 /* the one field that cannot be a capsule: at 104px tall a 999px radius is a
    half-circle at each end, and the first and last lines run into it. Same
@@ -1951,11 +1940,6 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .fine {
   font-size: 13.5px; line-height: 1.5; color: var(--faint);
   margin: 12px 0 0; text-wrap: pretty;
-}
-.file-row { display: flex; gap: 12px; align-items: center; }
-.file-row .thumb {
-  width: 80px; height: 80px; object-fit: cover;
-  border-radius: 6px; border: 1px solid var(--line);
 }
 
 /* a bordered box that owns its rows: the three things an entry has besides
@@ -2332,6 +2316,8 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .og-pic:hover, .og-pic:focus-within { border-color: var(--accent); color: var(--accent); }
 /* no label over it, so it sits on the row's floor beside the inputs */
 .og-img { align-self: end; position: relative; }
+/* an entry's title with its picture at the end of the row */
+.title-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 12px; }
 /* on the wrapper, because the button clips what overflows it to keep a
    picture round. Shown for a pointer and for the keyboard alike. */
 .og-img[data-tip]::after {
