@@ -8,9 +8,11 @@ import { byName, chain, loops, nameKey, preferLang, rows } from '../origins'
 import { NicknameField } from '../components/NicknameField'
 import { Like } from '../components/PostCard'
 import { useAsync } from '../useAsync'
-import { fmtDate } from '../format'
 import { revisionBy, useUi } from '../uiLocale'
+import FlagPanel from '../components/FlagPanel'
+import { fmtCount, fmtDate } from '../format'
 import { FmtTabs } from './Home'
+import { Comments } from './PostPage'
 
 const Name = ({ text, note, head }: { text: string; note?: string | null; head?: boolean }) => (
   <span className={head ? 'og-name head' : 'og-name'}>
@@ -94,11 +96,50 @@ export function OriginPage({ lang }: { lang: string }) {
   return (
     <>
       <FmtTabs />
-      <article className="og-page">
-        <h1><Names links={links} /></h1>
-        <Steps links={links} kids={kids} />
-      </article>
+      <div className="detail-layout">
+        <article className="og-page">
+          <h1><Names links={links} /></h1>
+          <Steps links={links} kids={kids} />
+        </article>
+        <Rail key={of.id} of={of} />
+      </div>
     </>
+  )
+}
+
+/* The rail an entry has, about the link that was asked for: how its words
+   got here, what people make of it, and the one thing to do if it should not
+   be here. The same three folds PostPage draws, the last two the same
+   components told the id is an origin's. */
+function Rail({ of }: { of: Origin }) {
+  const { locale, m } = useUi()
+  const revs = useAsync(() => api.originRevisions(of.id), [of.id])
+  return (
+    <aside className="side">
+      <details>
+        <summary className="ix-fold">
+          <h2 className="section">{m.post.editHistory}</h2>{' '}
+          {!!revs.data?.length && <span className="n">{fmtCount(revs.data.length, locale)}</span>}
+        </summary>
+        <ol className="revs">
+          <li className="rev now">
+            <b>{of.body || '—'}</b>
+            <span>
+              {m.post.current} · {of.edited_by ? m.post.editedBy(of.edited_by) : m.common.by(of.author)}
+            </span>
+          </li>
+          {revs.data?.map((r) => (
+            <li className="rev" key={r.id}>
+              <b>{r.body || '—'}</b>
+              <span>{revisionBy(r.written_by, m)} · {fmtDate(r.created_at, locale)}</span>
+            </li>
+          ))}
+        </ol>
+        {!revs.loading && !revs.data?.length && <p className="quiet">{m.post.noEdits}</p>}
+      </details>
+      <Comments id={String(of.id)} origin />
+      <FlagPanel id={of.id} origin />
+    </aside>
   )
 }
 

@@ -166,6 +166,22 @@ def test_origins():
     assert c.patch("/api/origins/999999", json={"author": "grace"}).status_code == 404
     assert c.patch(f"/api/origins/{a['id']}", json={"body": "x"}).status_code == 422
 
+    # beside the link: a comment, and the two flags an operator reads
+    said = c.post(f"/api/origins/{a['id']}/comments", json={"body": "nice", "author": "ada"})
+    assert said.status_code == 201 and [x["body"] for x in said.json()] == ["nice"], said.text
+    assert c.get(f"/api/origins/{a['id']}/comments").json() == said.json()
+    assert c.post("/api/origins/999999/comments",
+                  json={"body": "x", "author": "ada"}).status_code == 404
+    flag = lambda: c.post(f"/api/origins/{a['id']}/report",
+                          json={"reason": "SPAM", "detail": "an advert"})
+    assert flag().status_code == 201
+    assert flag().status_code == 409, "one open report per reader"
+    gone = c.post(f"/api/origins/{a['id']}/delete-request",
+                  json={"reason": "OTHER", "detail": "mine", "author": "ada"})
+    assert gone.status_code == 201, gone.text  # a different kind, so not the 409
+    assert c.post(f"/api/origins/{a['id']}/report",
+                  json={"reason": "NOT-A-REASON"}).status_code == 422
+
     # the story is optional: a link with none, or only spaces, is still a link
     for more in ({}, {"body": "  "}):
         r = c.post("/api/origins", json={"name": "og-bare", "origin": "og-src",
@@ -180,6 +196,20 @@ def test_origins():
     assert c.post(f"/api/admin/origins/{b['id']}/status",
                   json={"status": "HIDDEN"}).status_code == 401
     op = _operator(TestClient(main.app))
+    # the flags reach the operator's page, and closing them leaves the link
+    rows = op.get("/api/admin/origins").json()["rows"]
+    assert rows[0]["id"] == a["id"] and rows[0]["flags"] == 2, rows[0]
+    flags = op.get(f"/api/admin/origins/{a['id']}/flags").json()
+    assert {(f["kind"], f["reason"], f["detail"]) for f in flags} == {
+        ("report", "SPAM", "an advert"), ("remove", "OTHER", "mine")}, flags
+    closed = op.post(f"/api/admin/origins/{a['id']}/flags/close",
+                     json={"status": "RESOLVED", "note": "read"})
+    assert closed.status_code == 200 and closed.json()["closed"] == 2, closed.text
+    assert op.post(f"/api/admin/origins/{a['id']}/flags/close",
+                   json={"status": "RESOLVED"}).status_code == 404
+    assert a["id"] in [o["id"] for o in live()]
+    assert flag().status_code == 201, "a closed report does not hold the next one"
+
     hid = op.post(f"/api/admin/origins/{b['id']}/status",
                   json={"status": "HIDDEN", "note": "spam"})
     assert hid.status_code == 200 and hid.json()["was"] == "ACTIVE", hid.text
@@ -218,6 +248,9 @@ def test_origins():
     con = db.connect()
     assert not con.execute("SELECT 1 FROM origin_revisions WHERE origin_id = ?",
                            (a["id"],)).fetchone(), "a purge left what an edit replaced"
+    for table in ("origin_comments", "origin_flags"):
+        assert not con.execute(f"SELECT 1 FROM {table} WHERE origin_id = ?",
+                               (a["id"],)).fetchone(), f"a purge left {table}"
     con.close()
     try:
         admin.purge_origin(a["id"])
@@ -3767,10 +3800,10 @@ def test_purge_takes_the_words_that_asked_for_it():
 
 
 def test_every_write_decides_inside_the_lock():
-    """One rule for the sixteen public writes that decide: the read a route
+    """One rule for the nineteen public writes that decide: the read a route
     decides on runs with the write lock already held.
 
-    Sixteen of seventeen, because a create decides nothing about another row --
+    Nineteen of twenty, because a create decides nothing about another row --
     `resolve_format` is pure, and an entry under a value that already has ten
     is normal here. So it is not probed: there is no read to catch it holding,
     and a probe that fired on a pure call would report the rule as kept by a
@@ -3872,6 +3905,13 @@ def test_every_write_decides_inside_the_lock():
         orev = c.get(f"/api/origins/{oid}/revisions").json()[0]["id"]
         locked("restore an origin", lambda: c.post(
             f"/api/origins/{oid}/revisions/{orev}/restore", json={"author": "hesse"}))
+        locked("comment on an origin", lambda: c.post(
+            f"/api/origins/{oid}/comments", json={"body": "a fig", "author": "hesse"}))
+        locked("report an origin", lambda: c.post(
+            f"/api/origins/{oid}/report", json={"reason": "SPAM"}))
+        locked("ask for an origin to go", lambda: c.post(
+            f"/api/origins/{oid}/delete-request",
+            json={"reason": "OTHER", "author": "hesse"}))
         locked("like an origin", lambda: c.post(f"/api/origins/{oid}/like"))
         locked("unlike an origin", lambda: c.delete(f"/api/origins/{oid}/like"))
     finally:
@@ -3879,7 +3919,7 @@ def test_every_write_decides_inside_the_lock():
             setattr(mod, name, fn)
 
     # ...and the probe reached every kind of deciding read there is, so none of
-    # the sixteen passed by touching nothing
+    # the nineteen passed by touching nothing
     assert seen == {"fetch_one", "_already_open", "guard_public", "leads_back",
                     "live_origin"}, seen
 

@@ -341,7 +341,7 @@ const COMMENTS_SHOWN = 5
     Nothing here rewrites or removes a comment. With no accounts a Remove button
     belongs to nobody, and unlike an entry a comment has no revision behind it,
     so the button would be the loss rather than the guard against it. */
-function Comments({ id }: { id: string }) {
+export function Comments({ id, origin = false }: { id: string; origin?: boolean }) {
   const { locale, m } = useUi()
   const uid = useId()
   const fid = (name: string) => `${uid}-${name}`
@@ -353,8 +353,8 @@ function Comments({ id }: { id: string }) {
 
   useEffect(() => {
     setSaid(null)
-    api.comments(id).then(setSaid, (e) => setErr(errorText(e)))
-  }, [id])
+    api.comments(id, origin).then(setSaid, (e) => setErr(errorText(e)))
+  }, [id, origin])
 
   /* The POST answers with the list, so what came back is the state: no refetch,
      no bump dep. The nickname is remembered the way every other form on the
@@ -369,7 +369,7 @@ function Comments({ id }: { id: string }) {
     setErr('')
     nickname.set(author)
     try {
-      setSaid(await api.comment(id, { author: author.trim(), body }))
+      setSaid(await api.comment(id, { author: author.trim(), body }, origin))
       setBody('')
     } catch (e) {
       setErr(errorText(e))

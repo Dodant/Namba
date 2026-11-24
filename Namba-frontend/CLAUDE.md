@@ -290,6 +290,9 @@ joining, the loop guard and the language rule below.
   the names fixed and the languages already told off the menu. The History
   aside is `PostForm`'s too, with the story where an entry has a title; a
   restore refills the fields from what came back.
+- **An entry's rail is `PostPage`'s.** Edit history, `Comments` and
+  `FlagPanel`, about the link that was asked for; the last two are the same
+  components with `origin` set, which only changes the route they call.
 - **A link is liked the way an entry is**, with the same `Like` button told
   the id is an origin's: its own route and its own localStorage key, since the
   two tables number their rows apart.

@@ -56,4 +56,5 @@ race becomes a 500.
   link gained a like and its undo, which decide the way a post's do — is the
   link live — so fourteen of fifteen decide and the test probes fourteen. Then the
   edit of a link and the restore of one, deciding on the same read:
-  sixteen of seventeen.
+  sixteen of seventeen. Then a comment, a report and a removal request on
+  a link, each deciding that the link is live: nineteen of twenty.

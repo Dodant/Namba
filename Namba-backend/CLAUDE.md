@@ -459,8 +459,14 @@ the sitemap.
 
   `GET /api/origins` is the one public read of it and carries `LIVE`;
   `/api/admin/origins` is the one read that does not. `live_origin` is the
-  deciding read of the four writes on a link that already exists — the like,
-  its undo, `PATCH /api/origins/{id}` and the restore. The edit takes the
+  deciding read of the seven writes on a link that already exists — the like,
+  its undo, `PATCH /api/origins/{id}`, the restore, a comment, a report and a
+  removal request. The last three write `origin_comments` and `origin_flags`
+  rather than the tables a post's use, whose `post_id` would read an origin's
+  id as an entry's; `flag_origin` files both kinds of flag and refuses a
+  second open one of the same kind from the same reader, through
+  `_already_open`. The operator reads them at `/api/admin/origins/{id}/flags`
+  and closes them at `.../flags/close`, which does nothing to the link. The edit takes the
   story, the two notes and the language, never a name, and logs
   `ORIGIN_EDIT`. `rewrite_origin` is the one place a link's words change: it
   copies them into `origin_revisions` and then writes, so the restore

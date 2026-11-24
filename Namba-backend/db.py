@@ -355,6 +355,35 @@ CREATE TABLE IF NOT EXISTS origin_revisions (
   created_at  TEXT NOT NULL               -- when it was replaced
 );
 CREATE INDEX IF NOT EXISTS idx_origin_revisions ON origin_revisions(origin_id, id);
+-- What is said beside a link. Its own table because comments.post_id is a
+-- foreign key on posts, and an origin's id is another table's.
+CREATE TABLE IF NOT EXISTS origin_comments (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  origin_id  INTEGER NOT NULL REFERENCES origins(id) ON DELETE CASCADE,
+  author     TEXT NOT NULL,
+  body       TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_origin_comments ON origin_comments(origin_id, id DESC);
+-- A report or a removal request about a link. One table where posts have two:
+-- both are read on the one Origins page of the back office and closed there
+-- together, by an operator who has Hide on the same row. It cascades, so a
+-- purge takes the words that asked for it with the link.
+CREATE TABLE IF NOT EXISTS origin_flags (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  origin_id     INTEGER NOT NULL REFERENCES origins(id) ON DELETE CASCADE,
+  kind          TEXT NOT NULL,                     -- report | remove
+  reason        TEXT NOT NULL,
+  detail        TEXT NOT NULL DEFAULT '',
+  requested_by  TEXT,                              -- a removal request's nickname
+  ip_hash       TEXT, ua_hash TEXT, client_hash TEXT,
+  status        TEXT NOT NULL DEFAULT 'OPEN',      -- OPEN | RESOLVED
+  created_at    TEXT NOT NULL,
+  decided_at    TEXT,
+  decided_by    INTEGER,
+  decision_note TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_origin_flags ON origin_flags(origin_id, status);
 CREATE INDEX IF NOT EXISTS idx_origins_status ON origins(status, id);
 """
 

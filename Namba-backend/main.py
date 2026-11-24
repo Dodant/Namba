@@ -950,7 +950,7 @@ def create_post(p: PostIn, who=Depends(guard), con=Depends(get_db)):
         # is pure, an entry under a value that already has ten is normal, and
         # there is no uniqueness here to race for. So the lock is held for the
         # three statements below landing together, not for a read -- see
-        # db.writing() and ADR-0007 for the sixteen writes where it is the read.
+        # db.writing() and ADR-0007 for the nineteen writes where it is the read.
         value, fmt, key = resolve_format(value, p.format)
         if p.in_memoriam and p.on_this_day:
             raise HTTPException(422, "On this day and In Memoriam are mutually exclusive")
@@ -1380,7 +1380,7 @@ def add_comment(post_id: int, c: CommentIn, who=Depends(guard), con=Depends(get_
     return list_comments(post_id, con)
 
 
-def _already_open(con, table, post_id, who, open_state):
+def _already_open(con, table, post_id, who, open_state, key="post_id", also=""):
     """Has this client already got something waiting on this entry?
 
     A count is only worth reading if it counts *people*: without this one
@@ -1397,8 +1397,10 @@ def _already_open(con, table, post_id, who, open_state):
     """
     col, val = ("client_hash", who["client_hash"]) if who["client_hash"] \
         else ("ip_hash", who["ip_hash"])
+    # `key` and `also` are for origin_flags, which keys on another column and
+    # holds two kinds in one table; both are literals at the call site
     return con.execute(
-        f"SELECT 1 FROM {table} WHERE post_id = ? AND {col} = ? AND status = ?",
+        f"SELECT 1 FROM {table} WHERE {key} = ? AND {col} = ? AND status = ?{also}",
         (post_id, val, open_state),
     ).fetchone() is not None
 
@@ -1693,6 +1695,67 @@ def restore_origin_revision(origin_id: int, rev_id: int, body: RestoreIn,
         events.record(con, "ORIGIN_REVERT", client=who, who=by,
                       target_type="origin", target_id=origin_id)
         return live_origin(con, origin_id)
+
+
+@app.get("/api/origins/{origin_id}/comments")
+def list_origin_comments(origin_id: int, con=Depends(get_db)):
+    """What has been said beside this link, newest first, capped like a post's."""
+    live_origin(con, origin_id)
+    return [dict(r) for r in con.execute(
+        """SELECT id, author, body, created_at FROM origin_comments
+           WHERE origin_id = ? ORDER BY id DESC LIMIT ?""",
+        (origin_id, COMMENTS_SHOWN))]
+
+
+@app.post("/api/origins/{origin_id}/comments", status_code=201)
+def add_origin_comment(origin_id: int, c: CommentIn, who=Depends(guard),
+                       con=Depends(get_db)):
+    """A remark beside a link, answered with the list as a post's is."""
+    author = nick(c.author)
+    with writing(con):
+        live_origin(con, origin_id)
+        con.execute(
+            "INSERT INTO origin_comments (origin_id, author, body, created_at) VALUES (?,?,?,?)",
+            (origin_id, author, c.body, now()))
+        events.record(con, "COMMENT", client=who, who=author,
+                      target_type="origin", target_id=origin_id)
+        return list_origin_comments(origin_id, con)
+
+
+def flag_origin(con, origin_id, kind, reason, detail, who, asked_by=None):
+    """File one flag, once per reader per kind while theirs is still open."""
+    live_origin(con, origin_id)
+    if _already_open(con, "origin_flags", origin_id, who, "OPEN", key="origin_id",
+                     also=f" AND kind = '{kind}'"):
+        raise HTTPException(409, "you have already flagged this entry")
+    cur = con.execute(
+        """INSERT INTO origin_flags (origin_id, kind, reason, detail, requested_by,
+                                     ip_hash, ua_hash, client_hash, created_at)
+           VALUES (?,?,?,?,?,?,?,?,?)""",
+        (origin_id, kind, reason, detail.strip(), asked_by, who["ip_hash"],
+         who["ua_hash"], who["client_hash"], now()))
+    events.record(con, "ORIGIN_FLAG", client=who, who=asked_by, target_type="origin",
+                  target_id=origin_id, kind=kind, reason=reason)
+    return cur.lastrowid
+
+
+@app.post("/api/origins/{origin_id}/report", status_code=201)
+def report_origin(origin_id: int, r: ReportIn, who=Depends(guard), con=Depends(get_db)):
+    """Say something is wrong with a link. Read by an operator, on the
+    Origins page of the back office, and never listed in public."""
+    with writing(con):
+        return {"id": flag_origin(con, origin_id, "report", r.reason, r.detail, who)}
+
+
+@app.post("/api/origins/{origin_id}/delete-request", status_code=201)
+def request_origin_deletion(origin_id: int, r: DeleteRequestIn, who=Depends(guard),
+                            con=Depends(get_db)):
+    """Ask for a link to go. As with an entry, it leads to a person reading
+    it: hiding is the operator's own button."""
+    asked_by = nick(r.author)
+    with writing(con):
+        return {"id": flag_origin(con, origin_id, "remove", r.reason, r.detail, who,
+                                  asked_by), "status": "OPEN"}
 
 
 @app.post("/api/origins/{origin_id}/like")

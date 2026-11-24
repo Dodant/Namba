@@ -829,10 +829,45 @@ def list_all_origins(
                           OR origin LIKE ? ESCAPE '{db.LIKE_ESC}'
                           OR body LIKE ? ESCAPE '{db.LIKE_ESC}')""")
         args += [db.like(q)] * 3
-    sql = f"""SELECT * FROM origins
+    # flagged links first, since those are the ones somebody is waiting on
+    sql = f"""SELECT o.*, (SELECT COUNT(*) FROM origin_flags f
+                           WHERE f.origin_id = o.id AND f.status = 'OPEN') AS flags
+              FROM origins o
               {"WHERE " + " AND ".join(where) if where else ""}
-              ORDER BY id DESC"""
+              ORDER BY flags > 0 DESC, id DESC"""
     return _page(con, sql, tuple(args), limit, offset)
+
+
+@router.get("/origins/{origin_id}/flags")
+def origin_flags(origin_id: int, _=Depends(auth.require_admin), con=Depends(db.get_db)):
+    """Every report and removal request filed against one link, newest first."""
+    return [dict(r) for r in con.execute(
+        "SELECT * FROM origin_flags WHERE origin_id = ? ORDER BY id DESC", (origin_id,))]
+
+
+@router.post("/origins/{origin_id}/flags/close")
+def close_origin_flags(
+    origin_id: int,
+    body: StatusIn,
+    request: Request,
+    who=Depends(auth.require_admin),
+    con=Depends(db.get_db),
+):
+    """Closes every open flag on one link. Like `decide_reports`, it does
+    nothing to the link: hiding it is the status route, with its own row."""
+    with con:
+        cur = con.execute(
+            """UPDATE origin_flags SET status = 'RESOLVED', decided_at = ?,
+                   decided_by = ?, decision_note = ?
+               WHERE origin_id = ? AND status = 'OPEN'""",
+            (db.now(), who["id"], body.note.strip(), origin_id))
+        if cur.rowcount:
+            events.record(con, "ORIGIN_FLAGS_CLOSE", client=events.client_of(request),
+                          admin_id=who["id"], target_type="origin", target_id=origin_id,
+                          closed=cur.rowcount, note=body.note.strip())
+    if not cur.rowcount:
+        raise HTTPException(404, "no open flags on that origin")
+    return {"origin_id": origin_id, "closed": cur.rowcount}
 
 
 @router.post("/origins/{origin_id}/status")

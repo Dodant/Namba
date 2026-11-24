@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { errorText, POST_STATUSES } from '../../api'
-import { adm, type OriginRow, type Page } from '../api'
+import { adm, type OriginFlag, type OriginRow, type Page } from '../api'
 import { useAction, useUrlFilters } from '../state'
 import { Badge, Confirm, Empty, Fail, Head, Loading, NoteField, Pager, Table, When } from '../ui'
 
 const PER = 50
 
-const COLS = ['Name', 'Came from', 'Story', 'By', 'When', 'Status', '']
+const COLS = ['Name', 'Came from', 'Story', 'By', 'When', 'Status', 'Flags', '']
 
 /** Every link on the Origins tab, hidden ones included.
 
@@ -25,6 +25,26 @@ export default function Origins() {
   const [busy, run] = useAction(setSaid)
   const [ask, setAsk] = useState<OriginRow | null>(null)
   const [note, setNote] = useState('')
+  // the link whose flags are open in the dialog, and the flags once they arrive
+  const [flagged, setFlagged] = useState<OriginRow | null>(null)
+  const [flags, setFlags] = useState<OriginFlag[]>([])
+
+  function readFlags(o: OriginRow) {
+    setSaid('')
+    setFlags([])
+    setFlagged(o)
+    adm.originFlags(o.id).then(setFlags, (e) => setSaid(errorText(e)))
+  }
+
+  function closeFlags() {
+    if (!flagged) return
+    run(async () => {
+      await adm.closeOriginFlags(flagged.id, note)
+      setFlagged(null)
+      setNote('')
+      load()
+    })
+  }
 
   function load() {
     setErr('')
@@ -53,7 +73,8 @@ export default function Origins() {
         tally={got && `${got.total} links`}
         hint="One row is one link between two names. Hiding one takes it off
               the wiki and cuts any chain at that point; nothing is removed, and
-              putting it back is this same button."
+              putting it back is this same button. A link readers have reported
+              or asked to have removed is listed first."
       />
 
       <div className="bar">
@@ -108,6 +129,11 @@ export default function Origins() {
                 </td>
                 <td className="tight"><When at={o.created_at} /></td>
                 <td className="tight"><Badge>{o.status}</Badge></td>
+                <td className="tight">
+                  {o.flags > 0 && (
+                    <button className="btn small" onClick={() => readFlags(o)}>{o.flags} open</button>
+                  )}
+                </td>
                 <td className="acts">
                   <button
                     className="btn small"
@@ -151,6 +177,33 @@ export default function Origins() {
         <NoteField label="Note" value={note} placeholder="Why — kept in the audit log"
                    onChange={setNote} />
         {/* in the dialog, not behind it: the page under a modal is inert */}
+        {said && <p className="err" role="alert">{said}</p>}
+      </Confirm>
+
+      <Confirm
+        open={!!flagged}
+        title="Reports and removal requests"
+        verb="Close them"
+        busy={busy}
+        onCancel={() => setFlagged(null)}
+        onOk={closeFlags}
+      >
+        {flagged && (
+          <p className="quoted">
+            <b>{flagged.name}</b> ← {flagged.origin}
+          </p>
+        )}
+        {flags.filter((f) => f.status === 'OPEN').map((f) => (
+          <p key={f.id}>
+            <b>{f.kind === 'remove' ? 'Remove' : 'Report'} · {f.reason}</b>
+            {f.requested_by && <span className="hash"> · {f.requested_by}</span>}
+            <span className="hash"> · <When at={f.created_at} /></span>
+            {f.detail && <><br />{f.detail}</>}
+          </p>
+        ))}
+        <p>Closing them does nothing to the link. Hide is its own button on the row.</p>
+        <NoteField label="Note" value={note} placeholder="What was decided — kept in the audit log"
+                   onChange={setNote} />
         {said && <p className="err" role="alert">{said}</p>}
       </Confirm>
     </div>

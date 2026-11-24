@@ -61,12 +61,19 @@ each. A link filed under the
 wrong name is hidden by an operator and filed again.
 
 Origins are outside the header search, the sitemap, the server-written
-`<head>`, `/api/contributors` and the delete-request and report queues. Each
-of those reads `posts`.
+`<head>`, `/api/contributors`, the dashboard's counts and the delete-request
+and report queues. Each of those reads `posts`. A link's comments and flags
+live in `origin_comments` and `origin_flags`: `comments.post_id` is a foreign
+key on `posts`, and `reports.post_id` and `delete_requests.post_id` are read
+by id all over the back office, so an origin's id in any of the three would
+be mistaken for an entry's. Both kinds of flag are one table, read and closed
+on the Origins page. Both tables cascade, so `purge-origin` takes the words
+that asked for the purge with the link, where an entry's are blanked and
+kept.
 
-Seventeen public routes write now — the create, the edit, the restore, and
-a like and its undo, the same counter a post has — and sixteen of them
-decide (ADR-0007).
+Twenty public routes write now — the create, the edit, the restore, a like
+and its undo, a comment, a report and a removal request — and nineteen of
+them decide (ADR-0007).
 
 ## History
 

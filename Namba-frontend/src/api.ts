@@ -342,6 +342,8 @@ export const json = (method: string, body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 })
 
+const beside = (origin: boolean) => (origin ? 'origins' : 'posts')
+
 export const api = {
   tags: (p: { format?: string } = {}) =>
     req<{ tag: Tag; count: number }[]>(`/api/tags${qs(p)}`),
@@ -364,7 +366,7 @@ export const api = {
     req<Post>(`/api/posts/${id}`, json('PATCH', p)),
 
   like: (id: number, on: boolean, origin = false) =>
-    req<{ likes: number }>(`/api/${origin ? 'origins' : 'posts'}/${id}/like`,
+    req<{ likes: number }>(`/api/${beside(origin)}/${id}/like`,
       { method: on ? 'POST' : 'DELETE' }),
 
   link: (id: number, other_id: number, author: string) =>
@@ -390,27 +392,31 @@ export const api = {
   restore: (id: number, rev: number, author: string) =>
     req<Post>(`/api/posts/${id}/revisions/${rev}/restore`, json('POST', { author })),
 
-  comments: (id: number | string) => req<Comment[]>(`/api/posts/${id}/comments`),
+  /* `origin` on the four below, as on like(): the same thing said beside an
+     Origins link, whose ids are another table's */
+  comments: (id: number | string, origin = false) =>
+    req<Comment[]>(`/api/${beside(origin)}/${id}/comments`),
 
   /** Ask for an entry to go. There is no route that takes one away — this leads
       to a person reading it, which is the whole design. */
   requestDeletion: (
     id: number | string,
     r: { reason: string; detail: string; author: string },
-  ) => req<{ id: number; status: string }>(`/api/posts/${id}/delete-request`,
+    origin = false,
+  ) => req<{ id: number; status: string }>(`/api/${beside(origin)}/${id}/delete-request`,
                                            json('POST', r)),
 
   /** Say something is wrong without asking for the entry to go. No nickname:
       a report is addressed to whoever runs the wiki and read once, and a byline
       on it would only ever be a name to hold against somebody. */
-  report: (id: number | string, r: { reason: string; detail: string }) =>
-    req<{ id: number; open: number }>(`/api/posts/${id}/report`, json('POST', r)),
+  report: (id: number | string, r: { reason: string; detail: string }, origin = false) =>
+    req<{ id: number }>(`/api/${beside(origin)}/${id}/report`, json('POST', r)),
 
   /** Answers with the whole list, newest first, so what comes back *is* the new
       state -- the same shape link() and translate() hand the post back in, and
       the reason nothing here needs a refetch. */
-  comment: (id: number | string, c: { author: string; body: string }) =>
-    req<Comment[]>(`/api/posts/${id}/comments`, json('POST', c)),
+  comment: (id: number | string, c: { author: string; body: string }, origin = false) =>
+    req<Comment[]>(`/api/${beside(origin)}/${id}/comments`, json('POST', c)),
 
   origins: () => req<Origin[]>('/api/origins'),
 

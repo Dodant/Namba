@@ -249,7 +249,17 @@ export type Abuse = {
 }
 
 /** A link as an operator reads it: the public shape plus what was decided. */
-export type OriginRow = Origin & { status: PostStatus }
+/** `flags` is the open reports and removal requests on the link, together. */
+export type OriginRow = Origin & { status: PostStatus; flags: number }
+export type OriginFlag = {
+  id: number
+  kind: 'report' | 'remove'
+  reason: string
+  detail: string
+  requested_by: string | null
+  status: string
+  created_at: string
+}
 
 export type Block = {
   id: number
@@ -365,6 +375,13 @@ export const adm = {
       `/api/admin/origins/${id}/status`, json('POST', { status, note }),
     ),
 
+  originFlags: (id: number) => req<OriginFlag[]>(`/api/admin/origins/${id}/flags`),
+
+  /** Closes every open flag on the link and does nothing to the link. */
+  closeOriginFlags: (id: number, note: string) =>
+    req<{ closed: number }>(`/api/admin/origins/${id}/flags/close`,
+      json('POST', { status: 'RESOLVED', note })),
+
   blocks: (p: Params = {}) => req<Page<Block>>(`/api/admin/blocks${qs(p)}`),
 
   /** `hours: null` is permanent, and has to be sent as such: a block nobody
@@ -425,6 +442,8 @@ export const ACTION_LABEL: Record<string, string> = {
   ADMIN_TOTP_ENROLL: 'enrolled an authenticator',
   ORIGIN: 'filed an origin',
   ORIGIN_EDIT: 'edited an origin',
+  ORIGIN_FLAG: 'flagged an origin',
+  ORIGIN_FLAGS_CLOSE: 'closed the flags on an origin',
   ORIGIN_REVERT: 'restored an origin\'s earlier version',
   ORIGIN_HIDE: 'hid an origin',
   ORIGIN_DELETE: 'removed an origin',
