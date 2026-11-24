@@ -192,14 +192,14 @@ function Rail({ of }: { of: Origin }) {
         </summary>
         <ol className="revs">
           <li className="rev now">
-            <b>{of.body || '—'}</b>
+            <b>{of.name} ← {of.origin}</b>
             <span>
               {m.post.current} · {of.edited_by ? m.post.editedBy(of.edited_by) : m.common.by(of.author)}
             </span>
           </li>
           {revs.data?.map((r) => (
             <li className="rev" key={r.id}>
-              <b>{r.body || '—'}</b>
+              <b>{of.name} ← {of.origin}</b>
               <span>{revisionBy(r.written_by, m)} · {fmtDate(r.created_at, locale)}</span>
             </li>
           ))}
@@ -458,7 +458,8 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
       </fieldset>
     </form>
 
-    {/* the aside PostForm draws, with the story where an entry has a title */}
+    {/* the aside PostForm draws. Each row is titled with the link, which
+        no version changes, so who and when are what tell them apart */}
     <aside className="side form-side">
       <div className="field" role="group" aria-labelledby={`${uid}-hist`}>
         <span className="field-label" id={`${uid}-hist`}>
@@ -467,7 +468,7 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
         <div className="panel">
           <div className="panel-row now">
             <div className="panel-main">
-              <span className="panel-t now">{cur.body || '—'}</span>
+              <span className="panel-t now">{of.name} ← {of.origin}</span>
               <span className="panel-m">
                 {m.form.current} ·{' '}
                 {cur.edited_by ? m.post.editedBy(cur.edited_by) : m.common.by(cur.author)}
@@ -477,7 +478,7 @@ function EditFields({ of, others }: { of: Origin; others: Origin[] }) {
           {revs.map((r) => (
             <div className="panel-row" key={r.id}>
               <div className="panel-main">
-                <span className="panel-t">{r.body || '—'}</span>
+                <span className="panel-t">{of.name} ← {of.origin}</span>
                 <span className="panel-m">
                   {revisionBy(r.written_by, m)} · {fmtDate(r.created_at, locale)}
                 </span>
