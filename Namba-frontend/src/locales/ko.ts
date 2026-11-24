@@ -169,8 +169,6 @@ export const KO: Messages = {
     title: GLOBAL_TERMS.origins,
     intro: '이름이 어디서 왔는지, 그 이름은 또 어디서 왔는지. 엔트리 하나는 이름 둘을 잇는 연결 하나입니다.',
     addTitle: '유래 추가',
-    filter: '이름, 유래, 이야기 걸러 보기',
-    folded: '사슬로 묶기',
     empty: '아직 작성된 유래가 없습니다.',
     noMatches: '맞는 이름이 없습니다.',
     cameFromHere: (n: number) => `여기서 나온 이름 ${fmtCount(n, 'ko')}개`,

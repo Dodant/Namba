@@ -194,8 +194,6 @@ export const FR: Messages = {
     title: GLOBAL_TERMS.origins,
     intro: 'D’où vient un nom, et d’où vient ce nom-là. Une entrée est un lien entre deux noms.',
     addTitle: 'Ajouter une origine',
-    filter: 'Filtrer les noms, les origines et les histoires',
-    folded: 'Regrouper en chaînes',
     empty: 'Aucune origine n’a encore été écrite.',
     noMatches: 'Aucun nom ne correspond.',
     cameFromHere: (n: number) => `${fmtCount(n, 'fr')} noms viennent d’ici`,

@@ -191,8 +191,6 @@ export const DE: Messages = {
     title: GLOBAL_TERMS.origins,
     intro: 'Woher ein Name kommt, und woher dieser Name wiederum kommt. Ein Eintrag ist eine Verbindung zwischen zwei Namen.',
     addTitle: 'Herkunft hinzufügen',
-    filter: 'Namen, Herkünfte und Geschichten filtern',
-    folded: 'Zu Ketten zusammenfassen',
     empty: 'Noch keine Herkunft geschrieben.',
     noMatches: 'Kein Name passt.',
     cameFromHere: (n: number) => `${fmtCount(n, 'de')} Namen stammen von hier`,

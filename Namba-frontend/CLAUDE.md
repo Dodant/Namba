@@ -318,8 +318,9 @@ joining, the loop guard and the language rule below.
 - **A row is a link to `/origins/:id`**, the entry: that link and every link
   it leads back through, each with its story, its byline, a like and Edit.
   The page is worked out from the whole list like the rows are, so there is
-  no second read. "N names came from here" there is `/origins?q=`, which the
-  list takes as its filter's first value. The row's like is the index's
+  no second read. "N names came from here" there is `/origins?q=`, which is
+  the list's only filter: it has no box of its own and always draws chains
+  folded, so the Origins tab is the way back to the whole of it. The row's like is the index's
   `.ix-like`, so it is revealed and hidden by the same rules.
 - **`Names` draws the list's rows, the entry and the form's preview**, so what the
   form promises is what the list does.

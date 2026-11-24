@@ -231,12 +231,12 @@ function Rail({ of }: { of: Origin }) {
 export default function Origins({ lang }: { lang: string }) {
   const { locale, m } = useUi()
   const got = useAsync(() => api.origins(), [])
-  // ?q= is how an entry page hands a name back to this list
-  const [q, setQ] = useState(useSearchParams()[0].get('q') ?? '')
-  const [folded, setFolded] = useState(true)
+  /* ?q= is how an entry page hands a name to this list: its only filter,
+     read off the address, so the Origins tab is the way back to the whole */
+  const q = useSearchParams()[0].get('q') ?? ''
   const list = useMemo(() => preferLang(got.data ?? [], lang), [got.data, lang])
   const needle = nameKey(q)
-  const shown = rows(list, folded)
+  const shown = rows(list, true)
     .filter((r) => !needle || r.some((l) =>
       nameKey([l.name, l.name_note, l.origin, l.origin_note, l.body].filter(Boolean).join(' '))
         .includes(needle)))
@@ -252,22 +252,6 @@ export default function Origins({ lang }: { lang: string }) {
         </div>
         <Link className="btn primary" to="/origins/new">{m.origins.addTitle}</Link>
       </header>
-      <div className="og-tools">
-        <div className="field">
-          <input
-            type="search"
-            aria-label={m.origins.filter}
-            placeholder={m.origins.filter}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
-        <label className="field check">
-          <input type="checkbox" checked={folded} onChange={(e) => setFolded(e.target.checked)} />
-          {m.origins.folded}
-        </label>
-      </div>
-
       {got.err && <p className="err" role="alert">{got.err}</p>}
       {got.loading && <p className="empty" role="status">{m.common.loading}</p>}
       {got.data && (

@@ -2254,9 +2254,6 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .og-head h1 { margin-top: 6px; }
 .og-head > div { flex: 1 1 320px; }
 .og-head .feed-intro { margin: 0; max-width: none; }
-.og-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
-.og-tools .field { margin-bottom: 12px; }
-.og-tools .field:first-child { flex: 1 1 240px; max-width: 420px; }
 .og-row { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--rule); }
 .og-link {
   flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline;

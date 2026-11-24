@@ -173,8 +173,6 @@ export const ZH_HANS: Messages = {
     title: GLOBAL_TERMS.origins,
     intro: '一个名字从哪里来，那个名字又从哪里来。一个条目就是两个名字之间的一条连接。',
     addTitle: '添加由来',
-    filter: '筛选名字、由来和故事',
-    folded: '合并成链',
     empty: '还没有人写下由来。',
     noMatches: '没有匹配的名字。',
     cameFromHere: (n: number) => `${fmtCount(n, 'zh-Hans')} 个名字源自这里`,

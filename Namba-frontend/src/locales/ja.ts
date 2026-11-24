@@ -174,8 +174,6 @@ export const JA: Messages = {
     title: GLOBAL_TERMS.origins,
     intro: '名前がどこから来たのか、その名前はまたどこから来たのか。項目ひとつは、ふたつの名前をつなぐリンクひとつです。',
     addTitle: '由来を追加',
-    filter: '名前・由来・物語で絞り込む',
-    folded: '連鎖にまとめる',
     empty: 'まだ由来がありません。',
     noMatches: '一致する名前がありません。',
     cameFromHere: (n: number) => `ここから生まれた名前 ${fmtCount(n, 'ja')}件`,

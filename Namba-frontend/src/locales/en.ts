@@ -213,8 +213,6 @@ export const EN = {
     title: GLOBAL_TERMS.origins,
     intro: 'Where a name came from, and where that name came from. One entry is one link between two names.',
     addTitle: 'Add an origin',
-    filter: 'Filter names, origins and stories',
-    folded: 'Fold into chains',
     empty: 'No origins written yet.',
     noMatches: 'No names match.',
     cameFromHere: (n: number) => `${fmtCount(n, 'en')} names came from here`,
