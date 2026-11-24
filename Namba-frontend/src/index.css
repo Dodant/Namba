@@ -1101,12 +1101,13 @@ html:lang(zh-Hans) .ix.dated .yr { width: 15ch; }
 .meta .likes { color: var(--fainter); font-variant-numeric: tabular-nums; }
 /* the like inside a list row is meta, not a control to look at: it reads as
    the count it is, and only colours once it is yours */
-.card .meta .btn {
+.card .meta .btn, .og-end .btn {
   /* same trade as .ix-like: hit area out, layout unchanged */
   padding: 6px 8px; margin: -6px -8px; border-color: transparent; background: none;
   font-size: var(--fs-label); color: var(--fainter); font-variant-numeric: tabular-nums;
 }
-.card .meta .btn:hover, .card .meta .btn.on { border-color: transparent; color: var(--hit); }
+.card .meta .btn:hover, .card .meta .btn.on,
+.og-end .btn:hover, .og-end .btn.on { border-color: transparent; color: var(--hit); }
 
 /* numeral and title stay on one line; the prose drops below both and runs
    the full width, which is the only way 16px reads on a 390px screen */
@@ -2145,7 +2146,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   .ix-num, .fx-num, .card .num, .hero .num { padding-block: 4px; }
 
   /* the two like counts that live in a text row */
-  .ix-like .btn, .card .meta .btn { padding: 11px 12px; margin: -11px -12px; }
+  .ix-like .btn, .card .meta .btn, .og-end .btn { padding: 11px 12px; margin: -11px -12px; }
 }
 
 /* --- footer ------------------------------------------------------- */
