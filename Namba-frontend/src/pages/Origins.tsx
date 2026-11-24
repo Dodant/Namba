@@ -284,14 +284,12 @@ export function OriginForm({ lang, of, taken }: {
                     />
                   </div>
                   <div className="field">
-                    {/* the hint is the placeholder here: beside the label it
-                        wrapped in this narrow column and pushed the box down
-                        out of line with the name's */}
-                    <label htmlFor={`${uid}-w${i}`}>{m.origins.note}</label>
+                    <label htmlFor={`${uid}-w${i}`}>
+                      {m.origins.note} <span className="hint">{m.origins.noteHint}</span>
+                    </label>
                     <input
                       id={`${uid}-w${i}`}
                       maxLength={40}
-                      placeholder={m.origins.noteHint}
                       value={s.note}
                       onChange={(e) => setStop(i, { note: e.target.value })}
                     />

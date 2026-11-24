@@ -2288,7 +2288,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .og-steps p { margin: 4px 0 6px; max-width: 68ch; }
 .og-steps .meta a { color: var(--accent); }
 .og-end { margin-left: auto; display: flex; gap: 12px; align-items: center; }
-.og-stop { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 0 12px; }
+.og-stop { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 7fr); gap: 0 12px; }
 .og-stop .field { margin-bottom: 14px; }
 .og-stop .fine { grid-column: 1 / -1; margin: -6px 0 14px; color: var(--accent); }
 .og-rail > .actions { margin: 0 0 clamp(20px, 3.5vw, 28px); }
