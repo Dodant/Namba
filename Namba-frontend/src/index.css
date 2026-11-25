@@ -1582,7 +1582,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 .form-side .field :is(label, .field-label) { flex-wrap: wrap; }
 .form-side .field .hint { flex-basis: 100%; }
 /* 724px is a line you can read, and a form is a column of fields anyway. */
-.form { max-width: 724px; padding-bottom: 28px; }
+.form { max-width: 724px; }
 /* The rules page takes the container's whole width instead, which is the
    .wrap's 1160 and no more. It reads wider than a measure wants -- the eight
    two-column tables are what the width is for, and they were the narrow thing
