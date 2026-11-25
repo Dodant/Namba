@@ -1470,7 +1470,7 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
 }
 /* the form's last word sits at its far end, in every form: the row that
    commits, and under it the waiver, one sentence to a line */
-.form-fields > .actions { margin: 38px 0 0; justify-content: flex-end; }
+.form-fields > .actions { margin: 52px 0 0; justify-content: flex-end; }
 .form-fields > .actions + .fine { text-align: right; white-space: pre-line; }
 .form-fields > .actions .btn { padding: 10px 18px; }
 
@@ -2183,6 +2183,9 @@ a.quiet { color: var(--accent); text-decoration: underline; text-underline-offse
   font-size: 13px; line-height: 1.55; color: var(--faint);
   text-wrap: pretty;
 }
+/* a form ends on its own last word -- Publish and the waiver -- so the footer
+   comes up to meet it rather than leaving a page's worth of air under it */
+main:has(.form) + .foot { margin-top: 16px; }
 /* The cap is on the paragraphs and not on .foot: on the box it took the
    border-top with it, and a rule ending at 524px of a 1092px page reads as
    one more separator in a list rather than as the page stopping.
